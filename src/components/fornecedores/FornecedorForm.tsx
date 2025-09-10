@@ -7,13 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Search, Save, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCnpjApi } from "@/hooks/useCnpjApi";
 
-const clienteSchema = z.object({
+const fornecedorSchema = z.object({
   razao_social: z.string().min(1, "Razão Social é obrigatória"),
   cnpj_cpf: z.string().min(1, "CNPJ/CPF é obrigatório"),
   tipo_pessoa: z.enum(["fisica", "juridica"]),
@@ -28,15 +27,15 @@ const clienteSchema = z.object({
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
 });
 
-type ClienteFormData = z.infer<typeof clienteSchema>;
+type FornecedorFormData = z.infer<typeof fornecedorSchema>;
 
-interface ClienteFormProps {
-  cliente?: any;
+interface FornecedorFormProps {
+  fornecedor?: any;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
+export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { buscarCnpj, isLoading: isSearchingCNPJ } = useCnpjApi();
@@ -47,9 +46,9 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<ClienteFormData>({
-    resolver: zodResolver(clienteSchema),
-    defaultValues: cliente || {
+  } = useForm<FornecedorFormData>({
+    resolver: zodResolver(fornecedorSchema),
+    defaultValues: fornecedor || {
       tipo_pessoa: "juridica",
     },
   });
@@ -73,25 +72,25 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
     }
   };
 
-  const onSubmit = async (data: ClienteFormData) => {
+  const onSubmit = async (data: FornecedorFormData) => {
     setIsLoading(true);
 
     try {
-      if (cliente?.id) {
+      if (fornecedor?.id) {
         const { error } = await supabase
-          .from("clientes")
+          .from("fornecedores")
           .update(data)
-          .eq("id", cliente.id);
+          .eq("id", fornecedor.id);
 
         if (error) throw error;
 
         toast({
-          title: "Cliente atualizado!",
+          title: "Fornecedor atualizado!",
           description: "As informações foram atualizadas com sucesso.",
         });
       } else {
         const { error } = await supabase
-          .from("clientes")
+          .from("fornecedores")
           .insert({
             cnpj_cpf: data.cnpj_cpf,
             razao_social: data.razao_social,
@@ -111,8 +110,8 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
         if (error) throw error;
 
         toast({
-          title: "Cliente cadastrado!",
-          description: "O cliente foi cadastrado com sucesso.",
+          title: "Fornecedor cadastrado!",
+          description: "O fornecedor foi cadastrado com sucesso.",
         });
       }
 
@@ -148,7 +147,7 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>
-            {cliente ? "Editar Cliente" : "Novo Cliente"}
+            {fornecedor ? "Editar Fornecedor" : "Novo Fornecedor"}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" />
@@ -289,7 +288,7 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              {cliente ? "Atualizar" : "Cadastrar"}
+              {fornecedor ? "Atualizar" : "Cadastrar"}
             </Button>
           </div>
         </form>

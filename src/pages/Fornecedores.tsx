@@ -6,11 +6,10 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { FornecedorForm } from '@/components/fornecedores/FornecedorForm';
 
 interface Fornecedor {
   id: string;
@@ -33,24 +32,6 @@ export default function Fornecedores() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
   const { toast } = useToast();
-
-  const form = useForm({
-    defaultValues: {
-      tipo_pessoa: 'juridica' as 'fisica' | 'juridica',
-      razao_social: '',
-      cnpj_cpf: '',
-      email: '',
-      telefone: '',
-      cep: '',
-      endereco: '',
-      numero: '',
-      complemento: '',
-      bairro: '',
-      cidade: '',
-      uf: '',
-      status: 'ativo' as 'ativo' | 'inativo',
-    }
-  });
 
   const fetchFornecedores = async () => {
     try {
@@ -77,58 +58,20 @@ export default function Fornecedores() {
     fetchFornecedores();
   }, []);
 
-  const onSubmit = async (data: any) => {
-    try {
-      if (editingFornecedor) {
-        const { error } = await supabase
-          .from('fornecedores')
-          .update(data)
-          .eq('id', editingFornecedor.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: "Fornecedor atualizado com sucesso!",
-        });
-      } else {
-        const { error } = await supabase
-          .from('fornecedores')
-          .insert([data]);
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: "Fornecedor cadastrado com sucesso!",
-        });
-      }
-
-      fetchFornecedores();
-      setIsDialogOpen(false);
-      setEditingFornecedor(null);
-      form.reset();
-    } catch (error) {
-      console.error('Erro ao salvar fornecedor:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar o fornecedor.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleEdit = (fornecedor: Fornecedor) => {
     setEditingFornecedor(fornecedor);
-    form.reset({
-      tipo_pessoa: fornecedor.tipo_pessoa,
-      razao_social: fornecedor.razao_social,
-      cnpj_cpf: fornecedor.cnpj_cpf,
-      email: fornecedor.email || '',
-      telefone: fornecedor.telefone || '',
-      status: fornecedor.status,
-    });
     setIsDialogOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    fetchFornecedores();
+    setIsDialogOpen(false);
+    setEditingFornecedor(null);
+  };
+
+  const handleFormClose = () => {
+    setIsDialogOpen(false);
+    setEditingFornecedor(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -193,151 +136,26 @@ export default function Fornecedores() {
           <p className="text-muted-foreground">Gerencie seus fornecedores</p>
         </div>
         
+        <Button onClick={() => {
+          setEditingFornecedor(null);
+          setIsDialogOpen(true);
+        }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Novo Fornecedor
+        </Button>
+      </div>
+
+      {isDialogOpen && (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => {
-              setEditingFornecedor(null);
-              form.reset();
-            }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Fornecedor
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingFornecedor ? 'Editar Fornecedor' : 'Novo Fornecedor'}
-              </DialogTitle>
-              <DialogDescription>
-                Preencha as informações do fornecedor abaixo.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="tipo_pessoa"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Pessoa</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="fisica">Pessoa Física</SelectItem>
-                            <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="ativo">Ativo</SelectItem>
-                            <SelectItem value="inativo">Inativo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="razao_social"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Razão Social / Nome</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite a razão social ou nome" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="cnpj_cpf"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CNPJ / CPF</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Digite o CNPJ ou CPF" 
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(formatCnpjCpf(e.target.value));
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="telefone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Telefone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(11) 99999-9999" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>E-mail</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="fornecedor@exemplo.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    {editingFornecedor ? 'Atualizar' : 'Cadastrar'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <FornecedorForm
+              fornecedor={editingFornecedor}
+              onClose={handleFormClose}
+              onSuccess={handleFormSuccess}
+            />
           </DialogContent>
         </Dialog>
-      </div>
+      )}
 
       <Card className="p-6">
         <div className="flex gap-4 mb-6">
