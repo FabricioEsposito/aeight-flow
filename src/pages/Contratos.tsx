@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ContractWizard from '@/components/contratos/ContractWizard';
+import ContractDetails from '@/components/contratos/ContractDetails';
 
 interface Contrato {
   id: string;
@@ -26,6 +28,9 @@ export default function Contratos() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [showWizard, setShowWizard] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState<string>('');
   const { toast } = useToast();
 
   const fetchContratos = async () => {
@@ -82,6 +87,15 @@ export default function Contratos() {
     }
   };
 
+  const handleViewContract = (id: string) => {
+    setSelectedContractId(id);
+    setShowDetails(true);
+  };
+
+  const handleNewContract = () => {
+    setShowWizard(true);
+  };
+
   const filteredContratos = contratos.filter(contrato => {
     const matchesSearch = contrato.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (contrato.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -121,7 +135,7 @@ export default function Contratos() {
           <p className="text-muted-foreground">Gerencie seus contratos de vendas</p>
         </div>
         
-        <Button>
+        <Button onClick={handleNewContract}>
           <Plus className="w-4 h-4 mr-2" />
           Novo Contrato
         </Button>
@@ -185,7 +199,11 @@ export default function Contratos() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleViewContract(contrato.id)}
+                      >
                         <Eye className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm">
@@ -210,13 +228,25 @@ export default function Contratos() {
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Nenhum contrato encontrado.</p>
-            <Button variant="ghost" className="mt-2">
+            <Button variant="ghost" className="mt-2" onClick={handleNewContract}>
               <Plus className="w-4 h-4 mr-2" />
               Criar primeiro contrato
             </Button>
           </div>
         )}
       </Card>
+
+      <ContractWizard
+        open={showWizard}
+        onOpenChange={setShowWizard}
+        onSuccess={fetchContratos}
+      />
+
+      <ContractDetails
+        contractId={selectedContractId}
+        open={showDetails}
+        onOpenChange={setShowDetails}
+      />
     </div>
   );
 }
