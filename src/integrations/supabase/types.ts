@@ -195,6 +195,7 @@ export type Database = {
           data_vencimento: string
           descricao: string
           id: string
+          numero_nf: string | null
           observacoes: string | null
           plano_conta_id: string | null
           status: Database["public"]["Enums"]["status_pagamento"]
@@ -212,6 +213,7 @@ export type Database = {
           data_vencimento: string
           descricao: string
           id?: string
+          numero_nf?: string | null
           observacoes?: string | null
           plano_conta_id?: string | null
           status?: Database["public"]["Enums"]["status_pagamento"]
@@ -229,6 +231,7 @@ export type Database = {
           data_vencimento?: string
           descricao?: string
           id?: string
+          numero_nf?: string | null
           observacoes?: string | null
           plano_conta_id?: string | null
           status?: Database["public"]["Enums"]["status_pagamento"]
@@ -321,7 +324,7 @@ export type Database = {
         Row: {
           categoria: string | null
           centro_custo: string | null
-          cliente_id: string
+          cliente_id: string | null
           cofins: number
           conta_recebimento_id: string | null
           created_at: string
@@ -331,6 +334,7 @@ export type Database = {
           desconto_percentual: number
           desconto_valor: number
           dia_vencimento: number | null
+          fornecedor_id: string | null
           id: string
           irrf: number
           numero: string
@@ -338,6 +342,7 @@ export type Database = {
           pis: number
           recorrencia: boolean
           status: Database["public"]["Enums"]["status_contrato"]
+          tipo_contrato: string | null
           tipo_pagamento: string | null
           updated_at: string
           valor_bruto: number
@@ -347,7 +352,7 @@ export type Database = {
         Insert: {
           categoria?: string | null
           centro_custo?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           cofins?: number
           conta_recebimento_id?: string | null
           created_at?: string
@@ -357,6 +362,7 @@ export type Database = {
           desconto_percentual?: number
           desconto_valor?: number
           dia_vencimento?: number | null
+          fornecedor_id?: string | null
           id?: string
           irrf?: number
           numero: string
@@ -364,6 +370,7 @@ export type Database = {
           pis?: number
           recorrencia?: boolean
           status?: Database["public"]["Enums"]["status_contrato"]
+          tipo_contrato?: string | null
           tipo_pagamento?: string | null
           updated_at?: string
           valor_bruto?: number
@@ -373,7 +380,7 @@ export type Database = {
         Update: {
           categoria?: string | null
           centro_custo?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           cofins?: number
           conta_recebimento_id?: string | null
           created_at?: string
@@ -383,6 +390,7 @@ export type Database = {
           desconto_percentual?: number
           desconto_valor?: number
           dia_vencimento?: number | null
+          fornecedor_id?: string | null
           id?: string
           irrf?: number
           numero?: string
@@ -390,6 +398,7 @@ export type Database = {
           pis?: number
           recorrencia?: boolean
           status?: Database["public"]["Enums"]["status_contrato"]
+          tipo_contrato?: string | null
           tipo_pagamento?: string | null
           updated_at?: string
           valor_bruto?: number
@@ -409,6 +418,13 @@ export type Database = {
             columns: ["conta_recebimento_id"]
             isOneToOne: false
             referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
             referencedColumns: ["id"]
           },
         ]

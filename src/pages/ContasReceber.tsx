@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ContasReceberForm from '@/components/contratos/ContasReceberForm';
 
 interface ContaReceber {
   id: string;
@@ -16,6 +17,7 @@ interface ContaReceber {
   data_vencimento: string;
   data_competencia: string;
   data_recebimento?: string;
+  numero_nf?: string;
   status: 'pendente' | 'pago' | 'vencido' | 'cancelado';
   clientes?: {
     razao_social: string;
@@ -30,6 +32,8 @@ export default function ContasReceber() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [showForm, setShowForm] = useState(false);
+  const [editingConta, setEditingConta] = useState<ContaReceber | null>(null);
   const { toast } = useToast();
 
   const fetchContas = async () => {
@@ -65,28 +69,39 @@ export default function ContasReceber() {
     fetchContas();
   }, []);
 
-  const handleMarcarRecebido = async (id: string) => {
+  const handleEdit = (conta: ContaReceber) => {
+    setEditingConta(conta);
+    setShowForm(true);
+  };
+
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
     try {
+      const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
+      const updateData: any = { status: newStatus };
+      
+      if (newStatus === 'pago') {
+        updateData.data_recebimento = new Date().toISOString().split('T')[0];
+      } else {
+        updateData.data_recebimento = null;
+      }
+
       const { error } = await supabase
         .from('contas_receber')
-        .update({
-          status: 'pago',
-          data_recebimento: new Date().toISOString().split('T')[0]
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: "Conta marcada como recebida!",
+        description: `Status alterado para ${newStatus}!`,
       });
       fetchContas();
     } catch (error) {
-      console.error('Erro ao marcar como recebido:', error);
+      console.error('Erro ao alterar status:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível marcar como recebido.",
+        description: "Não foi possível alterar o status.",
         variant: "destructive",
       });
     }
@@ -185,11 +200,6 @@ export default function ContasReceber() {
           <h1 className="text-3xl font-bold text-foreground">Contas a Receber</h1>
           <p className="text-muted-foreground">Gerencie suas receitas e recebimentos</p>
         </div>
-        
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Conta
-        </Button>
       </div>
 
       {/* Cards de Resumo */}
@@ -261,6 +271,7 @@ export default function ContasReceber() {
                 <TableHead>Valor</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Número NF</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -285,19 +296,25 @@ export default function ContasReceber() {
                       {getStatusLabel(conta.status, conta.data_vencimento)}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    {conta.numero_nf || '-'}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {conta.status === 'pendente' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMarcarRecebido(conta.id)}
-                          className="text-emerald-600 hover:text-emerald-700"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleStatus(conta.id, conta.status)}
+                        className={conta.status === 'pendente' ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
+                        title={conta.status === 'pendente' ? 'Marcar como pago' : 'Marcar como pendente'}
+                      >
+                        <DollarSign className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEdit(conta)}
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm">
@@ -318,6 +335,18 @@ export default function ContasReceber() {
           </div>
         )}
       </Card>
+
+      <ContasReceberForm
+        open={showForm}
+        onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) {
+            setEditingConta(null);
+          }
+        }}
+        onSuccess={fetchContas}
+        contaReceber={editingConta}
+      />
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import Clientes from "./pages/Clientes";
 import Fornecedores from "./pages/Fornecedores";
-import Contratos from "./pages/Contratos";
+import ContratosClientes from "./pages/ContratosClientes";
+import ContratosFornecedores from "./pages/ContratosFornecedores";
 import Servicos from "./pages/Servicos";
 import ContasBancarias from "./pages/ContasBancarias";
 import PlanoContas from "./pages/PlanoContas";
@@ -29,7 +30,10 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/fornecedores" element={<Fornecedores />} />
-            <Route path="/contratos" element={<Contratos />} />
+            <Route path="/contratos-clientes" element={<ContratosClientes />} />
+            <Route path="/contratos-fornecedores" element={<ContratosFornecedores />} />
+            {/* Legacy redirect */}
+            <Route path="/contratos" element={<ContratosClientes />} />
             <Route path="/servicos" element={<Servicos />} />
             <Route path="/contas-bancarias" element={<ContasBancarias />} />
             <Route path="/plano-contas" element={<PlanoContas />} />
