@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Eye, FileText, MoreHorizontal } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, MoreHorizontal, Eye, Edit, X, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import SupplierContractWizard from '@/components/contratos/SupplierContractWizard';
 
 interface ContratoFornecedor {
   id: string;
   numero: string;
   data_inicio: string;
+  data_fim?: string;
   valor_total: number;
   valor_liquido: number;
-  status: 'ativo' | 'encerrado' | 'suspenso';
+  status: string;
   fornecedores?: {
     razao_social: string;
+    cnpj_cpf: string;
   };
 }
 
@@ -28,74 +30,154 @@ export default function ContratosFornecedores() {
   const [contratos, setContratos] = useState<ContratoFornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [showWizard, setShowWizard] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [wizardOpen, setWizardOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchContratos();
+  }, []);
 
   const fetchContratos = async () => {
     try {
-      // For now, we'll create a placeholder since supplier contracts would need their own table
-      // In a real implementation, you'd have a separate contracts_fornecedores table
-      setContratos([]);
+      const { data, error } = await supabase
+        .from('contratos')
+        .select(`
+          id,
+          numero,
+          data_inicio,
+          data_fim,
+          valor_total,
+          valor_liquido,
+          status,
+          fornecedores (
+            razao_social,
+            cnpj_cpf
+          )
+        `)
+        .eq('tipo_contrato', 'fornecedor')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setContratos(data || []);
     } catch (error) {
       console.error('Erro ao buscar contratos:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os contratos.",
-        variant: "destructive",
+        description: "Erro ao carregar contratos de fornecedores.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchContratos();
-  }, []);
+  const canDeleteContract = async (contractId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('contas_pagar')
+        .select('status')
+        .eq('contrato_id', contractId)
+        .eq('status', 'pago');
+
+      if (error) {
+        console.error('Erro ao verificar pagamentos:', error);
+        return false;
+      }
+
+      return data.length === 0;
+    } catch (error) {
+      console.error('Erro ao verificar pagamentos:', error);
+      return false;
+    }
+  };
 
   const handleEndContract = async (id: string) => {
     try {
+      const { error } = await supabase
+        .from('contratos')
+        .update({ status: 'encerrado' })
+        .eq('id', id);
+
+      if (error) throw error;
+
       toast({
-        title: "Sucesso",
-        description: "Contrato encerrado com sucesso!",
+        title: "Sucesso!",
+        description: "Contrato encerrado com sucesso.",
       });
+
       fetchContratos();
     } catch (error) {
       console.error('Erro ao encerrar contrato:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível encerrar o contrato.",
-        variant: "destructive",
+        description: "Erro ao encerrar contrato.",
+        variant: "destructive"
       });
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
+      const canDelete = await canDeleteContract(id);
+      
+      if (!canDelete) {
+        toast({
+          title: "Não é possível excluir",
+          description: "Este contrato possui parcelas já pagas e não pode ser excluído.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Excluir contas a pagar relacionadas
+      await supabase
+        .from('contas_pagar')
+        .delete()
+        .eq('contrato_id', id);
+
+      // Excluir itens do contrato
+      await supabase
+        .from('contrato_itens')
+        .delete()
+        .eq('contrato_id', id);
+
+      // Excluir contrato
+      const { error } = await supabase
+        .from('contratos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
       toast({
-        title: "Sucesso",
-        description: "Contrato excluído com sucesso!",
+        title: "Sucesso!",
+        description: "Contrato excluído com sucesso.",
       });
+
       fetchContratos();
     } catch (error) {
       console.error('Erro ao excluir contrato:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível excluir o contrato.",
-        variant: "destructive",
+        description: "Erro ao excluir contrato.",
+        variant: "destructive"
       });
     }
   };
 
   const handleNewContract = () => {
-    setShowWizard(true);
+    setWizardOpen(true);
   };
 
   const filteredContratos = contratos.filter(contrato => {
-    const matchesSearch = contrato.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (contrato.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'todos' || contrato.status === statusFilter;
-
+    const matchesSearch = 
+      contrato.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contrato.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || contrato.status === statusFilter;
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -153,7 +235,7 @@ export default function ContratosFornecedores() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos os Status</SelectItem>
+              <SelectItem value="all">Todos os Status</SelectItem>
               <SelectItem value="ativo">Ativos</SelectItem>
               <SelectItem value="encerrado">Encerrados</SelectItem>
               <SelectItem value="suspenso">Suspensos</SelectItem>
@@ -168,6 +250,7 @@ export default function ContratosFornecedores() {
                 <TableHead>Número</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Data Início</TableHead>
+                <TableHead>Data Fim</TableHead>
                 <TableHead>Valor Total</TableHead>
                 <TableHead>Valor Líquido</TableHead>
                 <TableHead>Status</TableHead>
@@ -180,6 +263,7 @@ export default function ContratosFornecedores() {
                   <TableCell className="font-medium">{contrato.numero}</TableCell>
                   <TableCell>{contrato.fornecedores?.razao_social || '-'}</TableCell>
                   <TableCell>{formatDate(contrato.data_inicio)}</TableCell>
+                  <TableCell>{contrato.data_fim ? formatDate(contrato.data_fim) : 'Indeterminado'}</TableCell>
                   <TableCell>{formatCurrency(contrato.valor_total)}</TableCell>
                   <TableCell>{formatCurrency(contrato.valor_liquido)}</TableCell>
                   <TableCell>
@@ -197,10 +281,15 @@ export default function ContratosFornecedores() {
                       <Button 
                         variant="ghost" 
                         size="sm"
+                        title="Visualizar"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        title="Editar"
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <DropdownMenu>
@@ -214,6 +303,7 @@ export default function ContratosFornecedores() {
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <X className="w-4 h-4 mr-2" />
                                   Encerrar Contrato
                                 </DropdownMenuItem>
                               </AlertDialogTrigger>
@@ -236,6 +326,7 @@ export default function ContratosFornecedores() {
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
                                 Excluir Contrato
                               </DropdownMenuItem>
                             </AlertDialogTrigger>
@@ -243,7 +334,7 @@ export default function ContratosFornecedores() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir Contrato</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Tem certeza que deseja excluir este contrato permanentemente? Esta ação não pode ser desfeita.
+                                  Tem certeza que deseja excluir este contrato permanentemente? Esta ação não pode ser desfeita. Contratos com parcelas pagas não podem ser excluídos.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -280,8 +371,8 @@ export default function ContratosFornecedores() {
       </Card>
 
       <SupplierContractWizard
-        open={showWizard}
-        onOpenChange={setShowWizard}
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
         onSuccess={fetchContratos}
       />
     </div>
