@@ -40,7 +40,7 @@ export default function ContratosFornecedores() {
 
   const fetchContratos = async () => {
     try {
-      const result: any = await supabase
+      const { data, error } = await (supabase as any)
         .from('contratos')
         .select(`
           id,
@@ -58,9 +58,9 @@ export default function ContratosFornecedores() {
         .eq('tipo_contrato', 'fornecedor')
         .order('created_at', { ascending: false });
 
-      if (result.error) throw result.error;
+      if (error) throw error;
 
-      setContratos(result.data as ContratoFornecedor[] || []);
+      setContratos(data || []);
     } catch (error) {
       console.error('Erro ao buscar contratos:', error);
       toast({
@@ -73,34 +73,14 @@ export default function ContratosFornecedores() {
     }
   };
 
-  const canDeleteContract = async (contractId: string): Promise<boolean> => {
-    try {
-      const result: any = await supabase
-        .from('contas_pagar')
-        .select('status')
-        .eq('contrato_id', contractId)
-        .eq('status', 'pago');
-
-      if (result.error) {
-        console.error('Erro ao verificar pagamentos:', result.error);
-        return false;
-      }
-
-      return (result.data || []).length === 0;
-    } catch (error) {
-      console.error('Erro ao verificar pagamentos:', error);
-      return false;
-    }
-  };
-
   const handleEndContract = async (id: string) => {
     try {
-      const result: any = await supabase
+      const { error } = await (supabase as any)
         .from('contratos')
         .update({ status: 'encerrado' })
         .eq('id', id);
 
-      if (result.error) throw result.error;
+      if (error) throw error;
 
       toast({
         title: "Sucesso!",
@@ -118,6 +98,26 @@ export default function ContratosFornecedores() {
     }
   };
 
+  const canDeleteContract = async (contractId: string): Promise<boolean> => {
+    try {
+      const { count, error } = await (supabase as any)
+        .from('contas_pagar')
+        .select('*', { count: 'exact', head: true })
+        .eq('contrato_id', contractId)
+        .eq('status', 'pago');
+
+      if (error) {
+        console.error('Erro ao verificar pagamentos:', error);
+        return false;
+      }
+
+      return count === 0;
+    } catch (error) {
+      console.error('Erro ao verificar pagamentos:', error);
+      return false;
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const canDelete = await canDeleteContract(id);
@@ -132,24 +132,24 @@ export default function ContratosFornecedores() {
       }
 
       // Excluir contas a pagar relacionadas
-      const deleteContasPagar: any = await supabase
+      await (supabase as any)
         .from('contas_pagar')
         .delete()
         .eq('contrato_id', id);
 
       // Excluir itens do contrato
-      const deleteItens: any = await supabase
+      await (supabase as any)
         .from('contrato_itens')
         .delete()
         .eq('contrato_id', id);
 
       // Excluir contrato
-      const deleteContrato: any = await supabase
+      const { error } = await (supabase as any)
         .from('contratos')
         .delete()
         .eq('id', id);
 
-      if (deleteContrato.error) throw deleteContrato.error;
+      if (error) throw error;
 
       toast({
         title: "Sucesso!",
