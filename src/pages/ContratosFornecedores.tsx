@@ -23,7 +23,7 @@ interface ContratoFornecedor {
   fornecedores?: {
     razao_social: string;
     cnpj_cpf: string;
-  };
+  } | null;
 }
 
 export default function ContratosFornecedores() {
@@ -40,7 +40,7 @@ export default function ContratosFornecedores() {
 
   const fetchContratos = async () => {
     try {
-      const { data, error } = await supabase
+      const result: any = await supabase
         .from('contratos')
         .select(`
           id,
@@ -58,9 +58,9 @@ export default function ContratosFornecedores() {
         .eq('tipo_contrato', 'fornecedor')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (result.error) throw result.error;
 
-      setContratos(data || []);
+      setContratos(result.data as ContratoFornecedor[] || []);
     } catch (error) {
       console.error('Erro ao buscar contratos:', error);
       toast({
@@ -73,20 +73,20 @@ export default function ContratosFornecedores() {
     }
   };
 
-  const canDeleteContract = async (contractId: string) => {
+  const canDeleteContract = async (contractId: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase
+      const result: any = await supabase
         .from('contas_pagar')
         .select('status')
         .eq('contrato_id', contractId)
         .eq('status', 'pago');
 
-      if (error) {
-        console.error('Erro ao verificar pagamentos:', error);
+      if (result.error) {
+        console.error('Erro ao verificar pagamentos:', result.error);
         return false;
       }
 
-      return data.length === 0;
+      return (result.data || []).length === 0;
     } catch (error) {
       console.error('Erro ao verificar pagamentos:', error);
       return false;
@@ -95,12 +95,12 @@ export default function ContratosFornecedores() {
 
   const handleEndContract = async (id: string) => {
     try {
-      const { error } = await supabase
+      const result: any = await supabase
         .from('contratos')
         .update({ status: 'encerrado' })
         .eq('id', id);
 
-      if (error) throw error;
+      if (result.error) throw result.error;
 
       toast({
         title: "Sucesso!",
@@ -132,24 +132,24 @@ export default function ContratosFornecedores() {
       }
 
       // Excluir contas a pagar relacionadas
-      await supabase
+      const deleteContasPagar: any = await supabase
         .from('contas_pagar')
         .delete()
         .eq('contrato_id', id);
 
       // Excluir itens do contrato
-      await supabase
+      const deleteItens: any = await supabase
         .from('contrato_itens')
         .delete()
         .eq('contrato_id', id);
 
       // Excluir contrato
-      const { error } = await supabase
+      const deleteContrato: any = await supabase
         .from('contratos')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (deleteContrato.error) throw deleteContrato.error;
 
       toast({
         title: "Sucesso!",
