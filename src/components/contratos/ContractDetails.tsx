@@ -33,7 +33,12 @@ interface ContractDetail {
   tipo_pagamento?: string;
   centro_custo?: string;
   categoria?: string;
+  tipo_contrato?: string;
   clientes?: {
+    razao_social: string;
+    cnpj_cpf: string;
+  };
+  fornecedores?: {
     razao_social: string;
     cnpj_cpf: string;
   };
@@ -44,6 +49,13 @@ interface ContractDetail {
     valor_total: number;
   }>;
   contas_receber?: Array<{
+    id: string;
+    descricao: string;
+    valor: number;
+    data_vencimento: string;
+    status: string;
+  }>;
+  contas_pagar?: Array<{
     id: string;
     descricao: string;
     valor: number;
@@ -73,6 +85,10 @@ export default function ContractDetails({ contractId, open, onOpenChange }: Cont
             razao_social,
             cnpj_cpf
           ),
+          fornecedores:fornecedor_id (
+            razao_social,
+            cnpj_cpf
+          ),
           contrato_itens (
             descricao,
             quantidade,
@@ -85,13 +101,20 @@ export default function ContractDetails({ contractId, open, onOpenChange }: Cont
             valor,
             data_vencimento,
             status
+          ),
+          contas_pagar (
+            id,
+            descricao,
+            valor,
+            data_vencimento,
+            status
           )
         `)
         .eq('id', contractId)
         .single();
 
       if (error) throw error;
-      setContract(data);
+      setContract(data as any);
     } catch (error) {
       console.error('Erro ao buscar detalhes do contrato:', error);
     } finally {
@@ -166,9 +189,19 @@ export default function ContractDetails({ contractId, open, onOpenChange }: Cont
             <h3 className="text-lg font-semibold mb-4">Informações Gerais</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">Cliente</p>
-                <p className="font-medium">{contract.clientes?.razao_social}</p>
-                <p className="text-xs text-muted-foreground">{contract.clientes?.cnpj_cpf}</p>
+                <p className="text-sm text-muted-foreground">
+                  {contract.tipo_contrato === 'fornecedor' ? 'Fornecedor' : 'Cliente'}
+                </p>
+                <p className="font-medium">
+                  {contract.tipo_contrato === 'fornecedor' 
+                    ? contract.fornecedores?.razao_social 
+                    : contract.clientes?.razao_social}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {contract.tipo_contrato === 'fornecedor' 
+                    ? contract.fornecedores?.cnpj_cpf 
+                    : contract.clientes?.cnpj_cpf}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Período</p>
@@ -262,6 +295,41 @@ export default function ContractDetails({ contractId, open, onOpenChange }: Cont
                       <TableCell className="font-medium">{conta.descricao}</TableCell>
                       <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                       <TableCell className="font-semibold text-primary">
+                        {formatCurrency(conta.valor)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getReceivableStatusColor(conta.status, conta.data_vencimento)}>
+                          {conta.status === 'pendente' && new Date(conta.data_vencimento) < new Date() 
+                            ? 'Vencido' 
+                            : conta.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+
+          {/* Payables */}
+          {contract.contas_pagar && contract.contas_pagar.length > 0 && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Contas a Pagar Geradas</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contract.contas_pagar.map((conta) => (
+                    <TableRow key={conta.id}>
+                      <TableCell className="font-medium">{conta.descricao}</TableCell>
+                      <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
+                      <TableCell className="font-semibold text-destructive">
                         {formatCurrency(conta.valor)}
                       </TableCell>
                       <TableCell>

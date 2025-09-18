@@ -33,6 +33,7 @@ export default function ContratosClientes() {
   const [showWizard, setShowWizard] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedContractId, setSelectedContractId] = useState<string>('');
+  const [editingContract, setEditingContract] = useState<any>(null);
   const { toast } = useToast();
 
   const fetchContratos = async () => {
@@ -160,7 +161,39 @@ export default function ContratosClientes() {
   };
 
   const handleNewContract = () => {
+    setEditingContract(null);
     setShowWizard(true);
+  };
+
+  const handleEditContract = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('contratos')
+        .select(`
+          *,
+          contrato_itens (
+            descricao,
+            quantidade,
+            valor_unitario,
+            valor_total,
+            servico_id
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      
+      setEditingContract(data);
+      setShowWizard(true);
+    } catch (error) {
+      console.error('Erro ao buscar contrato:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados do contrato.",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredContratos = contratos.filter(contrato => {
@@ -273,7 +306,11 @@ export default function ContratosClientes() {
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditContract(contrato.id)}
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <DropdownMenu>
@@ -357,6 +394,7 @@ export default function ContratosClientes() {
         open={showWizard}
         onOpenChange={setShowWizard}
         onSuccess={fetchContratos}
+        editContract={editingContract}
       />
 
       <ContractDetails

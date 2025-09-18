@@ -71,6 +71,34 @@ export default function ContractWizard({ open, onOpenChange, onSuccess, editCont
     tipo_pagamento: '',
     conta_recebimento_id: '',
   });
+
+  // Load edit data when editing
+  React.useEffect(() => {
+    if (editContract && open) {
+      setContractData({
+        numero: editContract.numero || '',
+        cliente_id: editContract.cliente_id || '',
+        data_inicio: editContract.data_inicio || '',
+        data_fim: editContract.data_fim || '',
+        dia_vencimento: editContract.dia_vencimento || 1,
+        recorrencia: editContract.recorrencia || false,
+        periodo_recorrencia: editContract.periodo_recorrencia || 'mensal',
+        categoria: editContract.categoria || '',
+        centro_custo: editContract.centro_custo || '',
+        itens: editContract.contrato_itens || [],
+        valor_bruto: editContract.valor_bruto || 0,
+        desconto_percentual: editContract.desconto_percentual || 0,
+        desconto_valor: editContract.desconto_valor || 0,
+        irrf: editContract.irrf || 0,
+        pis: editContract.pis || 0,
+        cofins: editContract.cofins || 0,
+        csll: editContract.csll || 0,
+        valor_liquido: editContract.valor_liquido || 0,
+        tipo_pagamento: editContract.tipo_pagamento || '',
+        conta_recebimento_id: editContract.conta_recebimento_id || '',
+      });
+    }
+  }, [editContract, open]);
   const { toast } = useToast();
 
   const steps = [
@@ -141,7 +169,6 @@ export default function ContractWizard({ open, onOpenChange, onSuccess, editCont
 
   const handleSave = async () => {
     try {
-      // Save contract
       const contractToSave = {
         numero: contractData.numero,
         cliente_id: contractData.cliente_id,
@@ -166,13 +193,33 @@ export default function ContractWizard({ open, onOpenChange, onSuccess, editCont
         status: 'ativo' as const,
       };
 
-      const { data: contract, error: contractError } = await supabase
-        .from('contratos')
-        .insert(contractToSave)
-        .select()
-        .single();
+      let contract;
+      if (editContract) {
+        // Update existing contract
+        const { data, error: contractError } = await supabase
+          .from('contratos')
+          .update(contractToSave)
+          .eq('id', editContract.id)
+          .select()
+          .single();
 
-      if (contractError) throw contractError;
+        if (contractError) throw contractError;
+        contract = data;
+
+        // Delete existing items and receivables
+        await supabase.from('contrato_itens').delete().eq('contrato_id', editContract.id);
+        await supabase.from('contas_receber').delete().eq('contrato_id', editContract.id);
+      } else {
+        // Create new contract
+        const { data, error: contractError } = await supabase
+          .from('contratos')
+          .insert(contractToSave)
+          .select()
+          .single();
+
+        if (contractError) throw contractError;
+        contract = data;
+      }
 
       // Save contract items
       if (contractData.itens.length > 0) {
@@ -197,33 +244,36 @@ export default function ContractWizard({ open, onOpenChange, onSuccess, editCont
 
       toast({
         title: "Sucesso",
-        description: "Contrato criado com sucesso!",
+        description: editContract ? "Contrato atualizado com sucesso!" : "Contrato criado com sucesso!",
       });
 
       onSuccess();
       onOpenChange(false);
       setCurrentStep(1);
-      setContractData({
-        numero: '',
-        cliente_id: '',
-        data_inicio: '',
-        dia_vencimento: 1,
-        recorrencia: false,
-        periodo_recorrencia: 'mensal',
-        categoria: '',
-        centro_custo: '',
-        itens: [],
-        valor_bruto: 0,
-        desconto_percentual: 0,
-        desconto_valor: 0,
-        irrf: 0,
-        pis: 0,
-        cofins: 0,
-        csll: 0,
-        valor_liquido: 0,
-        tipo_pagamento: '',
-        conta_recebimento_id: '',
-      });
+      
+      if (!editContract) {
+        setContractData({
+          numero: '',
+          cliente_id: '',
+          data_inicio: '',
+          dia_vencimento: 1,
+          recorrencia: false,
+          periodo_recorrencia: 'mensal',
+          categoria: '',
+          centro_custo: '',
+          itens: [],
+          valor_bruto: 0,
+          desconto_percentual: 0,
+          desconto_valor: 0,
+          irrf: 0,
+          pis: 0,
+          cofins: 0,
+          csll: 0,
+          valor_liquido: 0,
+          tipo_pagamento: '',
+          conta_recebimento_id: '',
+        });
+      }
     } catch (error) {
       console.error('Erro ao salvar contrato:', error);
       toast({

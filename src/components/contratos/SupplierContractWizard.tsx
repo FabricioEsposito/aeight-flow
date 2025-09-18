@@ -47,9 +47,10 @@ interface SupplierContractWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  editContract?: any;
 }
 
-export default function SupplierContractWizard({ open, onOpenChange, onSuccess }: SupplierContractWizardProps) {
+export default function SupplierContractWizard({ open, onOpenChange, onSuccess, editContract }: SupplierContractWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [contractData, setContractData] = useState<ContractData>({
     numero: '',
@@ -74,6 +75,35 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess }
     valor_liquido: 0,
     valor_total: 0,
   });
+
+  // Load edit data when editing
+  React.useEffect(() => {
+    if (editContract && open) {
+      setContractData({
+        numero: editContract.numero || '',
+        fornecedor_id: editContract.fornecedor_id || '',
+        data_inicio: editContract.data_inicio ? new Date(editContract.data_inicio) : null,
+        data_fim: editContract.data_fim ? new Date(editContract.data_fim) : null,
+        dia_vencimento: editContract.dia_vencimento || 1,
+        recorrencia: editContract.recorrencia || false,
+        periodo_recorrencia: editContract.periodo_recorrencia || 'mensal',
+        categoria: editContract.categoria || '',
+        centro_custo: editContract.centro_custo || '',
+        itens: editContract.contrato_itens || [],
+        valor_bruto: editContract.valor_bruto || 0,
+        desconto_percentual: editContract.desconto_percentual || 0,
+        desconto_valor: editContract.desconto_valor || 0,
+        irrf: editContract.irrf || 0,
+        pis: editContract.pis || 0,
+        cofins: editContract.cofins || 0,
+        csll: editContract.csll || 0,
+        valor_liquido: editContract.valor_liquido || 0,
+        valor_total: editContract.valor_total || 0,
+        tipo_pagamento: editContract.tipo_pagamento || '',
+        conta_recebimento_id: editContract.conta_recebimento_id || '',
+      });
+    }
+  }, [editContract, open]);
   const { toast } = useToast();
 
   const steps = [
@@ -184,7 +214,6 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess }
         return;
       }
 
-      // Salvar contrato
       const contratoData = {
         numero: contractData.numero,
         fornecedor_id: contractData.fornecedor_id,
@@ -210,15 +239,35 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess }
         status: 'ativo' as const
       };
 
-      const { data: contrato, error: contratoError } = await supabase
-        .from('contratos')
-        .insert([contratoData])
-        .select()
-        .single();
+      let contrato;
+      if (editContract) {
+        // Update existing contract
+        const { data, error: contractError } = await (supabase as any)
+          .from('contratos')
+          .update(contratoData)
+          .eq('id', editContract.id)
+          .select()
+          .single();
 
-      if (contratoError) throw contratoError;
+        if (contractError) throw contractError;
+        contrato = data;
 
-      // Salvar itens do contrato
+        // Delete existing items and payables
+        await (supabase as any).from('contrato_itens').delete().eq('contrato_id', editContract.id);
+        await (supabase as any).from('contas_pagar').delete().eq('contrato_id', editContract.id);
+      } else {
+        // Create new contract
+        const { data, error: contractError } = await (supabase as any)
+          .from('contratos')
+          .insert([contratoData])
+          .select()
+          .single();
+
+        if (contractError) throw contractError;
+        contrato = data;
+      }
+
+      // Save contract items
       const itensData = contractData.itens.map(item => ({
         contrato_id: contrato.id,
         servico_id: item.servico_id || null,
@@ -228,48 +277,50 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess }
         valor_total: item.valor_total
       }));
 
-      const { error: itensError } = await supabase
+      const { error: itensError } = await (supabase as any)
         .from('contrato_itens')
         .insert(itensData);
 
       if (itensError) throw itensError;
 
-      // Gerar contas a pagar se for recorrente
+      // Generate payables if recurring
       await generatePayables(contrato.id);
 
       toast({
         title: "Sucesso!",
-        description: "Contrato de fornecedor criado com sucesso.",
+        description: editContract ? "Contrato atualizado com sucesso!" : "Contrato de fornecedor criado com sucesso.",
       });
 
       onOpenChange(false);
       onSuccess();
 
-      // Reset form
-      setContractData({
-        numero: '',
-        fornecedor_id: '',
-        data_inicio: null,
-        data_fim: null,
-        dia_vencimento: 1,
-        periodo_recorrencia: 'mensal',
-        recorrencia: false,
-        tipo_pagamento: '',
-        conta_recebimento_id: '',
-        categoria: '',
-        centro_custo: '',
-        itens: [],
-        valor_bruto: 0,
-        desconto_percentual: 0,
-        desconto_valor: 0,
-        irrf: 0,
-        pis: 0,
-        cofins: 0,
-        csll: 0,
-        valor_liquido: 0,
-        valor_total: 0,
-      });
-      setCurrentStep(1);
+      if (!editContract) {
+        // Reset form only when creating new
+        setContractData({
+          numero: '',
+          fornecedor_id: '',
+          data_inicio: null,
+          data_fim: null,
+          dia_vencimento: 1,
+          periodo_recorrencia: 'mensal',
+          recorrencia: false,
+          tipo_pagamento: '',
+          conta_recebimento_id: '',
+          categoria: '',
+          centro_custo: '',
+          itens: [],
+          valor_bruto: 0,
+          desconto_percentual: 0,
+          desconto_valor: 0,
+          irrf: 0,
+          pis: 0,
+          cofins: 0,
+          csll: 0,
+          valor_liquido: 0,
+          valor_total: 0,
+        });
+        setCurrentStep(1);
+      }
 
     } catch (error) {
       console.error('Erro ao salvar contrato:', error);
@@ -286,7 +337,7 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess }
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Novo Contrato de Fornecedor - Etapa {currentStep}: {steps[currentStep - 1].title}
+            {editContract ? 'Editar Contrato de Fornecedor' : 'Novo Contrato de Fornecedor'} - Etapa {currentStep}: {steps[currentStep - 1].title}
           </DialogTitle>
         </DialogHeader>
 

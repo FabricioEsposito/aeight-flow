@@ -11,6 +11,7 @@ import { Plus, Search, MoreHorizontal, Eye, Edit, X, Trash2, FileText } from 'lu
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import SupplierContractWizard from '@/components/contratos/SupplierContractWizard';
+import ContractDetails from '@/components/contratos/ContractDetails';
 
 interface ContratoFornecedor {
   id: string;
@@ -32,6 +33,9 @@ export default function ContratosFornecedores() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState<string>('');
+  const [editingContract, setEditingContract] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -167,8 +171,45 @@ export default function ContratosFornecedores() {
     }
   };
 
+  const handleViewContract = (id: string) => {
+    setSelectedContractId(id);
+    setShowDetails(true);
+  };
+
   const handleNewContract = () => {
+    setEditingContract(null);
     setWizardOpen(true);
+  };
+
+  const handleEditContract = async (id: string) => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('contratos')
+        .select(`
+          *,
+          contrato_itens (
+            descricao,
+            quantidade,
+            valor_unitario,
+            valor_total,
+            servico_id
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      
+      setEditingContract(data);
+      setWizardOpen(true);
+    } catch (error) {
+      console.error('Erro ao buscar contrato:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados do contrato.",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredContratos = contratos.filter(contrato => {
@@ -282,6 +323,7 @@ export default function ContratosFornecedores() {
                         variant="ghost" 
                         size="sm"
                         title="Visualizar"
+                        onClick={() => handleViewContract(contrato.id)}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -289,6 +331,7 @@ export default function ContratosFornecedores() {
                         variant="ghost" 
                         size="sm"
                         title="Editar"
+                        onClick={() => handleEditContract(contrato.id)}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -374,6 +417,13 @@ export default function ContratosFornecedores() {
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         onSuccess={fetchContratos}
+        editContract={editingContract}
+      />
+      
+      <ContractDetails
+        contractId={selectedContractId}
+        open={showDetails}
+        onOpenChange={setShowDetails}
       />
     </div>
   );
