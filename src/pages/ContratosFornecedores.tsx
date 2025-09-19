@@ -102,6 +102,31 @@ export default function ContratosFornecedores() {
     }
   };
 
+  const handleReactivateContract = async (id: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('contratos')
+        .update({ status: 'ativo' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso!",
+        description: "Contrato reativado com sucesso.",
+      });
+
+      fetchContratos();
+    } catch (error) {
+      console.error('Erro ao reativar contrato:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao reativar contrato.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const canDeleteContract = async (contractId: string): Promise<boolean> => {
     try {
       const { count, error } = await (supabase as any)
@@ -343,28 +368,52 @@ export default function ContratosFornecedores() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {contrato.status === 'ativo' && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                  <X className="w-4 h-4 mr-2" />
-                                  Encerrar Contrato
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Encerrar Contrato</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja encerrar este contrato? Esta ação irá bloquear novas parcelas e recorrências futuras.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleEndContract(contrato.id)}>
-                                    Encerrar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                           <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                 <X className="w-4 h-4 mr-2" />
+                                 Encerrar Contrato
+                               </DropdownMenuItem>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>Encerrar Contrato</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                   Tem certeza que deseja encerrar este contrato? Esta ação irá bloquear novas parcelas e recorrências futuras.
+                                 </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                 <AlertDialogAction onClick={() => handleEndContract(contrato.id)}>
+                                   Encerrar
+                                 </AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
+                           )}
+                           {contrato.status === 'encerrado' && (
+                             <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                   <Plus className="w-4 h-4 mr-2" />
+                                   Reativar Contrato
+                                 </DropdownMenuItem>
+                               </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                   <AlertDialogTitle>Reativar Contrato</AlertDialogTitle>
+                                   <AlertDialogDescription>
+                                     Tem certeza que deseja reativar este contrato? Ele voltará ao status ativo.
+                                   </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction onClick={() => handleReactivateContract(contrato.id)}>
+                                     Reativar
+                                   </AlertDialogAction>
+                                 </AlertDialogFooter>
+                               </AlertDialogContent>
+                             </AlertDialog>
                           )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

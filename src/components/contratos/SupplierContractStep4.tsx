@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 
 interface ContractData {
   valor_bruto: number;
@@ -97,11 +97,9 @@ export default function SupplierContractStep4({ contractData, updateContractData
           {/* Valor Bruto */}
           <div className="space-y-2">
             <Label>Valor Bruto (dos itens)</Label>
-            <Input
-              value={formatCurrency(contractData.valor_bruto)}
-              readOnly
-              className="bg-muted"
-            />
+            <div className="p-3 bg-muted rounded border text-right font-medium">
+              {formatCurrency(contractData.valor_bruto)}
+            </div>
           </div>
 
           {/* Descontos */}
@@ -110,26 +108,17 @@ export default function SupplierContractStep4({ contractData, updateContractData
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="desconto_percentual">Desconto (%)</Label>
-                <Input
-                  id="desconto_percentual"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={contractData.desconto_percentual || ''}
-                  onChange={(e) => handleDescontoPercentualChange(parseFloat(e.target.value) || 0)}
-                  placeholder="0,00"
+                <PercentageInput
+                  value={contractData.desconto_percentual || 0}
+                  onChange={handleDescontoPercentualChange}
+                  placeholder="0,00%"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="desconto_valor">Desconto (R$)</Label>
-                <Input
-                  id="desconto_valor"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={contractData.desconto_valor || ''}
-                  onChange={(e) => handleDescontoValorChange(parseFloat(e.target.value) || 0)}
+                <CurrencyInput
+                  value={contractData.desconto_valor || 0}
+                  onChange={handleDescontoValorChange}
                   placeholder="0,00"
                 />
               </div>
@@ -144,54 +133,34 @@ export default function SupplierContractStep4({ contractData, updateContractData
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="irrf">IRRF (%)</Label>
-                <Input
-                  id="irrf"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={contractData.irrf || ''}
-                  onChange={(e) => updateContractData({ irrf: parseFloat(e.target.value) || 0 })}
-                  placeholder="0,00"
+                <PercentageInput
+                  value={contractData.irrf || 0}
+                  onChange={(value) => updateContractData({ irrf: value })}
+                  placeholder="0,00%"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pis">PIS (%)</Label>
-                <Input
-                  id="pis"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={contractData.pis || ''}
-                  onChange={(e) => updateContractData({ pis: parseFloat(e.target.value) || 0 })}
-                  placeholder="0,00"
+                <PercentageInput
+                  value={contractData.pis || 0}
+                  onChange={(value) => updateContractData({ pis: value })}
+                  placeholder="0,00%"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cofins">COFINS (%)</Label>
-                <Input
-                  id="cofins"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={contractData.cofins || ''}
-                  onChange={(e) => updateContractData({ cofins: parseFloat(e.target.value) || 0 })}
-                  placeholder="0,00"
+                <PercentageInput
+                  value={contractData.cofins || 0}
+                  onChange={(value) => updateContractData({ cofins: value })}
+                  placeholder="0,00%"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="csll">CSLL (%)</Label>
-                <Input
-                  id="csll"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={contractData.csll || ''}
-                  onChange={(e) => updateContractData({ csll: parseFloat(e.target.value) || 0 })}
-                  placeholder="0,00"
+                <PercentageInput
+                  value={contractData.csll || 0}
+                  onChange={(value) => updateContractData({ csll: value })}
+                  placeholder="0,00%"
                 />
               </div>
             </div>

@@ -114,6 +114,15 @@ export default function SupplierContractStep3({ contractData, updateContractData
     }).format(value);
   };
 
+  const formatInputValue = (value: number) => {
+    return value ? value.toFixed(2).replace('.', ',') : '';
+  };
+
+  const parseInputValue = (value: string) => {
+    const numericValue = value.replace(',', '.').replace(/[^\d.-]/g, '');
+    return parseFloat(numericValue) || 0;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -139,8 +148,7 @@ export default function SupplierContractStep3({ contractData, updateContractData
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Descrição</TableHead>
+                  <TableHead>Descrição do Serviço</TableHead>
                   <TableHead className="w-20">Qtd</TableHead>
                   <TableHead className="w-32">Valor Unit.</TableHead>
                   <TableHead className="w-32">Total</TableHead>
@@ -151,27 +159,10 @@ export default function SupplierContractStep3({ contractData, updateContractData
                 {contractData.itens.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Select
-                        value={item.servico_id}
-                        onValueChange={(value) => updateItem(item.id, 'servico_id', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecionar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {servicos.map((servico) => (
-                            <SelectItem key={servico.id} value={servico.id}>
-                              {servico.codigo} - {servico.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
                       <Input
                         value={item.descricao}
                         onChange={(e) => updateItem(item.id, 'descricao', e.target.value)}
-                        placeholder="Descrição"
+                        placeholder="Descreva o serviço contratado"
                       />
                     </TableCell>
                     <TableCell>
@@ -185,11 +176,11 @@ export default function SupplierContractStep3({ contractData, updateContractData
                     </TableCell>
                     <TableCell>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.valor_unitario}
-                        onChange={(e) => updateItem(item.id, 'valor_unitario', parseFloat(e.target.value) || 0)}
+                        value={formatInputValue(item.valor_unitario)}
+                        onChange={(e) => {
+                          const numericValue = parseInputValue(e.target.value);
+                          updateItem(item.id, 'valor_unitario', numericValue);
+                        }}
                         placeholder="0,00"
                       />
                     </TableCell>

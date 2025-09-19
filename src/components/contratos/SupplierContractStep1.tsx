@@ -4,13 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { DateInput } from '@/components/ui/date-input';
 import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
+import { format } from 'date-fns';
 
 interface ContractData {
   numero: string;
@@ -43,6 +40,7 @@ export default function SupplierContractStep1({ contractData, updateContractData
 
   useEffect(() => {
     fetchFornecedores();
+    generateContractNumber();
   }, []);
 
   useEffect(() => {
@@ -60,6 +58,32 @@ export default function SupplierContractStep1({ contractData, updateContractData
 
     if (!error && data) {
       setFornecedores(data);
+    }
+  };
+
+  const generateContractNumber = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contratos')
+        .select('numero')
+        .eq('tipo_contrato', 'fornecedor')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      let nextNumber = 1;
+      if (data && data.length > 0) {
+        const lastNumber = parseInt(data[0].numero.replace(/\D/g, '')) || 0;
+        nextNumber = lastNumber + 1;
+      }
+
+      const contractNumber = `FO${String(nextNumber).padStart(4, '0')}`;
+      if (!contractData.numero) {
+        updateContractData({ numero: contractNumber });
+      }
+    } catch (error) {
+      console.error('Erro ao gerar número do contrato:', error);
     }
   };
 
@@ -99,7 +123,8 @@ export default function SupplierContractStep1({ contractData, updateContractData
                 id="numero"
                 value={contractData.numero}
                 onChange={(e) => updateContractData({ numero: e.target.value })}
-                placeholder="Digite o número do contrato"
+                placeholder="Número será gerado automaticamente"
+                readOnly
               />
             </div>
 
@@ -123,29 +148,11 @@ export default function SupplierContractStep1({ contractData, updateContractData
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data de Início *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !contractData.data_inicio && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {contractData.data_inicio ? format(contractData.data_inicio, "dd/MM/yyyy") : "Selecione a data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={contractData.data_inicio || undefined}
-                    onSelect={(date) => updateContractData({ data_inicio: date || null })}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateInput
+                value={contractData.data_inicio}
+                onChange={(date) => updateContractData({ data_inicio: date })}
+                placeholder="DD/MM/AAAA"
+              />
             </div>
 
             <div className="space-y-2">
@@ -192,29 +199,11 @@ export default function SupplierContractStep1({ contractData, updateContractData
                 {contractData.periodo_recorrencia === 'mensal' && (
                   <div className="space-y-2">
                     <Label>Data Final *</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "justify-start text-left font-normal",
-                            !contractData.data_fim && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {contractData.data_fim ? format(contractData.data_fim, "dd/MM/yyyy") : "Selecione a data final"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={contractData.data_fim || undefined}
-                          onSelect={(date) => updateContractData({ data_fim: date || null })}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateInput
+                      value={contractData.data_fim}
+                      onChange={(date) => updateContractData({ data_fim: date })}
+                      placeholder="DD/MM/AAAA"
+                    />
                   </div>
                 )}
               </>

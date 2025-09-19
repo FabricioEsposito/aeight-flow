@@ -90,6 +90,30 @@ export default function ContratosClientes() {
     }
   };
 
+  const handleReactivateContract = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('contratos')
+        .update({ status: 'ativo' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Contrato reativado com sucesso!",
+      });
+      fetchContratos();
+    } catch (error) {
+      console.error('Erro ao reativar contrato:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reativar o contrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const canDeleteContract = async (contractId: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase
@@ -341,9 +365,33 @@ export default function ContratosClientes() {
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          <AlertDialog>
+                             </AlertDialog>
+                           )}
+                           {contrato.status === 'encerrado' && (
+                             <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                   <Plus className="w-4 h-4 mr-2" />
+                                   Reativar Contrato
+                                 </DropdownMenuItem>
+                               </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                   <AlertDialogTitle>Reativar Contrato</AlertDialogTitle>
+                                   <AlertDialogDescription>
+                                     Tem certeza que deseja reativar este contrato? Ele voltará ao status ativo.
+                                   </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction onClick={() => handleReactivateContract(contrato.id)}>
+                                     Reativar
+                                   </AlertDialogAction>
+                                 </AlertDialogFooter>
+                               </AlertDialogContent>
+                             </AlertDialog>
+                           )}
+                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                 Excluir Contrato
