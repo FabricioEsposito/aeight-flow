@@ -46,6 +46,7 @@ export default function ContratosClientes() {
             razao_social
           )
         `)
+        .eq('tipo_contrato', 'cliente')
         .order('numero', { ascending: false });
 
       if (error) throw error;

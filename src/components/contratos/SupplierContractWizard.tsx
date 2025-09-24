@@ -138,7 +138,7 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
     const payables = [];
     const startDate = new Date(contractData.data_inicio);
     let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), contractData.dia_vencimento);
-    
+  let parcelaCount = 1;
     // Se o dia já passou no mês atual, começar no próximo mês
     if (currentDate < startDate) {
       currentDate.setMonth(currentDate.getMonth() + 1);
@@ -151,41 +151,44 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
         payables.push({
           contrato_id: contratoId,
           fornecedor_id: contractData.fornecedor_id,
-          valor: contractData.valor_liquido,
+          valor_parcela: contractData.valor_liquido,
           data_vencimento: new Date(currentDate).toISOString().split('T')[0],
+          status_pagamento: 'pendente',
+          numero_parcela: parcelaCount,
           data_competencia: new Date(currentDate).toISOString().split('T')[0],
-          descricao: `Contrato ${contractData.numero} - ${new Date(currentDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+          descricao: `Contrato ${contractData.numero} - Parcela ${parcelaCount}`,
           centro_custo: contractData.centro_custo,
           plano_conta_id: contractData.categoria,
           conta_bancaria_id: contractData.conta_recebimento_id || null,
-          status: 'pendente'
         });
         currentDate.setMonth(currentDate.getMonth() + 1);
+        parcelaCount++;
       }
-    } else if (contractData.periodo_recorrencia === 'indeterminado') {
-      // Para indeterminado, gerar apenas os próximos 12 meses
+    }
+    // Para período indeterminado, gerar 12 meses
+    if (contractData.periodo_recorrencia === 'indeterminado') {
       for (let i = 0; i < 12; i++) {
         payables.push({
           contrato_id: contratoId,
           fornecedor_id: contractData.fornecedor_id,
-          valor: contractData.valor_liquido,
+          valor_parcela: contractData.valor_liquido,
           data_vencimento: new Date(currentDate).toISOString().split('T')[0],
+          status_pagamento: 'pendente',
+          numero_parcela: parcelaCount,
           data_competencia: new Date(currentDate).toISOString().split('T')[0],
-          descricao: `Contrato ${contractData.numero} - ${new Date(currentDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+          descricao: `Contrato ${contractData.numero} - Parcela ${parcelaCount}`,
           centro_custo: contractData.centro_custo,
           plano_conta_id: contractData.categoria,
           conta_bancaria_id: contractData.conta_recebimento_id || null,
-          status: 'pendente'
         });
         currentDate.setMonth(currentDate.getMonth() + 1);
+        parcelaCount++;
       }
     }
-
     if (payables.length > 0) {
       const { error } = await supabase
         .from('contas_pagar')
         .insert(payables);
-
       if (error) {
         console.error('Erro ao gerar contas a pagar:', error);
         throw error;
@@ -194,26 +197,58 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
   };
 
   const handleSave = async () => {
+    // Validações
+    if (!contractData.numero || !contractData.fornecedor_id || !contractData.data_inicio) {
+      toast({
+        title: "Erro de validação",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // Validações detalhadas
+    if (!contractData.numero) {
+      toast({ title: "Erro de validação", description: "Número do contrato é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.fornecedor_id) {
+      toast({ title: "Erro de validação", description: "Fornecedor é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.data_inicio || isNaN(contractData.data_inicio.getTime())) {
+      toast({ title: "Erro de validação", description: "Data de início inválida.", variant: "destructive" });
+      return;
+    }
+    if (contractData.recorrencia && contractData.periodo_recorrencia === 'mensal' && (!contractData.data_fim || isNaN(contractData.data_fim.getTime()))) {
+      toast({ title: "Erro de validação", description: "Data final é obrigatória para recorrência mensal.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.dia_vencimento || contractData.dia_vencimento < 1 || contractData.dia_vencimento > 31) {
+      toast({ title: "Erro de validação", description: "Dia de vencimento inválido.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.tipo_pagamento) {
+      toast({ title: "Erro de validação", description: "Tipo de pagamento é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.conta_recebimento_id) {
+      toast({ title: "Erro de validação", description: "Conta de pagamento é obrigatória.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.categoria) {
+      toast({ title: "Erro de validação", description: "Categoria é obrigatória.", variant: "destructive" });
+      return;
+    }
+    if (!contractData.centro_custo) {
+      toast({ title: "Erro de validação", description: "Centro de custo é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (contractData.itens.length === 0) {
+      toast({ title: "Erro de validação", description: "Adicione pelo menos um item ao contrato.", variant: "destructive" });
+      return;
+    }
     try {
-      // Validações
-      if (!contractData.numero || !contractData.fornecedor_id || !contractData.data_inicio) {
-        toast({
-          title: "Erro de validação",
-          description: "Preencha todos os campos obrigatórios.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (contractData.itens.length === 0) {
-        toast({
-          title: "Erro de validação", 
-          description: "Adicione pelo menos um item ao contrato.",
-          variant: "destructive"
-        });
-        return;
-      }
-
+      // Estrutura de dados
       const contratoData = {
         numero: contractData.numero,
         fornecedor_id: contractData.fornecedor_id,
@@ -238,7 +273,6 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
         tipo_contrato: 'fornecedor',
         status: 'ativo' as const
       };
-
       let contrato;
       if (editContract) {
         // Update existing contract
@@ -248,11 +282,10 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
           .eq('id', editContract.id)
           .select()
           .single();
-
-        if (contractError) throw contractError;
+        if (contractError) {
+          throw contractError;
+        }
         contrato = data;
-
-        // Delete existing items and payables
         await (supabase as any).from('contrato_itens').delete().eq('contrato_id', editContract.id);
         await (supabase as any).from('contas_pagar').delete().eq('contrato_id', editContract.id);
       } else {
@@ -262,11 +295,11 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
           .insert([contratoData])
           .select()
           .single();
-
-        if (contractError) throw contractError;
+        if (contractError) {
+          throw contractError;
+        }
         contrato = data;
       }
-
       // Save contract items
       const itensData = contractData.itens.map(item => ({
         contrato_id: contrato.id,
@@ -276,57 +309,24 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
         valor_unitario: item.valor_unitario,
         valor_total: item.valor_total
       }));
-
       const { error: itensError } = await (supabase as any)
         .from('contrato_itens')
         .insert(itensData);
-
-      if (itensError) throw itensError;
-
+      if (itensError) {
+        throw itensError;
+      }
       // Generate payables if recurring
       await generatePayables(contrato.id);
-
       toast({
         title: "Sucesso!",
         description: editContract ? "Contrato atualizado com sucesso!" : "Contrato de fornecedor criado com sucesso.",
       });
-
       onOpenChange(false);
       onSuccess();
-
-      if (!editContract) {
-        // Reset form only when creating new
-        setContractData({
-          numero: '',
-          fornecedor_id: '',
-          data_inicio: null,
-          data_fim: null,
-          dia_vencimento: 1,
-          periodo_recorrencia: 'mensal',
-          recorrencia: false,
-          tipo_pagamento: '',
-          conta_recebimento_id: '',
-          categoria: '',
-          centro_custo: '',
-          itens: [],
-          valor_bruto: 0,
-          desconto_percentual: 0,
-          desconto_valor: 0,
-          irrf: 0,
-          pis: 0,
-          cofins: 0,
-          csll: 0,
-          valor_liquido: 0,
-          valor_total: 0,
-        });
-        setCurrentStep(1);
-      }
-
-    } catch (error) {
-      console.error('Erro ao salvar contrato:', error);
+    } catch (error: any) {
       toast({
-        title: "Erro",
-        description: "Erro ao salvar contrato. Tente novamente.",
+        title: "Erro ao salvar",
+        description: error?.message || "Ocorreu um erro ao salvar o contrato.",
         variant: "destructive"
       });
     }
@@ -334,89 +334,89 @@ export default function SupplierContractWizard({ open, onOpenChange, onSuccess, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {editContract ? 'Editar Contrato de Fornecedor' : 'Novo Contrato de Fornecedor'} - Etapa {currentStep}: {steps[currentStep - 1].title}
+            {editContract ? 'Editar Contrato de Fornecedor' : 'Criar Contrato de Fornecedor'}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Progress indicator */}
-        <div className="flex justify-between items-center mb-6">
-          {steps.map((step, index) => (
-            <div key={index} className="flex items-center">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  index + 1 <= currentStep
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {index + 1}
+        <div className="flex flex-col">
+          {/* Steps Navigation */}
+          <div className="flex items-center mb-4">
+            {steps.map((step, index) => (
+              <div key={index} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
+                    index + 1 === currentStep
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <div className="ml-2 text-sm">{step.title}</div>
+                {index < steps.length - 1 && (
+                  <div className={`w-8 h-0.5 ml-4 ${index + 1 < currentStep ? 'bg-primary' : 'bg-muted'}`} />
+                )}
               </div>
-              <div className="ml-2 text-sm">{step.title}</div>
-              {index < steps.length - 1 && (
-                <div className={`w-8 h-0.5 ml-4 ${
-                  index + 1 < currentStep ? 'bg-primary' : 'bg-muted'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="min-h-[400px]">
-          {currentStep === 1 && (
-            <SupplierContractStep1 
-              contractData={contractData} 
-              updateContractData={updateContractData} 
-            />
-          )}
-          {currentStep === 2 && (
-            <SupplierContractStep2 
-              contractData={contractData} 
-              updateContractData={updateContractData} 
-            />
-          )}
-          {currentStep === 3 && (
-            <SupplierContractStep3 
-              contractData={contractData} 
-              updateContractData={updateContractData} 
-            />
-          )}
-          {currentStep === 4 && (
-            <SupplierContractStep4 
-              contractData={contractData} 
-              updateContractData={updateContractData} 
-            />
-          )}
-          {currentStep === 5 && (
-            <SupplierContractStep5 
-              contractData={contractData} 
-              updateContractData={updateContractData} 
-            />
-          )}
-        </div>
+          <div className="min-h-[400px]">
+            {currentStep === 1 && (
+              <SupplierContractStep1 
+                contractData={contractData} 
+                updateContractData={updateContractData} 
+              />
+            )}
+            {currentStep === 2 && (
+              <SupplierContractStep2 
+                contractData={contractData} 
+                updateContractData={updateContractData} 
+              />
+            )}
+            {currentStep === 3 && (
+              <SupplierContractStep3 
+                contractData={contractData} 
+                updateContractData={updateContractData} 
+              />
+            )}
+            {currentStep === 4 && (
+              <SupplierContractStep4 
+                contractData={contractData} 
+                updateContractData={updateContractData} 
+              />
+            )}
+            {currentStep === 5 && (
+              <SupplierContractStep5 
+                contractData={contractData} 
+                updateContractData={updateContractData} 
+              />
+            )}
+          </div>
 
-        <div className="flex justify-between mt-6">
-          <Button
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={currentStep === 1}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Anterior
-          </Button>
-
-          {currentStep < steps.length ? (
-            <Button onClick={handleNext}>
-              Próximo
-              <ChevronRight className="w-4 h-4 ml-2" />
+          <div className="flex justify-between mt-6">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 1}
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Anterior
             </Button>
-          ) : (
-            <Button onClick={handleSave}>
-              Salvar Contrato
-            </Button>
-          )}
+
+            {currentStep < steps.length ? (
+              <Button onClick={handleNext}>
+                Próximo
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : (
+              <Button onClick={handleSave}>
+                Salvar Contrato
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

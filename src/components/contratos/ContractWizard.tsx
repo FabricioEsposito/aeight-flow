@@ -188,9 +188,10 @@ export default function ContractWizard({ open, onOpenChange, onSuccess, editCont
         cofins: contractData.cofins,
         csll: contractData.csll,
         valor_liquido: contractData.valor_liquido,
-        tipo_pagamento: contractData.tipo_pagamento,
-        conta_recebimento_id: contractData.conta_recebimento_id,
-        status: 'ativo' as const,
+  tipo_pagamento: contractData.tipo_pagamento,
+  conta_recebimento_id: contractData.conta_recebimento_id,
+  status: 'ativo' as const,
+  tipo_contrato: 'cliente',
       };
 
       let contract;

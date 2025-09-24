@@ -79,26 +79,36 @@ export default function ContratosFornecedores() {
 
   const handleEndContract = async (id: string) => {
     try {
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('contratos')
-        .update({ status: 'encerrado' })
-        .eq('id', id);
+        .select(`
+          id,
+          numero,
+          data_inicio,
+          data_fim,
+          valor_total,
+          valor_liquido,
+          status,
+          fornecedores (
+            razao_social,
+            cnpj_cpf
+          )
+        `)
+        .eq('tipo_contrato', 'fornecedor')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      toast({
-        title: "Sucesso!",
-        description: "Contrato encerrado com sucesso.",
-      });
-
-      fetchContratos();
+      setContratos(data || []);
     } catch (error) {
-      console.error('Erro ao encerrar contrato:', error);
+      console.error('Erro ao buscar contratos:', error);
       toast({
         title: "Erro",
-        description: "Erro ao encerrar contrato.",
+        description: "Erro ao carregar contratos de fornecedores.",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 

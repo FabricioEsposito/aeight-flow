@@ -35,6 +35,8 @@ interface Fornecedor {
 }
 
 export default function SupplierContractStep1({ contractData, updateContractData }: SupplierContractStep1Props) {
+  const [dataInicioError, setDataInicioError] = useState<string | null>(null);
+  const [dataFimError, setDataFimError] = useState<string | null>(null);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [generatedDates, setGeneratedDates] = useState<Date[]>([]);
 
@@ -150,9 +152,20 @@ export default function SupplierContractStep1({ contractData, updateContractData
               <Label>Data de Início *</Label>
               <DateInput
                 value={contractData.data_inicio}
-                onChange={(date) => updateContractData({ data_inicio: date })}
+                onChange={(date) => {
+                  if (!date || isNaN(date.getTime())) {
+                    setDataInicioError('Data inválida. Use o formato dd/mm/aaaa.');
+                    updateContractData({ data_inicio: null });
+                  } else {
+                    setDataInicioError(null);
+                    updateContractData({ data_inicio: date });
+                  }
+                }}
                 placeholder="DD/MM/AAAA"
               />
+              {dataInicioError && (
+                <span className="text-xs text-red-600">{dataInicioError}</span>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -201,9 +214,20 @@ export default function SupplierContractStep1({ contractData, updateContractData
                     <Label>Data Final *</Label>
                     <DateInput
                       value={contractData.data_fim}
-                      onChange={(date) => updateContractData({ data_fim: date })}
+                      onChange={(date) => {
+                        if (!date || isNaN(date.getTime())) {
+                          setDataFimError('Data inválida. Use o formato dd/mm/aaaa.');
+                          updateContractData({ data_fim: null });
+                        } else {
+                          setDataFimError(null);
+                          updateContractData({ data_fim: date });
+                        }
+                      }}
                       placeholder="DD/MM/AAAA"
                     />
+                    {dataFimError && (
+                      <span className="text-xs text-red-600">{dataFimError}</span>
+                    )}
                   </div>
                 )}
               </>

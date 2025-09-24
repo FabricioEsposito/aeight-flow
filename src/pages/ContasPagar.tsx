@@ -12,13 +12,17 @@ import { useToast } from '@/hooks/use-toast';
 interface ContaPagar {
   id: string;
   descricao: string;
-  valor: number;
+  valor_parcela: number;
+  numero_parcela: number;
+  status_pagamento: 'pendente' | 'pago' | 'vencido' | 'cancelado';
   data_vencimento: string;
   data_competencia: string;
   data_pagamento?: string;
-  status: 'pendente' | 'pago' | 'vencido' | 'cancelado';
   fornecedores?: {
     razao_social: string;
+  };
+  contratos?: {
+    numero: string;
   };
 }
 
@@ -29,20 +33,29 @@ export default function ContasPagar() {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const { toast } = useToast();
 
+  // Após o fetchContas, mapear os dados para garantir os campos corretos
   const fetchContas = async () => {
     try {
       const { data, error } = await supabase
         .from('contas_pagar')
-        .select(`
-          *,
-          fornecedores:fornecedor_id (
-            razao_social
-          )
-        `)
+        .select(`*, fornecedores:fornecedor_id (razao_social), contratos:contrato_id (numero)`) 
         .order('data_vencimento');
 
       if (error) throw error;
-      setContas(data || []);
+      // Mapeia os dados para garantir os campos obrigatórios
+      const contasMapeadas = (data || []).map((item: any) => ({
+        id: item.id,
+        descricao: item.descricao,
+        valor_parcela: item.valor_parcela,
+        numero_parcela: item.numero_parcela,
+        status_pagamento: item.status_pagamento,
+        data_vencimento: item.data_vencimento,
+        data_competencia: item.data_competencia,
+        data_pagamento: item.data_pagamento,
+        fornecedores: item.fornecedores,
+        contratos: item.contratos,
+      }));
+      setContas(contasMapeadas);
     } catch (error) {
       console.error('Erro ao buscar contas a pagar:', error);
       toast({
@@ -123,9 +136,9 @@ export default function ContasPagar() {
       if (statusFilter === 'vencido') {
         const hoje = new Date();
         const vencimento = new Date(conta.data_vencimento);
-        matchesStatus = vencimento < hoje && conta.status === 'pendente';
+        matchesStatus = vencimento < hoje && conta.status_pagamento === 'pendente';
       } else {
-        matchesStatus = conta.status === statusFilter;
+        matchesStatus = conta.status_pagamento === statusFilter;
       }
     }
 
@@ -145,20 +158,20 @@ export default function ContasPagar() {
 
   // Cálculos para resumo
   const totalPendente = contas
-    .filter(c => c.status === 'pendente')
-    .reduce((acc, c) => acc + c.valor, 0);
+    .filter(c => c.status_pagamento === 'pendente')
+    .reduce((acc, c) => acc + c.valor_parcela, 0);
 
   const totalVencido = contas
     .filter(c => {
       const hoje = new Date();
       const vencimento = new Date(c.data_vencimento);
-      return vencimento < hoje && c.status === 'pendente';
+      return vencimento < hoje && c.status_pagamento === 'pendente';
     })
-    .reduce((acc, c) => acc + c.valor, 0);
+    .reduce((acc, c) => acc + c.valor_parcela, 0);
 
   const totalPago = contas
-    .filter(c => c.status === 'pago')
-    .reduce((acc, c) => acc + c.valor, 0);
+    .filter(c => c.status_pagamento === 'pago')
+    .reduce((acc, c) => acc + c.valor_parcela, 0);
 
   if (loading) {
     return (
@@ -250,10 +263,11 @@ export default function ContasPagar() {
             <TableHeader>
               <TableRow>
                 <TableHead>Fornecedor</TableHead>
+                <TableHead>Contrato</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Parcela</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Vencimento</TableHead>
-                <TableHead>Competência</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -264,20 +278,21 @@ export default function ContasPagar() {
                   <TableCell className="font-medium">
                     {conta.fornecedores?.razao_social || '-'}
                   </TableCell>
+                  <TableCell>{conta.contratos?.numero || '-'}</TableCell>
                   <TableCell>{conta.descricao}</TableCell>
+                  <TableCell>{conta.numero_parcela}</TableCell>
                   <TableCell className="font-semibold text-destructive">
-                    {formatCurrency(conta.valor)}
+                    {formatCurrency(conta.valor_parcela)}
                   </TableCell>
                   <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
-                  <TableCell>{formatDate(conta.data_competencia)}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(conta.status, conta.data_vencimento)}>
-                      {getStatusLabel(conta.status, conta.data_vencimento)}
+                    <Badge variant={getStatusVariant(conta.status_pagamento, conta.data_vencimento)}>
+                      {getStatusLabel(conta.status_pagamento, conta.data_vencimento)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {conta.status === 'pendente' && (
+                      {conta.status_pagamento === 'pendente' && (
                         <Button
                           variant="ghost"
                           size="sm"
