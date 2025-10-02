@@ -114,7 +114,7 @@ export type Database = {
         Row: {
           centro_custo: string | null
           conta_bancaria_id: string | null
-          created_at: string
+          created_at: string | null
           data_competencia: string
           data_pagamento: string | null
           data_vencimento: string
@@ -122,15 +122,16 @@ export type Database = {
           fornecedor_id: string
           id: string
           observacoes: string | null
+          parcela_id: string | null
           plano_conta_id: string | null
-          status: Database["public"]["Enums"]["status_pagamento"]
-          updated_at: string
+          status: string | null
+          updated_at: string | null
           valor: number
         }
         Insert: {
           centro_custo?: string | null
           conta_bancaria_id?: string | null
-          created_at?: string
+          created_at?: string | null
           data_competencia: string
           data_pagamento?: string | null
           data_vencimento: string
@@ -138,15 +139,16 @@ export type Database = {
           fornecedor_id: string
           id?: string
           observacoes?: string | null
+          parcela_id?: string | null
           plano_conta_id?: string | null
-          status?: Database["public"]["Enums"]["status_pagamento"]
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
           valor: number
         }
         Update: {
           centro_custo?: string | null
           conta_bancaria_id?: string | null
-          created_at?: string
+          created_at?: string | null
           data_competencia?: string
           data_pagamento?: string | null
           data_vencimento?: string
@@ -154,9 +156,10 @@ export type Database = {
           fornecedor_id?: string
           id?: string
           observacoes?: string | null
+          parcela_id?: string | null
           plano_conta_id?: string | null
-          status?: Database["public"]["Enums"]["status_pagamento"]
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
           valor?: number
         }
         Relationships: [
@@ -175,6 +178,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contas_pagar_parcela_id_fkey"
+            columns: ["parcela_id"]
+            isOneToOne: false
+            referencedRelation: "parcelas_contrato"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contas_pagar_plano_conta_id_fkey"
             columns: ["plano_conta_id"]
             isOneToOne: false
@@ -188,8 +198,7 @@ export type Database = {
           centro_custo: string | null
           cliente_id: string
           conta_bancaria_id: string | null
-          contrato_id: string
-          created_at: string
+          created_at: string | null
           data_competencia: string
           data_recebimento: string | null
           data_vencimento: string
@@ -197,17 +206,17 @@ export type Database = {
           id: string
           numero_nf: string | null
           observacoes: string | null
+          parcela_id: string | null
           plano_conta_id: string | null
-          status: Database["public"]["Enums"]["status_pagamento"]
-          updated_at: string
+          status: string | null
+          updated_at: string | null
           valor: number
         }
         Insert: {
           centro_custo?: string | null
           cliente_id: string
           conta_bancaria_id?: string | null
-          contrato_id: string
-          created_at?: string
+          created_at?: string | null
           data_competencia: string
           data_recebimento?: string | null
           data_vencimento: string
@@ -215,17 +224,17 @@ export type Database = {
           id?: string
           numero_nf?: string | null
           observacoes?: string | null
+          parcela_id?: string | null
           plano_conta_id?: string | null
-          status?: Database["public"]["Enums"]["status_pagamento"]
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
           valor: number
         }
         Update: {
           centro_custo?: string | null
           cliente_id?: string
           conta_bancaria_id?: string | null
-          contrato_id?: string
-          created_at?: string
+          created_at?: string | null
           data_competencia?: string
           data_recebimento?: string | null
           data_vencimento?: string
@@ -233,9 +242,10 @@ export type Database = {
           id?: string
           numero_nf?: string | null
           observacoes?: string | null
+          parcela_id?: string | null
           plano_conta_id?: string | null
-          status?: Database["public"]["Enums"]["status_pagamento"]
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
           valor?: number
         }
         Relationships: [
@@ -254,10 +264,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "contas_receber_contrato_id_fkey"
-            columns: ["contrato_id"]
+            foreignKeyName: "contas_receber_parcela_id_fkey"
+            columns: ["parcela_id"]
             isOneToOne: false
-            referencedRelation: "contratos"
+            referencedRelation: "parcelas_contrato"
             referencedColumns: ["id"]
           },
           {
@@ -269,141 +279,90 @@ export type Database = {
           },
         ]
       }
-      contrato_itens: {
-        Row: {
-          contrato_id: string
-          created_at: string
-          descricao: string
-          id: string
-          quantidade: number
-          servico_id: string | null
-          updated_at: string
-          valor_total: number
-          valor_unitario: number
-        }
-        Insert: {
-          contrato_id: string
-          created_at?: string
-          descricao: string
-          id?: string
-          quantidade?: number
-          servico_id?: string | null
-          updated_at?: string
-          valor_total: number
-          valor_unitario: number
-        }
-        Update: {
-          contrato_id?: string
-          created_at?: string
-          descricao?: string
-          id?: string
-          quantidade?: number
-          servico_id?: string | null
-          updated_at?: string
-          valor_total?: number
-          valor_unitario?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contrato_itens_contrato_id_fkey"
-            columns: ["contrato_id"]
-            isOneToOne: false
-            referencedRelation: "contratos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contrato_itens_servico_id_fkey"
-            columns: ["servico_id"]
-            isOneToOne: false
-            referencedRelation: "servicos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       contratos: {
         Row: {
-          categoria: string | null
-          centro_custo: string | null
           cliente_id: string | null
-          cofins: number
-          conta_recebimento_id: string | null
-          created_at: string
-          csll: number
+          conta_bancaria_id: string
+          created_at: string | null
+          csll_percentual: number | null
           data_fim: string | null
           data_inicio: string
-          desconto_percentual: number
-          desconto_valor: number
-          dia_vencimento: number | null
+          desconto_percentual: number | null
+          desconto_tipo: string | null
+          desconto_valor: number | null
+          descricao_servico: string | null
           fornecedor_id: string | null
           id: string
-          irrf: number
-          numero: string
+          irrf_percentual: number | null
+          numero_contrato: string
           periodo_recorrencia: string | null
-          pis: number
-          recorrencia: boolean
-          status: Database["public"]["Enums"]["status_contrato"]
-          tipo_contrato: string | null
-          tipo_pagamento: string | null
-          updated_at: string
-          valor_bruto: number
-          valor_liquido: number
+          pis_cofins_percentual: number | null
+          plano_contas_id: string
+          quantidade: number
+          recorrente: boolean | null
+          servicos: Json | null
+          status: string | null
+          tipo_contrato: string
+          tipo_pagamento: string
+          updated_at: string | null
           valor_total: number
+          valor_unitario: number
         }
         Insert: {
-          categoria?: string | null
-          centro_custo?: string | null
           cliente_id?: string | null
-          cofins?: number
-          conta_recebimento_id?: string | null
-          created_at?: string
-          csll?: number
+          conta_bancaria_id: string
+          created_at?: string | null
+          csll_percentual?: number | null
           data_fim?: string | null
           data_inicio: string
-          desconto_percentual?: number
-          desconto_valor?: number
-          dia_vencimento?: number | null
+          desconto_percentual?: number | null
+          desconto_tipo?: string | null
+          desconto_valor?: number | null
+          descricao_servico?: string | null
           fornecedor_id?: string | null
           id?: string
-          irrf?: number
-          numero: string
+          irrf_percentual?: number | null
+          numero_contrato: string
           periodo_recorrencia?: string | null
-          pis?: number
-          recorrencia?: boolean
-          status?: Database["public"]["Enums"]["status_contrato"]
-          tipo_contrato?: string | null
-          tipo_pagamento?: string | null
-          updated_at?: string
-          valor_bruto?: number
-          valor_liquido?: number
-          valor_total?: number
+          pis_cofins_percentual?: number | null
+          plano_contas_id: string
+          quantidade?: number
+          recorrente?: boolean | null
+          servicos?: Json | null
+          status?: string | null
+          tipo_contrato: string
+          tipo_pagamento: string
+          updated_at?: string | null
+          valor_total: number
+          valor_unitario: number
         }
         Update: {
-          categoria?: string | null
-          centro_custo?: string | null
           cliente_id?: string | null
-          cofins?: number
-          conta_recebimento_id?: string | null
-          created_at?: string
-          csll?: number
+          conta_bancaria_id?: string
+          created_at?: string | null
+          csll_percentual?: number | null
           data_fim?: string | null
           data_inicio?: string
-          desconto_percentual?: number
-          desconto_valor?: number
-          dia_vencimento?: number | null
+          desconto_percentual?: number | null
+          desconto_tipo?: string | null
+          desconto_valor?: number | null
+          descricao_servico?: string | null
           fornecedor_id?: string | null
           id?: string
-          irrf?: number
-          numero?: string
+          irrf_percentual?: number | null
+          numero_contrato?: string
           periodo_recorrencia?: string | null
-          pis?: number
-          recorrencia?: boolean
-          status?: Database["public"]["Enums"]["status_contrato"]
-          tipo_contrato?: string | null
-          tipo_pagamento?: string | null
-          updated_at?: string
-          valor_bruto?: number
-          valor_liquido?: number
+          pis_cofins_percentual?: number | null
+          plano_contas_id?: string
+          quantidade?: number
+          recorrente?: boolean | null
+          servicos?: Json | null
+          status?: string | null
+          tipo_contrato?: string
+          tipo_pagamento?: string
+          updated_at?: string | null
           valor_total?: number
+          valor_unitario?: number
         }
         Relationships: [
           {
@@ -414,8 +373,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "contratos_conta_recebimento_id_fkey"
-            columns: ["conta_recebimento_id"]
+            foreignKeyName: "contratos_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
             isOneToOne: false
             referencedRelation: "contas_bancarias"
             referencedColumns: ["id"]
@@ -425,6 +384,13 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_plano_contas_id_fkey"
+            columns: ["plano_contas_id"]
+            isOneToOne: false
+            referencedRelation: "plano_contas"
             referencedColumns: ["id"]
           },
         ]
@@ -544,24 +510,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "movimentacoes_conta_pagar_id_fkey"
-            columns: ["conta_pagar_id"]
-            isOneToOne: false
-            referencedRelation: "contas_pagar"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "movimentacoes_conta_receber_id_fkey"
-            columns: ["conta_receber_id"]
-            isOneToOne: false
-            referencedRelation: "contas_receber"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "movimentacoes_plano_conta_id_fkey"
             columns: ["plano_conta_id"]
             isOneToOne: false
             referencedRelation: "plano_contas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcelas_contrato: {
+        Row: {
+          contrato_id: string | null
+          created_at: string | null
+          data_vencimento: string
+          id: string
+          numero_parcela: number
+          status: string | null
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          contrato_id?: string | null
+          created_at?: string | null
+          data_vencimento: string
+          id?: string
+          numero_parcela: number
+          status?: string | null
+          tipo: string
+          valor: number
+        }
+        Update: {
+          contrato_id?: string | null
+          created_at?: string | null
+          data_vencimento?: string
+          id?: string
+          numero_parcela?: number
+          status?: string | null
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_contrato_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
         ]

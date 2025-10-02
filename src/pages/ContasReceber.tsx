@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import ContasReceberForm from '@/components/contratos/ContasReceberForm';
+
 
 interface ContaReceber {
   id: string;
@@ -32,8 +32,6 @@ export default function ContasReceber() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [showForm, setShowForm] = useState(false);
-  const [editingConta, setEditingConta] = useState<ContaReceber | null>(null);
   const { toast } = useToast();
 
   const fetchContas = async () => {
@@ -52,7 +50,7 @@ export default function ContasReceber() {
         .order('data_vencimento');
 
       if (error) throw error;
-      setContas(data || []);
+      setContas((data as any) || []);
     } catch (error) {
       console.error('Erro ao buscar contas a receber:', error);
       toast({
@@ -70,8 +68,11 @@ export default function ContasReceber() {
   }, []);
 
   const handleEdit = (conta: ContaReceber) => {
-    setEditingConta(conta);
-    setShowForm(true);
+    // TODO: Implementar edição
+    toast({
+      title: "Em desenvolvimento",
+      description: "Funcionalidade de edição em desenvolvimento.",
+    });
   };
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
@@ -336,17 +337,6 @@ export default function ContasReceber() {
         )}
       </Card>
 
-      <ContasReceberForm
-        open={showForm}
-        onOpenChange={(open) => {
-          setShowForm(open);
-          if (!open) {
-            setEditingConta(null);
-          }
-        }}
-        onSuccess={fetchContas}
-        contaReceber={editingConta}
-      />
     </div>
   );
 }

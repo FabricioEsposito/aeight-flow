@@ -1,37 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ContratosTable } from '@/components/contratos/ContratosTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import ContractWizard from '@/components/contratos/ContractWizard';
-import ContractDetails from '@/components/contratos/ContractDetails';
 
 interface Contrato {
   id: string;
-  numero: string;
+  numero_contrato: string;
+  tipo_contrato: 'venda' | 'compra';
   data_inicio: string;
   valor_total: number;
-  valor_liquido: number;
-  status: 'ativo' | 'encerrado' | 'suspenso';
-  clientes?: {
-    razao_social: string;
-  };
+  status: string;
+  clientes?: { razao_social: string };
+  fornecedores?: { razao_social: string };
 }
 
 export default function Contratos() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [showWizard, setShowWizard] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [selectedContractId, setSelectedContractId] = useState<string>('');
-  const { toast } = useToast();
+  const [filterType, setFilterType] = useState<string>('todos');
 
   const fetchContratos = async () => {
     try {
@@ -39,14 +34,13 @@ export default function Contratos() {
         .from('contratos')
         .select(`
           *,
-          clientes:cliente_id (
-            razao_social
-          )
+          clientes:cliente_id (razao_social),
+          fornecedores:fornecedor_id (razao_social)
         `)
-        .order('numero', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setContratos(data || []);
+      setContratos((data as any) || []);
     } catch (error) {
       console.error('Erro ao buscar contratos:', error);
       toast({
@@ -62,6 +56,14 @@ export default function Contratos() {
   useEffect(() => {
     fetchContratos();
   }, []);
+
+  const handleView = (id: string) => {
+    navigate(`/contratos/${id}`);
+  };
+
+  const handleEdit = (id: string) => {
+    navigate(`/contratos/${id}/edit`);
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -87,33 +89,17 @@ export default function Contratos() {
     }
   };
 
-  const handleViewContract = (id: string) => {
-    setSelectedContractId(id);
-    setShowDetails(true);
-  };
-
-  const handleNewContract = () => {
-    setShowWizard(true);
-  };
-
   const filteredContratos = contratos.filter(contrato => {
-    const matchesSearch = contrato.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (contrato.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'todos' || contrato.status === statusFilter;
+    const matchesSearch = 
+      contrato.numero_contrato.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contrato.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contrato.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = filterType === 'todos' || contrato.tipo_contrato === filterType;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesType;
   });
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
 
   if (loading) {
     return (
@@ -131,11 +117,11 @@ export default function Contratos() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Contratos</h1>
-          <p className="text-muted-foreground">Gerencie seus contratos de vendas</p>
+          <h1 className="text-3xl font-bold text-foreground">Gestão de Contratos</h1>
+          <p className="text-muted-foreground">Gerencie seus contratos de venda e compra</p>
         </div>
         
-        <Button onClick={handleNewContract}>
+        <Button onClick={() => navigate('/contratos/novo')}>
           <Plus className="w-4 h-4 mr-2" />
           Novo Contrato
         </Button>
@@ -153,100 +139,25 @@ export default function Contratos() {
             />
           </div>
           
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Tipo de Contrato" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos os Status</SelectItem>
-              <SelectItem value="ativo">Ativos</SelectItem>
-              <SelectItem value="encerrado">Encerrados</SelectItem>
-              <SelectItem value="suspenso">Suspensos</SelectItem>
+              <SelectItem value="todos">Todos os Contratos</SelectItem>
+              <SelectItem value="venda">Contratos de Venda</SelectItem>
+              <SelectItem value="compra">Contratos de Compra</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Data Início</TableHead>
-                <TableHead>Valor Total</TableHead>
-                <TableHead>Valor Líquido</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredContratos.map((contrato) => (
-                <TableRow key={contrato.id}>
-                  <TableCell className="font-medium">{contrato.numero}</TableCell>
-                  <TableCell>{contrato.clientes?.razao_social || '-'}</TableCell>
-                  <TableCell>{formatDate(contrato.data_inicio)}</TableCell>
-                  <TableCell>{formatCurrency(contrato.valor_total)}</TableCell>
-                  <TableCell>{formatCurrency(contrato.valor_liquido)}</TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={
-                        contrato.status === 'ativo' ? 'default' : 
-                        contrato.status === 'encerrado' ? 'secondary' : 'destructive'
-                      }
-                    >
-                      {contrato.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleViewContract(contrato.id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(contrato.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {filteredContratos.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum contrato encontrado.</p>
-            <Button variant="ghost" className="mt-2" onClick={handleNewContract}>
-              <Plus className="w-4 h-4 mr-2" />
-              Criar primeiro contrato
-            </Button>
-          </div>
-        )}
+        <ContratosTable 
+          contratos={filteredContratos}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       </Card>
-
-      <ContractWizard
-        open={showWizard}
-        onOpenChange={setShowWizard}
-        onSuccess={fetchContratos}
-      />
-
-      <ContractDetails
-        contractId={selectedContractId}
-        open={showDetails}
-        onOpenChange={setShowDetails}
-      />
     </div>
   );
 }
