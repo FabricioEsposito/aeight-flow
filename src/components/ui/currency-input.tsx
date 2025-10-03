@@ -12,7 +12,7 @@ interface CurrencyInputProps {
 export function CurrencyInput({ value, onChange, placeholder = "0,00", className, disabled }: CurrencyInputProps) {
   const formatCurrencyInput = (value: number) => {
     if (!value) return '';
-    return value.toFixed(2).replace('.', ',');
+    return value.toString().replace('.', ',');
   };
 
   const parseCurrencyInput = (value: string) => {

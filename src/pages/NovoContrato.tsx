@@ -49,8 +49,12 @@ export default function NovoContrato() {
   const [descontoPercentual, setDescontoPercentual] = useState(0);
   const [descontoValor, setDescontoValor] = useState(0);
   const [irrfPercentual, setIrrfPercentual] = useState(0);
-  const [pisCofinsPercentual, setPisCofinsPercentual] = useState(0);
+  const [pisPercentual, setPisPercentual] = useState(0);
+  const [cofinsPercentual, setCofinsPercentual] = useState(0);
   const [csllPercentual, setCsllPercentual] = useState(0);
+
+  // Parcelamento
+  const [numeroParcelas, setNumeroParcelas] = useState(1);
 
   // Pagamento
   const [tipoPagamento, setTipoPagamento] = useState('');
@@ -102,7 +106,10 @@ export default function NovoContrato() {
       setDescontoPercentual(data.desconto_percentual || 0);
       setDescontoValor(data.desconto_valor || 0);
       setIrrfPercentual(data.irrf_percentual || 0);
-      setPisCofinsPercentual(data.pis_cofins_percentual || 0);
+      // Separar PIS/COFINS (assumindo valor dividido igualmente se estiver agrupado)
+      const pisCofins = data.pis_cofins_percentual || 0;
+      setPisPercentual(pisCofins / 2);
+      setCofinsPercentual(pisCofins / 2);
       setCsllPercentual(data.csll_percentual || 0);
       setTipoPagamento(data.tipo_pagamento);
       setContaBancariaId(data.conta_bancaria_id);
@@ -127,7 +134,7 @@ export default function NovoContrato() {
     }
 
     const valorComDesconto = valorBase - desconto;
-    const totalImpostos = (irrfPercentual + pisCofinsPercentual + csllPercentual) / 100;
+    const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
     const valorImpostos = valorComDesconto * totalImpostos;
     const valorFinal = valorComDesconto - valorImpostos;
 
@@ -169,11 +176,15 @@ export default function NovoContrato() {
         numeroParcela++;
       }
     } else {
-      parcelas.push({
-        numero: 1,
-        data: dataInicio,
-        valor: valorTotal
-      });
+      // Parcelamento para contratos não recorrentes
+      const valorParcela = valorTotal / numeroParcelas;
+      for (let i = 0; i < numeroParcelas; i++) {
+        parcelas.push({
+          numero: i + 1,
+          data: addMonths(dataInicio, i),
+          valor: valorParcela
+        });
+      }
     }
 
     return parcelas;
@@ -222,7 +233,7 @@ export default function NovoContrato() {
         desconto_percentual: descontoPercentual,
         desconto_valor: descontoValor,
         irrf_percentual: irrfPercentual,
-        pis_cofins_percentual: pisCofinsPercentual,
+        pis_cofins_percentual: pisPercentual + cofinsPercentual,
         csll_percentual: csllPercentual,
         tipo_pagamento: tipoPagamento,
         conta_bancaria_id: contaBancariaId,
@@ -428,6 +439,19 @@ export default function NovoContrato() {
                 </div>
               )}
 
+              {!recorrente && (
+                <div className="space-y-2">
+                  <Label>Número de Parcelas</Label>
+                  <Input 
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={numeroParcelas}
+                    onChange={(e) => setNumeroParcelas(Number(e.target.value))}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Plano de Contas *</Label>
                 <PlanoContasSelect 
@@ -525,15 +549,20 @@ export default function NovoContrato() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>IRRF (%)</Label>
                   <PercentageInput value={irrfPercentual} onChange={setIrrfPercentual} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>PIS/COFINS (%)</Label>
-                  <PercentageInput value={pisCofinsPercentual} onChange={setPisCofinsPercentual} />
+                  <Label>PIS (%)</Label>
+                  <PercentageInput value={pisPercentual} onChange={setPisPercentual} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>COFINS (%)</Label>
+                  <PercentageInput value={cofinsPercentual} onChange={setCofinsPercentual} />
                 </div>
 
                 <div className="space-y-2">
