@@ -38,6 +38,13 @@ export default function EditarContrato() {
     }
   }, [id]);
 
+  // Recalcular parcelas automaticamente quando valores mudarem
+  useEffect(() => {
+    if (parcelas.length > 0 && valorUnitario > 0) {
+      recalcularParcelas();
+    }
+  }, [quantidade, valorUnitario, descontoPercentual, descontoValor, descontoTipo, irrfPercentual, pisPercentual, cofinsPercentual, csllPercentual]);
+
   const fetchContrato = async () => {
     try {
       const { data, error } = await supabase
@@ -97,6 +104,22 @@ export default function EditarContrato() {
     const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
     const valorImpostos = valorComDesconto * totalImpostos;
     return valorComDesconto - valorImpostos;
+  };
+
+  const recalcularParcelas = () => {
+    const novoValorTotal = calcularValorTotal();
+    const numeroParcelas = parcelas.length;
+    
+    if (numeroParcelas === 0) return;
+
+    const valorPorParcela = novoValorTotal / numeroParcelas;
+
+    const parcelasAtualizadas = parcelas.map((parcela) => ({
+      ...parcela,
+      valor: valorPorParcela
+    }));
+
+    setParcelas(parcelasAtualizadas);
   };
 
   const handleSave = async () => {
