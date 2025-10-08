@@ -41,21 +41,36 @@ interface PercentageInputProps {
 }
 
 export function PercentageInput({ value, onChange, placeholder = "0,00%", className, disabled }: PercentageInputProps) {
-  const formatPercentageInput = (value: number) => {
-    if (!value) return '';
-    return value.toString().replace('.', ',') + '%';
-  };
+  const [displayValue, setDisplayValue] = React.useState('');
 
-  const parsePercentageInput = (value: string) => {
-    const numericValue = value.replace('%', '').replace(',', '.').replace(/[^\d.-]/g, '');
-    return parseFloat(numericValue) || 0;
+  React.useEffect(() => {
+    if (!value) {
+      setDisplayValue('');
+    } else if (document.activeElement?.getAttribute('type') !== 'text') {
+      setDisplayValue(value.toString().replace('.', ','));
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    
+    // Remove tudo exceto números, vírgula e ponto
+    const filtered = inputValue.replace(/[^\d,.-]/g, '');
+    
+    setDisplayValue(filtered);
+    
+    // Converte para número
+    const numericValue = filtered.replace(',', '.').replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(numericValue);
+    
+    onChange(isNaN(parsed) ? 0 : parsed);
   };
 
   return (
     <Input
       type="text"
-      value={formatPercentageInput(value)}
-      onChange={(e) => onChange(parsePercentageInput(e.target.value))}
+      value={displayValue}
+      onChange={handleChange}
       placeholder={placeholder}
       className={className}
       disabled={disabled}
