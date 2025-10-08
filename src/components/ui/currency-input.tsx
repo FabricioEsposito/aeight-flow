@@ -43,7 +43,7 @@ interface PercentageInputProps {
 export function PercentageInput({ value, onChange, placeholder = "0,00%", className, disabled }: PercentageInputProps) {
   const formatPercentageInput = (value: number) => {
     if (!value) return '';
-    return value.toFixed(2).replace('.', ',') + '%';
+    return value.toString().replace('.', ',') + '%';
   };
 
   const parsePercentageInput = (value: string) => {

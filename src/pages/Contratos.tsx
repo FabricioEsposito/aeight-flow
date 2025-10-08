@@ -16,8 +16,8 @@ interface Contrato {
   data_inicio: string;
   valor_total: number;
   status: string;
-  clientes?: { razao_social: string };
-  fornecedores?: { razao_social: string };
+  clientes?: { razao_social: string; cnpj_cpf: string };
+  fornecedores?: { razao_social: string; cnpj_cpf: string };
 }
 
 export default function Contratos() {
@@ -34,8 +34,8 @@ export default function Contratos() {
         .from('contratos')
         .select(`
           *,
-          clientes:cliente_id (razao_social),
-          fornecedores:fornecedor_id (razao_social)
+          clientes:cliente_id (razao_social, cnpj_cpf),
+          fornecedores:fornecedor_id (razao_social, cnpj_cpf)
         `)
         .order('created_at', { ascending: false });
 
@@ -84,6 +84,30 @@ export default function Contratos() {
       toast({
         title: "Erro",
         description: "Não foi possível excluir o contrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInactivate = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('contratos')
+        .update({ status: 'inativo' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Contrato inativado com sucesso!",
+      });
+      fetchContratos();
+    } catch (error) {
+      console.error('Erro ao inativar contrato:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível inativar o contrato.",
         variant: "destructive",
       });
     }
@@ -156,6 +180,7 @@ export default function Contratos() {
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onInactivate={handleInactivate}
         />
       </Card>
     </div>
