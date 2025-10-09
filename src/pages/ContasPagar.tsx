@@ -33,28 +33,42 @@ export default function ContasPagar() {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const { toast } = useToast();
 
-  // Após o fetchContas, mapear os dados para garantir os campos corretos
   const fetchContas = async () => {
     try {
       const { data, error } = await supabase
         .from('contas_pagar')
-        .select(`*, fornecedores:fornecedor_id (razao_social), contratos:contrato_id (numero)`) 
+        .select(`
+          *,
+          fornecedores:fornecedor_id (
+            razao_social
+          ),
+          parcelas_contrato:parcela_id (
+            numero_parcela,
+            contratos:contrato_id (
+              numero_contrato
+            )
+          )
+        `)
         .order('data_vencimento');
 
       if (error) throw error;
-      // Mapeia os dados para garantir os campos obrigatórios
+      
+      // Map data to match the interface
       const contasMapeadas = (data || []).map((item: any) => ({
         id: item.id,
         descricao: item.descricao,
-        valor_parcela: item.valor_parcela,
-        numero_parcela: item.numero_parcela,
-        status_pagamento: item.status_pagamento,
+        valor_parcela: item.valor,
+        numero_parcela: item.parcelas_contrato?.numero_parcela || 0,
+        status_pagamento: item.status,
         data_vencimento: item.data_vencimento,
         data_competencia: item.data_competencia,
         data_pagamento: item.data_pagamento,
         fornecedores: item.fornecedores,
-        contratos: item.contratos,
+        contratos: item.parcelas_contrato?.contratos ? {
+          numero: item.parcelas_contrato.contratos.numero_contrato
+        } : null
       }));
+      
       setContas(contasMapeadas);
     } catch (error) {
       console.error('Erro ao buscar contas a pagar:', error);

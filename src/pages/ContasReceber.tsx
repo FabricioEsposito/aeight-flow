@@ -43,14 +43,26 @@ export default function ContasReceber() {
           clientes:cliente_id (
             razao_social
           ),
-          contratos:contrato_id (
-            numero
+          parcelas_contrato:parcela_id (
+            contrato_id,
+            contratos:contrato_id (
+              numero_contrato
+            )
           )
         `)
         .order('data_vencimento');
 
       if (error) throw error;
-      setContas((data as any) || []);
+      
+      // Map data to include contract number from nested relationship
+      const mappedData = (data || []).map((conta: any) => ({
+        ...conta,
+        contratos: conta.parcelas_contrato?.contratos ? {
+          numero: conta.parcelas_contrato.contratos.numero_contrato
+        } : null
+      }));
+      
+      setContas(mappedData);
     } catch (error) {
       console.error('Erro ao buscar contas a receber:', error);
       toast({
