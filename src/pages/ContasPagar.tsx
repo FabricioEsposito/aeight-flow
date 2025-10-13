@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, TrendingDown, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Search, TrendingDown, Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
+import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ContaPagar {
   id: string;
@@ -18,6 +32,7 @@ interface ContaPagar {
   data_vencimento: string;
   data_competencia: string;
   data_pagamento?: string;
+  conta_bancaria_id?: string;
   fornecedores?: {
     razao_social: string;
   };
@@ -26,11 +41,24 @@ interface ContaPagar {
   };
 }
 
+interface ContaBancaria {
+  id: string;
+  descricao: string;
+}
+
 export default function ContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedConta, setSelectedConta] = useState<ContaPagar | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contaToDelete, setContaToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchContas = async () => {
@@ -82,36 +110,98 @@ export default function ContasPagar() {
     }
   };
 
-  useEffect(() => {
-    fetchContas();
-  }, []);
+  const fetchContasBancarias = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contas_bancarias')
+        .select('id, descricao')
+        .eq('status', 'ativo')
+        .order('descricao');
 
-  const handleMarcarPago = async (id: string) => {
+      if (error) throw error;
+      setContasBancarias(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar contas bancárias:', error);
+    }
+  };
+
+  const handleView = (conta: ContaPagar) => {
+    setSelectedConta(conta);
+    setViewDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = (id: string) => {
+    setContaToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!contaToDelete) return;
+
     try {
       const { error } = await supabase
         .from('contas_pagar')
-        .update({
-          status: 'pago',
-          data_pagamento: new Date().toISOString().split('T')[0]
-        })
+        .delete()
+        .eq('id', contaToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Parcela excluída com sucesso!",
+      });
+      fetchContas();
+    } catch (error) {
+      console.error('Erro ao excluir parcela:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a parcela.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setContaToDelete(null);
+    }
+  };
+
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
+      const updateData: any = { status: newStatus };
+      
+      if (newStatus === 'pago') {
+        updateData.data_pagamento = new Date().toISOString().split('T')[0];
+      } else {
+        updateData.data_pagamento = null;
+      }
+
+      const { error } = await supabase
+        .from('contas_pagar')
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: "Conta marcada como paga!",
+        description: `Status alterado para ${newStatus}!`,
       });
       fetchContas();
     } catch (error) {
-      console.error('Erro ao marcar como pago:', error);
+      console.error('Erro ao alterar status:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível marcar como pago.",
+        description: "Não foi possível alterar o status.",
         variant: "destructive",
       });
     }
   };
+
+  useEffect(() => {
+    fetchContas();
+    fetchContasBancarias();
+  }, []);
+
 
   const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'default';
@@ -141,6 +231,29 @@ export default function ContasPagar() {
     return 'Pendente';
   };
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (datePreset) {
+      case 'hoje':
+        return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana':
+        return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+      case 'este-mes':
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano':
+        return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses':
+        return { from: subMonths(today, 12), to: today };
+      case 'periodo-personalizado':
+        return customDateRange;
+      default:
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
+
   const filteredContas = contas.filter(conta => {
     const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (conta.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -156,7 +269,19 @@ export default function ContasPagar() {
       }
     }
 
-    return matchesSearch && matchesStatus;
+    let matchesDate = true;
+    const dateRange = getDateRange();
+    if (dateRange?.from && dateRange?.to) {
+      const vencimento = new Date(conta.data_vencimento);
+      matchesDate = vencimento >= dateRange.from && vencimento <= dateRange.to;
+    }
+
+    let matchesContaBancaria = true;
+    if (contaBancariaFilter !== 'todas') {
+      matchesContaBancaria = conta.conta_bancaria_id === contaBancariaFilter;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria;
   });
 
   const formatCurrency = (value: number) => {
@@ -247,8 +372,17 @@ export default function ContasPagar() {
       </div>
 
       <Card className="p-6">
-        <div className="flex gap-4 mb-6">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomDateRange(range);
+            }}
+            customRange={customDateRange}
+          />
+
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Buscar por descrição ou fornecedor..."
@@ -257,9 +391,23 @@ export default function ContasPagar() {
               className="pl-10"
             />
           </div>
+
+          <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Conta bancária" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as contas</SelectItem>
+              {contasBancarias.map((conta) => (
+                <SelectItem key={conta.id} value={conta.id}>
+                  {conta.descricao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -305,24 +453,13 @@ export default function ContasPagar() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {conta.status_pagamento === 'pendente' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMarcarPago(conta.id)}
-                          className="text-emerald-600 hover:text-emerald-700"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <ActionsDropdown
+                      status={conta.status_pagamento}
+                      onMarkAsPaid={() => handleToggleStatus(conta.id, 'pendente')}
+                      onMarkAsOpen={() => handleToggleStatus(conta.id, 'pago')}
+                      onView={() => handleView(conta)}
+                      onDelete={() => handleDeleteConfirm(conta.id)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -337,6 +474,30 @@ export default function ContasPagar() {
           </div>
         )}
       </Card>
+
+      <ViewInfoDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        data={selectedConta}
+        type="pagar"
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

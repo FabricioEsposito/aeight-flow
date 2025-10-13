@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Search, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
+import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 
 interface ContaReceber {
@@ -19,6 +33,7 @@ interface ContaReceber {
   data_recebimento?: string;
   numero_nf?: string;
   status: 'pendente' | 'pago' | 'vencido' | 'cancelado';
+  conta_bancaria_id?: string;
   clientes?: {
     razao_social: string;
   };
@@ -27,11 +42,24 @@ interface ContaReceber {
   };
 }
 
+interface ContaBancaria {
+  id: string;
+  descricao: string;
+}
+
 export default function ContasReceber() {
   const [contas, setContas] = useState<ContaReceber[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedConta, setSelectedConta] = useState<ContaReceber | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contaToDelete, setContaToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchContas = async () => {
@@ -75,16 +103,63 @@ export default function ContasReceber() {
     }
   };
 
+  const fetchContasBancarias = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contas_bancarias')
+        .select('id, descricao')
+        .eq('status', 'ativo')
+        .order('descricao');
+
+      if (error) throw error;
+      setContasBancarias(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar contas bancárias:', error);
+    }
+  };
+
   useEffect(() => {
     fetchContas();
+    fetchContasBancarias();
   }, []);
 
-  const handleEdit = (conta: ContaReceber) => {
-    // TODO: Implementar edição
-    toast({
-      title: "Em desenvolvimento",
-      description: "Funcionalidade de edição em desenvolvimento.",
-    });
+  const handleView = (conta: ContaReceber) => {
+    setSelectedConta(conta);
+    setViewDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = (id: string) => {
+    setContaToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!contaToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('contas_receber')
+        .delete()
+        .eq('id', contaToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Parcela excluída com sucesso!",
+      });
+      fetchContas();
+    } catch (error) {
+      console.error('Erro ao excluir parcela:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a parcela.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setContaToDelete(null);
+    }
   };
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
@@ -148,6 +223,29 @@ export default function ContasReceber() {
     return 'Pendente';
   };
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (datePreset) {
+      case 'hoje':
+        return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana':
+        return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+      case 'este-mes':
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano':
+        return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses':
+        return { from: subMonths(today, 12), to: today };
+      case 'periodo-personalizado':
+        return customDateRange;
+      default:
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
+
   const filteredContas = contas.filter(conta => {
     const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (conta.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -163,7 +261,19 @@ export default function ContasReceber() {
       }
     }
 
-    return matchesSearch && matchesStatus;
+    let matchesDate = true;
+    const dateRange = getDateRange();
+    if (dateRange?.from && dateRange?.to) {
+      const vencimento = new Date(conta.data_vencimento);
+      matchesDate = vencimento >= dateRange.from && vencimento <= dateRange.to;
+    }
+
+    let matchesContaBancaria = true;
+    if (contaBancariaFilter !== 'todas') {
+      matchesContaBancaria = conta.conta_bancaria_id === contaBancariaFilter;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria;
   });
 
   const formatCurrency = (value: number) => {
@@ -249,8 +359,17 @@ export default function ContasReceber() {
       </div>
 
       <Card className="p-6">
-        <div className="flex gap-4 mb-6">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomDateRange(range);
+            }}
+            customRange={customDateRange}
+          />
+
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Buscar por descrição ou cliente..."
@@ -259,9 +378,23 @@ export default function ContasReceber() {
               className="pl-10"
             />
           </div>
+
+          <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Conta bancária" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as contas</SelectItem>
+              {contasBancarias.map((conta) => (
+                <SelectItem key={conta.id} value={conta.id}>
+                  {conta.descricao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -313,27 +446,13 @@ export default function ContasReceber() {
                     {conta.numero_nf || '-'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleStatus(conta.id, conta.status)}
-                        className={conta.status === 'pendente' ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
-                        title={conta.status === 'pendente' ? 'Marcar como pago' : 'Marcar como pendente'}
-                      >
-                        <DollarSign className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleEdit(conta)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <ActionsDropdown
+                      status={conta.status}
+                      onMarkAsPaid={() => handleToggleStatus(conta.id, 'pendente')}
+                      onMarkAsOpen={() => handleToggleStatus(conta.id, 'pago')}
+                      onView={() => handleView(conta)}
+                      onDelete={() => handleDeleteConfirm(conta.id)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -349,6 +468,29 @@ export default function ContasReceber() {
         )}
       </Card>
 
+      <ViewInfoDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        data={selectedConta}
+        type="receber"
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
