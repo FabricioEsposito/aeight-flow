@@ -37,7 +37,8 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
   });
 
   const getCurrentMonthYear = () => {
-    return format(new Date(), 'MMMM yyyy', { locale: ptBR });
+    const monthYear = format(new Date(), 'MMMM yyyy', { locale: ptBR });
+    return monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
   };
 
   const handlePresetChange = (preset: DateRangePreset) => {
@@ -106,42 +107,77 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
           </div>
         ) : (
           <div className="p-4 space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Data Inicial</label>
-              <Calendar
-                mode="single"
-                selected={tempRange.from}
-                onSelect={(date) => setTempRange({ ...tempRange, from: date })}
-                initialFocus
-                locale={ptBR}
-                className="pointer-events-auto"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data inicial</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !tempRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {tempRange.from ? format(tempRange.from, "dd/MM/yyyy") : "Selecione"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={tempRange.from}
+                      onSelect={(date) => setTempRange({ ...tempRange, from: date })}
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data final</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !tempRange.to && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {tempRange.to ? format(tempRange.to, "dd/MM/yyyy") : "Selecione"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={tempRange.to}
+                      onSelect={(date) => setTempRange({ ...tempRange, to: date })}
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                      disabled={(date) => tempRange.from ? date < tempRange.from : false}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Data Final</label>
-              <Calendar
-                mode="single"
-                selected={tempRange.to}
-                onSelect={(date) => setTempRange({ ...tempRange, to: date })}
-                locale={ptBR}
-                className="pointer-events-auto"
-                disabled={(date) => tempRange.from ? date < tempRange.from : false}
-              />
-            </div>
+
             <div className="flex gap-2">
-              <Button
-                onClick={handleCustomRangeApply}
-                disabled={!tempRange.from || !tempRange.to}
-                className="flex-1"
-              >
-                Aplicar
-              </Button>
               <Button
                 variant="outline"
                 onClick={handleCancel}
                 className="flex-1"
               >
                 Cancelar
+              </Button>
+              <Button
+                onClick={handleCustomRangeApply}
+                disabled={!tempRange.from || !tempRange.to}
+                className="flex-1"
+              >
+                Aplicar filtro
               </Button>
             </div>
           </div>

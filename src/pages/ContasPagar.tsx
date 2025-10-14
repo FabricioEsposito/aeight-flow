@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
+import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import {
   AlertDialog,
@@ -46,9 +47,15 @@ interface ContaBancaria {
   descricao: string;
 }
 
+interface PlanoContas {
+  id: string;
+  descricao: string;
+}
+
 export default function ContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
+  const [planoContas, setPlanoContas] = useState<PlanoContas[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -56,6 +63,7 @@ export default function ContasPagar() {
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<ContaPagar | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
@@ -125,9 +133,60 @@ export default function ContasPagar() {
     }
   };
 
+  const fetchPlanoContas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('plano_contas')
+        .select('id, descricao')
+        .eq('status', 'ativo')
+        .order('descricao');
+
+      if (error) throw error;
+      setPlanoContas(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar plano de contas:', error);
+    }
+  };
+
   const handleView = (conta: ContaPagar) => {
     setSelectedConta(conta);
     setViewDialogOpen(true);
+  };
+
+  const handleEdit = (conta: ContaPagar) => {
+    setSelectedConta(conta);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (data: EditParcelaData) => {
+    try {
+      const { error } = await supabase
+        .from('contas_pagar')
+        .update({
+          data_vencimento: data.data_vencimento,
+          descricao: data.descricao,
+          plano_conta_id: data.plano_conta_id,
+          centro_custo: data.centro_custo,
+          conta_bancaria_id: data.conta_bancaria_id,
+          valor: data.valor_total,
+        })
+        .eq('id', data.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Parcela atualizada com sucesso!",
+      });
+      fetchContas();
+    } catch (error) {
+      console.error('Erro ao atualizar parcela:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a parcela.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteConfirm = (id: string) => {
@@ -200,6 +259,7 @@ export default function ContasPagar() {
   useEffect(() => {
     fetchContas();
     fetchContasBancarias();
+    fetchPlanoContas();
   }, []);
 
 
@@ -458,6 +518,7 @@ export default function ContasPagar() {
                       onMarkAsPaid={() => handleToggleStatus(conta.id, 'pendente')}
                       onMarkAsOpen={() => handleToggleStatus(conta.id, 'pago')}
                       onView={() => handleView(conta)}
+                      onEdit={() => handleEdit(conta)}
                       onDelete={() => handleDeleteConfirm(conta.id)}
                     />
                   </TableCell>
@@ -480,6 +541,23 @@ export default function ContasPagar() {
         onOpenChange={setViewDialogOpen}
         data={selectedConta}
         type="pagar"
+      />
+
+      <EditParcelaDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveEdit}
+        initialData={selectedConta ? {
+          id: selectedConta.id,
+          data_vencimento: selectedConta.data_vencimento,
+          descricao: selectedConta.descricao,
+          plano_conta_id: undefined,
+          centro_custo: undefined,
+          conta_bancaria_id: selectedConta.conta_bancaria_id,
+          valor_original: selectedConta.valor_parcela,
+        } : undefined}
+        contasBancarias={contasBancarias}
+        planoContas={planoContas}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
