@@ -62,9 +62,9 @@ export function EditParcelaDialog({
     if (initialData && open) {
       setDataVencimento(new Date(initialData.data_vencimento));
       setDescricao(initialData.descricao);
-      setPlanoContaId(initialData.plano_conta_id || '');
+      setPlanoContaId(initialData.plano_conta_id || 'none');
       setCentroCusto(initialData.centro_custo || '');
-      setContaBancariaId(initialData.conta_bancaria_id || '');
+      setContaBancariaId(initialData.conta_bancaria_id || 'none');
       setJuros('0');
       setMulta('0');
       setDesconto('0');
@@ -89,9 +89,9 @@ export function EditParcelaDialog({
       id: initialData.id,
       data_vencimento: format(dataVencimento, 'yyyy-MM-dd'),
       descricao,
-      plano_conta_id: planoContaId || undefined,
+      plano_conta_id: planoContaId && planoContaId !== 'none' ? planoContaId : undefined,
       centro_custo: centroCusto || undefined,
-      conta_bancaria_id: contaBancariaId || undefined,
+      conta_bancaria_id: contaBancariaId && contaBancariaId !== 'none' ? contaBancariaId : undefined,
       juros: valorJuros,
       multa: valorMulta,
       desconto: valorDesconto,
@@ -152,7 +152,7 @@ export function EditParcelaDialog({
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {contasBancarias.map((conta) => (
                     <SelectItem key={conta.id} value={conta.id}>
                       {conta.descricao}
@@ -180,7 +180,7 @@ export function EditParcelaDialog({
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {planoContas.map((plano) => (
                     <SelectItem key={plano.id} value={plano.id}>
                       {plano.descricao}
