@@ -98,7 +98,7 @@ export default function PlanoContas() {
     try {
       // Calcular próximo código se não especificado
       let codigo = data.codigo;
-      if (!codigo && data.parent_id) {
+      if (!codigo && data.parent_id && data.parent_id !== 'none') {
         // Buscar contas filhas do parent para gerar próximo código
         const { data: siblings } = await supabase
           .from('plano_contas')
@@ -119,8 +119,8 @@ export default function PlanoContas() {
       const formData = {
         ...data,
         codigo,
-        parent_id: data.parent_id || null,
-        nivel: data.parent_id ? 2 : 1, // Simplificado para 2 níveis
+        parent_id: data.parent_id && data.parent_id !== 'none' ? data.parent_id : null,
+        nivel: data.parent_id && data.parent_id !== 'none' ? 2 : 1,
       };
 
       if (editingConta) {
@@ -168,7 +168,7 @@ export default function PlanoContas() {
       codigo: conta.codigo,
       descricao: conta.descricao,
       tipo: conta.tipo,
-      parent_id: conta.parent_id || '',
+      parent_id: conta.parent_id || 'none',
       status: conta.status,
     });
     setIsDialogOpen(true);
@@ -218,7 +218,7 @@ export default function PlanoContas() {
       codigo: '',
       descricao: '',
       tipo,
-      parent_id: '',
+      parent_id: 'none',
       status: 'ativo',
     });
     setIsDialogOpen(true);
@@ -433,7 +433,7 @@ export default function PlanoContas() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Nenhuma (raiz)</SelectItem>
+                          <SelectItem value="none">Nenhuma (raiz)</SelectItem>
                           {contas
                             .filter(c => c.tipo === form.watch('tipo'))
                             .map(conta => (
