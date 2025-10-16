@@ -61,11 +61,8 @@ export default function EditarContrato() {
       setDescontoPercentual(data.desconto_percentual || 0);
       setDescontoValor(data.desconto_valor || 0);
       setIrrfPercentual(data.irrf_percentual || 0);
-      
-      const pisCofins = data.pis_cofins_percentual || 0;
-      setPisPercentual(pisCofins / 2);
-      setCofinsPercentual(pisCofins / 2);
-      
+      setPisPercentual(data.pis_percentual || 0);
+      setCofinsPercentual(data.cofins_percentual || 0);
       setCsllPercentual(data.csll_percentual || 0);
       setDescricaoServico(data.descricao_servico || '');
     } catch (error) {
@@ -136,6 +133,8 @@ export default function EditarContrato() {
           desconto_percentual: descontoPercentual,
           desconto_valor: descontoValor,
           irrf_percentual: irrfPercentual,
+          pis_percentual: pisPercentual,
+          cofins_percentual: cofinsPercentual,
           pis_cofins_percentual: pisPercentual + cofinsPercentual,
           csll_percentual: csllPercentual,
           valor_total: valorTotal,

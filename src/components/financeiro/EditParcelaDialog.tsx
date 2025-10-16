@@ -23,6 +23,9 @@ interface EditParcelaDialogProps {
     centro_custo?: string;
     conta_bancaria_id?: string;
     valor_original: number;
+    juros?: number;
+    multa?: number;
+    desconto?: number;
   };
   contasBancarias: Array<{ id: string; descricao: string }>;
   planoContas: Array<{ id: string; descricao: string }>;
@@ -39,6 +42,7 @@ export interface EditParcelaData {
   multa: number;
   desconto: number;
   valor_total: number;
+  valor_original: number;
 }
 
 export function EditParcelaDialog({
@@ -65,9 +69,9 @@ export function EditParcelaDialog({
       setPlanoContaId(initialData.plano_conta_id || 'none');
       setCentroCusto(initialData.centro_custo || '');
       setContaBancariaId(initialData.conta_bancaria_id || 'none');
-      setJuros('0');
-      setMulta('0');
-      setDesconto('0');
+      setJuros(initialData.juros?.toString() || '0');
+      setMulta(initialData.multa?.toString() || '0');
+      setDesconto(initialData.desconto?.toString() || '0');
     }
   }, [initialData, open]);
 
@@ -96,6 +100,7 @@ export function EditParcelaDialog({
       multa: valorMulta,
       desconto: valorDesconto,
       valor_total: valorTotal,
+      valor_original: valorOriginal,
     };
 
     onSave(data);

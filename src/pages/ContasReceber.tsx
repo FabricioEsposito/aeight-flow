@@ -29,12 +29,18 @@ interface ContaReceber {
   id: string;
   descricao: string;
   valor: number;
+  valor_original?: number;
+  juros?: number;
+  multa?: number;
+  desconto?: number;
   data_vencimento: string;
   data_competencia: string;
   data_recebimento?: string;
   numero_nf?: string;
   status: 'pendente' | 'pago' | 'vencido' | 'cancelado';
   conta_bancaria_id?: string;
+  plano_conta_id?: string;
+  centro_custo?: string;
   clientes?: {
     razao_social: string;
   };
@@ -168,6 +174,10 @@ export default function ContasReceber() {
           centro_custo: data.centro_custo,
           conta_bancaria_id: data.conta_bancaria_id,
           valor: data.valor_total,
+          juros: data.juros,
+          multa: data.multa,
+          desconto: data.desconto,
+          valor_original: data.valor_original,
         })
         .eq('id', data.id);
 
@@ -544,10 +554,13 @@ export default function ContasReceber() {
           id: selectedConta.id,
           data_vencimento: selectedConta.data_vencimento,
           descricao: selectedConta.descricao,
-          plano_conta_id: selectedConta.clientes ? undefined : undefined,
-          centro_custo: undefined,
+          plano_conta_id: selectedConta.plano_conta_id,
+          centro_custo: selectedConta.centro_custo,
           conta_bancaria_id: selectedConta.conta_bancaria_id,
-          valor_original: selectedConta.valor,
+          valor_original: selectedConta.valor_original || selectedConta.valor,
+          juros: selectedConta.juros,
+          multa: selectedConta.multa,
+          desconto: selectedConta.desconto,
         } : undefined}
         contasBancarias={contasBancarias}
         planoContas={planoContas}

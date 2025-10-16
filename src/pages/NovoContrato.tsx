@@ -106,10 +106,9 @@ export default function NovoContrato() {
       setDescontoPercentual(data.desconto_percentual || 0);
       setDescontoValor(data.desconto_valor || 0);
       setIrrfPercentual(data.irrf_percentual || 0);
-      // Separar PIS/COFINS (assumindo valor dividido igualmente se estiver agrupado)
-      const pisCofins = data.pis_cofins_percentual || 0;
-      setPisPercentual(pisCofins / 2);
-      setCofinsPercentual(pisCofins / 2);
+      // Usar campos separados de PIS e COFINS
+      setPisPercentual(data.pis_percentual || 0);
+      setCofinsPercentual(data.cofins_percentual || 0);
       setCsllPercentual(data.csll_percentual || 0);
       setTipoPagamento(data.tipo_pagamento);
       setContaBancariaId(data.conta_bancaria_id);
@@ -233,7 +232,9 @@ export default function NovoContrato() {
         desconto_percentual: descontoPercentual,
         desconto_valor: descontoValor,
         irrf_percentual: irrfPercentual,
-        pis_cofins_percentual: pisPercentual + cofinsPercentual,
+        pis_percentual: pisPercentual,
+        cofins_percentual: cofinsPercentual,
+        pis_cofins_percentual: pisPercentual + cofinsPercentual, // Mantém compatibilidade
         csll_percentual: csllPercentual,
         tipo_pagamento: tipoPagamento,
         conta_bancaria_id: contaBancariaId,
@@ -274,7 +275,8 @@ export default function NovoContrato() {
         valor: p.valor,
         data_vencimento: p.data.toISOString().split('T')[0],
         status: 'pendente',
-        tipo: tipoContrato === 'venda' ? 'receber' : 'pagar'
+        tipo: tipoContrato === 'venda' ? 'receber' : 'pagar',
+        conta_bancaria_id: contaBancariaId
       }));
 
       const { data: parcelasInseridas, error: parcelasError } = await supabase
@@ -290,11 +292,16 @@ export default function NovoContrato() {
           parcela_id: parcela.id,
           cliente_id: clienteId,
           valor: parcela.valor,
+          valor_original: parcela.valor,
           data_vencimento: parcela.data_vencimento,
           data_competencia: dataInicio?.toISOString().split('T')[0],
           plano_conta_id: planoContasId,
+          conta_bancaria_id: contaBancariaId,
           status: 'pendente',
-          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contratoData.numero_contrato || ''}`
+          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contratoData.numero_contrato || ''}`,
+          juros: 0,
+          multa: 0,
+          desconto: 0
         }));
 
         const { error: receberError } = await supabase
@@ -307,11 +314,16 @@ export default function NovoContrato() {
           parcela_id: parcela.id,
           fornecedor_id: fornecedorId,
           valor: parcela.valor,
+          valor_original: parcela.valor,
           data_vencimento: parcela.data_vencimento,
           data_competencia: dataInicio?.toISOString().split('T')[0],
           plano_conta_id: planoContasId,
+          conta_bancaria_id: contaBancariaId,
           status: 'pendente',
-          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contratoData.numero_contrato || ''}`
+          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contratoData.numero_contrato || ''}`,
+          juros: 0,
+          multa: 0,
+          desconto: 0
         }));
 
         const { error: pagarError } = await supabase

@@ -116,11 +116,26 @@ export default function PlanoContas() {
         }
       }
 
+      // Calcular nível baseado no parent
+      let nivel = 1; // Grupo (raiz)
+      if (data.parent_id && data.parent_id !== 'none') {
+        // Buscar nível do parent
+        const { data: parentData } = await supabase
+          .from('plano_contas')
+          .select('nivel')
+          .eq('id', data.parent_id)
+          .single();
+        
+        if (parentData) {
+          nivel = parentData.nivel + 1;
+        }
+      }
+
       const formData = {
         ...data,
         codigo,
         parent_id: data.parent_id && data.parent_id !== 'none' ? data.parent_id : null,
-        nivel: data.parent_id && data.parent_id !== 'none' ? 2 : 1,
+        nivel,
       };
 
       if (editingConta) {
@@ -176,6 +191,36 @@ export default function PlanoContas() {
 
   const handleDelete = async (id: string) => {
     try {
+      // Verificar se há contas filhas
+      const { data: childAccounts } = await supabase
+        .from('plano_contas')
+        .select('id')
+        .eq('parent_id', id);
+
+      if (childAccounts && childAccounts.length > 0) {
+        toast({
+          title: "Não é possível excluir",
+          description: "Esta conta possui subcontas vinculadas. Exclua as subcontas primeiro.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar se está sendo usada em contratos
+      const { data: contratos } = await supabase
+        .from('contratos')
+        .select('id')
+        .eq('plano_contas_id', id);
+
+      if (contratos && contratos.length > 0) {
+        toast({
+          title: "Não é possível excluir",
+          description: "Esta conta está sendo usada em contratos. Remova os vínculos primeiro.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('plano_contas')
         .delete()
@@ -188,11 +233,11 @@ export default function PlanoContas() {
         description: "Conta excluída com sucesso!",
       });
       fetchContas();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao excluir conta:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível excluir a conta.",
+        description: error.message || "Não foi possível excluir a conta.",
         variant: "destructive",
       });
     }
@@ -226,7 +271,8 @@ export default function PlanoContas() {
 
   const renderAccount = (account: PlanoConta, level = 0) => {
     const hasChildren = account.children && account.children.length > 0;
-    const isLeafNode = !hasChildren;
+    // Permitir até 3 níveis (0, 1, 2)
+    const canHaveChildren = level < 2;
     
     return (
       <div key={account.id} className="space-y-2">
@@ -236,19 +282,26 @@ export default function PlanoContas() {
         >
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-foreground">
-              {account.codigo} {account.descricao}
+              {account.codigo} - {account.descricao}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {level === 0 && 'Grupo'}
+              {level === 1 && 'Subgrupo'}
+              {level === 2 && 'Categoria'}
             </span>
           </div>
           
           <div className="flex items-center gap-2">
-            {!isLeafNode && (
+            {canHaveChildren && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleAddSubConta(account)}
-                className="h-8 w-8 p-0"
+                className="h-8 px-3"
+                title={level === 0 ? 'Adicionar Subgrupo' : 'Adicionar Categoria'}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 mr-1" />
+                {level === 0 ? 'Subgrupo' : 'Categoria'}
               </Button>
             )}
             <Button
@@ -256,6 +309,7 @@ export default function PlanoContas() {
               size="sm"
               onClick={() => handleEdit(account)}
               className="h-8 w-8 p-0"
+              title="Editar"
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -264,6 +318,7 @@ export default function PlanoContas() {
               size="sm"
               onClick={() => handleDelete(account.id)}
               className="h-8 w-8 p-0"
+              title="Excluir"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
@@ -309,7 +364,8 @@ export default function PlanoContas() {
             onClick={() => handleAddNewCategory('entrada')}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            Nova categoria de receita
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Grupo de Receita
           </Button>
         </div>
         
@@ -333,7 +389,8 @@ export default function PlanoContas() {
             onClick={() => handleAddNewCategory('saida')}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            Nova categoria de despesa
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Grupo de Despesa
           </Button>
         </div>
         
@@ -360,8 +417,8 @@ export default function PlanoContas() {
               {editingConta 
                 ? 'Edite as informações da conta contábil.' 
                 : parentConta 
-                  ? `Adicionar subconta em: ${parentConta.codigo} ${parentConta.descricao}`
-                  : 'Crie uma nova categoria principal.'}
+                  ? `Adicionar ${parentConta.nivel === 1 ? 'subgrupo' : 'categoria'} em: ${parentConta.codigo} - ${parentConta.descricao}`
+                  : 'Crie um novo grupo principal.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -375,7 +432,10 @@ export default function PlanoContas() {
                     <FormItem>
                       <FormLabel>Código</FormLabel>
                       <FormControl>
-                        <Input placeholder="01_Entradas" {...field} />
+                        <Input 
+                          placeholder={parentConta ? (parentConta.nivel === 1 ? "1.1" : "1.1.1") : "1"}
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

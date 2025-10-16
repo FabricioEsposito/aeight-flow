@@ -28,12 +28,18 @@ interface ContaPagar {
   id: string;
   descricao: string;
   valor_parcela: number;
+  valor_original?: number;
+  juros?: number;
+  multa?: number;
+  desconto?: number;
   numero_parcela: number;
   status_pagamento: 'pendente' | 'pago' | 'vencido' | 'cancelado';
   data_vencimento: string;
   data_competencia: string;
   data_pagamento?: string;
   conta_bancaria_id?: string;
+  plano_conta_id?: string;
+  centro_custo?: string;
   fornecedores?: {
     razao_social: string;
   };
@@ -94,11 +100,18 @@ export default function ContasPagar() {
         id: item.id,
         descricao: item.descricao,
         valor_parcela: item.valor,
+        valor_original: item.valor_original || item.valor,
+        juros: item.juros || 0,
+        multa: item.multa || 0,
+        desconto: item.desconto || 0,
         numero_parcela: item.parcelas_contrato?.numero_parcela || 0,
         status_pagamento: item.status,
         data_vencimento: item.data_vencimento,
         data_competencia: item.data_competencia,
         data_pagamento: item.data_pagamento,
+        conta_bancaria_id: item.conta_bancaria_id,
+        plano_conta_id: item.plano_conta_id,
+        centro_custo: item.centro_custo,
         fornecedores: item.fornecedores,
         contratos: item.parcelas_contrato?.contratos ? {
           numero: item.parcelas_contrato.contratos.numero_contrato
@@ -169,6 +182,10 @@ export default function ContasPagar() {
           centro_custo: data.centro_custo,
           conta_bancaria_id: data.conta_bancaria_id,
           valor: data.valor_total,
+          juros: data.juros,
+          multa: data.multa,
+          desconto: data.desconto,
+          valor_original: data.valor_original,
         })
         .eq('id', data.id);
 
@@ -551,10 +568,13 @@ export default function ContasPagar() {
           id: selectedConta.id,
           data_vencimento: selectedConta.data_vencimento,
           descricao: selectedConta.descricao,
-          plano_conta_id: undefined,
-          centro_custo: undefined,
+          plano_conta_id: selectedConta.plano_conta_id,
+          centro_custo: selectedConta.centro_custo,
           conta_bancaria_id: selectedConta.conta_bancaria_id,
-          valor_original: selectedConta.valor_parcela,
+          valor_original: selectedConta.valor_original || selectedConta.valor_parcela,
+          juros: selectedConta.juros,
+          multa: selectedConta.multa,
+          desconto: selectedConta.desconto,
         } : undefined}
         contasBancarias={contasBancarias}
         planoContas={planoContas}

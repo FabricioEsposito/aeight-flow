@@ -118,15 +118,19 @@ export type Database = {
           data_competencia: string
           data_pagamento: string | null
           data_vencimento: string
+          desconto: number | null
           descricao: string
           fornecedor_id: string
           id: string
+          juros: number | null
+          multa: number | null
           observacoes: string | null
           parcela_id: string | null
           plano_conta_id: string | null
           status: string | null
           updated_at: string | null
           valor: number
+          valor_original: number | null
         }
         Insert: {
           centro_custo?: string | null
@@ -135,15 +139,19 @@ export type Database = {
           data_competencia: string
           data_pagamento?: string | null
           data_vencimento: string
+          desconto?: number | null
           descricao: string
           fornecedor_id: string
           id?: string
+          juros?: number | null
+          multa?: number | null
           observacoes?: string | null
           parcela_id?: string | null
           plano_conta_id?: string | null
           status?: string | null
           updated_at?: string | null
           valor: number
+          valor_original?: number | null
         }
         Update: {
           centro_custo?: string | null
@@ -152,15 +160,19 @@ export type Database = {
           data_competencia?: string
           data_pagamento?: string | null
           data_vencimento?: string
+          desconto?: number | null
           descricao?: string
           fornecedor_id?: string
           id?: string
+          juros?: number | null
+          multa?: number | null
           observacoes?: string | null
           parcela_id?: string | null
           plano_conta_id?: string | null
           status?: string | null
           updated_at?: string | null
           valor?: number
+          valor_original?: number | null
         }
         Relationships: [
           {
@@ -202,8 +214,11 @@ export type Database = {
           data_competencia: string
           data_recebimento: string | null
           data_vencimento: string
+          desconto: number | null
           descricao: string
           id: string
+          juros: number | null
+          multa: number | null
           numero_nf: string | null
           observacoes: string | null
           parcela_id: string | null
@@ -211,6 +226,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           valor: number
+          valor_original: number | null
         }
         Insert: {
           centro_custo?: string | null
@@ -220,8 +236,11 @@ export type Database = {
           data_competencia: string
           data_recebimento?: string | null
           data_vencimento: string
+          desconto?: number | null
           descricao: string
           id?: string
+          juros?: number | null
+          multa?: number | null
           numero_nf?: string | null
           observacoes?: string | null
           parcela_id?: string | null
@@ -229,6 +248,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           valor: number
+          valor_original?: number | null
         }
         Update: {
           centro_custo?: string | null
@@ -238,8 +258,11 @@ export type Database = {
           data_competencia?: string
           data_recebimento?: string | null
           data_vencimento?: string
+          desconto?: number | null
           descricao?: string
           id?: string
+          juros?: number | null
+          multa?: number | null
           numero_nf?: string | null
           observacoes?: string | null
           parcela_id?: string | null
@@ -247,6 +270,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           valor?: number
+          valor_original?: number | null
         }
         Relationships: [
           {
@@ -282,6 +306,7 @@ export type Database = {
       contratos: {
         Row: {
           cliente_id: string | null
+          cofins_percentual: number | null
           conta_bancaria_id: string
           created_at: string | null
           csll_percentual: number | null
@@ -297,6 +322,7 @@ export type Database = {
           numero_contrato: string
           periodo_recorrencia: string | null
           pis_cofins_percentual: number | null
+          pis_percentual: number | null
           plano_contas_id: string
           quantidade: number
           recorrente: boolean | null
@@ -310,6 +336,7 @@ export type Database = {
         }
         Insert: {
           cliente_id?: string | null
+          cofins_percentual?: number | null
           conta_bancaria_id: string
           created_at?: string | null
           csll_percentual?: number | null
@@ -325,6 +352,7 @@ export type Database = {
           numero_contrato: string
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null
+          pis_percentual?: number | null
           plano_contas_id: string
           quantidade?: number
           recorrente?: boolean | null
@@ -338,6 +366,7 @@ export type Database = {
         }
         Update: {
           cliente_id?: string | null
+          cofins_percentual?: number | null
           conta_bancaria_id?: string
           created_at?: string | null
           csll_percentual?: number | null
@@ -353,6 +382,7 @@ export type Database = {
           numero_contrato?: string
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null
+          pis_percentual?: number | null
           plano_contas_id?: string
           quantidade?: number
           recorrente?: boolean | null
@@ -520,6 +550,7 @@ export type Database = {
       }
       parcelas_contrato: {
         Row: {
+          conta_bancaria_id: string | null
           contrato_id: string | null
           created_at: string | null
           data_vencimento: string
@@ -530,6 +561,7 @@ export type Database = {
           valor: number
         }
         Insert: {
+          conta_bancaria_id?: string | null
           contrato_id?: string | null
           created_at?: string | null
           data_vencimento: string
@@ -540,6 +572,7 @@ export type Database = {
           valor: number
         }
         Update: {
+          conta_bancaria_id?: string | null
           contrato_id?: string | null
           created_at?: string | null
           data_vencimento?: string
@@ -550,6 +583,13 @@ export type Database = {
           valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "parcelas_contrato_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "parcelas_contrato_contrato_id_fkey"
             columns: ["contrato_id"]
