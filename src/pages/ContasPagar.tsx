@@ -13,17 +13,7 @@ import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 interface ContaPagar {
   id: string;
   descricao: string;
@@ -47,17 +37,14 @@ interface ContaPagar {
     numero: string;
   };
 }
-
 interface ContaBancaria {
   id: string;
   descricao: string;
 }
-
 interface PlanoContas {
   id: string;
   descricao: string;
 }
-
 export default function ContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
@@ -66,20 +53,25 @@ export default function ContasPagar() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [customDateRange, setCustomDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>();
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<ContaPagar | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const fetchContas = async () => {
     try {
-      const { data, error } = await supabase
-        .from('contas_pagar')
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from('contas_pagar').select(`
           *,
           fornecedores:fornecedor_id (
             razao_social
@@ -90,11 +82,9 @@ export default function ContasPagar() {
               numero_contrato
             )
           )
-        `)
-        .order('data_vencimento');
-
+        `).order('data_vencimento');
       if (error) throw error;
-      
+
       // Map data to match the interface
       const contasMapeadas = (data || []).map((item: any) => ({
         id: item.id,
@@ -117,83 +107,70 @@ export default function ContasPagar() {
           numero: item.parcelas_contrato.contratos.numero_contrato
         } : null
       }));
-      
       setContas(contasMapeadas);
     } catch (error) {
       console.error('Erro ao buscar contas a pagar:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar as contas a pagar.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const fetchContasBancarias = async () => {
     try {
-      const { data, error } = await supabase
-        .from('contas_bancarias')
-        .select('id, descricao')
-        .eq('status', 'ativo')
-        .order('descricao');
-
+      const {
+        data,
+        error
+      } = await supabase.from('contas_bancarias').select('id, descricao').eq('status', 'ativo').order('descricao');
       if (error) throw error;
       setContasBancarias(data || []);
     } catch (error) {
       console.error('Erro ao buscar contas bancárias:', error);
     }
   };
-
   const fetchPlanoContas = async () => {
     try {
-      const { data, error } = await supabase
-        .from('plano_contas')
-        .select('id, descricao')
-        .eq('status', 'ativo')
-        .order('descricao');
-
+      const {
+        data,
+        error
+      } = await supabase.from('plano_contas').select('id, descricao').eq('status', 'ativo').order('descricao');
       if (error) throw error;
       setPlanoContas(data || []);
     } catch (error) {
       console.error('Erro ao buscar plano de contas:', error);
     }
   };
-
   const handleView = (conta: ContaPagar) => {
     setSelectedConta(conta);
     setViewDialogOpen(true);
   };
-
   const handleEdit = (conta: ContaPagar) => {
     setSelectedConta(conta);
     setEditDialogOpen(true);
   };
-
   const handleSaveEdit = async (data: EditParcelaData) => {
     try {
-      const { error } = await supabase
-        .from('contas_pagar')
-        .update({
-          data_vencimento: data.data_vencimento,
-          descricao: data.descricao,
-          plano_conta_id: data.plano_conta_id,
-          centro_custo: data.centro_custo,
-          conta_bancaria_id: data.conta_bancaria_id,
-          valor: data.valor_total,
-          juros: data.juros,
-          multa: data.multa,
-          desconto: data.desconto,
-          valor_original: data.valor_original,
-        })
-        .eq('id', data.id);
-
+      const {
+        error
+      } = await supabase.from('contas_pagar').update({
+        data_vencimento: data.data_vencimento,
+        descricao: data.descricao,
+        plano_conta_id: data.plano_conta_id,
+        centro_custo: data.centro_custo,
+        conta_bancaria_id: data.conta_bancaria_id,
+        valor: data.valor_total,
+        juros: data.juros,
+        multa: data.multa,
+        desconto: data.desconto,
+        valor_original: data.valor_original
+      }).eq('id', data.id);
       if (error) throw error;
-
       toast({
         title: "Sucesso",
-        description: "Parcela atualizada com sucesso!",
+        description: "Parcela atualizada com sucesso!"
       });
       fetchContas();
     } catch (error) {
@@ -201,30 +178,24 @@ export default function ContasPagar() {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a parcela.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleDeleteConfirm = (id: string) => {
     setContaToDelete(id);
     setDeleteDialogOpen(true);
   };
-
   const handleDelete = async () => {
     if (!contaToDelete) return;
-
     try {
-      const { error } = await supabase
-        .from('contas_pagar')
-        .delete()
-        .eq('id', contaToDelete);
-
+      const {
+        error
+      } = await supabase.from('contas_pagar').delete().eq('id', contaToDelete);
       if (error) throw error;
-
       toast({
         title: "Sucesso",
-        description: "Parcela excluída com sucesso!",
+        description: "Parcela excluída com sucesso!"
       });
       fetchContas();
     } catch (error) {
@@ -232,35 +203,31 @@ export default function ContasPagar() {
       toast({
         title: "Erro",
         description: "Não foi possível excluir a parcela.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setDeleteDialogOpen(false);
       setContaToDelete(null);
     }
   };
-
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
-      const updateData: any = { status: newStatus };
-      
+      const updateData: any = {
+        status: newStatus
+      };
       if (newStatus === 'pago') {
         updateData.data_pagamento = new Date().toISOString().split('T')[0];
       } else {
         updateData.data_pagamento = null;
       }
-
-      const { error } = await supabase
-        .from('contas_pagar')
-        .update(updateData)
-        .eq('id', id);
-
+      const {
+        error
+      } = await supabase.from('contas_pagar').update(updateData).eq('id', id);
       if (error) throw error;
-
       toast({
         title: "Sucesso",
-        description: `Status alterado para ${newStatus}!`,
+        description: `Status alterado para ${newStatus}!`
       });
       fetchContas();
     } catch (error) {
@@ -268,73 +235,83 @@ export default function ContasPagar() {
       toast({
         title: "Erro",
         description: "Não foi possível alterar o status.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   useEffect(() => {
     fetchContas();
     fetchContasBancarias();
     fetchPlanoContas();
   }, []);
-
-
   const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'default';
     if (status === 'cancelado') return 'destructive';
-    
     const hoje = new Date();
     const vencimento = new Date(dataVencimento);
-    
     if (vencimento < hoje && status === 'pendente') {
       return 'destructive'; // Vencido
     }
-    
     return 'secondary'; // Pendente
   };
-
   const getStatusLabel = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'Pago';
     if (status === 'cancelado') return 'Cancelado';
-    
     const hoje = new Date();
     const vencimento = new Date(dataVencimento);
-    
     if (vencimento < hoje && status === 'pendente') {
       return 'Vencido';
     }
-    
     return 'Pendente';
   };
-
   const getDateRange = () => {
     const today = new Date();
-    
     switch (datePreset) {
       case 'hoje':
-        return { from: startOfDay(today), to: endOfDay(today) };
+        return {
+          from: startOfDay(today),
+          to: endOfDay(today)
+        };
       case 'esta-semana':
-        return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+        return {
+          from: startOfWeek(today, {
+            weekStartsOn: 0
+          }),
+          to: endOfWeek(today, {
+            weekStartsOn: 0
+          })
+        };
       case 'este-mes':
-        return { from: startOfMonth(today), to: endOfMonth(today) };
+        return {
+          from: startOfMonth(today),
+          to: endOfMonth(today)
+        };
       case 'este-ano':
-        return { from: startOfYear(today), to: endOfYear(today) };
+        return {
+          from: startOfYear(today),
+          to: endOfYear(today)
+        };
       case 'ultimos-30-dias':
-        return { from: subDays(today, 30), to: today };
+        return {
+          from: subDays(today, 30),
+          to: today
+        };
       case 'ultimos-12-meses':
-        return { from: subMonths(today, 12), to: today };
+        return {
+          from: subMonths(today, 12),
+          to: today
+        };
       case 'periodo-personalizado':
         return customDateRange;
       default:
-        return { from: startOfMonth(today), to: endOfMonth(today) };
+        return {
+          from: startOfMonth(today),
+          to: endOfMonth(today)
+        };
     }
   };
-
   const filteredContas = contas.filter(conta => {
-    const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (conta.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) || (conta.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
     let matchesStatus = true;
     if (statusFilter !== 'todos') {
       if (statusFilter === 'vencido') {
@@ -345,74 +322,53 @@ export default function ContasPagar() {
         matchesStatus = conta.status_pagamento === statusFilter;
       }
     }
-
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange?.from && dateRange?.to) {
       const vencimento = new Date(conta.data_vencimento);
       matchesDate = vencimento >= dateRange.from && vencimento <= dateRange.to;
     }
-
     let matchesContaBancaria = true;
     if (contaBancariaFilter !== 'todas') {
       matchesContaBancaria = conta.conta_bancaria_id === contaBancariaFilter;
     }
-
     return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria;
   });
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
   // Cálculos para resumo
-  const totalPendente = contas
-    .filter(c => c.status_pagamento === 'pendente')
-    .reduce((acc, c) => acc + c.valor_parcela, 0);
-
-  const totalVencido = contas
-    .filter(c => {
-      const hoje = new Date();
-      const vencimento = new Date(c.data_vencimento);
-      return vencimento < hoje && c.status_pagamento === 'pendente';
-    })
-    .reduce((acc, c) => acc + c.valor_parcela, 0);
-
-  const totalPago = contas
-    .filter(c => c.status_pagamento === 'pago')
-    .reduce((acc, c) => acc + c.valor_parcela, 0);
-
+  const totalPendente = contas.filter(c => c.status_pagamento === 'pendente').reduce((acc, c) => acc + c.valor_parcela, 0);
+  const totalVencido = contas.filter(c => {
+    const hoje = new Date();
+    const vencimento = new Date(c.data_vencimento);
+    return vencimento < hoje && c.status_pagamento === 'pendente';
+  }).reduce((acc, c) => acc + c.valor_parcela, 0);
+  const totalPago = contas.filter(c => c.status_pagamento === 'pago').reduce((acc, c) => acc + c.valor_parcela, 0);
   if (loading) {
-    return (
-      <div className="p-6">
+    return <div className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="h-10 bg-muted rounded"></div>
           <div className="h-64 bg-muted rounded"></div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="p-6 space-y-6">
+  return <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Contas a Pagar</h1>
           <p className="text-muted-foreground">Gerencie suas despesas e pagamentos</p>
         </div>
         
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Despesa
-        </Button>
+        
       </div>
 
       {/* Cards de Resumo */}
@@ -450,23 +406,14 @@ export default function ContasPagar() {
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
-          <DateRangeFilter
-            value={datePreset}
-            onChange={(preset, range) => {
-              setDatePreset(preset);
-              if (range) setCustomDateRange(range);
-            }}
-            customRange={customDateRange}
-          />
+          <DateRangeFilter value={datePreset} onChange={(preset, range) => {
+          setDatePreset(preset);
+          if (range) setCustomDateRange(range);
+        }} customRange={customDateRange} />
 
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Buscar por descrição ou fornecedor..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar por descrição ou fornecedor..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
           </div>
 
           <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
@@ -475,11 +422,9 @@ export default function ContasPagar() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as contas</SelectItem>
-              {contasBancarias.map((conta) => (
-                <SelectItem key={conta.id} value={conta.id}>
+              {contasBancarias.map(conta => <SelectItem key={conta.id} value={conta.id}>
                   {conta.descricao}
-                </SelectItem>
-              ))}
+                </SelectItem>)}
             </SelectContent>
           </Select>
           
@@ -512,8 +457,7 @@ export default function ContasPagar() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContas.map((conta) => (
-                <TableRow key={conta.id}>
+              {filteredContas.map(conta => <TableRow key={conta.id}>
                   <TableCell className="font-medium">
                     {conta.fornecedores?.razao_social || '-'}
                   </TableCell>
@@ -530,55 +474,33 @@ export default function ContasPagar() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <ActionsDropdown
-                      status={conta.status_pagamento}
-                      onMarkAsPaid={() => handleToggleStatus(conta.id, 'pendente')}
-                      onMarkAsOpen={() => handleToggleStatus(conta.id, 'pago')}
-                      onView={() => handleView(conta)}
-                      onEdit={() => handleEdit(conta)}
-                      onDelete={() => handleDeleteConfirm(conta.id)}
-                    />
+                    <ActionsDropdown status={conta.status_pagamento} onMarkAsPaid={() => handleToggleStatus(conta.id, 'pendente')} onMarkAsOpen={() => handleToggleStatus(conta.id, 'pago')} onView={() => handleView(conta)} onEdit={() => handleEdit(conta)} onDelete={() => handleDeleteConfirm(conta.id)} />
                   </TableCell>
-                </TableRow>
-              ))}
+                </TableRow>)}
             </TableBody>
           </Table>
         </div>
 
-        {filteredContas.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
+        {filteredContas.length === 0 && <div className="text-center py-8 text-muted-foreground">
             <TrendingDown className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Nenhuma conta a pagar encontrada.</p>
-          </div>
-        )}
+          </div>}
       </Card>
 
-      <ViewInfoDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        data={selectedConta}
-        type="pagar"
-      />
+      <ViewInfoDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} data={selectedConta} type="pagar" />
 
-      <EditParcelaDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        onSave={handleSaveEdit}
-        initialData={selectedConta ? {
-          id: selectedConta.id,
-          data_vencimento: selectedConta.data_vencimento,
-          descricao: selectedConta.descricao,
-          plano_conta_id: selectedConta.plano_conta_id,
-          centro_custo: selectedConta.centro_custo,
-          conta_bancaria_id: selectedConta.conta_bancaria_id,
-          valor_original: selectedConta.valor_original || selectedConta.valor_parcela,
-          juros: selectedConta.juros,
-          multa: selectedConta.multa,
-          desconto: selectedConta.desconto,
-        } : undefined}
-        contasBancarias={contasBancarias}
-        planoContas={planoContas}
-      />
+      <EditParcelaDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} onSave={handleSaveEdit} initialData={selectedConta ? {
+      id: selectedConta.id,
+      data_vencimento: selectedConta.data_vencimento,
+      descricao: selectedConta.descricao,
+      plano_conta_id: selectedConta.plano_conta_id,
+      centro_custo: selectedConta.centro_custo,
+      conta_bancaria_id: selectedConta.conta_bancaria_id,
+      valor_original: selectedConta.valor_original || selectedConta.valor_parcela,
+      juros: selectedConta.juros,
+      multa: selectedConta.multa,
+      desconto: selectedConta.desconto
+    } : undefined} contasBancarias={contasBancarias} planoContas={planoContas} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -596,6 +518,5 @@ export default function ContasPagar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
+    </div>;
 }
