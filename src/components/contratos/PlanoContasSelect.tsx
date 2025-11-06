@@ -31,6 +31,7 @@ export function PlanoContasSelect({ value, onChange, tipo, disabled }: PlanoCont
         .select('id, codigo, descricao, tipo')
         .eq('tipo', tipo)
         .eq('status', 'ativo')
+        .eq('nivel', 3)
         .order('codigo');
 
       if (error) throw error;
