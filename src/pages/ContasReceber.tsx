@@ -54,15 +54,9 @@ interface ContaBancaria {
   descricao: string;
 }
 
-interface PlanoContas {
-  id: string;
-  descricao: string;
-}
-
 export default function ContasReceber() {
   const [contas, setContas] = useState<ContaReceber[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
-  const [planoContas, setPlanoContas] = useState<PlanoContas[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -132,25 +126,9 @@ export default function ContasReceber() {
     }
   };
 
-  const fetchPlanoContas = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('plano_contas')
-        .select('id, descricao')
-        .eq('status', 'ativo')
-        .order('descricao');
-
-      if (error) throw error;
-      setPlanoContas(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar plano de contas:', error);
-    }
-  };
-
   useEffect(() => {
     fetchContas();
     fetchContasBancarias();
-    fetchPlanoContas();
   }, []);
 
   const handleView = (conta: ContaReceber) => {
@@ -550,6 +528,7 @@ export default function ContasReceber() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveEdit}
+        tipo="entrada"
         initialData={selectedConta ? {
           id: selectedConta.id,
           data_vencimento: selectedConta.data_vencimento,
@@ -563,7 +542,6 @@ export default function ContasReceber() {
           desconto: selectedConta.desconto,
         } : undefined}
         contasBancarias={contasBancarias}
-        planoContas={planoContas}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

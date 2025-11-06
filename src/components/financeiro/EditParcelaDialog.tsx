@@ -10,11 +10,13 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 
 interface EditParcelaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: EditParcelaData) => void;
+  tipo: 'entrada' | 'saida';
   initialData?: {
     id: string;
     data_vencimento: string;
@@ -28,7 +30,6 @@ interface EditParcelaDialogProps {
     desconto?: number;
   };
   contasBancarias: Array<{ id: string; descricao: string }>;
-  planoContas: Array<{ id: string; descricao: string }>;
 }
 
 export interface EditParcelaData {
@@ -49,9 +50,9 @@ export function EditParcelaDialog({
   open,
   onOpenChange,
   onSave,
+  tipo,
   initialData,
   contasBancarias,
-  planoContas,
 }: EditParcelaDialogProps) {
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [descricao, setDescricao] = useState('');
@@ -180,19 +181,11 @@ export function EditParcelaDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Plano de Contas</Label>
-              <Select value={planoContaId} onValueChange={setPlanoContaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {planoContas.map((plano) => (
-                    <SelectItem key={plano.id} value={plano.id}>
-                      {plano.descricao}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PlanoContasSelect 
+                value={planoContaId === 'none' ? '' : planoContaId} 
+                onChange={setPlanoContaId}
+                tipo={tipo}
+              />
             </div>
 
             <div className="space-y-2">

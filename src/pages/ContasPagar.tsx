@@ -41,14 +41,9 @@ interface ContaBancaria {
   id: string;
   descricao: string;
 }
-interface PlanoContas {
-  id: string;
-  descricao: string;
-}
 export default function ContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
-  const [planoContas, setPlanoContas] = useState<PlanoContas[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -129,18 +124,6 @@ export default function ContasPagar() {
       setContasBancarias(data || []);
     } catch (error) {
       console.error('Erro ao buscar contas bancárias:', error);
-    }
-  };
-  const fetchPlanoContas = async () => {
-    try {
-      const {
-        data,
-        error
-      } = await supabase.from('plano_contas').select('id, descricao').eq('status', 'ativo').order('descricao');
-      if (error) throw error;
-      setPlanoContas(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar plano de contas:', error);
     }
   };
   const handleView = (conta: ContaPagar) => {
@@ -242,7 +225,6 @@ export default function ContasPagar() {
   useEffect(() => {
     fetchContas();
     fetchContasBancarias();
-    fetchPlanoContas();
   }, []);
   const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'default';
@@ -489,18 +471,25 @@ export default function ContasPagar() {
 
       <ViewInfoDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} data={selectedConta} type="pagar" />
 
-      <EditParcelaDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} onSave={handleSaveEdit} initialData={selectedConta ? {
-      id: selectedConta.id,
-      data_vencimento: selectedConta.data_vencimento,
-      descricao: selectedConta.descricao,
-      plano_conta_id: selectedConta.plano_conta_id,
-      centro_custo: selectedConta.centro_custo,
-      conta_bancaria_id: selectedConta.conta_bancaria_id,
-      valor_original: selectedConta.valor_original || selectedConta.valor_parcela,
-      juros: selectedConta.juros,
-      multa: selectedConta.multa,
-      desconto: selectedConta.desconto
-    } : undefined} contasBancarias={contasBancarias} planoContas={planoContas} />
+      <EditParcelaDialog 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen} 
+        onSave={handleSaveEdit} 
+        tipo="saida"
+        initialData={selectedConta ? {
+          id: selectedConta.id,
+          data_vencimento: selectedConta.data_vencimento,
+          descricao: selectedConta.descricao,
+          plano_conta_id: selectedConta.plano_conta_id,
+          centro_custo: selectedConta.centro_custo,
+          conta_bancaria_id: selectedConta.conta_bancaria_id,
+          valor_original: selectedConta.valor_original || selectedConta.valor_parcela,
+          juros: selectedConta.juros,
+          multa: selectedConta.multa,
+          desconto: selectedConta.desconto
+        } : undefined} 
+        contasBancarias={contasBancarias} 
+      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
