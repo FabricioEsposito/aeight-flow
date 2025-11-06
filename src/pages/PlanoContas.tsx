@@ -167,11 +167,22 @@ export default function PlanoContas() {
       setIsDialogOpen(false);
       setEditingConta(null);
       form.reset();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar conta:', error);
+      
+      let errorMessage = "Não foi possível salvar a conta.";
+      
+      if (error.code === '23505') {
+        errorMessage = "Já existe uma conta com este código. Por favor, use um código diferente.";
+      } else if (error.code === '22001') {
+        errorMessage = "Um dos campos excedeu o tamanho máximo permitido.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erro",
-        description: "Não foi possível salvar a conta.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
