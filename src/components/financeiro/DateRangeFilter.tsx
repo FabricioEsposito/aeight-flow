@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export type DateRangePreset = 
+  | 'todo-periodo'
   | 'hoje'
   | 'esta-semana'
   | 'este-mes'
@@ -68,6 +69,7 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
   };
 
   const presetOptions = [
+    { value: 'todo-periodo', label: 'Todo período' },
     { value: 'hoje', label: 'Hoje' },
     { value: 'esta-semana', label: 'Esta semana' },
     { value: 'este-mes', label: 'Este mês' },

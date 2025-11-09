@@ -31,7 +31,7 @@ export default function Fornecedores() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
@@ -106,6 +106,8 @@ export default function Fornecedores() {
     const today = new Date();
     
     switch (datePreset) {
+      case 'todo-periodo':
+        return undefined;
       case 'hoje':
         return { from: startOfDay(today), to: endOfDay(today) };
       case 'esta-semana':
@@ -121,7 +123,7 @@ export default function Fornecedores() {
       case 'periodo-personalizado':
         return customDateRange;
       default:
-        return { from: startOfMonth(today), to: endOfMonth(today) };
+        return undefined;
     }
   };
 
