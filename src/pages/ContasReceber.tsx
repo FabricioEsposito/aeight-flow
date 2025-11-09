@@ -43,6 +43,7 @@ interface ContaReceber {
   centro_custo?: string;
   clientes?: {
     razao_social: string;
+    cnpj_cpf: string;
   };
   contratos?: {
     numero: string;
@@ -77,7 +78,8 @@ export default function ContasReceber() {
         .select(`
           *,
           clientes:cliente_id (
-            razao_social
+            razao_social,
+            cnpj_cpf
           ),
           parcelas_contrato:parcela_id (
             contrato_id,
@@ -335,6 +337,16 @@ export default function ContasReceber() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const formatCnpjCpf = (value: string) => {
+    if (!value) return '';
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else {
+      return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+  };
+
   // Cálculos para resumo
   const totalPendente = contas
     .filter(c => c.status === 'pendente')
@@ -472,8 +484,17 @@ export default function ContasReceber() {
               {filteredContas.map((conta) => (
                 <TableRow key={conta.id}>
                   <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
-                  <TableCell className="font-medium">
-                    {conta.clientes?.razao_social || '-'}
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {conta.clientes?.razao_social || '-'}
+                      </span>
+                      {conta.clientes?.cnpj_cpf && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatCnpjCpf(conta.clientes.cnpj_cpf)}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {conta.contratos?.numero ? (

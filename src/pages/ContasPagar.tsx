@@ -32,6 +32,7 @@ interface ContaPagar {
   centro_custo?: string;
   fornecedores?: {
     razao_social: string;
+    cnpj_cpf: string;
   };
   contratos?: {
     numero: string;
@@ -69,7 +70,8 @@ export default function ContasPagar() {
       } = await supabase.from('contas_pagar').select(`
           *,
           fornecedores:fornecedor_id (
-            razao_social
+            razao_social,
+            cnpj_cpf
           ),
           parcelas_contrato:parcela_id (
             numero_parcela,
@@ -326,6 +328,16 @@ export default function ContasPagar() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const formatCnpjCpf = (value: string) => {
+    if (!value) return '';
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else {
+      return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+  };
+
   // Cálculos para resumo
   const totalPendente = contas.filter(c => c.status_pagamento === 'pendente').reduce((acc, c) => acc + c.valor_parcela, 0);
   const totalVencido = contas.filter(c => {
@@ -440,8 +452,17 @@ export default function ContasPagar() {
             <TableBody>
               {filteredContas.map(conta => <TableRow key={conta.id}>
                   <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
-                  <TableCell className="font-medium">
-                    {conta.fornecedores?.razao_social || '-'}
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {conta.fornecedores?.razao_social || '-'}
+                      </span>
+                      {conta.fornecedores?.cnpj_cpf && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatCnpjCpf(conta.fornecedores.cnpj_cpf)}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {conta.contratos?.numero ? (
