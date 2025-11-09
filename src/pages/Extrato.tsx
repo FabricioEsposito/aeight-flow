@@ -224,7 +224,7 @@ export default function Extrato() {
               placeholder="Buscar movimentações..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-background"
             />
           </div>
 
@@ -232,7 +232,7 @@ export default function Extrato() {
             <SelectTrigger>
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="entrada">Entradas</SelectItem>
               <SelectItem value="saida">Saídas</SelectItem>
@@ -243,7 +243,7 @@ export default function Extrato() {
             <SelectTrigger>
               <SelectValue placeholder="Conciliação" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="sim">Conciliados</SelectItem>
               <SelectItem value="nao">Não Conciliados</SelectItem>

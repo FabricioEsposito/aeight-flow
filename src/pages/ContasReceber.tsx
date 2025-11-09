@@ -423,7 +423,7 @@ export default function ContasReceber() {
               placeholder="Buscar por descrição ou cliente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-background"
             />
           </div>
 
@@ -431,7 +431,7 @@ export default function ContasReceber() {
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Conta bancária" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todas">Todas as contas</SelectItem>
               {contasBancarias.map((conta) => (
                 <SelectItem key={conta.id} value={conta.id}>
@@ -445,7 +445,7 @@ export default function ContasReceber() {
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Status</SelectItem>
               <SelectItem value="pendente">Pendentes</SelectItem>
               <SelectItem value="vencido">Vencidos</SelectItem>

@@ -395,14 +395,14 @@ export default function ContasPagar() {
 
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input placeholder="Buscar por descrição ou fornecedor..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+            <Input placeholder="Buscar por descrição ou fornecedor..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 bg-background" />
           </div>
 
           <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Conta bancária" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todas">Todas as contas</SelectItem>
               {contasBancarias.map(conta => <SelectItem key={conta.id} value={conta.id}>
                   {conta.descricao}
@@ -414,7 +414,7 @@ export default function ContasPagar() {
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Status</SelectItem>
               <SelectItem value="pendente">Pendentes</SelectItem>
               <SelectItem value="vencido">Vencidos</SelectItem>
