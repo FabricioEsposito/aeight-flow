@@ -144,6 +144,7 @@ export default function Fornecedores() {
   });
 
   const formatCnpjCpf = (value: string) => {
+    if (!value) return '';
     const numbers = value.replace(/\D/g, '');
     if (numbers.length <= 11) {
       return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
@@ -241,8 +242,7 @@ export default function Fornecedores() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Razão Social</TableHead>
-                <TableHead>CNPJ/CPF</TableHead>
+                <TableHead>Fornecedor</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>E-mail</TableHead>
@@ -253,8 +253,14 @@ export default function Fornecedores() {
             <TableBody>
               {filteredFornecedores.map((fornecedor) => (
                 <TableRow key={fornecedor.id}>
-                  <TableCell className="font-medium">{fornecedor.razao_social}</TableCell>
-                  <TableCell>{fornecedor.cnpj_cpf}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{fornecedor.razao_social}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formatCnpjCpf(fornecedor.cnpj_cpf)}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={fornecedor.tipo_pessoa === 'juridica' ? 'default' : 'secondary'}>
                       {fornecedor.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
