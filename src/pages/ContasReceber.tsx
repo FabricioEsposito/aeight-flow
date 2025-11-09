@@ -459,39 +459,35 @@ export default function ContasReceber() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Descrição</TableHead>
                 <TableHead>Contrato</TableHead>
+                <TableHead>Descrição</TableHead>
                 <TableHead>Valor</TableHead>
-                <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Número NF</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredContas.map((conta) => (
                 <TableRow key={conta.id}>
+                  <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell className="font-medium">
                     {conta.clientes?.razao_social || '-'}
                   </TableCell>
-                  <TableCell>{conta.descricao}</TableCell>
                   <TableCell>
                     {conta.contratos?.numero ? (
                       <Badge variant="outline">{conta.contratos.numero}</Badge>
                     ) : '-'}
                   </TableCell>
+                  <TableCell>{conta.descricao}</TableCell>
                   <TableCell className="font-semibold text-emerald-600">
                     {formatCurrency(conta.valor)}
                   </TableCell>
-                  <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(conta.status, conta.data_vencimento)}>
                       {getStatusLabel(conta.status, conta.data_vencimento)}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {conta.numero_nf || '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <ActionsDropdown

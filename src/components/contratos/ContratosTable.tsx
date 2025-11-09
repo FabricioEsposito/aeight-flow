@@ -67,11 +67,11 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Número</TableHead>
-            <TableHead>Tipo</TableHead>
+            <TableHead>Data</TableHead>
             <TableHead>Cliente/Fornecedor</TableHead>
-            <TableHead>Data Início</TableHead>
-            <TableHead className="text-right">Valor Total</TableHead>
+            <TableHead>Contrato</TableHead>
+            <TableHead>Descrição</TableHead>
+            <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
@@ -86,12 +86,7 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
           ) : (
             contratos.map((contrato) => (
               <TableRow key={contrato.id}>
-                <TableCell className="font-medium">{contrato.numero_contrato}</TableCell>
-                <TableCell>
-                  <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>
-                    {contrato.tipo_contrato === 'venda' ? 'Venda' : 'Compra'}
-                  </Badge>
-                </TableCell>
+                <TableCell>{formatDate(contrato.data_inicio)}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium">
@@ -106,8 +101,15 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>{formatDate(contrato.data_inicio)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(contrato.valor_total)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{contrato.numero_contrato}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>
+                    {contrato.tipo_contrato === 'venda' ? 'Venda' : 'Compra'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-semibold">{formatCurrency(contrato.valor_total)}</TableCell>
                 <TableCell>
                   <Badge variant={contrato.status === 'ativo' ? 'default' : 'secondary'}>
                     {contrato.status}

@@ -428,28 +428,30 @@ export default function ContasPagar() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Data</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Contrato</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Parcela</TableHead>
                 <TableHead>Valor</TableHead>
-                <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredContas.map(conta => <TableRow key={conta.id}>
+                  <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell className="font-medium">
                     {conta.fornecedores?.razao_social || '-'}
                   </TableCell>
-                  <TableCell>{conta.contratos?.numero || '-'}</TableCell>
+                  <TableCell>
+                    {conta.contratos?.numero ? (
+                      <Badge variant="outline">{conta.contratos.numero}</Badge>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
-                  <TableCell>{conta.numero_parcela}</TableCell>
                   <TableCell className="font-semibold text-destructive">
                     {formatCurrency(conta.valor_parcela)}
                   </TableCell>
-                  <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(conta.status_pagamento, conta.data_vencimento)}>
                       {getStatusLabel(conta.status_pagamento, conta.data_vencimento)}
