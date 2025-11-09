@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ContratosTable } from '@/components/contratos/ContratosTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
 interface Contrato {
   id: string;
@@ -27,6 +29,8 @@ export default function Contratos() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
 
   const fetchContratos = async () => {
     try {
@@ -113,6 +117,29 @@ export default function Contratos() {
     }
   };
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (datePreset) {
+      case 'hoje':
+        return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana':
+        return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+      case 'este-mes':
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano':
+        return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses':
+        return { from: subMonths(today, 12), to: today };
+      case 'periodo-personalizado':
+        return customDateRange;
+      default:
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
+
   const filteredContratos = contratos.filter(contrato => {
     const matchesSearch = 
       contrato.numero_contrato.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,7 +148,14 @@ export default function Contratos() {
     
     const matchesType = filterType === 'todos' || contrato.tipo_contrato === filterType;
 
-    return matchesSearch && matchesType;
+    let matchesDate = true;
+    const dateRange = getDateRange();
+    if (dateRange?.from && dateRange?.to) {
+      const dataInicio = new Date(contrato.data_inicio);
+      matchesDate = dataInicio >= dateRange.from && dataInicio <= dateRange.to;
+    }
+
+    return matchesSearch && matchesType && matchesDate;
   });
 
 
@@ -153,6 +187,15 @@ export default function Contratos() {
 
       <Card className="p-6">
         <div className="flex gap-4 mb-6">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomDateRange(range);
+            }}
+            customRange={customDateRange}
+          />
+
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
