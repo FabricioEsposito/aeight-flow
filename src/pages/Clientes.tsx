@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, MoreVertical, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -104,6 +104,30 @@ export default function Clientes() {
       toast({
         title: "Erro",
         description: "Não foi possível excluir o cliente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInactivate = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ status: 'inativo' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cliente inativado com sucesso!",
+      });
+      fetchClientes();
+    } catch (error) {
+      console.error('Erro ao inativar cliente:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível inativar o cliente.",
         variant: "destructive",
       });
     }
@@ -293,6 +317,14 @@ export default function Clientes() {
                           <span>Editar</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleInactivate(cliente.id)} 
+                          className="cursor-pointer"
+                          disabled={cliente.status === 'inativo'}
+                        >
+                          <XCircle className="w-4 h-4 mr-2 text-amber-500" />
+                          <span>Inativar</span>
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(cliente.id)} className="cursor-pointer text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           <span>Excluir</span>

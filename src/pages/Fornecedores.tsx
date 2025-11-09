@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, Eye, MoreVertical } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, MoreVertical, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -104,6 +104,30 @@ export default function Fornecedores() {
       toast({
         title: "Erro",
         description: "Não foi possível excluir o fornecedor.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInactivate = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('fornecedores')
+        .update({ status: 'inativo' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Fornecedor inativado com sucesso!",
+      });
+      fetchFornecedores();
+    } catch (error) {
+      console.error('Erro ao inativar fornecedor:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível inativar o fornecedor.",
         variant: "destructive",
       });
     }
@@ -293,6 +317,14 @@ export default function Fornecedores() {
                           <span>Editar</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleInactivate(fornecedor.id)} 
+                          className="cursor-pointer"
+                          disabled={fornecedor.status === 'inativo'}
+                        >
+                          <XCircle className="w-4 h-4 mr-2 text-amber-500" />
+                          <span>Inativar</span>
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(fornecedor.id)} className="cursor-pointer text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           <span>Excluir</span>
