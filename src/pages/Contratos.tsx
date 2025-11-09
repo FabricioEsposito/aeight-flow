@@ -159,7 +159,7 @@ export default function Contratos() {
               placeholder="Buscar por número do contrato ou cliente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-background"
             />
           </div>
           
@@ -167,7 +167,7 @@ export default function Contratos() {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Tipo de Contrato" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Contratos</SelectItem>
               <SelectItem value="venda">Contratos de Venda</SelectItem>
               <SelectItem value="compra">Contratos de Compra</SelectItem>

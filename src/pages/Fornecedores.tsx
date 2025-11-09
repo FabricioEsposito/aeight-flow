@@ -165,7 +165,7 @@ export default function Fornecedores() {
               placeholder="Buscar por nome ou CNPJ/CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-background"
             />
           </div>
           
@@ -173,7 +173,7 @@ export default function Fornecedores() {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Status</SelectItem>
               <SelectItem value="ativo">Ativos</SelectItem>
               <SelectItem value="inativo">Inativos</SelectItem>
@@ -184,7 +184,7 @@ export default function Fornecedores() {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Tipos</SelectItem>
               <SelectItem value="fisica">Pessoa Física</SelectItem>
               <SelectItem value="juridica">Pessoa Jurídica</SelectItem>

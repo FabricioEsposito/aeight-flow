@@ -361,7 +361,7 @@ export default function ContasBancarias() {
               placeholder="Buscar por descrição ou banco..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-background"
             />
           </div>
           
@@ -369,7 +369,7 @@ export default function ContasBancarias() {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Tipos</SelectItem>
               <SelectItem value="corrente">Conta Corrente</SelectItem>
               <SelectItem value="poupanca">Poupança</SelectItem>
@@ -381,7 +381,7 @@ export default function ContasBancarias() {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Status</SelectItem>
               <SelectItem value="ativo">Ativos</SelectItem>
               <SelectItem value="inativo">Inativos</SelectItem>

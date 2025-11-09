@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Edit, Trash2, FileDown } from "lucide-react";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,34 +133,21 @@ export default function Clientes() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
                   placeholder="Buscar por Razão Social ou CNPJ..."
-                  className="pl-10"
+                  className="pl-10 bg-background"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant={statusFilter === "todos" ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setStatusFilter("todos")}
-                >
-                  Todos
-                </Button>
-                <Button 
-                  variant={statusFilter === "ativo" ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setStatusFilter("ativo")}
-                >
-                  Ativos
-                </Button>
-                <Button 
-                  variant={statusFilter === "inativo" ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setStatusFilter("inativo")}
-                >
-                  Inativos
-                </Button>
-              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="todos">Todos os Status</SelectItem>
+                  <SelectItem value="ativo">Ativos</SelectItem>
+                  <SelectItem value="inativo">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

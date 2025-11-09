@@ -34,33 +34,33 @@ export function ActionsDropdown({
           <MoreVertical className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 bg-background z-50">
         {isOpen && (
           <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
-            <Edit className="w-4 h-4 mr-2 text-blue-600" />
-            Editar parcela
+            <Edit className="w-4 h-4 mr-2 text-blue-500" />
+            <span>Editar parcela</span>
           </DropdownMenuItem>
         )}
         {status !== 'pago' && (
           <DropdownMenuItem onClick={onMarkAsPaid} className="cursor-pointer">
-            <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" />
-            Marcar como {status === 'pendente' ? 'recebido' : 'pago'}
+            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />
+            <span>Marcar como {status === 'pendente' ? 'recebido' : 'pago'}</span>
           </DropdownMenuItem>
         )}
         {status === 'pago' && (
           <DropdownMenuItem onClick={onMarkAsOpen} className="cursor-pointer">
-            <XCircle className="w-4 h-4 mr-2 text-amber-600" />
-            Voltar em aberto
+            <XCircle className="w-4 h-4 mr-2 text-amber-500" />
+            <span>Voltar em aberto</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onClick={onView} className="cursor-pointer">
-          <Eye className="w-4 h-4 mr-2 text-blue-600" />
-          Visualizar informações
+          <Eye className="w-4 h-4 mr-2 text-blue-500" />
+          <span>Visualizar informações</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive">
           <Trash2 className="w-4 h-4 mr-2" />
-          Excluir parcela
+          <span>Excluir parcela</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
