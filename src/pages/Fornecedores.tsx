@@ -10,6 +10,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { FornecedorForm } from '@/components/fornecedores/FornecedorForm';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
 interface Fornecedor {
   id: string;
@@ -29,6 +31,8 @@ export default function Fornecedores() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
   const { toast } = useToast();
@@ -98,13 +102,43 @@ export default function Fornecedores() {
     }
   };
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (datePreset) {
+      case 'hoje':
+        return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana':
+        return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+      case 'este-mes':
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano':
+        return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses':
+        return { from: subMonths(today, 12), to: today };
+      case 'periodo-personalizado':
+        return customDateRange;
+      default:
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
+
   const filteredFornecedores = fornecedores.filter(fornecedor => {
     const matchesSearch = fornecedor.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          fornecedor.cnpj_cpf.includes(searchTerm);
     const matchesStatus = statusFilter === 'todos' || fornecedor.status === statusFilter;
     const matchesTipo = tipoFilter === 'todos' || fornecedor.tipo_pessoa === tipoFilter;
 
-    return matchesSearch && matchesStatus && matchesTipo;
+    let matchesDate = true;
+    const dateRange = getDateRange();
+    if (dateRange?.from && dateRange?.to) {
+      const createdAt = new Date(fornecedor.created_at);
+      matchesDate = createdAt >= dateRange.from && createdAt <= dateRange.to;
+    }
+
+    return matchesSearch && matchesStatus && matchesTipo && matchesDate;
   });
 
   const formatCnpjCpf = (value: string) => {
@@ -159,6 +193,15 @@ export default function Fornecedores() {
 
       <Card className="p-6">
         <div className="flex gap-4 mb-6">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomDateRange(range);
+            }}
+            customRange={customDateRange}
+          />
+
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input

@@ -10,12 +10,16 @@ import { Plus, Search, Edit, Trash2, FileDown } from "lucide-react";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
 export default function Clientes() {
   const [clientes, setClientes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<any>(null);
   const { toast } = useToast();
@@ -44,6 +48,29 @@ export default function Clientes() {
     carregarClientes();
   }, []);
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (datePreset) {
+      case 'hoje':
+        return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana':
+        return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+      case 'este-mes':
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano':
+        return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses':
+        return { from: subMonths(today, 12), to: today };
+      case 'periodo-personalizado':
+        return customDateRange;
+      default:
+        return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
+
   const clientesFiltrados = clientes.filter((cliente) => {
     const matchesSearch = 
       cliente.razao_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -54,7 +81,14 @@ export default function Clientes() {
       (statusFilter === "ativo" && cliente.status === "ativo") ||
       (statusFilter === "inativo" && cliente.status === "inativo");
 
-    return matchesSearch && matchesStatus;
+    let matchesDate = true;
+    const dateRange = getDateRange();
+    if (dateRange?.from && dateRange?.to) {
+      const createdAt = new Date(cliente.created_at);
+      matchesDate = createdAt >= dateRange.from && createdAt <= dateRange.to;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const handleNovoCliente = () => {
@@ -129,6 +163,15 @@ export default function Clientes() {
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4">
+              <DateRangeFilter
+                value={datePreset}
+                onChange={(preset, range) => {
+                  setDatePreset(preset);
+                  if (range) setCustomDateRange(range);
+                }}
+                customRange={customDateRange}
+              />
+
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
