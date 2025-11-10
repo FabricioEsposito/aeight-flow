@@ -14,6 +14,7 @@ import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { ServicosMultiSelect } from '@/components/contratos/ServicosMultiSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
+import { ParcelamentoCustomizado, ParcelaCustomizada } from '@/components/contratos/ParcelamentoCustomizado';
 import { DateInput } from '@/components/ui/date-input';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,6 +85,8 @@ export default function NovoContrato() {
   
   // Parcelamento (para venda avulsa e compra)
   const [numeroParcelas, setNumeroParcelas] = useState(1);
+  const [tipoParcelamento, setTipoParcelamento] = useState<'simples' | 'customizado'>('simples');
+  const [parcelasCustomizadas, setParcelasCustomizadas] = useState<any[]>([]);
 
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
@@ -257,7 +260,7 @@ export default function NovoContrato() {
 
   const calcularParcelas = () => {
     const valorTotal = calcularValorTotal();
-    const parcelas: { numero: number; data: Date; valor: number }[] = [];
+    const parcelas: { numero: number; data: Date; valor: number; tipo?: string; descricao?: string }[] = [];
 
     if (!dataInicio || valorTotal <= 0) return parcelas;
 
@@ -272,7 +275,8 @@ export default function NovoContrato() {
         parcelas.push({
           numero: numeroParcela,
           data: dataVenc,
-          valor: valorTotal
+          valor: valorTotal,
+          tipo: 'normal'
         });
 
         switch (periodoRecorrencia) {
@@ -292,18 +296,37 @@ export default function NovoContrato() {
         numeroParcela++;
       }
     } else {
-      // Venda avulsa ou compra - gera parcelas baseadas no número de parcelas
-      const valorParcela = valorTotal / numeroParcelas;
-      
-      for (let i = 0; i < numeroParcelas; i++) {
-        const dataGeracao = addMonths(dataInicio, i);
-        const dataVenc = calcularDataVencimento(dataGeracao);
-        
-        parcelas.push({
-          numero: i + 1,
-          data: dataVenc,
-          valor: valorParcela
+      // Venda avulsa ou compra
+      if (tipoParcelamento === 'customizado' && parcelasCustomizadas.length > 0) {
+        // Parcelamento customizado com percentuais
+        parcelasCustomizadas.forEach((parcelaCustom, index) => {
+          const dataGeracao = addMonths(dataInicio, index);
+          const dataVenc = parcelaCustom.tipo === 'go-live' ? dataInicio : calcularDataVencimento(dataGeracao);
+          const valorParcela = (valorTotal * parcelaCustom.percentual) / 100;
+          
+          parcelas.push({
+            numero: index + 1,
+            data: dataVenc,
+            valor: valorParcela,
+            tipo: parcelaCustom.tipo,
+            descricao: parcelaCustom.descricao
+          });
         });
+      } else {
+        // Parcelamento simples - divisão igual
+        const valorParcela = valorTotal / numeroParcelas;
+        
+        for (let i = 0; i < numeroParcelas; i++) {
+          const dataGeracao = addMonths(dataInicio, i);
+          const dataVenc = calcularDataVencimento(dataGeracao);
+          
+          parcelas.push({
+            numero: i + 1,
+            data: dataVenc,
+            valor: valorParcela,
+            tipo: 'normal'
+          });
+        }
       }
     }
 
@@ -330,6 +353,19 @@ export default function NovoContrato() {
       if (itens.length === 0) {
         toast({ title: "Erro", description: "Adicione pelo menos um item ao contrato", variant: "destructive" });
         return;
+      }
+
+      // Validar parcelamento customizado
+      if (tipoParcelamento === 'customizado' && parcelasCustomizadas.length > 0) {
+        const totalPercentual = parcelasCustomizadas.reduce((acc, p) => acc + p.percentual, 0);
+        if (Math.abs(totalPercentual - 100) > 0.01) {
+          toast({ 
+            title: "Erro", 
+            description: "O total dos percentuais das parcelas deve ser 100%", 
+            variant: "destructive" 
+          });
+          return;
+        }
       }
 
       const valorTotal = calcularValorTotal();
@@ -391,7 +427,7 @@ export default function NovoContrato() {
         numero_parcela: p.numero,
         valor: p.valor,
         data_vencimento: p.data.toISOString().split('T')[0],
-        status: 'pendente',
+        status: p.tipo === 'go-live' ? 'aguardando_conclusao' : 'pendente',
         tipo: tipoContrato === 'venda' ? 'receber' : 'pagar',
         conta_bancaria_id: contaBancariaId
       }));
@@ -403,9 +439,11 @@ export default function NovoContrato() {
 
       if (parcelasError) throw parcelasError;
 
-      // Integrar com contas a receber/pagar
-      if (tipoContrato === 'venda') {
-        const contasReceberData = parcelasInseridas.map(parcela => ({
+      // Integrar com contas a receber/pagar (exceto parcelas go-live)
+      const parcelasNormais = parcelasInseridas.filter(p => p.status !== 'aguardando_conclusao');
+      
+      if (tipoContrato === 'venda' && parcelasNormais.length > 0) {
+        const contasReceberData = parcelasNormais.map(parcela => ({
           parcela_id: parcela.id,
           cliente_id: clienteId,
           valor: parcela.valor,
@@ -427,8 +465,8 @@ export default function NovoContrato() {
           .insert(contasReceberData);
 
         if (receberError) throw receberError;
-      } else {
-        const contasPagarData = parcelasInseridas.map(parcela => ({
+      } else if (parcelasNormais.length > 0) {
+        const contasPagarData = parcelasNormais.map(parcela => ({
           parcela_id: parcela.id,
           fornecedor_id: fornecedorId,
           valor: parcela.valor,
@@ -922,26 +960,65 @@ export default function NovoContrato() {
 
               {/* Parcelamento (apenas para venda avulsa e compra) */}
               {(tipoVenda === 'avulsa' || tipoContrato === 'compra') && (
-                <div className="space-y-2">
-                  <Label>Número de Parcelas *</Label>
-                  <Select 
-                    value={numeroParcelas.toString()} 
-                    onValueChange={(value) => setNumeroParcelas(Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num}x de {new Intl.NumberFormat('pt-BR', { 
-                            style: 'currency', 
-                            currency: 'BRL' 
-                          }).format(calcularValorTotal() / num)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tipo de Parcelamento *</Label>
+                    <RadioGroup 
+                      value={tipoParcelamento} 
+                      onValueChange={(value: string) => {
+                        setTipoParcelamento(value as 'simples' | 'customizado');
+                        if (value === 'customizado' && parcelasCustomizadas.length === 0) {
+                          // Inicializar com uma parcela de 100%
+                          setParcelasCustomizadas([{
+                            id: Math.random().toString(),
+                            percentual: 100,
+                            tipo: 'normal',
+                            descricao: ''
+                          }]);
+                        }
+                      }}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="simples" id="simples" />
+                        <Label htmlFor="simples">Divisão igual</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="customizado" id="customizado" />
+                        <Label htmlFor="customizado">Percentuais customizados</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {tipoParcelamento === 'simples' ? (
+                    <div className="space-y-2">
+                      <Label>Número de Parcelas *</Label>
+                      <Select 
+                        value={numeroParcelas.toString()} 
+                        onValueChange={(value) => setNumeroParcelas(Number(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num}x de {new Intl.NumberFormat('pt-BR', { 
+                                style: 'currency', 
+                                currency: 'BRL' 
+                              }).format(calcularValorTotal() / num)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <ParcelamentoCustomizado
+                      parcelas={parcelasCustomizadas}
+                      onChange={setParcelasCustomizadas}
+                      valorTotal={calcularValorTotal()}
+                    />
+                  )}
                 </div>
               )}
 
