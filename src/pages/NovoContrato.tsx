@@ -374,6 +374,7 @@ export default function NovoContrato() {
       setNumeroContrato(novoNumeroContrato);
 
       const valorTotal = calcularValorTotal();
+      const valorBruto = calcularSubtotal();
       const contratoData: any = {
         numero_contrato: novoNumeroContrato,
         tipo_contrato: tipoContrato,
@@ -390,6 +391,7 @@ export default function NovoContrato() {
         descricao_servico: itens.map(item => `${item.detalhes} (${item.quantidade}x R$ ${item.valorUnitario})`).join('\n'),
         quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
         valor_unitario: calcularSubtotal() / itens.reduce((acc, item) => acc + item.quantidade, 0),
+        valor_bruto: valorBruto,
         desconto_tipo: descontoTipo,
         desconto_percentual: descontoPercentual,
         desconto_valor: descontoValor,

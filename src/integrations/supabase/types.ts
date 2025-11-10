@@ -332,6 +332,7 @@ export type Database = {
           tipo_contrato: string
           tipo_pagamento: string
           updated_at: string | null
+          valor_bruto: number | null
           valor_total: number
           valor_unitario: number
           vendedor_responsavel: string | null
@@ -364,6 +365,7 @@ export type Database = {
           tipo_contrato: string
           tipo_pagamento: string
           updated_at?: string | null
+          valor_bruto?: number | null
           valor_total: number
           valor_unitario: number
           vendedor_responsavel?: string | null
@@ -396,6 +398,7 @@ export type Database = {
           tipo_contrato?: string
           tipo_pagamento?: string
           updated_at?: string | null
+          valor_bruto?: number | null
           valor_total?: number
           valor_unitario?: number
           vendedor_responsavel?: string | null

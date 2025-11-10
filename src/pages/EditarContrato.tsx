@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,6 +90,87 @@ export default function EditarContrato() {
       setParcelas(data || []);
     } catch (error) {
       console.error('Erro ao buscar parcelas:', error);
+    }
+  };
+
+  const handleConcluirGoLive = async (parcelaId: string) => {
+    try {
+      // Buscar informações do contrato e da parcela
+      const { data: parcela, error: parcelaError } = await supabase
+        .from('parcelas_contrato')
+        .select('*, contratos(*)')
+        .eq('id', parcelaId)
+        .single();
+
+      if (parcelaError) throw parcelaError;
+
+      // Atualizar status da parcela para pendente
+      const { error: updateError } = await supabase
+        .from('parcelas_contrato')
+        .update({ status: 'pendente' })
+        .eq('id', parcelaId);
+
+      if (updateError) throw updateError;
+
+      // Criar lançamento em contas a receber/pagar
+      const contrato = parcela.contratos;
+      if (contrato.tipo_contrato === 'venda') {
+        const { error: receberError } = await supabase
+          .from('contas_receber')
+          .insert({
+            parcela_id: parcelaId,
+            cliente_id: contrato.cliente_id,
+            valor: parcela.valor,
+            valor_original: parcela.valor,
+            data_vencimento: parcela.data_vencimento,
+            data_competencia: new Date().toISOString().split('T')[0],
+            plano_conta_id: contrato.plano_contas_id,
+            conta_bancaria_id: parcela.conta_bancaria_id,
+            centro_custo: contrato.centro_custo,
+            status: 'pendente',
+            descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contrato.numero_contrato} - Go Live`,
+            juros: 0,
+            multa: 0,
+            desconto: 0
+          });
+
+        if (receberError) throw receberError;
+      } else {
+        const { error: pagarError } = await supabase
+          .from('contas_pagar')
+          .insert({
+            parcela_id: parcelaId,
+            fornecedor_id: contrato.fornecedor_id,
+            valor: parcela.valor,
+            valor_original: parcela.valor,
+            data_vencimento: parcela.data_vencimento,
+            data_competencia: new Date().toISOString().split('T')[0],
+            plano_conta_id: contrato.plano_contas_id,
+            conta_bancaria_id: parcela.conta_bancaria_id,
+            centro_custo: contrato.centro_custo,
+            status: 'pendente',
+            descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contrato.numero_contrato} - Go Live`,
+            juros: 0,
+            multa: 0,
+            desconto: 0
+          });
+
+        if (pagarError) throw pagarError;
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Parcela Go Live lançada com sucesso!",
+      });
+
+      fetchParcelas();
+    } catch (error) {
+      console.error('Erro ao concluir Go Live:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível concluir o Go Live.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -296,6 +378,8 @@ export default function EditarContrato() {
                 <TableHead>Parcela</TableHead>
                 <TableHead>Data Vencimento</TableHead>
                 <TableHead>Valor (R$)</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -307,6 +391,7 @@ export default function EditarContrato() {
                       type="date"
                       value={parcela.data_vencimento}
                       onChange={(e) => handleParcelaChange(index, 'data_vencimento', e.target.value)}
+                      disabled={parcela.status === 'aguardando_conclusao'}
                     />
                   </TableCell>
                   <TableCell>
@@ -314,6 +399,29 @@ export default function EditarContrato() {
                       value={parcela.valor}
                       onChange={(value) => handleParcelaChange(index, 'valor', value)}
                     />
+                  </TableCell>
+                  <TableCell>
+                    {parcela.status === 'aguardando_conclusao' ? (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                        Go Live
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">
+                        {parcela.status === 'pendente' ? 'Pendente' : parcela.status}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {parcela.status === 'aguardando_conclusao' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleConcluirGoLive(parcela.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Concluir Go Live
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

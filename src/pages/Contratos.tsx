@@ -17,6 +17,9 @@ interface Contrato {
   tipo_contrato: 'venda' | 'compra';
   data_inicio: string;
   valor_total: number;
+  valor_bruto?: number;
+  quantidade?: number;
+  valor_unitario?: number;
   status: string;
   clientes?: { razao_social: string; cnpj_cpf: string };
   fornecedores?: { razao_social: string; cnpj_cpf: string };
