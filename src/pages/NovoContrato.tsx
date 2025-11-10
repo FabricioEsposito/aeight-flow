@@ -80,9 +80,14 @@ export default function NovoContrato() {
   const [tipoPagamento, setTipoPagamento] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
+  const [diaVencimento, setDiaVencimento] = useState('5');
+
+  // Serviços disponíveis
+  const [servicos, setServicos] = useState<any[]>([]);
 
   useEffect(() => {
     fetchContasBancarias();
+    fetchServicos();
     if (!id) {
       setNumeroContrato(gerarNumeroContrato());
     } else {
@@ -103,6 +108,15 @@ export default function NovoContrato() {
       .select('*')
       .eq('status', 'ativo');
     setContasBancarias(data || []);
+  };
+
+  const fetchServicos = async () => {
+    const { data } = await supabase
+      .from('servicos')
+      .select('*')
+      .eq('status', 'ativo')
+      .order('nome');
+    setServicos(data || []);
   };
 
   const fetchContrato = async (contratoId: string) => {
@@ -178,10 +192,17 @@ export default function NovoContrato() {
       return;
     }
 
+    // Buscar nome do serviço se foi selecionado
+    let servicoNome = itemAtual.servicoNome;
+    if (itemAtual.servicoId && !servicoNome) {
+      const servicoSelecionado = servicos.find(s => s.id === itemAtual.servicoId);
+      servicoNome = servicoSelecionado ? servicoSelecionado.nome : '';
+    }
+
     const novoItem: ItemContrato = {
       id: Math.random().toString(),
       servicoId: itemAtual.servicoId,
-      servicoNome: itemAtual.servicoNome,
+      servicoNome: servicoNome,
       detalhes: itemAtual.detalhes || '',
       quantidade: itemAtual.quantidade || 1,
       valorUnitario: itemAtual.valorUnitario || 0,
@@ -191,6 +212,7 @@ export default function NovoContrato() {
     setItens([...itens, novoItem]);
     setItemAtual({
       servicoId: '',
+      servicoNome: '',
       detalhes: '',
       quantidade: 1,
       valorUnitario: 0,
@@ -223,6 +245,13 @@ export default function NovoContrato() {
     return valorFinal;
   };
 
+  const calcularDataVencimento = (dataGeracao: Date) => {
+    const diaVenc = parseInt(diaVencimento);
+    const dataVenc = new Date(dataGeracao);
+    dataVenc.setDate(dataVenc.getDate() + diaVenc);
+    return dataVenc;
+  };
+
   const calcularParcelas = () => {
     const valorTotal = calcularValorTotal();
     const parcelas: { numero: number; data: Date; valor: number }[] = [];
@@ -235,9 +264,10 @@ export default function NovoContrato() {
       const dataLimite = tipoTermino === 'periodo' && dataTermino ? dataTermino : addMonths(dataInicio, 12);
 
       while (dataAtual <= dataLimite) {
+        const dataVenc = calcularDataVencimento(dataAtual);
         parcelas.push({
           numero: numeroParcela,
-          data: dataAtual,
+          data: dataVenc,
           valor: valorTotal
         });
 
@@ -259,9 +289,10 @@ export default function NovoContrato() {
       }
     } else {
       // Para venda avulsa ou orçamento, gera uma única parcela
+      const dataVenc = calcularDataVencimento(dataInicio);
       parcelas.push({
         numero: 1,
-        data: dataInicio,
+        data: dataVenc,
         valor: valorTotal
       });
     }
@@ -702,15 +733,24 @@ export default function NovoContrato() {
                     <Label>Produtos/Serviços *</Label>
                     <Select 
                       value={itemAtual.servicoId} 
-                      onValueChange={(value) => setItemAtual({ ...itemAtual, servicoId: value })}
+                      onValueChange={(value) => {
+                        const servicoSelecionado = servicos.find(s => s.id === value);
+                        setItemAtual({ 
+                          ...itemAtual, 
+                          servicoId: value,
+                          servicoNome: servicoSelecionado ? servicoSelecionado.nome : ''
+                        });
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um serviço" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="servico1">Projetos B8one</SelectItem>
-                        <SelectItem value="servico2">Consultoria</SelectItem>
-                        <SelectItem value="servico3">Desenvolvimento</SelectItem>
+                        {servicos.map((servico) => (
+                          <SelectItem key={servico.id} value={servico.id}>
+                            {servico.codigo} - {servico.nome}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -870,6 +910,22 @@ export default function NovoContrato() {
                     <SelectItem value="transferencia">Transferência</SelectItem>
                     <SelectItem value="boleto">Boleto</SelectItem>
                     <SelectItem value="cartao">Cartão de Crédito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Vencer sempre no *</Label>
+                <Select value={diaVencimento} onValueChange={setDiaVencimento}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
+                      <SelectItem key={dia} value={dia.toString()}>
+                        {dia}º dia após geração
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
