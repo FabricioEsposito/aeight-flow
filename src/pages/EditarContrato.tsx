@@ -240,8 +240,8 @@ export default function EditarContrato() {
       const { error: updateError } = await supabase
         .from('parcelas_contrato')
         .update({ 
-          status: 'aguardando_conclusao',
-          data_vencimento: null // Remove a data de vencimento
+          status: 'aguardando_conclusao'
+          // Mantém a data_vencimento pois o campo não aceita null
         })
         .eq('id', parcelaId);
 
