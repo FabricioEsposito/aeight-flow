@@ -1,24 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { ServicosMultiSelect } from '@/components/contratos/ServicosMultiSelect';
+import { VendedorSelect } from '@/components/contratos/VendedorSelect';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
 import { DateInput } from '@/components/ui/date-input';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { addMonths, addDays } from 'date-fns';
+import { addMonths, differenceInMonths } from 'date-fns';
+
+interface ItemContrato {
+  id: string;
+  servicoId?: string;
+  servicoNome?: string;
+  detalhes: string;
+  quantidade: number;
+  valorUnitario: number;
+  total: number;
+}
 
 export default function NovoContrato() {
   const navigate = useNavigate();
@@ -26,23 +36,36 @@ export default function NovoContrato() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Tipo de contrato
+  // Tipo de contrato e venda
   const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>('venda');
+  const [tipoVenda, setTipoVenda] = useState<'orcamento' | 'avulsa' | 'recorrente'>('avulsa');
 
   // Dados básicos
+  const [numeroContrato, setNumeroContrato] = useState('');
   const [clienteId, setClienteId] = useState('');
   const [fornecedorId, setFornecedorId] = useState('');
   const [dataInicio, setDataInicio] = useState<Date | null>(new Date());
-  const [dataFim, setDataFim] = useState<Date | null>(null);
-  const [recorrente, setRecorrente] = useState(false);
-  const [periodoRecorrencia, setPeriodoRecorrencia] = useState('mensal');
-  const [planoContasId, setPlanoContasId] = useState('');
+  const [dataPrimeiraVenda, setDataPrimeiraVenda] = useState<Date | null>(new Date());
+  const [diaGeracao, setDiaGeracao] = useState('');
 
-  // Serviços
-  const [servicosIds, setServicosIds] = useState<string[]>([]);
-  const [descricaoServico, setDescricaoServico] = useState('');
-  const [quantidade, setQuantidade] = useState(1);
-  const [valorUnitario, setValorUnitario] = useState(0);
+  // Recorrência
+  const [periodoRecorrencia, setPeriodoRecorrencia] = useState('mensal');
+  const [tipoTermino, setTipoTermino] = useState<'recorrente' | 'periodo'>('recorrente');
+  const [dataTermino, setDataTermino] = useState<Date | null>(null);
+
+  // Classificação
+  const [planoContasId, setPlanoContasId] = useState('');
+  const [vendedorId, setVendedorId] = useState('');
+  const [centroCusto, setCentroCusto] = useState('');
+
+  // Itens
+  const [itens, setItens] = useState<ItemContrato[]>([]);
+  const [itemAtual, setItemAtual] = useState<Partial<ItemContrato>>({
+    servicoId: '',
+    detalhes: '',
+    quantidade: 1,
+    valorUnitario: 0,
+  });
 
   // Descontos e impostos
   const [descontoTipo, setDescontoTipo] = useState<'percentual' | 'valor'>('percentual');
@@ -53,22 +76,26 @@ export default function NovoContrato() {
   const [cofinsPercentual, setCofinsPercentual] = useState(0);
   const [csllPercentual, setCsllPercentual] = useState(0);
 
-  // Parcelamento
-  const [numeroParcelas, setNumeroParcelas] = useState(1);
-
   // Pagamento
   const [tipoPagamento, setTipoPagamento] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
-
-  // Contas bancárias
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
 
   useEffect(() => {
     fetchContasBancarias();
-    if (id) {
+    if (!id) {
+      setNumeroContrato(gerarNumeroContrato());
+    } else {
       fetchContrato(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    // Atualizar dia de geração quando data de início mudar
+    if (dataInicio) {
+      setDiaGeracao(dataInicio.getDate().toString());
+    }
+  }, [dataInicio]);
 
   const fetchContasBancarias = async () => {
     const { data } = await supabase
@@ -88,25 +115,20 @@ export default function NovoContrato() {
 
       if (error) throw error;
 
-      // Preencher formulário com dados existentes
       setTipoContrato(data.tipo_contrato as 'venda' | 'compra');
+      setNumeroContrato(data.numero_contrato);
       setClienteId(data.cliente_id || '');
       setFornecedorId(data.fornecedor_id || '');
       setDataInicio(data.data_inicio ? new Date(data.data_inicio) : new Date());
-      setDataFim(data.data_fim ? new Date(data.data_fim) : null);
-      setRecorrente(data.recorrente);
+      setDataTermino(data.data_fim ? new Date(data.data_fim) : null);
+      setTipoTermino(data.data_fim ? 'periodo' : 'recorrente');
       setPeriodoRecorrencia(data.periodo_recorrencia || 'mensal');
       setPlanoContasId(data.plano_contas_id);
-      const servicosArray = Array.isArray(data.servicos) ? (data.servicos as string[]) : [];
-      setServicosIds(servicosArray);
-      setDescricaoServico(data.descricao_servico || '');
-      setQuantidade(data.quantidade);
-      setValorUnitario(data.valor_unitario);
+      setCentroCusto(data.centro_custo || '');
       setDescontoTipo((data.desconto_tipo || 'percentual') as 'percentual' | 'valor');
       setDescontoPercentual(data.desconto_percentual || 0);
       setDescontoValor(data.desconto_valor || 0);
       setIrrfPercentual(data.irrf_percentual || 0);
-      // Usar campos separados de PIS e COFINS
       setPisPercentual(data.pis_percentual || 0);
       setCofinsPercentual(data.cofins_percentual || 0);
       setCsllPercentual(data.csll_percentual || 0);
@@ -122,8 +144,69 @@ export default function NovoContrato() {
     }
   };
 
+  const gerarNumeroContrato = () => {
+    const prefixo = tipoContrato === 'venda' ? 'CV' : 'CF';
+    const timestamp = new Date().getTime().toString().slice(-6);
+    return `${prefixo}${timestamp}`;
+  };
+
+  const calcularVigenciaTotal = () => {
+    if (!dataInicio || tipoTermino === 'recorrente') {
+      return 'Indeterminado';
+    }
+    if (!dataTermino) return '-';
+
+    const meses = differenceInMonths(dataTermino, dataInicio);
+    if (meses < 12) {
+      return `${meses} ${meses === 1 ? 'mês' : 'meses'}`;
+    }
+    const anos = Math.floor(meses / 12);
+    const mesesRestantes = meses % 12;
+    if (mesesRestantes === 0) {
+      return `${anos} ${anos === 1 ? 'ano' : 'anos'}`;
+    }
+    return `${anos} ${anos === 1 ? 'ano' : 'anos'} e ${mesesRestantes} ${mesesRestantes === 1 ? 'mês' : 'meses'}`;
+  };
+
+  const adicionarItem = () => {
+    if (!itemAtual.detalhes || !itemAtual.quantidade || !itemAtual.valorUnitario) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos do item",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const novoItem: ItemContrato = {
+      id: Math.random().toString(),
+      servicoId: itemAtual.servicoId,
+      servicoNome: itemAtual.servicoNome,
+      detalhes: itemAtual.detalhes || '',
+      quantidade: itemAtual.quantidade || 1,
+      valorUnitario: itemAtual.valorUnitario || 0,
+      total: (itemAtual.quantidade || 1) * (itemAtual.valorUnitario || 0),
+    };
+
+    setItens([...itens, novoItem]);
+    setItemAtual({
+      servicoId: '',
+      detalhes: '',
+      quantidade: 1,
+      valorUnitario: 0,
+    });
+  };
+
+  const removerItem = (id: string) => {
+    setItens(itens.filter(item => item.id !== id));
+  };
+
+  const calcularSubtotal = () => {
+    return itens.reduce((acc, item) => acc + item.total, 0);
+  };
+
   const calcularValorTotal = () => {
-    const valorBase = quantidade * valorUnitario;
+    const valorBase = calcularSubtotal();
     let desconto = 0;
     
     if (descontoTipo === 'percentual') {
@@ -144,12 +227,12 @@ export default function NovoContrato() {
     const valorTotal = calcularValorTotal();
     const parcelas: { numero: number; data: Date; valor: number }[] = [];
 
-    if (!dataInicio) return parcelas;
+    if (!dataInicio || valorTotal <= 0) return parcelas;
 
-    if (recorrente) {
-      let dataAtual = dataInicio;
+    if (tipoVenda === 'recorrente') {
+      let dataAtual = dataPrimeiraVenda || dataInicio;
       let numeroParcela = 1;
-      const dataLimite = dataFim || addMonths(dataInicio, 12);
+      const dataLimite = tipoTermino === 'periodo' && dataTermino ? dataTermino : addMonths(dataInicio, 12);
 
       while (dataAtual <= dataLimite) {
         parcelas.push({
@@ -175,24 +258,15 @@ export default function NovoContrato() {
         numeroParcela++;
       }
     } else {
-      // Parcelamento para contratos não recorrentes
-      const valorParcela = valorTotal / numeroParcelas;
-      for (let i = 0; i < numeroParcelas; i++) {
-        parcelas.push({
-          numero: i + 1,
-          data: addMonths(dataInicio, i),
-          valor: valorParcela
-        });
-      }
+      // Para venda avulsa ou orçamento, gera uma única parcela
+      parcelas.push({
+        numero: 1,
+        data: dataInicio,
+        valor: valorTotal
+      });
     }
 
     return parcelas;
-  };
-
-  const gerarNumeroContrato = () => {
-    const prefixo = tipoContrato === 'venda' ? 'CV' : 'CF';
-    const timestamp = new Date().getTime().toString().slice(-6);
-    return `${prefixo}${timestamp}`;
   };
 
   const handleSalvar = async () => {
@@ -212,51 +286,53 @@ export default function NovoContrato() {
         toast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" });
         return;
       }
+      if (itens.length === 0) {
+        toast({ title: "Erro", description: "Adicione pelo menos um item ao contrato", variant: "destructive" });
+        return;
+      }
 
       const valorTotal = calcularValorTotal();
       const contratoData = {
-        numero_contrato: id ? undefined : gerarNumeroContrato(),
+        numero_contrato: numeroContrato,
         tipo_contrato: tipoContrato,
         cliente_id: tipoContrato === 'venda' ? clienteId : null,
         fornecedor_id: tipoContrato === 'compra' ? fornecedorId : null,
         data_inicio: dataInicio?.toISOString().split('T')[0],
-        data_fim: dataFim?.toISOString().split('T')[0],
-        recorrente,
-        periodo_recorrencia: recorrente ? periodoRecorrencia : null,
+        data_fim: tipoTermino === 'periodo' && dataTermino ? dataTermino.toISOString().split('T')[0] : null,
+        recorrente: tipoVenda === 'recorrente',
+        periodo_recorrencia: tipoVenda === 'recorrente' ? periodoRecorrencia : null,
         plano_contas_id: planoContasId,
-        servicos: tipoContrato === 'venda' ? servicosIds : null,
-        descricao_servico: descricaoServico,
-        quantidade,
-        valor_unitario: valorUnitario,
+        centro_custo: centroCusto,
+        vendedor_responsavel: tipoContrato === 'venda' ? vendedorId : null,
+        servicos: itens.map(item => item.servicoId).filter(Boolean),
+        descricao_servico: itens.map(item => `${item.detalhes} (${item.quantidade}x R$ ${item.valorUnitario})`).join('\n'),
+        quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
+        valor_unitario: calcularSubtotal() / itens.reduce((acc, item) => acc + item.quantidade, 0),
         desconto_tipo: descontoTipo,
         desconto_percentual: descontoPercentual,
         desconto_valor: descontoValor,
         irrf_percentual: irrfPercentual,
         pis_percentual: pisPercentual,
         cofins_percentual: cofinsPercentual,
-        pis_cofins_percentual: pisPercentual + cofinsPercentual, // Mantém compatibilidade
+        pis_cofins_percentual: pisPercentual + cofinsPercentual,
         csll_percentual: csllPercentual,
         tipo_pagamento: tipoPagamento,
         conta_bancaria_id: contaBancariaId,
         valor_total: valorTotal,
-        status: 'ativo'
+        status: tipoVenda === 'orcamento' ? 'orcamento' : 'ativo'
       };
 
       let contratoId = id;
 
       if (id) {
-        // Atualizar contrato existente
         const { error } = await supabase
           .from('contratos')
           .update(contratoData)
           .eq('id', id);
 
         if (error) throw error;
-
-        // Deletar parcelas antigas
         await supabase.from('parcelas_contrato').delete().eq('contrato_id', id);
       } else {
-        // Criar novo contrato
         const { data, error } = await supabase
           .from('contratos')
           .insert([contratoData])
@@ -297,8 +373,9 @@ export default function NovoContrato() {
           data_competencia: dataInicio?.toISOString().split('T')[0],
           plano_conta_id: planoContasId,
           conta_bancaria_id: contaBancariaId,
+          centro_custo: centroCusto,
           status: 'pendente',
-          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contratoData.numero_contrato || ''}`,
+          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
           juros: 0,
           multa: 0,
           desconto: 0
@@ -319,8 +396,9 @@ export default function NovoContrato() {
           data_competencia: dataInicio?.toISOString().split('T')[0],
           plano_conta_id: planoContasId,
           conta_bancaria_id: contaBancariaId,
+          centro_custo: centroCusto,
           status: 'pendente',
-          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${contratoData.numero_contrato || ''}`,
+          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
           juros: 0,
           multa: 0,
           desconto: 0
@@ -370,152 +448,320 @@ export default function NovoContrato() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          {/* Tipo de Contrato */}
+          {/* Informações */}
           <Card>
             <CardHeader>
-              <CardTitle>Tipo de Contrato</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup 
-                value={tipoContrato} 
-                onValueChange={(value: string) => setTipoContrato(value as 'venda' | 'compra')}
-                disabled={!!id}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda" id="venda" />
-                  <Label htmlFor="venda">Contrato de Venda (CV)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="compra" id="compra" />
-                  <Label htmlFor="compra">Contrato de Compra (CF)</Label>
-                </div>
-              </RadioGroup>
-            </CardContent>
-          </Card>
-
-          {/* Dados Básicos */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados do Contrato</CardTitle>
+              <CardTitle>Informações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {tipoContrato === 'venda' ? (
+              {/* Tipo de Contrato */}
+              <div className="space-y-2">
+                <Label>Tipo de Contrato *</Label>
+                <RadioGroup 
+                  value={tipoContrato} 
+                  onValueChange={(value: string) => {
+                    setTipoContrato(value as 'venda' | 'compra');
+                    setNumeroContrato(gerarNumeroContrato());
+                  }}
+                  disabled={!!id}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="venda" id="venda" />
+                    <Label htmlFor="venda">Contrato de Venda</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="compra" id="compra" />
+                    <Label htmlFor="compra">Contrato de Compra</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Tipo de Venda (apenas para contratos de venda) */}
+              {tipoContrato === 'venda' && (
                 <div className="space-y-2">
-                  <Label>Cliente *</Label>
-                  <ClienteSelect value={clienteId} onChange={setClienteId} />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label>Fornecedor *</Label>
-                  <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} />
+                  <Label>Tipo da Venda *</Label>
+                  <RadioGroup 
+                    value={tipoVenda} 
+                    onValueChange={(value: string) => setTipoVenda(value as any)}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="orcamento" id="orcamento" />
+                      <Label htmlFor="orcamento">Orçamento</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="avulsa" id="avulsa" />
+                      <Label htmlFor="avulsa">Venda avulsa</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="recorrente" id="recorrente" />
+                      <Label htmlFor="recorrente">Venda recorrente (contrato)</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Data Início *</Label>
+                  <Label>Número do contrato *</Label>
+                  <Input value={numeroContrato} disabled />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{tipoContrato === 'venda' ? 'Cliente *' : 'Fornecedor *'}</Label>
+                  {tipoContrato === 'venda' ? (
+                    <ClienteSelect value={clienteId} onChange={setClienteId} />
+                  ) : (
+                    <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} />
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data de início *</Label>
                   <DateInput value={dataInicio} onChange={setDataInicio} />
                 </div>
-                
-                {!recorrente && (
+
+                {tipoVenda === 'recorrente' && (
                   <div className="space-y-2">
-                    <Label>Data Fim</Label>
-                    <DateInput value={dataFim} onChange={setDataFim} />
+                    <Label>Dia da geração das vendas *</Label>
+                    <Select value={diaGeracao} onValueChange={setDiaGeracao}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
+                          <SelectItem key={dia} value={dia.toString()}>
+                            {dia}º dia do mês
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="recorrente" 
-                  checked={recorrente} 
-                  onCheckedChange={(checked) => setRecorrente(checked as boolean)}
-                />
-                <Label htmlFor="recorrente">Contrato Recorrente</Label>
-              </div>
+              {tipoVenda === 'recorrente' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Data da primeira venda *</Label>
+                    <DateInput value={dataPrimeiraVenda} onChange={setDataPrimeiraVenda} />
+                  </div>
 
-              {recorrente && (
-                <div className="space-y-2">
-                  <Label>Período de Recorrência</Label>
-                  <Select value={periodoRecorrencia} onValueChange={setPeriodoRecorrencia}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                      <SelectItem value="trimestral">Trimestral</SelectItem>
-                      <SelectItem value="semestral">Semestral</SelectItem>
-                      <SelectItem value="anual">Anual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Configurações de recorrência */}
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-4">Configurações de recorrência</h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Repetir venda a cada *</Label>
+                        <Select value={periodoRecorrencia} onValueChange={setPeriodoRecorrencia}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mensal">Mês/meses</SelectItem>
+                            <SelectItem value="trimestral">Trimestre</SelectItem>
+                            <SelectItem value="semestral">Semestre</SelectItem>
+                            <SelectItem value="anual">Ano</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Término da recorrência *</Label>
+                        <Select value={tipoTermino} onValueChange={(value: string) => setTipoTermino(value as any)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="recorrente">Recorrente</SelectItem>
+                            <SelectItem value="periodo">Em um período específico</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {tipoTermino === 'periodo' && (
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div className="space-y-2">
+                          <Label>Data de término *</Label>
+                          <DateInput value={dataTermino} onChange={setDataTermino} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Vigência total</Label>
+                          <Input value={calcularVigenciaTotal()} disabled />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
+            </CardContent>
+          </Card>
 
-              {!recorrente && (
+          {/* Classificação */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Classificação</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Número de Parcelas</Label>
-                  <Input 
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={numeroParcelas}
-                    onChange={(e) => setNumeroParcelas(Number(e.target.value))}
+                  <Label>Categoria financeira *</Label>
+                  <PlanoContasSelect 
+                    value={planoContasId} 
+                    onChange={setPlanoContasId}
+                    tipo={tipoContrato === 'venda' ? 'entrada' : 'saida'}
                   />
                 </div>
-              )}
 
+                {tipoContrato === 'venda' && (
+                  <div className="space-y-2">
+                    <Label>Vendedor responsável</Label>
+                    <VendedorSelect value={vendedorId} onChange={setVendedorId} />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Centro de custo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Centro de custo</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
-                <Label>Plano de Contas *</Label>
-                <PlanoContasSelect 
-                  value={planoContasId} 
-                  onChange={setPlanoContasId}
-                  tipo={tipoContrato === 'venda' ? 'entrada' : 'saida'}
+                <Label>Centro de custo</Label>
+                <Input 
+                  value={centroCusto}
+                  onChange={(e) => setCentroCusto(e.target.value)}
+                  placeholder="Ex: 001 - 001_b8one"
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Serviços */}
+          {/* Itens */}
           <Card>
             <CardHeader>
-              <CardTitle>Serviços/Produtos</CardTitle>
+              <CardTitle>Itens</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {tipoContrato === 'venda' && (
-                <div className="space-y-2">
-                  <Label>Serviços</Label>
-                  <ServicosMultiSelect value={servicosIds} onChange={setServicosIds} />
+              {/* Lista de itens adicionados */}
+              {itens.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-2 text-left text-sm font-medium">Produtos/Serviços</th>
+                        <th className="p-2 text-left text-sm font-medium">Detalhes do item</th>
+                        <th className="p-2 text-left text-sm font-medium">Quantidade</th>
+                        <th className="p-2 text-left text-sm font-medium">Valor unitário</th>
+                        <th className="p-2 text-left text-sm font-medium">Total</th>
+                        <th className="p-2 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itens.map((item) => (
+                        <tr key={item.id} className="border-t">
+                          <td className="p-2 text-sm">{item.servicoNome || '-'}</td>
+                          <td className="p-2 text-sm">{item.detalhes}</td>
+                          <td className="p-2 text-sm">{item.quantidade}</td>
+                          <td className="p-2 text-sm">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valorUnitario)}
+                          </td>
+                          <td className="p-2 text-sm font-medium">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)}
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removerItem(item.id)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea 
-                  value={descricaoServico}
-                  onChange={(e) => setDescricaoServico(e.target.value)}
-                  placeholder="Descreva os serviços/produtos contratados..."
-                  rows={3}
-                />
-              </div>
+              {/* Formulário para adicionar item */}
+              <div className="space-y-4 border-t pt-4">
+                <Label>Selecione ou crie um novo item *</Label>
+                
+                {tipoContrato === 'venda' && (
+                  <div className="space-y-2">
+                    <Label>Produtos/Serviços *</Label>
+                    <Select 
+                      value={itemAtual.servicoId} 
+                      onValueChange={(value) => setItemAtual({ ...itemAtual, servicoId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um serviço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="servico1">Projetos B8one</SelectItem>
+                        <SelectItem value="servico2">Consultoria</SelectItem>
+                        <SelectItem value="servico3">Desenvolvimento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Quantidade *</Label>
-                  <Input 
-                    type="number"
-                    min="1"
-                    value={quantidade}
-                    onChange={(e) => setQuantidade(Number(e.target.value))}
-                  />
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label>Detalhes do item *</Label>
+                    <Textarea 
+                      value={itemAtual.detalhes}
+                      onChange={(e) => setItemAtual({ ...itemAtual, detalhes: e.target.value })}
+                      placeholder="Descreva os detalhes do item..."
+                      rows={2}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Valor Unitário (R$) *</Label>
-                  <CurrencyInput 
-                    value={valorUnitario}
-                    onChange={setValorUnitario}
-                  />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Quantidade *</Label>
+                    <Input 
+                      type="number"
+                      min="1"
+                      value={itemAtual.quantidade}
+                      onChange={(e) => setItemAtual({ ...itemAtual, quantidade: Number(e.target.value) })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Valor unitário *</Label>
+                    <CurrencyInput 
+                      value={itemAtual.valorUnitario || 0}
+                      onChange={(value) => setItemAtual({ ...itemAtual, valorUnitario: value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Total</Label>
+                    <Input 
+                      value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                        (itemAtual.quantidade || 0) * (itemAtual.valorUnitario || 0)
+                      )}
+                      disabled
+                    />
+                  </div>
                 </div>
+
+                <Button onClick={adicionarItem} variant="outline" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Item
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -523,7 +769,7 @@ export default function NovoContrato() {
           {/* Descontos e Impostos */}
           <Card>
             <CardHeader>
-              <CardTitle>Descontos e Impostos</CardTitle>
+              <CardTitle>Valor</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -531,6 +777,7 @@ export default function NovoContrato() {
                 <RadioGroup 
                   value={descontoTipo} 
                   onValueChange={(value) => setDescontoTipo(value as 'percentual' | 'valor')}
+                  className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="percentual" id="desc-percent" />
@@ -583,7 +830,16 @@ export default function NovoContrato() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
+              <div className="pt-4 border-t space-y-2">
+                <div className="flex justify-between items-center">
+                  <span>Subtotal:</span>
+                  <span>
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    }).format(calcularSubtotal())}
+                  </span>
+                </div>
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>Valor Total do Contrato:</span>
                   <span>
