@@ -88,6 +88,9 @@ export default function NovoContrato() {
   const [tipoParcelamento, setTipoParcelamento] = useState<'simples' | 'customizado'>('simples');
   const [parcelasCustomizadas, setParcelasCustomizadas] = useState<any[]>([]);
 
+  // Link do contrato
+  const [linkContrato, setLinkContrato] = useState('');
+
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
 
@@ -154,6 +157,7 @@ export default function NovoContrato() {
       setCsllPercentual(data.csll_percentual || 0);
       setTipoPagamento(data.tipo_pagamento);
       setContaBancariaId(data.conta_bancaria_id);
+      setLinkContrato(data.link_contrato || '');
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -403,6 +407,7 @@ export default function NovoContrato() {
         tipo_pagamento: tipoPagamento,
         conta_bancaria_id: contaBancariaId,
         valor_total: valorTotal,
+        link_contrato: linkContrato,
         status: 'ativo'
       };
 
@@ -1059,6 +1064,16 @@ export default function NovoContrato() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Link do Contrato</Label>
+                <Input 
+                  type="url"
+                  value={linkContrato}
+                  onChange={(e) => setLinkContrato(e.target.value)}
+                  placeholder="https://..."
+                />
               </div>
             </CardContent>
           </Card>

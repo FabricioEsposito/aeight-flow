@@ -320,6 +320,7 @@ export type Database = {
           fornecedor_id: string | null
           id: string
           irrf_percentual: number | null
+          link_contrato: string | null
           numero_contrato: string
           periodo_recorrencia: string | null
           pis_cofins_percentual: number | null
@@ -353,6 +354,7 @@ export type Database = {
           fornecedor_id?: string | null
           id?: string
           irrf_percentual?: number | null
+          link_contrato?: string | null
           numero_contrato: string
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null
@@ -386,6 +388,7 @@ export type Database = {
           fornecedor_id?: string | null
           id?: string
           irrf_percentual?: number | null
+          link_contrato?: string | null
           numero_contrato?: string
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null

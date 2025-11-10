@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +28,9 @@ export default function EditarContrato() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [goLiveDialogOpen, setGoLiveDialogOpen] = useState(false);
+  const [selectedParcelaId, setSelectedParcelaId] = useState<string | null>(null);
+  const [diaVencimento, setDiaVencimento] = useState(5);
   
   // Dados do contrato
   const [quantidade, setQuantidade] = useState(1);
@@ -39,12 +52,12 @@ export default function EditarContrato() {
     }
   }, [id]);
 
-  // Recalcular parcelas automaticamente quando valores mudarem
-  useEffect(() => {
-    if (parcelas.length > 0 && valorUnitario > 0) {
-      recalcularParcelas();
-    }
-  }, [quantidade, valorUnitario, descontoPercentual, descontoValor, descontoTipo, irrfPercentual, pisPercentual, cofinsPercentual, csllPercentual]);
+  // Não recalcular automaticamente - manter valores específicos das parcelas
+  // useEffect(() => {
+  //   if (parcelas.length > 0 && valorUnitario > 0) {
+  //     recalcularParcelas();
+  //   }
+  // }, [quantidade, valorUnitario, descontoPercentual, descontoValor, descontoTipo, irrfPercentual, pisPercentual, cofinsPercentual, csllPercentual]);
 
   const fetchContrato = async () => {
     try {
@@ -66,6 +79,22 @@ export default function EditarContrato() {
       setCofinsPercentual(data.cofins_percentual || 0);
       setCsllPercentual(data.csll_percentual || 0);
       setDescricaoServico(data.descricao_servico || '');
+      
+      // Buscar dia de vencimento do contrato (calcular baseado na primeira parcela)
+      const { data: primeiraParcelaData } = await supabase
+        .from('parcelas_contrato')
+        .select('data_vencimento')
+        .eq('contrato_id', id)
+        .eq('numero_parcela', 1)
+        .single();
+      
+      if (primeiraParcelaData && data.data_inicio) {
+        const dataInicio = new Date(data.data_inicio);
+        const dataVenc = new Date(primeiraParcelaData.data_vencimento);
+        const diffTime = Math.abs(dataVenc.getTime() - dataInicio.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setDiaVencimento(diffDays);
+      }
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -93,22 +122,37 @@ export default function EditarContrato() {
     }
   };
 
-  const handleConcluirGoLive = async (parcelaId: string) => {
+  const handleOpenGoLiveDialog = (parcelaId: string) => {
+    setSelectedParcelaId(parcelaId);
+    setGoLiveDialogOpen(true);
+  };
+
+  const handleConfirmGoLive = async () => {
+    if (!selectedParcelaId) return;
+
     try {
       // Buscar informações do contrato e da parcela
       const { data: parcela, error: parcelaError } = await supabase
         .from('parcelas_contrato')
         .select('*, contratos(*)')
-        .eq('id', parcelaId)
+        .eq('id', selectedParcelaId)
         .single();
 
       if (parcelaError) throw parcelaError;
 
-      // Atualizar status da parcela para pendente
+      // Calcular data de vencimento baseada na data atual + dias de vencimento do contrato
+      const dataGoLive = new Date();
+      const dataVencimento = new Date(dataGoLive);
+      dataVencimento.setDate(dataVencimento.getDate() + diaVencimento);
+
+      // Atualizar status da parcela para pendente e data de vencimento
       const { error: updateError } = await supabase
         .from('parcelas_contrato')
-        .update({ status: 'pendente' })
-        .eq('id', parcelaId);
+        .update({ 
+          status: 'pendente',
+          data_vencimento: dataVencimento.toISOString().split('T')[0]
+        })
+        .eq('id', selectedParcelaId);
 
       if (updateError) throw updateError;
 
@@ -118,11 +162,11 @@ export default function EditarContrato() {
         const { error: receberError } = await supabase
           .from('contas_receber')
           .insert({
-            parcela_id: parcelaId,
+            parcela_id: selectedParcelaId,
             cliente_id: contrato.cliente_id,
             valor: parcela.valor,
             valor_original: parcela.valor,
-            data_vencimento: parcela.data_vencimento,
+            data_vencimento: dataVencimento.toISOString().split('T')[0],
             data_competencia: new Date().toISOString().split('T')[0],
             plano_conta_id: contrato.plano_contas_id,
             conta_bancaria_id: parcela.conta_bancaria_id,
@@ -139,11 +183,11 @@ export default function EditarContrato() {
         const { error: pagarError } = await supabase
           .from('contas_pagar')
           .insert({
-            parcela_id: parcelaId,
+            parcela_id: selectedParcelaId,
             fornecedor_id: contrato.fornecedor_id,
             valor: parcela.valor,
             valor_original: parcela.valor,
-            data_vencimento: parcela.data_vencimento,
+            data_vencimento: dataVencimento.toISOString().split('T')[0],
             data_competencia: new Date().toISOString().split('T')[0],
             plano_conta_id: contrato.plano_contas_id,
             conta_bancaria_id: parcela.conta_bancaria_id,
@@ -163,12 +207,51 @@ export default function EditarContrato() {
         description: "Parcela Go Live lançada com sucesso!",
       });
 
+      setGoLiveDialogOpen(false);
+      setSelectedParcelaId(null);
       fetchParcelas();
     } catch (error) {
       console.error('Erro ao concluir Go Live:', error);
       toast({
         title: "Erro",
         description: "Não foi possível concluir o Go Live.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReverterGoLive = async (parcelaId: string) => {
+    try {
+      // Atualizar status da parcela de volta para aguardando_conclusao
+      const { error: updateError } = await supabase
+        .from('parcelas_contrato')
+        .update({ status: 'aguardando_conclusao' })
+        .eq('id', parcelaId);
+
+      if (updateError) throw updateError;
+
+      // Remover lançamento em contas a receber/pagar
+      await supabase
+        .from('contas_receber')
+        .delete()
+        .eq('parcela_id', parcelaId);
+
+      await supabase
+        .from('contas_pagar')
+        .delete()
+        .eq('parcela_id', parcelaId);
+
+      toast({
+        title: "Sucesso",
+        description: "Parcela revertida para Go Live!",
+      });
+
+      fetchParcelas();
+    } catch (error) {
+      console.error('Erro ao reverter Go Live:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reverter o Go Live.",
         variant: "destructive",
       });
     }
@@ -387,12 +470,15 @@ export default function EditarContrato() {
                 <TableRow key={parcela.id}>
                   <TableCell>{parcela.numero_parcela}</TableCell>
                   <TableCell>
-                    <Input 
-                      type="date"
-                      value={parcela.data_vencimento}
-                      onChange={(e) => handleParcelaChange(index, 'data_vencimento', e.target.value)}
-                      disabled={parcela.status === 'aguardando_conclusao'}
-                    />
+                    {parcela.status === 'aguardando_conclusao' ? (
+                      <span className="text-muted-foreground">Aguardando Go Live</span>
+                    ) : (
+                      <Input 
+                        type="date"
+                        value={parcela.data_vencimento}
+                        onChange={(e) => handleParcelaChange(index, 'data_vencimento', e.target.value)}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     <CurrencyInput 
@@ -412,14 +498,23 @@ export default function EditarContrato() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {parcela.status === 'aguardando_conclusao' && (
+                    {parcela.status === 'aguardando_conclusao' ? (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleConcluirGoLive(parcela.id)}
+                        onClick={() => handleOpenGoLiveDialog(parcela.id)}
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Concluir Go Live
+                      </Button>
+                    ) : parcela.status === 'pendente' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReverterGoLive(parcela.id)}
+                      >
+                        <Undo2 className="h-4 w-4 mr-2" />
+                        Reverter para Go Live
                       </Button>
                     )}
                   </TableCell>
@@ -439,6 +534,30 @@ export default function EditarContrato() {
           {saving ? 'Salvando...' : 'Salvar Alterações'}
         </Button>
       </div>
+
+      <AlertDialog open={goLiveDialogOpen} onOpenChange={setGoLiveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Conclusão do Go Live</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja realmente marcar esta parcela como concluída? Isso irá lançá-la em contas a {parcelas.find(p => p.id === selectedParcelaId)?.tipo === 'receber' ? 'receber' : 'pagar'}.
+              <br /><br />
+              <strong>Importante:</strong> A data de vencimento será calculada a partir de hoje ({new Date().toLocaleDateString('pt-BR')}) + {diaVencimento} dias = {new Date(new Date().setDate(new Date().getDate() + diaVencimento)).toLocaleDateString('pt-BR')}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setGoLiveDialogOpen(false);
+              setSelectedParcelaId(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmGoLive}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

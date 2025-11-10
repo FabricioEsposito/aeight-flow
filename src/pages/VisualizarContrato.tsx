@@ -136,6 +136,11 @@ export default function VisualizarContrato() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <label className="text-sm font-medium text-muted-foreground">Número do Contrato</label>
+              <p className="text-lg font-semibold">{contrato.numero_contrato}</p>
+            </div>
+            <Separator />
+            <div>
               <label className="text-sm font-medium text-muted-foreground">Tipo de Contrato</label>
               <p className="text-lg">
                 <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>
@@ -164,6 +169,24 @@ export default function VisualizarContrato() {
               <label className="text-sm font-medium text-muted-foreground">Tipo de Pagamento</label>
               <p className="text-lg capitalize">{contrato.tipo_pagamento}</p>
             </div>
+            {contrato.link_contrato && (
+              <>
+                <Separator />
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Link do Contrato</label>
+                  <p className="text-lg">
+                    <a 
+                      href={contrato.link_contrato} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Visualizar Documento
+                    </a>
+                  </p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -214,7 +237,7 @@ export default function VisualizarContrato() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
               <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
               <p className="text-lg">{contrato.quantidade}</p>
@@ -232,7 +255,11 @@ export default function VisualizarContrato() {
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
+              <label className="text-sm font-medium text-muted-foreground">Valor Bruto</label>
+              <p className="text-xl font-semibold">{formatCurrency(contrato.valor_bruto || contrato.quantidade * contrato.valor_unitario)}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Valor Líquido</label>
               <p className="text-2xl font-bold text-primary">{formatCurrency(contrato.valor_total)}</p>
             </div>
           </div>
@@ -243,14 +270,54 @@ export default function VisualizarContrato() {
               <p className="text-lg">{contrato.irrf_percentual}%</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">PIS/COFINS</label>
-              <p className="text-lg">{contrato.pis_cofins_percentual}%</p>
+              <label className="text-sm font-medium text-muted-foreground">PIS</label>
+              <p className="text-lg">{contrato.pis_percentual}%</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">COFINS</label>
+              <p className="text-lg">{contrato.cofins_percentual}%</p>
             </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">CSLL</label>
               <p className="text-lg">{contrato.csll_percentual}%</p>
             </div>
           </div>
+          {contrato.centro_custo && (
+            <>
+              <Separator />
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Centro de Custo</label>
+                <p className="text-lg">{contrato.centro_custo}</p>
+              </div>
+            </>
+          )}
+          {contrato.vendedor_responsavel && (
+            <>
+              <Separator />
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Vendedor Responsável</label>
+                <p className="text-lg">{contrato.vendedor_responsavel}</p>
+              </div>
+            </>
+          )}
+          {contrato.plano_contas && (
+            <>
+              <Separator />
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Plano de Contas</label>
+                <p className="text-lg">{contrato.plano_contas.codigo} - {contrato.plano_contas.descricao}</p>
+              </div>
+            </>
+          )}
+          {contrato.contas_bancarias && (
+            <>
+              <Separator />
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Conta Bancária</label>
+                <p className="text-lg">{contrato.contas_bancarias.banco} - {contrato.contas_bancarias.descricao}</p>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
