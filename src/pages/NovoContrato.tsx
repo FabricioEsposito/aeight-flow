@@ -38,7 +38,7 @@ export default function NovoContrato() {
 
   // Tipo de contrato e venda
   const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>('venda');
-  const [tipoVenda, setTipoVenda] = useState<'orcamento' | 'avulsa' | 'recorrente'>('avulsa');
+  const [tipoVenda, setTipoVenda] = useState<'avulsa' | 'recorrente'>('avulsa');
 
   // Dados básicos
   const [numeroContrato, setNumeroContrato] = useState('');
@@ -350,7 +350,7 @@ export default function NovoContrato() {
         tipo_pagamento: tipoPagamento,
         conta_bancaria_id: contaBancariaId,
         valor_total: valorTotal,
-        status: tipoVenda === 'orcamento' ? 'orcamento' : 'ativo'
+        status: 'ativo'
       };
 
       let contratoId = id;
@@ -517,10 +517,6 @@ export default function NovoContrato() {
                     onValueChange={(value: string) => setTipoVenda(value as any)}
                     className="flex gap-4"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="orcamento" id="orcamento" />
-                      <Label htmlFor="orcamento">Orçamento</Label>
-                    </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="avulsa" id="avulsa" />
                       <Label htmlFor="avulsa">Venda avulsa</Label>
