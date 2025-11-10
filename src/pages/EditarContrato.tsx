@@ -111,12 +111,26 @@ export default function EditarContrato() {
     try {
       const { data, error } = await supabase
         .from('parcelas_contrato')
-        .select('*')
+        .select(`
+          *,
+          contas_receber:contas_receber!parcela_id(descricao),
+          contas_pagar:contas_pagar!parcela_id(descricao)
+        `)
         .eq('contrato_id', id)
         .order('numero_parcela', { ascending: true });
 
       if (error) throw error;
-      setParcelas(data || []);
+      
+      // Adicionar flag isGoLive para identificar parcelas Go Live concluídas
+      const parcelasComFlag = (data || []).map(parcela => ({
+        ...parcela,
+        isGoLive: (
+          (Array.isArray(parcela.contas_receber) && parcela.contas_receber.length > 0 && parcela.contas_receber[0]?.descricao?.includes('Go Live')) ||
+          (Array.isArray(parcela.contas_pagar) && parcela.contas_pagar.length > 0 && parcela.contas_pagar[0]?.descricao?.includes('Go Live'))
+        )
+      }));
+      
+      setParcelas(parcelasComFlag);
     } catch (error) {
       console.error('Erro ao buscar parcelas:', error);
     }
@@ -225,7 +239,10 @@ export default function EditarContrato() {
       // Atualizar status da parcela de volta para aguardando_conclusao
       const { error: updateError } = await supabase
         .from('parcelas_contrato')
-        .update({ status: 'aguardando_conclusao' })
+        .update({ 
+          status: 'aguardando_conclusao',
+          data_vencimento: null // Remove a data de vencimento
+        })
         .eq('id', parcelaId);
 
       if (updateError) throw updateError;
@@ -507,9 +524,9 @@ export default function EditarContrato() {
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Concluir Go Live
                       </Button>
-                    ) : parcela.status === 'pendente' && (
+                    ) : (parcela as any).isGoLive && parcela.status === 'pendente' && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => handleReverterGoLive(parcela.id)}
                       >
