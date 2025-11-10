@@ -81,6 +81,9 @@ export default function NovoContrato() {
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
   const [diaVencimento, setDiaVencimento] = useState('5');
+  
+  // Parcelamento (para venda avulsa e compra)
+  const [numeroParcelas, setNumeroParcelas] = useState(1);
 
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
@@ -259,6 +262,7 @@ export default function NovoContrato() {
     if (!dataInicio || valorTotal <= 0) return parcelas;
 
     if (tipoVenda === 'recorrente') {
+      // Venda recorrente - gera parcelas baseadas na recorrência
       let dataAtual = dataPrimeiraVenda || dataInicio;
       let numeroParcela = 1;
       const dataLimite = tipoTermino === 'periodo' && dataTermino ? dataTermino : addMonths(dataInicio, 12);
@@ -288,13 +292,19 @@ export default function NovoContrato() {
         numeroParcela++;
       }
     } else {
-      // Para venda avulsa ou orçamento, gera uma única parcela
-      const dataVenc = calcularDataVencimento(dataInicio);
-      parcelas.push({
-        numero: 1,
-        data: dataVenc,
-        valor: valorTotal
-      });
+      // Venda avulsa ou compra - gera parcelas baseadas no número de parcelas
+      const valorParcela = valorTotal / numeroParcelas;
+      
+      for (let i = 0; i < numeroParcelas; i++) {
+        const dataGeracao = addMonths(dataInicio, i);
+        const dataVenc = calcularDataVencimento(dataGeracao);
+        
+        parcelas.push({
+          numero: i + 1,
+          data: dataVenc,
+          valor: valorParcela
+        });
+      }
     }
 
     return parcelas;
@@ -910,6 +920,31 @@ export default function NovoContrato() {
                 </Select>
               </div>
 
+              {/* Parcelamento (apenas para venda avulsa e compra) */}
+              {(tipoVenda === 'avulsa' || tipoContrato === 'compra') && (
+                <div className="space-y-2">
+                  <Label>Número de Parcelas *</Label>
+                  <Select 
+                    value={numeroParcelas.toString()} 
+                    onValueChange={(value) => setNumeroParcelas(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                        <SelectItem key={num} value={num.toString()}>
+                          {num}x de {new Intl.NumberFormat('pt-BR', { 
+                            style: 'currency', 
+                            currency: 'BRL' 
+                          }).format(calcularValorTotal() / num)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Vencer sempre no *</Label>
                 <Select value={diaVencimento} onValueChange={setDiaVencimento}>
@@ -956,7 +991,9 @@ export default function NovoContrato() {
 
         {/* Preview de Parcelas */}
         <div className="lg:col-span-1">
-          <PreviewParcelas parcelas={calcularParcelas()} />
+          <div className="sticky top-6">
+            <PreviewParcelas parcelas={calcularParcelas()} />
+          </div>
         </div>
       </div>
     </div>
