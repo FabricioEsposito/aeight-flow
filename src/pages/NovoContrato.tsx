@@ -292,7 +292,7 @@ export default function NovoContrato() {
       }
 
       const valorTotal = calcularValorTotal();
-      const contratoData = {
+      const contratoData: any = {
         numero_contrato: numeroContrato,
         tipo_contrato: tipoContrato,
         cliente_id: tipoContrato === 'venda' ? clienteId : null,

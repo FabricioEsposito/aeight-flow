@@ -305,6 +305,7 @@ export type Database = {
       }
       contratos: {
         Row: {
+          centro_custo: string | null
           cliente_id: string | null
           cofins_percentual: number | null
           conta_bancaria_id: string
@@ -333,8 +334,10 @@ export type Database = {
           updated_at: string | null
           valor_total: number
           valor_unitario: number
+          vendedor_responsavel: string | null
         }
         Insert: {
+          centro_custo?: string | null
           cliente_id?: string | null
           cofins_percentual?: number | null
           conta_bancaria_id: string
@@ -363,8 +366,10 @@ export type Database = {
           updated_at?: string | null
           valor_total: number
           valor_unitario: number
+          vendedor_responsavel?: string | null
         }
         Update: {
+          centro_custo?: string | null
           cliente_id?: string | null
           cofins_percentual?: number | null
           conta_bancaria_id?: string
@@ -393,6 +398,7 @@ export type Database = {
           updated_at?: string | null
           valor_total?: number
           valor_unitario?: number
+          vendedor_responsavel?: string | null
         }
         Relationships: [
           {
