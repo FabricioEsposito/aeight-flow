@@ -1,4 +1,4 @@
-import { Eye, Edit, Trash2, MoreVertical, XCircle } from 'lucide-react';
+import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,6 +33,7 @@ interface Contrato {
   status: string;
   clientes?: { razao_social: string; cnpj_cpf: string };
   fornecedores?: { razao_social: string; cnpj_cpf: string };
+  tem_go_live?: boolean;
 }
 
 interface ContratosTableProps {
@@ -109,7 +110,15 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{contrato.numero_contrato}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{contrato.numero_contrato}</Badge>
+                      {contrato.tem_go_live && (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
+                          <Rocket className="h-3 w-3" />
+                          Go Live
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>

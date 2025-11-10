@@ -23,6 +23,7 @@ interface Contrato {
   status: string;
   clientes?: { razao_social: string; cnpj_cpf: string };
   fornecedores?: { razao_social: string; cnpj_cpf: string };
+  tem_go_live?: boolean;
 }
 
 export default function Contratos() {
@@ -32,6 +33,7 @@ export default function Contratos() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
+  const [filterGoLive, setFilterGoLive] = useState<string>('todos');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
 
@@ -42,12 +44,25 @@ export default function Contratos() {
         .select(`
           *,
           clientes:cliente_id (razao_social, cnpj_cpf),
-          fornecedores:fornecedor_id (razao_social, cnpj_cpf)
+          fornecedores:fornecedor_id (razao_social, cnpj_cpf),
+          parcelas_contrato (
+            id,
+            status
+          )
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setContratos((data as any) || []);
+      
+      // Adicionar flag tem_go_live para cada contrato
+      const contratosComGoLive = (data || []).map((contrato: any) => ({
+        ...contrato,
+        tem_go_live: contrato.parcelas_contrato?.some(
+          (parcela: any) => parcela.status === 'aguardando_conclusao'
+        ) || false
+      }));
+      
+      setContratos(contratosComGoLive);
     } catch (error) {
       console.error('Erro ao buscar contratos:', error);
       toast({
@@ -152,6 +167,11 @@ export default function Contratos() {
       (contrato.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesType = filterType === 'todos' || contrato.tipo_contrato === filterType;
+    
+    const matchesGoLive = 
+      filterGoLive === 'todos' || 
+      (filterGoLive === 'com-go-live' && contrato.tem_go_live) ||
+      (filterGoLive === 'sem-go-live' && !contrato.tem_go_live);
 
     let matchesDate = true;
     const dateRange = getDateRange();
@@ -160,7 +180,7 @@ export default function Contratos() {
       matchesDate = dataInicio >= dateRange.from && dataInicio <= dateRange.to;
     }
 
-    return matchesSearch && matchesType && matchesDate;
+    return matchesSearch && matchesType && matchesGoLive && matchesDate;
   });
 
 
@@ -219,6 +239,17 @@ export default function Contratos() {
               <SelectItem value="todos">Todos os Contratos</SelectItem>
               <SelectItem value="venda">Contratos de Venda</SelectItem>
               <SelectItem value="compra">Contratos de Compra</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterGoLive} onValueChange={setFilterGoLive}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Go Live" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="todos">Todos os Contratos</SelectItem>
+              <SelectItem value="com-go-live">Com Go Live</SelectItem>
+              <SelectItem value="sem-go-live">Sem Go Live</SelectItem>
             </SelectContent>
           </Select>
         </div>
