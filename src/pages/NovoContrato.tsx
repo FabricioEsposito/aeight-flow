@@ -166,8 +166,9 @@ export default function NovoContrato() {
 
   const gerarNumeroContrato = () => {
     const prefixo = tipoContrato === 'venda' ? 'CV' : 'CF';
-    const timestamp = new Date().getTime().toString().slice(-6);
-    return `${prefixo}${timestamp}`;
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${prefixo}${timestamp}${random}`;
   };
 
   const calcularVigenciaTotal = () => {
@@ -368,9 +369,13 @@ export default function NovoContrato() {
         }
       }
 
+      // Gerar novo número de contrato sempre (evitar duplicação em caso de erro)
+      const novoNumeroContrato = gerarNumeroContrato();
+      setNumeroContrato(novoNumeroContrato);
+
       const valorTotal = calcularValorTotal();
       const contratoData: any = {
-        numero_contrato: numeroContrato,
+        numero_contrato: novoNumeroContrato,
         tipo_contrato: tipoContrato,
         cliente_id: tipoContrato === 'venda' ? clienteId : null,
         fornecedor_id: tipoContrato === 'compra' ? fornecedorId : null,
