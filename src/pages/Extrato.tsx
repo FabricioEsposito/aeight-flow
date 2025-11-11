@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,68 +8,153 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { NovoLancamentoDialog } from '@/components/financeiro/NovoLancamentoDialog';
+import { ExtratoActionsDropdown } from '@/components/financeiro/ExtratoActionsDropdown';
+import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
+import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
+import { format } from 'date-fns';
 
-interface Movimentacao {
+interface LancamentoExtrato {
   id: string;
   tipo: 'entrada' | 'saida';
   valor: number;
-  data_movimento: string;
+  data_vencimento: string;
+  data_competencia: string;
   descricao: string;
-  conciliado: boolean;
-  observacoes?: string;
-  contas_bancarias?: {
-    descricao: string;
-    banco: string;
-  };
-  plano_contas?: {
-    codigo: string;
-    descricao: string;
-  };
+  status: string;
+  origem: 'receber' | 'pagar';
+  cliente_fornecedor?: string;
+  numero_contrato?: string;
+  centro_custo?: string;
+  plano_conta_id?: string;
+  conta_bancaria_id?: string;
+  valor_original?: number;
+  juros?: number;
+  multa?: number;
+  desconto?: number;
+  data_recebimento?: string;
+  data_pagamento?: string;
 }
 
 export default function Extrato() {
-  const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+  const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; saldo_atual: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
-  const [conciliadoFilter, setConciliadoFilter] = useState<string>('todos');
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const { toast } = useToast();
 
-  const fetchMovimentacoes = async () => {
+  const fetchLancamentos = async () => {
     try {
-      let query = supabase
-        .from('movimentacoes')
+      // Buscar contas a receber
+      let queryReceber = supabase
+        .from('contas_receber')
         .select(`
           *,
-          contas_bancarias:conta_bancaria_id (
-            descricao,
-            banco
-          ),
-          plano_contas:plano_conta_id (
-            codigo,
-            descricao
-          )
+          clientes:cliente_id (razao_social, cnpj_cpf),
+          contratos:parcela_id (numero_contrato)
         `)
-        .order('data_movimento', { ascending: false });
+        .order('data_vencimento', { ascending: false });
 
       if (dataInicio) {
-        query = query.gte('data_movimento', dataInicio);
+        queryReceber = queryReceber.gte('data_vencimento', dataInicio);
       }
       if (dataFim) {
-        query = query.lte('data_movimento', dataFim);
+        queryReceber = queryReceber.lte('data_vencimento', dataFim);
       }
 
-      const { data, error } = await query;
+      const { data: dataReceber, error: errorReceber } = await queryReceber;
+      if (errorReceber) throw errorReceber;
 
-      if (error) throw error;
-      setMovimentacoes(data || []);
+      // Buscar contas a pagar
+      let queryPagar = supabase
+        .from('contas_pagar')
+        .select(`
+          *,
+          fornecedores:fornecedor_id (razao_social, cnpj_cpf),
+          contratos:parcela_id (numero_contrato)
+        `)
+        .order('data_vencimento', { ascending: false });
+
+      if (dataInicio) {
+        queryPagar = queryPagar.gte('data_vencimento', dataInicio);
+      }
+      if (dataFim) {
+        queryPagar = queryPagar.lte('data_vencimento', dataFim);
+      }
+
+      const { data: dataPagar, error: errorPagar } = await queryPagar;
+      if (errorPagar) throw errorPagar;
+
+      // Buscar contas bancárias
+      const { data: dataContas, error: errorContas } = await supabase
+        .from('contas_bancarias')
+        .select('id, descricao, saldo_atual')
+        .eq('status', 'ativo');
+
+      if (errorContas) throw errorContas;
+      setContasBancarias(dataContas || []);
+
+      // Combinar e formatar os lançamentos
+      const lancamentosReceber: LancamentoExtrato[] = (dataReceber || []).map((r: any) => ({
+        id: r.id,
+        tipo: 'entrada' as const,
+        valor: r.valor,
+        data_vencimento: r.data_vencimento,
+        data_competencia: r.data_competencia,
+        descricao: r.descricao,
+        status: r.status,
+        origem: 'receber' as const,
+        cliente_fornecedor: r.clientes?.razao_social,
+        numero_contrato: r.contratos?.numero_contrato,
+        centro_custo: r.centro_custo,
+        plano_conta_id: r.plano_conta_id,
+        conta_bancaria_id: r.conta_bancaria_id,
+        valor_original: r.valor_original,
+        juros: r.juros,
+        multa: r.multa,
+        desconto: r.desconto,
+        data_recebimento: r.data_recebimento,
+      }));
+
+      const lancamentosPagar: LancamentoExtrato[] = (dataPagar || []).map((p: any) => ({
+        id: p.id,
+        tipo: 'saida' as const,
+        valor: p.valor,
+        data_vencimento: p.data_vencimento,
+        data_competencia: p.data_competencia,
+        descricao: p.descricao,
+        status: p.status,
+        origem: 'pagar' as const,
+        cliente_fornecedor: p.fornecedores?.razao_social,
+        numero_contrato: p.contratos?.numero_contrato,
+        centro_custo: p.centro_custo,
+        plano_conta_id: p.plano_conta_id,
+        conta_bancaria_id: p.conta_bancaria_id,
+        valor_original: p.valor_original,
+        juros: p.juros,
+        multa: p.multa,
+        desconto: p.desconto,
+        data_pagamento: p.data_pagamento,
+      }));
+
+      const todosLancamentos = [...lancamentosReceber, ...lancamentosPagar].sort(
+        (a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()
+      );
+
+      setLancamentos(todosLancamentos);
     } catch (error) {
-      console.error('Erro ao buscar movimentações:', error);
+      console.error('Erro ao buscar lançamentos:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as movimentações.",
+        description: "Não foi possível carregar os lançamentos.",
         variant: "destructive",
       });
     } finally {
@@ -78,41 +163,206 @@ export default function Extrato() {
   };
 
   useEffect(() => {
-    fetchMovimentacoes();
+    fetchLancamentos();
   }, [dataInicio, dataFim]);
 
-  const handleConciliar = async (id: string) => {
+  const handleMarkAsPaid = async (lancamento: LancamentoExtrato) => {
     try {
+      const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+      const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
+      
       const { error } = await supabase
-        .from('movimentacoes')
-        .update({ conciliado: true })
-        .eq('id', id);
+        .from(table)
+        .update({ 
+          status: 'pago',
+          [dateField]: format(new Date(), 'yyyy-MM-dd')
+        })
+        .eq('id', lancamento.id);
 
       if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: "Movimentação conciliada!",
+        description: lancamento.tipo === 'entrada' ? "Marcado como recebido!" : "Marcado como pago!",
       });
-      fetchMovimentacoes();
+      fetchLancamentos();
     } catch (error) {
-      console.error('Erro ao conciliar:', error);
+      console.error('Erro ao marcar como pago:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível conciliar a movimentação.",
+        description: "Não foi possível atualizar o status.",
         variant: "destructive",
       });
     }
   };
 
-  const filteredMovimentacoes = movimentacoes.filter(mov => {
-    const matchesSearch = mov.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (mov.contas_bancarias?.descricao || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTipo = tipoFilter === 'todos' || mov.tipo === tipoFilter;
-    const matchesConciliado = conciliadoFilter === 'todos' || 
-                             (conciliadoFilter === 'sim' ? mov.conciliado : !mov.conciliado);
+  const handleMarkAsOpen = async (lancamento: LancamentoExtrato) => {
+    try {
+      const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+      const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
+      
+      const { error } = await supabase
+        .from(table)
+        .update({ 
+          status: 'pendente',
+          [dateField]: null
+        })
+        .eq('id', lancamento.id);
 
-    return matchesSearch && matchesTipo && matchesConciliado;
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Voltado para em aberto!",
+      });
+      fetchLancamentos();
+    } catch (error) {
+      console.error('Erro ao marcar como aberto:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClone = async (lancamento: LancamentoExtrato) => {
+    try {
+      const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+      
+      // Buscar dados completos do lançamento
+      const { data, error: fetchError } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', lancamento.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Criar novo lançamento sem campos de controle e com status pendente
+      const dadosClone: any = { ...data };
+      delete dadosClone.id;
+      delete dadosClone.created_at;
+      delete dadosClone.updated_at;
+      delete dadosClone.data_recebimento;
+      delete dadosClone.data_pagamento;
+      
+      const { error: insertError } = await supabase
+        .from(table)
+        .insert({
+          ...dadosClone,
+          status: 'pendente',
+        });
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "Sucesso",
+        description: "Lançamento clonado com sucesso!",
+      });
+      fetchLancamentos();
+    } catch (error) {
+      console.error('Erro ao clonar lançamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível clonar o lançamento.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = async (lancamento: LancamentoExtrato) => {
+    const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+    
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('id', lancamento.id)
+      .single();
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados do lançamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedLancamento(data);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (data: EditParcelaData) => {
+    if (!selectedLancamento) return;
+
+    try {
+      const table = selectedLancamento.cliente_id ? 'contas_receber' : 'contas_pagar';
+      
+      const { error } = await supabase
+        .from(table)
+        .update({
+          data_vencimento: data.data_vencimento,
+          descricao: data.descricao,
+          plano_conta_id: data.plano_conta_id,
+          centro_custo: data.centro_custo,
+          conta_bancaria_id: data.conta_bancaria_id,
+          juros: data.juros,
+          multa: data.multa,
+          desconto: data.desconto,
+          valor: data.valor_total,
+        })
+        .eq('id', data.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Lançamento atualizado!",
+      });
+      fetchLancamentos();
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleView = async (lancamento: LancamentoExtrato) => {
+    const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+    
+    const { data, error } = await supabase
+      .from(table)
+      .select(`
+        *,
+        ${lancamento.origem === 'receber' ? 'clientes:cliente_id (razao_social, cnpj_cpf)' : 'fornecedores:fornecedor_id (razao_social, cnpj_cpf)'}
+      `)
+      .eq('id', lancamento.id)
+      .single();
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os detalhes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedLancamento(data);
+    setViewDialogOpen(true);
+  };
+
+  const filteredLancamentos = lancamentos.filter(lanc => {
+    const matchesSearch = lanc.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (lanc.cliente_fornecedor || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTipo = tipoFilter === 'todos' || lanc.tipo === tipoFilter;
+    const matchesStatus = statusFilter === 'todos' || lanc.status === statusFilter;
+
+    return matchesSearch && matchesTipo && matchesStatus;
   });
 
   const formatCurrency = (value: number) => {
@@ -123,21 +373,24 @@ export default function Extrato() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    if (!dateString) return '-';
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
-  // Cálculos para resumo
-  const totalEntradas = filteredMovimentacoes
-    .filter(m => m.tipo === 'entrada')
-    .reduce((acc, m) => acc + m.valor, 0);
+  // Cálculos para resumo - Saldo: saldo das contas + contas a receber - contas a pagar
+  const saldoContas = contasBancarias.reduce((acc, conta) => acc + conta.saldo_atual, 0);
+  
+  const totalReceber = filteredLancamentos
+    .filter(l => l.tipo === 'entrada' && l.status === 'pendente')
+    .reduce((acc, l) => acc + l.valor, 0);
 
-  const totalSaidas = filteredMovimentacoes
-    .filter(m => m.tipo === 'saida')
-    .reduce((acc, m) => acc + m.valor, 0);
+  const totalPagar = filteredLancamentos
+    .filter(l => l.tipo === 'saida' && l.status === 'pendente')
+    .reduce((acc, l) => acc + l.valor, 0);
 
-  const saldoLiquido = totalEntradas - totalSaidas;
+  const saldoFinal = saldoContas + totalReceber - totalPagar;
 
-  const naoConcialiados = filteredMovimentacoes.filter(m => !m.conciliado).length;
+  const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
   if (loading) {
     return (
@@ -156,17 +409,17 @@ export default function Extrato() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Extrato e Conciliação</h1>
-          <p className="text-muted-foreground">Visualize e concilie suas movimentações financeiras</p>
+          <p className="text-muted-foreground">Visualize e gerencie seus lançamentos financeiros</p>
         </div>
         
         <div className="flex gap-2">
+          <Button onClick={() => setNovoLancamentoOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Lançamento
+          </Button>
           <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
             Exportar
-          </Button>
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" />
-            Importar OFX
           </Button>
         </div>
       </div>
@@ -176,30 +429,8 @@ export default function Extrato() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Total Entradas</p>
-              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalEntradas)}</p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-emerald-600" />
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Saídas</p>
-              <p className="text-2xl font-bold text-destructive">{formatCurrency(totalSaidas)}</p>
-            </div>
-            <TrendingDown className="w-8 h-8 text-destructive" />
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Saldo Líquido</p>
-              <p className={`text-2xl font-bold ${saldoLiquido >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                {formatCurrency(saldoLiquido)}
-              </p>
+              <p className="text-sm text-muted-foreground">Saldo em Contas</p>
+              <p className="text-2xl font-bold text-foreground">{formatCurrency(saldoContas)}</p>
             </div>
             <BarChart3 className="w-8 h-8 text-primary" />
           </div>
@@ -208,10 +439,32 @@ export default function Extrato() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Não Conciliados</p>
-              <p className="text-2xl font-bold text-amber-600">{naoConcialiados}</p>
+              <p className="text-sm text-muted-foreground">A Receber</p>
+              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalReceber)}</p>
             </div>
-            <Filter className="w-8 h-8 text-amber-600" />
+            <TrendingUp className="w-8 h-8 text-emerald-600" />
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">A Pagar</p>
+              <p className="text-2xl font-bold text-destructive">{formatCurrency(totalPagar)}</p>
+            </div>
+            <TrendingDown className="w-8 h-8 text-destructive" />
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Saldo Final</p>
+              <p className={`text-2xl font-bold ${saldoFinal >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                {formatCurrency(saldoFinal)}
+              </p>
+            </div>
+            <BarChart3 className="w-8 h-8 text-primary" />
           </div>
         </Card>
       </div>
@@ -239,14 +492,14 @@ export default function Extrato() {
             </SelectContent>
           </Select>
 
-          <Select value={conciliadoFilter} onValueChange={setConciliadoFilter}>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger>
-              <SelectValue placeholder="Conciliação" />
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="sim">Conciliados</SelectItem>
-              <SelectItem value="nao">Não Conciliados</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="pago">Pago/Recebido</SelectItem>
             </SelectContent>
           </Select>
 
@@ -264,7 +517,7 @@ export default function Extrato() {
             placeholder="Data fim"
           />
 
-          <Button variant="outline" onClick={fetchMovimentacoes}>
+          <Button variant="outline" onClick={fetchLancamentos}>
             <Filter className="w-4 h-4 mr-2" />
             Filtrar
           </Button>
@@ -275,81 +528,93 @@ export default function Extrato() {
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
-                <TableHead>Tipo</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Conta Bancária</TableHead>
-                <TableHead>Plano de Contas</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Conciliado</TableHead>
+                <TableHead>Situação</TableHead>
+                <TableHead className="text-right">Valor (R$)</TableHead>
+                <TableHead className="text-right">Saldo (R$)</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMovimentacoes.map((mov) => (
-                <TableRow key={mov.id} className={!mov.conciliado ? 'bg-amber-50' : ''}>
-                  <TableCell>{formatDate(mov.data_movimento)}</TableCell>
-                  <TableCell>
-                    <Badge variant={mov.tipo === 'entrada' ? 'default' : 'destructive'}>
-                      {mov.tipo === 'entrada' ? (
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 mr-1" />
-                      )}
-                      {mov.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">{mov.descricao}</TableCell>
-                  <TableCell>
-                    {mov.contas_bancarias ? (
+              {filteredLancamentos.map((lanc, index) => {
+                // Calcular saldo acumulado
+                const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
+                const saldoAcumulado = saldoContas + 
+                  lancamentosAteAqui.filter(l => l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0) -
+                  lancamentosAteAqui.filter(l => l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0);
+
+                return (
+                  <TableRow key={lanc.id}>
+                    <TableCell className="font-medium">{formatDate(lanc.data_vencimento)}</TableCell>
+                    <TableCell>
                       <div>
-                        <p className="font-medium">{mov.contas_bancarias.descricao}</p>
-                        <p className="text-xs text-muted-foreground">{mov.contas_bancarias.banco}</p>
+                        <p className="font-medium">{lanc.descricao}</p>
+                        {lanc.cliente_fornecedor && (
+                          <p className="text-xs text-muted-foreground">{lanc.cliente_fornecedor}</p>
+                        )}
+                        {lanc.numero_contrato && (
+                          <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
+                        )}
                       </div>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {mov.plano_contas ? (
-                      <div>
-                        <Badge variant="outline" className="text-xs">{mov.plano_contas.codigo}</Badge>
-                        <p className="text-xs text-muted-foreground mt-1">{mov.plano_contas.descricao}</p>
-                      </div>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell className={`font-semibold ${mov.tipo === 'entrada' ? 'text-emerald-600' : 'text-destructive'}`}>
-                    {mov.tipo === 'entrada' ? '+' : '-'} {formatCurrency(mov.valor)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={mov.conciliado ? 'default' : 'secondary'}>
-                      {mov.conciliado ? 'Sim' : 'Não'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {!mov.conciliado && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleConciliar(mov.id)}
-                          className="text-emerald-600 hover:text-emerald-700"
-                        >
-                          Conciliar
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={lanc.status === 'pago' ? 'default' : 'secondary'}>
+                        {lanc.status === 'pago' ? 'Pago' : 'Pendente'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={`text-right font-semibold ${lanc.tipo === 'entrada' ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {lanc.tipo === 'entrada' ? '+' : '-'} {formatCurrency(lanc.valor)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(saldoAcumulado)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ExtratoActionsDropdown
+                        tipo={lanc.tipo}
+                        status={lanc.status}
+                        onEdit={() => handleEdit(lanc)}
+                        onMarkAsPaid={() => handleMarkAsPaid(lanc)}
+                        onMarkAsOpen={() => handleMarkAsOpen(lanc)}
+                        onView={() => handleView(lanc)}
+                        onClone={() => handleClone(lanc)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
 
-        {filteredMovimentacoes.length === 0 && (
+        {filteredLancamentos.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma movimentação encontrada no período.</p>
+            <p>Nenhum lançamento encontrado no período.</p>
           </div>
         )}
       </Card>
+
+      <NovoLancamentoDialog 
+        open={novoLancamentoOpen}
+        onOpenChange={setNovoLancamentoOpen}
+        onSave={fetchLancamentos}
+      />
+
+      <ViewInfoDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        data={selectedLancamento}
+        type={selectedLancamento?.cliente_id ? 'receber' : 'pagar'}
+      />
+
+      <EditParcelaDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveEdit}
+        tipo={selectedLancamento?.cliente_id ? 'entrada' : 'saida'}
+        initialData={selectedLancamento}
+        contasBancarias={contasBancarias}
+      />
     </div>
   );
 }
