@@ -3,8 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Clientes from "./pages/Clientes";
 import Fornecedores from "./pages/Fornecedores";
 import Contratos from "./pages/Contratos";
@@ -29,27 +31,27 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppLayout>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/fornecedores" element={<Fornecedores />} />
-            <Route path="/contratos" element={<Contratos />} />
-            <Route path="/contratos/novo" element={<NovoContrato />} />
-            <Route path="/contratos/:id" element={<VisualizarContrato />} />
-            <Route path="/contratos/:id/edit" element={<EditarContrato />} />
-            <Route path="/contratos/:id/edit-completo" element={<EditarContratoCompleto />} />
-            <Route path="/servicos" element={<Servicos />} />
-            <Route path="/contas-bancarias" element={<ContasBancarias />} />
-            <Route path="/plano-contas" element={<PlanoContas />} />
-            <Route path="/contas-receber" element={<ContasReceber />} />
-            <Route path="/contas-pagar" element={<ContasPagar />} />
-            <Route path="/extrato" element={<Extrato />} />
-            <Route path="/centro-custos" element={<CentroCustos />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+            <Route path="/fornecedores" element={<ProtectedRoute><Fornecedores /></ProtectedRoute>} />
+            <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+            <Route path="/contratos/novo" element={<ProtectedRoute><NovoContrato /></ProtectedRoute>} />
+            <Route path="/contratos/:id" element={<ProtectedRoute><VisualizarContrato /></ProtectedRoute>} />
+            <Route path="/contratos/:id/edit" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
+            <Route path="/contratos/:id/edit-completo" element={<ProtectedRoute><EditarContratoCompleto /></ProtectedRoute>} />
+            <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
+            <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
+            <Route path="/plano-contas" element={<ProtectedRoute><PlanoContas /></ProtectedRoute>} />
+            <Route path="/contas-receber" element={<ProtectedRoute><ContasReceber /></ProtectedRoute>} />
+            <Route path="/contas-pagar" element={<ProtectedRoute><ContasPagar /></ProtectedRoute>} />
+            <Route path="/extrato" element={<ProtectedRoute><Extrato /></ProtectedRoute>} />
+            <Route path="/centro-custos" element={<ProtectedRoute><CentroCustos /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AppLayout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
