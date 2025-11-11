@@ -44,7 +44,7 @@ const navigationItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -53,6 +53,13 @@ export function AppSidebar() {
   };
 
   const isCollapsed = state === "collapsed";
+
+  const handleNavClick = () => {
+    // Não fecha o sidebar em mobile ao navegar
+    if (isMobile) {
+      setOpenMobile(true);
+    }
+  };
 
   return (
     <Sidebar className={`border-r border-border`} collapsible="icon">
@@ -85,6 +92,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
+                      onClick={handleNavClick}
                       className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                         isActive(item.url)
                           ? "bg-primary text-primary-foreground font-medium"
