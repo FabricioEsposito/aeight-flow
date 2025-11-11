@@ -84,7 +84,8 @@ export default function ContasBancarias() {
     try {
       const formData = {
         ...data,
-        saldo_atual: editingConta ? data.saldo_atual : data.saldo_inicial,
+        centro_custo_id: data.centro_custo_id || null,
+        saldo_atual: editingConta ? data.saldo_inicial : data.saldo_inicial,
       };
 
       if (editingConta) {
@@ -329,7 +330,6 @@ export default function ContasBancarias() {
                             placeholder="0,00" 
                             {...field}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            disabled={!!editingConta}
                           />
                         </FormControl>
                         <FormMessage />
@@ -352,27 +352,6 @@ export default function ContasBancarias() {
                   />
                 </div>
 
-                {editingConta && (
-                  <FormField
-                    control={form.control}
-                    name="saldo_atual"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Saldo Atual</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0,00" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
 
                 <FormField
                   control={form.control}
