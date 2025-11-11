@@ -440,35 +440,20 @@ export default function EditarContratoCompleto() {
           <CardTitle>Forma de Pagamento</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Tipo de Pagamento</Label>
-              <Select value={tipoPagamento} onValueChange={setTipoPagamento}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="a_vista">À vista</SelectItem>
-                  <SelectItem value="parcelado">Parcelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Conta Bancária</Label>
-              <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {contasBancarias.map((conta) => (
-                    <SelectItem key={conta.id} value={conta.id}>
-                      {conta.banco} - {conta.descricao}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Conta Bancária</Label>
+            <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {contasBancarias.map((conta) => (
+                  <SelectItem key={conta.id} value={conta.id}>
+                    {conta.banco} - {conta.descricao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
