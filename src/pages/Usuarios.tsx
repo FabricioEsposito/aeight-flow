@@ -38,11 +38,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, Trash2, Edit } from "lucide-react";
+import { UserPlus, MoreVertical, Edit, UserX, Trash2, UserCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -58,10 +65,13 @@ export default function Usuarios() {
   const [openInvite, setOpenInvite] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [toggleStatusUserId, setToggleStatusUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [nome, setNome] = useState("");
   const [role, setRole] = useState<"admin" | "user">("user");
+  const [editNome, setEditNome] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "user">("user");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -96,20 +106,16 @@ export default function Usuarios() {
     }
   }, [isAdmin, checkingAdmin, navigate, toast]);
 
-  // Buscar todos os usuários com seus perfis e roles
+  // Buscar todos os usuários com status
   const { data: usuarios, isLoading } = useQuery({
     queryKey: ['usuarios'],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          user_roles (role)
-        `)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('get-users-with-status');
 
       if (error) throw error;
-      return profiles;
+      if (data.error) throw new Error(data.error);
+
+      return data.users;
     },
   });
 
@@ -151,28 +157,61 @@ export default function Usuarios() {
     },
   });
 
-  // Atualizar role do usuário
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: 'admin' | 'user' }) => {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ role: newRole })
-        .eq('user_id', userId);
+  // Atualizar usuário completo
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, nome, email, role }: { userId: string; nome: string; email: string; role: 'admin' | 'user' }) => {
+      const { data, error } = await supabase.functions.invoke('update-user', {
+        body: { userId, nome, email, role }
+      });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       toast({
-        title: "Role atualizado!",
-        description: "As permissões do usuário foram alteradas.",
+        title: "Usuário atualizado!",
+        description: "As informações do usuário foram atualizadas.",
       });
       setOpenEdit(false);
       setEditingUser(null);
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao atualizar role",
+        title: "Erro ao atualizar usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Inativar/Ativar usuário
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ userId, action }: { userId: string; action: 'ban' | 'unban' }) => {
+      const { data, error } = await supabase.functions.invoke('toggle-user-status', {
+        body: { userId, action }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      toast({
+        title: variables.action === 'ban' ? "Usuário inativado!" : "Usuário ativado!",
+        description: variables.action === 'ban' 
+          ? "O usuário foi inativado e não poderá mais acessar o sistema." 
+          : "O usuário foi reativado e pode acessar o sistema novamente.",
+      });
+      setToggleStatusUserId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao alterar status",
         description: error.message,
         variant: "destructive",
       });
@@ -312,6 +351,7 @@ export default function Usuarios() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Nível de Acesso</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Data de Cadastro</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -319,6 +359,8 @@ export default function Usuarios() {
                 <TableBody>
                   {usuarios?.map((usuario) => {
                     const userRole = (usuario.user_roles as any)?.[0]?.role || 'user';
+                    const isCurrentUser = usuario.id === user?.id;
+                    
                     return (
                       <TableRow key={usuario.id}>
                         <TableCell className="font-medium">
@@ -331,31 +373,58 @@ export default function Usuarios() {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Badge variant={usuario.banned ? 'destructive' : usuario.status === 'ativo' ? 'default' : 'outline'}>
+                            {usuario.banned ? 'Inativo' : usuario.status === 'ativo' ? 'Ativo' : 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           {new Date(usuario.created_at).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditingUser(usuario);
-                                setEditRole(userRole as any);
-                                setOpenEdit(true);
-                              }}
-                              disabled={usuario.id === user?.id}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteUserId(usuario.id)}
-                              disabled={usuario.id === user?.id}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" disabled={isCurrentUser}>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingUser(usuario);
+                                  setEditNome(usuario.nome || '');
+                                  setEditEmail(usuario.email || '');
+                                  setEditRole(userRole as any);
+                                  setOpenEdit(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Editar usuário
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setToggleStatusUserId(usuario.id)}
+                              >
+                                {usuario.banned ? (
+                                  <>
+                                    <UserCheck className="h-4 w-4 mr-2" />
+                                    Ativar usuário
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserX className="h-4 w-4 mr-2" />
+                                    Inativar usuário
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeleteUserId(usuario.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir usuário
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -370,12 +439,31 @@ export default function Usuarios() {
         <Dialog open={openEdit} onOpenChange={setOpenEdit}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Editar Nível de Acesso</DialogTitle>
+              <DialogTitle>Editar Usuário</DialogTitle>
               <DialogDescription>
-                Altere o nível de acesso de {editingUser?.nome || editingUser?.email}
+                Altere as informações de {editingUser?.nome || editingUser?.email}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-nome">Nome</Label>
+                <Input
+                  id="edit-nome"
+                  value={editNome}
+                  onChange={(e) => setEditNome(e.target.value)}
+                  placeholder="Nome do usuário"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-role">Nível de Acesso</Label>
                 <Select value={editRole} onValueChange={(v) => setEditRole(v as any)}>
@@ -396,19 +484,55 @@ export default function Usuarios() {
               <Button
                 onClick={() => {
                   if (editingUser) {
-                    updateRoleMutation.mutate({
+                    updateUserMutation.mutate({
                       userId: editingUser.id,
-                      newRole: editRole,
+                      nome: editNome,
+                      email: editEmail,
+                      role: editRole,
                     });
                   }
                 }}
-                disabled={updateRoleMutation.isPending}
+                disabled={updateUserMutation.isPending || !editNome || !editEmail}
               >
-                {updateRoleMutation.isPending ? "Salvando..." : "Salvar"}
+                {updateUserMutation.isPending ? "Salvando..." : "Salvar alterações"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog de Confirmação de Inativar/Ativar */}
+        <AlertDialog open={!!toggleStatusUserId} onOpenChange={() => setToggleStatusUserId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {usuarios?.find(u => u.id === toggleStatusUserId)?.banned 
+                  ? 'Ativar Usuário' 
+                  : 'Inativar Usuário'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {usuarios?.find(u => u.id === toggleStatusUserId)?.banned 
+                  ? 'Tem certeza que deseja ativar este usuário? Ele poderá acessar o sistema novamente.' 
+                  : 'Tem certeza que deseja inativar este usuário? Ele não poderá mais acessar o sistema.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const usuario = usuarios?.find(u => u.id === toggleStatusUserId);
+                  if (toggleStatusUserId) {
+                    toggleStatusMutation.mutate({
+                      userId: toggleStatusUserId,
+                      action: usuario?.banned ? 'unban' : 'ban'
+                    });
+                  }
+                }}
+              >
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Dialog de Confirmação de Exclusão */}
         <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>

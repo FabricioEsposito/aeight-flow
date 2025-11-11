@@ -5,3 +5,12 @@ verify_jwt = true
 
 [functions.delete-user]
 verify_jwt = true
+
+[functions.get-users-with-status]
+verify_jwt = true
+
+[functions.toggle-user-status]
+verify_jwt = true
+
+[functions.update-user]
+verify_jwt = true
