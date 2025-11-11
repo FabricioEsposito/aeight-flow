@@ -30,13 +30,10 @@ Deno.serve(async (req) => {
       throw authError;
     }
 
-    // Buscar profiles com roles
+    // Buscar profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select(`
-        *,
-        user_roles (role)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (profilesError) {
@@ -44,12 +41,24 @@ Deno.serve(async (req) => {
       throw profilesError;
     }
 
-    // Combinar dados de auth com profiles
+    // Buscar roles separadamente
+    const { data: userRoles, error: rolesError } = await supabaseAdmin
+      .from('user_roles')
+      .select('user_id, role');
+
+    if (rolesError) {
+      console.error('Error fetching roles:', rolesError);
+      throw rolesError;
+    }
+
+    // Combinar dados de auth com profiles e roles
     const usersWithStatus = profiles.map(profile => {
       const authUser = authUsers.users.find(u => u.id === profile.id);
+      const roleData = userRoles?.find(r => r.user_id === profile.id);
       
       return {
         ...profile,
+        user_roles: roleData ? [{ role: roleData.role }] : [],
         status: authUser?.last_sign_in_at ? 'ativo' : 'pendente',
         banned: authUser?.banned_until ? new Date(authUser.banned_until) > new Date() : false,
         last_sign_in_at: authUser?.last_sign_in_at,
