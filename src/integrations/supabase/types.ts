@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      centros_custo: {
+        Row: {
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           bairro: string | null
@@ -74,6 +101,7 @@ export type Database = {
       contas_bancarias: {
         Row: {
           banco: string
+          centro_custo_id: string | null
           created_at: string
           data_inicio: string
           descricao: string
@@ -86,6 +114,7 @@ export type Database = {
         }
         Insert: {
           banco: string
+          centro_custo_id?: string | null
           created_at?: string
           data_inicio: string
           descricao: string
@@ -98,6 +127,7 @@ export type Database = {
         }
         Update: {
           banco?: string
+          centro_custo_id?: string | null
           created_at?: string
           data_inicio?: string
           descricao?: string
@@ -108,7 +138,15 @@ export type Database = {
           tipo_conta?: Database["public"]["Enums"]["conta_tipo"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contas_bancarias_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contas_pagar: {
         Row: {

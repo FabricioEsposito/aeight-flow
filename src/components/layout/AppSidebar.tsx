@@ -10,7 +10,8 @@ import {
   TrendingDown, 
   BarChart3,
   Home,
-  Settings
+  Settings,
+  FolderKanban
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -33,6 +34,7 @@ const navigationItems = [
   { title: "Contratos", url: "/contratos", icon: FileText },
   { title: "Serviços", url: "/servicos", icon: Settings },
   { title: "Contas Bancárias", url: "/contas-bancarias", icon: CreditCard },
+  { title: "Centro de Custos", url: "/centro-custos", icon: FolderKanban },
   { title: "Plano de Contas", url: "/plano-contas", icon: TreePine },
   { title: "Contas a Receber", url: "/contas-receber", icon: TrendingUp },
   { title: "Contas a Pagar", url: "/contas-pagar", icon: TrendingDown },

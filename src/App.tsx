@@ -17,6 +17,7 @@ import PlanoContas from "./pages/PlanoContas";
 import ContasReceber from "./pages/ContasReceber";
 import ContasPagar from "./pages/ContasPagar";
 import Extrato from "./pages/Extrato";
+import CentroCustos from "./pages/CentroCustos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/contas-receber" element={<ContasReceber />} />
             <Route path="/contas-pagar" element={<ContasPagar />} />
             <Route path="/extrato" element={<Extrato />} />
+            <Route path="/centro-custos" element={<CentroCustos />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
