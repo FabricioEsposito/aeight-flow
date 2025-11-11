@@ -28,16 +28,19 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Invite user
-    const { data: userData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { nome },
-      redirectTo: `${req.headers.get('origin')}/auth`
+    // Criar usuário com email já confirmado
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      email_confirm: true,
+      user_metadata: {
+        nome: nome
+      }
     });
 
-    if (inviteError) {
-      console.error('Error inviting user:', inviteError);
+    if (userError) {
+      console.error('Error creating user:', userError);
       return new Response(
-        JSON.stringify({ error: inviteError.message }),
+        JSON.stringify({ error: userError.message }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -45,7 +48,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('User invited successfully:', userData.user.id);
+    console.log('User created successfully:', userData.user.id);
+
+    // Gerar link de redefinição de senha
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: `${req.headers.get('origin') || 'http://localhost:3000'}/auth?type=recovery`
+      }
+    });
+
+    if (linkError) {
+      console.error('Error generating password reset link:', linkError);
+      // Não retornar erro aqui, pois o usuário já foi criado
+    } else {
+      console.log('Password reset link generated successfully');
+      console.log('Recovery link:', linkData.properties.action_link);
+    }
 
     // O trigger handle_new_user já cria automaticamente uma role 'user'
     // Se a role for 'admin', precisamos atualizar a role existente
@@ -72,7 +92,11 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, user: userData.user }),
+      JSON.stringify({ 
+        success: true, 
+        user: userData.user,
+        message: 'Usuário criado. Um email com link para definir a senha foi enviado.'
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
