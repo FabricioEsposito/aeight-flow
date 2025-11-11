@@ -13,6 +13,7 @@ import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { ServicosMultiSelect } from '@/components/contratos/ServicosMultiSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
+import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
 import { ParcelamentoCustomizado, ParcelaCustomizada } from '@/components/contratos/ParcelamentoCustomizado';
 import { DateInput } from '@/components/ui/date-input';
@@ -723,10 +724,9 @@ export default function NovoContrato() {
             <CardContent>
               <div className="space-y-2">
                 <Label>Centro de custo</Label>
-                <Input 
+                <CentroCustoSelect 
                   value={centroCusto}
-                  onChange={(e) => setCentroCusto(e.target.value)}
-                  placeholder="Ex: 001 - 001_b8one"
+                  onValueChange={setCentroCusto}
                 />
               </div>
             </CardContent>

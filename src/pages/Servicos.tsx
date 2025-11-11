@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -256,7 +257,10 @@ export default function Servicos() {
                     <FormItem>
                       <FormLabel>Centro de Custo</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Tecnologia, Consultoria..." {...field} />
+                        <CentroCustoSelect 
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

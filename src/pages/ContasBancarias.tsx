@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +50,7 @@ export default function ContasBancarias() {
       saldo_inicial: 0,
       data_inicio: new Date().toISOString().split('T')[0],
       status: 'ativo' as 'ativo' | 'inativo',
+      centro_custo_id: '',
     }
   });
 
@@ -132,6 +134,7 @@ export default function ContasBancarias() {
       saldo_inicial: conta.saldo_inicial,
       data_inicio: conta.data_inicio,
       status: conta.status,
+      centro_custo_id: (conta as any).centro_custo_id || '',
     });
     setIsDialogOpen(true);
   };
@@ -345,6 +348,23 @@ export default function ContasBancarias() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="centro_custo_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Centro de Custo</FormLabel>
+                      <FormControl>
+                        <CentroCustoSelect 
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

@@ -18,6 +18,7 @@ import ContasReceber from "./pages/ContasReceber";
 import ContasPagar from "./pages/ContasPagar";
 import Extrato from "./pages/Extrato";
 import CentroCustos from "./pages/CentroCustos";
+import EditarContratoCompleto from "./pages/EditarContratoCompleto";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/contratos/novo" element={<NovoContrato />} />
             <Route path="/contratos/:id" element={<VisualizarContrato />} />
             <Route path="/contratos/:id/edit" element={<EditarContrato />} />
+            <Route path="/contratos/:id/edit-completo" element={<EditarContratoCompleto />} />
             <Route path="/servicos" element={<Servicos />} />
             <Route path="/contas-bancarias" element={<ContasBancarias />} />
             <Route path="/plano-contas" element={<PlanoContas />} />

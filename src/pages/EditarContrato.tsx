@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle, Undo2 } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, Undo2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -388,10 +388,14 @@ export default function EditarContrato() {
         <Button variant="ghost" size="icon" onClick={() => navigate(`/contratos/${id}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold text-foreground">Editar Contrato</h1>
           <p className="text-muted-foreground">Atualize as informações do contrato</p>
         </div>
+        <Button variant="outline" onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
+          <Edit className="h-4 w-4 mr-2" />
+          Editar Todas as Informações
+        </Button>
       </div>
 
       <Card>

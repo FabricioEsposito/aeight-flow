@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
+import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 
 interface EditParcelaDialogProps {
   open: boolean;
@@ -189,11 +190,10 @@ export function EditParcelaDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Centro de Custos</Label>
-              <Input
+              <Label>Centro de Custo</Label>
+              <CentroCustoSelect 
                 value={centroCusto}
-                onChange={(e) => setCentroCusto(e.target.value)}
-                placeholder="Centro de custos"
+                onValueChange={setCentroCusto}
               />
             </div>
           </div>
