@@ -48,7 +48,7 @@ export default function ContasPagar() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
   const [customDateRange, setCustomDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
