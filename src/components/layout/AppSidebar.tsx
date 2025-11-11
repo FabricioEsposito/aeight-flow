@@ -12,9 +12,13 @@ import {
   Home,
   Settings,
   FolderKanban,
-  UserCog
+  UserCog,
+  LogOut
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -25,7 +29,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  useSidebar,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 
 const navigationItems = [
@@ -44,35 +48,37 @@ const navigationItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
-  const isCollapsed = state === "collapsed";
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Logout realizado",
+      description: "Até logo!",
+    });
+    navigate('/auth');
+  };
 
   return (
-    <Sidebar className={`border-r border-border`} collapsible="icon">
+    <Sidebar className="border-r border-border" collapsible="none">
       <SidebarHeader className="p-4 border-b border-border">
-        {!isCollapsed && (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h2 className="font-bold text-lg text-foreground">A&EIGHT</h2>
-              <p className="text-sm text-muted-foreground">ERP System</p>
-            </div>
-          </div>
-        )}
-        {isCollapsed && (
-          <div className="w-8 h-8 mx-auto rounded-lg bg-gradient-primary flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
             <Building2 className="w-5 h-5 text-primary-foreground" />
           </div>
-        )}
+          <div>
+            <h2 className="font-bold text-lg text-foreground">A&EIGHT</h2>
+            <p className="text-sm text-muted-foreground">ERP System</p>
+          </div>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
@@ -92,7 +98,7 @@ export function AppSidebar() {
                       }`}
                     >
                       <item.icon className="w-4 h-4 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -101,6 +107,22 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="p-4 border-t border-border">
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground px-2">
+            {user?.email}
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-foreground hover:bg-secondary"
+            onClick={handleSignOut}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </Button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }
