@@ -172,6 +172,38 @@ export default function EditarContratoCompleto() {
 
       if (error) throw error;
 
+      // Atualizar centro de custos nas parcelas de contas a receber/pagar
+      // Primeiro, buscar as parcelas do contrato
+      const { data: parcelas, error: parcelasError } = await supabase
+        .from('parcelas_contrato')
+        .select('id')
+        .eq('contrato_id', id);
+
+      if (parcelasError) throw parcelasError;
+
+      if (parcelas && parcelas.length > 0) {
+        const parcelaIds = parcelas.map(p => p.id);
+
+        // Atualizar contas_receber se for venda
+        if (tipoContrato === 'venda') {
+          const { error: receberError } = await supabase
+            .from('contas_receber')
+            .update({ centro_custo: centroCustoId })
+            .in('parcela_id', parcelaIds);
+
+          if (receberError) throw receberError;
+        } 
+        // Atualizar contas_pagar se for compra
+        else {
+          const { error: pagarError } = await supabase
+            .from('contas_pagar')
+            .update({ centro_custo: centroCustoId })
+            .in('parcela_id', parcelaIds);
+
+          if (pagarError) throw pagarError;
+        }
+      }
+
       toast({
         title: "Sucesso",
         description: "Contrato atualizado com sucesso!",

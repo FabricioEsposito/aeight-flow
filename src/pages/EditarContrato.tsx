@@ -345,6 +345,42 @@ export default function EditarContrato() {
           .eq('id', parcela.id);
 
         if (parcelaError) throw parcelaError;
+
+        // Atualizar contas_receber/pagar apenas para parcelas que não são go-live pendentes
+        if (parcela.status !== 'aguardando_conclusao') {
+          // Verificar se é venda ou compra
+          const { data: contrato } = await supabase
+            .from('contratos')
+            .select('tipo_contrato')
+            .eq('id', id)
+            .single();
+
+          if (contrato) {
+            if (contrato.tipo_contrato === 'venda') {
+              const { error: receberError } = await supabase
+                .from('contas_receber')
+                .update({
+                  data_vencimento: parcela.data_vencimento,
+                  valor: parcela.valor,
+                  valor_original: parcela.valor,
+                })
+                .eq('parcela_id', parcela.id);
+
+              if (receberError) throw receberError;
+            } else {
+              const { error: pagarError } = await supabase
+                .from('contas_pagar')
+                .update({
+                  data_vencimento: parcela.data_vencimento,
+                  valor: parcela.valor,
+                  valor_original: parcela.valor,
+                })
+                .eq('parcela_id', parcela.id);
+
+              if (pagarError) throw pagarError;
+            }
+          }
+        }
       }
 
       toast({
