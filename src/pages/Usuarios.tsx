@@ -118,31 +118,18 @@ export default function Usuarios() {
     mutationFn: async ({ email, nome, role }: { email: string; nome: string; role: 'admin' | 'user' }) => {
       const validated = inviteSchema.parse({ email, nome, role });
       
-      // Criar convite via admin
-      const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(
-        validated.email,
-        {
-          data: { nome: validated.nome },
-          redirectTo: `${window.location.origin}/auth`,
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: validated.email,
+          nome: validated.nome,
+          role: validated.role
         }
-      );
+      });
 
-      if (authError) throw authError;
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-      // Aguardar um pouco para o trigger criar o perfil
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Atualizar role se for admin
-      if (validated.role === 'admin' && authData.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({ role: 'admin' })
-          .eq('user_id', authData.user.id);
-
-        if (roleError) throw roleError;
-      }
-
-      return authData;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
@@ -195,8 +182,14 @@ export default function Usuarios() {
   // Remover usuário
   const deleteMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
+
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
