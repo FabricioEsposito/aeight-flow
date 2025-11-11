@@ -471,10 +471,12 @@ export default function ContasReceber() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
+                <TableHead>Data de Competência</TableHead>
+                <TableHead>Data de Vencimento</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contrato</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Centro de Custos</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -483,6 +485,7 @@ export default function ContasReceber() {
             <TableBody>
               {filteredContas.map((conta) => (
                 <TableRow key={conta.id}>
+                  <TableCell>{formatDate(conta.data_competencia)}</TableCell>
                   <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -502,6 +505,7 @@ export default function ContasReceber() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
+                  <TableCell>{conta.centro_custo || '-'}</TableCell>
                   <TableCell className="font-semibold text-emerald-600">
                     {formatCurrency(conta.valor)}
                   </TableCell>

@@ -440,10 +440,12 @@ export default function ContasPagar() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
+                <TableHead>Data de Competência</TableHead>
+                <TableHead>Data de Vencimento</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Contrato</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Centro de Custos</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -451,6 +453,7 @@ export default function ContasPagar() {
             </TableHeader>
             <TableBody>
               {filteredContas.map(conta => <TableRow key={conta.id}>
+                  <TableCell>{formatDate(conta.data_competencia)}</TableCell>
                   <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -470,6 +473,7 @@ export default function ContasPagar() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
+                  <TableCell>{conta.centro_custo || '-'}</TableCell>
                   <TableCell className="font-semibold text-destructive">
                     {formatCurrency(conta.valor_parcela)}
                   </TableCell>
