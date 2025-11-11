@@ -389,12 +389,12 @@ export default function EditarContrato() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-foreground">Editar Contrato</h1>
-          <p className="text-muted-foreground">Atualize as informações do contrato</p>
+          <h1 className="text-3xl font-bold text-foreground">Editar Valores e Parcelas</h1>
+          <p className="text-muted-foreground">Atualize valores, impostos e parcelas do contrato</p>
         </div>
         <Button variant="outline" onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
           <Edit className="h-4 w-4 mr-2" />
-          Editar Todas as Informações
+          Editar contrato completo
         </Button>
       </div>
 
