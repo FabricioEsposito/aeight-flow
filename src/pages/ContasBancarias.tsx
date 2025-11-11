@@ -48,6 +48,7 @@ export default function ContasBancarias() {
       banco: '',
       descricao: '',
       saldo_inicial: 0,
+      saldo_atual: 0,
       data_inicio: new Date().toISOString().split('T')[0],
       status: 'ativo' as 'ativo' | 'inativo',
       centro_custo_id: '',
@@ -83,7 +84,7 @@ export default function ContasBancarias() {
     try {
       const formData = {
         ...data,
-        saldo_atual: editingConta ? editingConta.saldo_atual : data.saldo_inicial,
+        saldo_atual: editingConta ? data.saldo_atual : data.saldo_inicial,
       };
 
       if (editingConta) {
@@ -132,6 +133,7 @@ export default function ContasBancarias() {
       banco: conta.banco,
       descricao: conta.descricao,
       saldo_inicial: conta.saldo_inicial,
+      saldo_atual: conta.saldo_atual,
       data_inicio: conta.data_inicio,
       status: conta.status,
       centro_custo_id: (conta as any).centro_custo_id || '',
@@ -327,6 +329,7 @@ export default function ContasBancarias() {
                             placeholder="0,00" 
                             {...field}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            disabled={!!editingConta}
                           />
                         </FormControl>
                         <FormMessage />
@@ -348,6 +351,28 @@ export default function ContasBancarias() {
                     )}
                   />
                 </div>
+
+                {editingConta && (
+                  <FormField
+                    control={form.control}
+                    name="saldo_atual"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Saldo Atual</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0,00" 
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}

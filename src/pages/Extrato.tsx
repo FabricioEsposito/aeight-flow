@@ -12,6 +12,7 @@ import { NovoLancamentoDialog } from '@/components/financeiro/NovoLancamentoDial
 import { ExtratoActionsDropdown } from '@/components/financeiro/ExtratoActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { format } from 'date-fns';
 
 interface LancamentoExtrato {
@@ -43,16 +44,67 @@ export default function Extrato() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const { toast } = useToast();
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (datePreset) {
+      case 'todo-periodo':
+        return undefined;
+      case 'hoje':
+        return { start: format(today, 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
+      case 'esta-semana': {
+        const start = new Date(today);
+        start.setDate(today.getDate() - today.getDay());
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
+      }
+      case 'este-mes': {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
+      }
+      case 'este-ano': {
+        const start = new Date(today.getFullYear(), 0, 1);
+        const end = new Date(today.getFullYear(), 11, 31);
+        return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
+      }
+      case 'ultimos-30-dias': {
+        const start = new Date(today);
+        start.setDate(today.getDate() - 30);
+        return { start: format(start, 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
+      }
+      case 'ultimos-12-meses': {
+        const start = new Date(today);
+        start.setMonth(today.getMonth() - 12);
+        return { start: format(start, 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
+      }
+      case 'periodo-personalizado':
+        if (customDateRange?.from && customDateRange?.to) {
+          return {
+            start: format(customDateRange.from, 'yyyy-MM-dd'),
+            end: format(customDateRange.to, 'yyyy-MM-dd')
+          };
+        }
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
+
   const fetchLancamentos = async () => {
     try {
+      const dateRange = getDateRange();
+      
       // Buscar contas a receber
       let queryReceber = supabase
         .from('contas_receber')
@@ -63,11 +115,8 @@ export default function Extrato() {
         `)
         .order('data_vencimento', { ascending: false });
 
-      if (dataInicio) {
-        queryReceber = queryReceber.gte('data_vencimento', dataInicio);
-      }
-      if (dataFim) {
-        queryReceber = queryReceber.lte('data_vencimento', dataFim);
+      if (dateRange) {
+        queryReceber = queryReceber.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
       }
 
       const { data: dataReceber, error: errorReceber } = await queryReceber;
@@ -83,11 +132,8 @@ export default function Extrato() {
         `)
         .order('data_vencimento', { ascending: false });
 
-      if (dataInicio) {
-        queryPagar = queryPagar.gte('data_vencimento', dataInicio);
-      }
-      if (dataFim) {
-        queryPagar = queryPagar.lte('data_vencimento', dataFim);
+      if (dateRange) {
+        queryPagar = queryPagar.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
       }
 
       const { data: dataPagar, error: errorPagar } = await queryPagar;
@@ -164,7 +210,7 @@ export default function Extrato() {
 
   useEffect(() => {
     fetchLancamentos();
-  }, [dataInicio, dataFim]);
+  }, [datePreset, customDateRange]);
 
   const handleMarkAsPaid = async (lancamento: LancamentoExtrato) => {
     try {
@@ -361,8 +407,10 @@ export default function Extrato() {
                          (lanc.cliente_fornecedor || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = tipoFilter === 'todos' || lanc.tipo === tipoFilter;
     const matchesStatus = statusFilter === 'todos' || lanc.status === statusFilter;
+    const matchesConta = contaBancariaFilter === 'todas' || 
+                        lanc.conta_bancaria_id === contaBancariaFilter;
 
-    return matchesSearch && matchesTipo && matchesStatus;
+    return matchesSearch && matchesTipo && matchesStatus && matchesConta;
   });
 
   const formatCurrency = (value: number) => {
@@ -470,8 +518,17 @@ export default function Extrato() {
       </div>
 
       <Card className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-          <div className="relative">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomDateRange(range);
+            }}
+            customRange={customDateRange}
+          />
+
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Buscar movimentações..."
@@ -481,8 +538,22 @@ export default function Extrato() {
             />
           </div>
 
+          <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Conta bancária" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="todas">Todas as contas</SelectItem>
+              {contasBancarias.map((conta) => (
+                <SelectItem key={conta.id} value={conta.id}>
+                  {conta.descricao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent className="bg-background z-50">
@@ -493,34 +564,15 @@ export default function Extrato() {
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent className="bg-background z-50">
-              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="todos">Todos os Status</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
               <SelectItem value="pago">Pago/Recebido</SelectItem>
             </SelectContent>
           </Select>
-
-          <Input
-            type="date"
-            value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
-            placeholder="Data início"
-          />
-
-          <Input
-            type="date"
-            value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
-            placeholder="Data fim"
-          />
-
-          <Button variant="outline" onClick={fetchLancamentos}>
-            <Filter className="w-4 h-4 mr-2" />
-            Filtrar
-          </Button>
         </div>
 
         <div className="rounded-md border">
