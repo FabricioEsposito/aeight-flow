@@ -21,6 +21,7 @@ import ContasPagar from "./pages/ContasPagar";
 import Extrato from "./pages/Extrato";
 import CentroCustos from "./pages/CentroCustos";
 import EditarContratoCompleto from "./pages/EditarContratoCompleto";
+import Usuarios from "./pages/Usuarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/contas-pagar" element={<ProtectedRoute><ContasPagar /></ProtectedRoute>} />
             <Route path="/extrato" element={<ProtectedRoute><Extrato /></ProtectedRoute>} />
             <Route path="/centro-custos" element={<ProtectedRoute><CentroCustos /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -11,7 +11,8 @@ import {
   BarChart3,
   Home,
   Settings,
-  FolderKanban
+  FolderKanban,
+  UserCog
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -39,6 +40,7 @@ const navigationItems = [
   { title: "Contas a Receber", url: "/contas-receber", icon: TrendingUp },
   { title: "Contas a Pagar", url: "/contas-pagar", icon: TrendingDown },
   { title: "Extrato", url: "/extrato", icon: BarChart3 },
+  { title: "Usuários", url: "/usuarios", icon: UserCog },
 ];
 
 export function AppSidebar() {
