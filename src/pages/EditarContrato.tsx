@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle, Undo2, Edit } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, Undo2, Edit, MoreVertical, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -392,10 +399,30 @@ export default function EditarContrato() {
           <h1 className="text-3xl font-bold text-foreground">Editar Valores e Parcelas</h1>
           <p className="text-muted-foreground">Atualize valores, impostos e parcelas do contrato</p>
         </div>
-        <Button variant="outline" onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Editar contrato completo
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              Editar contrato completo
+              <MoreVertical className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}`)}>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Editar contrato completo
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card>
