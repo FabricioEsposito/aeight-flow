@@ -399,30 +399,6 @@ export default function EditarContrato() {
           <h1 className="text-3xl font-bold text-foreground">Editar Valores e Parcelas</h1>
           <p className="text-muted-foreground">Atualize valores, impostos e parcelas do contrato</p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Editar contrato completo
-              <MoreVertical className="h-4 w-4 ml-2" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-background z-50">
-            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}`)}>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar contrato completo
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Salvando...' : 'Salvar alterações'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <Card>
@@ -573,14 +549,30 @@ export default function EditarContrato() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={() => navigate(`/contratos/${id}`)}>
-          Cancelar
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? 'Salvando...' : 'Salvar Alterações'}
-        </Button>
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              Ações
+              <MoreVertical className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}`)}>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Editar contrato completo
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <AlertDialog open={goLiveDialogOpen} onOpenChange={setGoLiveDialogOpen}>
