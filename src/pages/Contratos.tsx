@@ -84,7 +84,7 @@ export default function Contratos() {
   };
 
   const handleEdit = (id: string) => {
-    navigate(`/contratos/${id}/edit`);
+    navigate(`/contratos/${id}/edit-completo`);
   };
 
   const handleDelete = async (id: string) => {
