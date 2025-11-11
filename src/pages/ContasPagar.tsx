@@ -48,7 +48,7 @@ export default function ContasPagar() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -251,6 +251,8 @@ export default function ContasPagar() {
   const getDateRange = () => {
     const today = new Date();
     switch (datePreset) {
+      case 'todo-periodo':
+        return undefined; // Não aplica filtro de data
       case 'hoje':
         return {
           from: startOfDay(today),

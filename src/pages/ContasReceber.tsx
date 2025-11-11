@@ -61,7 +61,7 @@ export default function ContasReceber() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -277,6 +277,8 @@ export default function ContasReceber() {
     const today = new Date();
     
     switch (datePreset) {
+      case 'todo-periodo':
+        return undefined; // Não aplica filtro de data
       case 'hoje':
         return { from: startOfDay(today), to: endOfDay(today) };
       case 'esta-semana':
