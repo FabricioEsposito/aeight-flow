@@ -43,8 +43,8 @@ export default function Extrato() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function Extrato() {
         .select(`
           *,
           clientes:cliente_id (razao_social, cnpj_cpf),
-          contratos:parcela_id (numero_contrato)
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato))
         `)
         .order('data_vencimento', { ascending: false });
 
@@ -79,7 +79,7 @@ export default function Extrato() {
         .select(`
           *,
           fornecedores:fornecedor_id (razao_social, cnpj_cpf),
-          contratos:parcela_id (numero_contrato)
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato))
         `)
         .order('data_vencimento', { ascending: false });
 
@@ -113,7 +113,7 @@ export default function Extrato() {
         status: r.status,
         origem: 'receber' as const,
         cliente_fornecedor: r.clientes?.razao_social,
-        numero_contrato: r.contratos?.numero_contrato,
+        numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
         centro_custo: r.centro_custo,
         plano_conta_id: r.plano_conta_id,
         conta_bancaria_id: r.conta_bancaria_id,
@@ -134,7 +134,7 @@ export default function Extrato() {
         status: p.status,
         origem: 'pagar' as const,
         cliente_fornecedor: p.fornecedores?.razao_social,
-        numero_contrato: p.contratos?.numero_contrato,
+        numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
         centro_custo: p.centro_custo,
         plano_conta_id: p.plano_conta_id,
         conta_bancaria_id: p.conta_bancaria_id,
