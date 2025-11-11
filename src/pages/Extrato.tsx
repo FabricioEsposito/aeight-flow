@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { NovoLancamentoDialog } from '@/components/financeiro/NovoLancamentoDialog';
@@ -13,6 +14,8 @@ import { ExtratoActionsDropdown } from '@/components/financeiro/ExtratoActionsDr
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 
 interface LancamentoExtrato {
@@ -24,6 +27,7 @@ interface LancamentoExtrato {
   descricao: string;
   status: string;
   origem: 'receber' | 'pagar';
+  parcela_id?: string | null;
   cliente_fornecedor?: string;
   numero_contrato?: string;
   centro_custo?: string;
@@ -51,6 +55,11 @@ export default function Extrato() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [lancamentoToDelete, setLancamentoToDelete] = useState<LancamentoExtrato | null>(null);
   const { toast } = useToast();
 
   const getDateRange = () => {
@@ -158,6 +167,7 @@ export default function Extrato() {
         descricao: r.descricao,
         status: r.status,
         origem: 'receber' as const,
+        parcela_id: r.parcela_id,
         cliente_fornecedor: r.clientes?.razao_social,
         numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
         centro_custo: r.centro_custo,
@@ -179,6 +189,7 @@ export default function Extrato() {
         descricao: p.descricao,
         status: p.status,
         origem: 'pagar' as const,
+        parcela_id: p.parcela_id,
         cliente_fornecedor: p.fornecedores?.razao_social,
         numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
         centro_custo: p.centro_custo,
@@ -402,6 +413,137 @@ export default function Extrato() {
     setViewDialogOpen(true);
   };
 
+  // Funções de seleção em lote
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === filteredLancamentos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredLancamentos.map(l => l.id)));
+    }
+  };
+
+  const handleBatchAction = async (actionType: 'change-date' | 'mark-paid' | 'clone', data?: any) => {
+    const selectedLancamentos = lancamentos.filter(l => selectedIds.has(l.id));
+    
+    try {
+      if (actionType === 'change-date' && data?.newDate) {
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          await supabase
+            .from(table)
+            .update({ data_vencimento: data.newDate })
+            .eq('id', lanc.id);
+        }
+        toast({
+          title: "Sucesso",
+          description: `Data de vencimento alterada para ${selectedLancamentos.length} lançamento(s)!`,
+        });
+      } else if (actionType === 'mark-paid') {
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          const dateField = lanc.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
+          await supabase
+            .from(table)
+            .update({ 
+              status: 'pago',
+              [dateField]: format(new Date(), 'yyyy-MM-dd')
+            })
+            .eq('id', lanc.id);
+        }
+        toast({
+          title: "Sucesso",
+          description: `${selectedLancamentos.length} lançamento(s) marcado(s) como pago/recebido!`,
+        });
+      } else if (actionType === 'clone') {
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          const { data: originalData, error: fetchError } = await supabase
+            .from(table)
+            .select('*')
+            .eq('id', lanc.id)
+            .single();
+
+          if (!fetchError && originalData) {
+            const cloneData: any = { ...originalData };
+            delete cloneData.id;
+            delete cloneData.created_at;
+            delete cloneData.updated_at;
+            delete cloneData.data_recebimento;
+            delete cloneData.data_pagamento;
+            
+            await supabase
+              .from(table)
+              .insert({
+                ...cloneData,
+                status: 'pendente',
+              });
+          }
+        }
+        toast({
+          title: "Sucesso",
+          description: `${selectedLancamentos.length} lançamento(s) clonado(s)!`,
+        });
+      }
+      
+      setSelectedIds(new Set());
+      setBatchDialogOpen(false);
+      fetchLancamentos();
+    } catch (error) {
+      console.error('Erro na ação em lote:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível concluir a ação em lote.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteConfirm = (lancamento: LancamentoExtrato) => {
+    setLancamentoToDelete(lancamento);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!lancamentoToDelete) return;
+
+    try {
+      const table = lancamentoToDelete.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+      
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', lancamentoToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Lançamento excluído com sucesso!",
+      });
+      fetchLancamentos();
+    } catch (error) {
+      console.error('Erro ao excluir lançamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o lançamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setLancamentoToDelete(null);
+    }
+  };
+
   // Função para determinar o status de exibição
   const getDisplayStatus = (lanc: LancamentoExtrato) => {
     const hoje = new Date();
@@ -545,6 +687,56 @@ export default function Extrato() {
       </div>
 
       <Card className="p-6">
+        {selectedIds.size > 0 && (
+          <div className="mb-4 flex items-center gap-2 p-4 bg-muted rounded-lg">
+            <span className="text-sm font-medium">
+              {selectedIds.size} lançamento(s) selecionado(s)
+            </span>
+            <div className="flex gap-2 ml-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setBatchActionType('change-date');
+                  setBatchDialogOpen(true);
+                }}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Alterar Data
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setBatchActionType('mark-paid');
+                  setBatchDialogOpen(true);
+                }}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Marcar como Pago
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setBatchActionType('clone');
+                  setBatchDialogOpen(true);
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Clonar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+        
         <div className="flex flex-wrap gap-4 mb-6">
           <DateRangeFilter
             value={datePreset}
@@ -606,6 +798,12 @@ export default function Extrato() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectedIds.size === filteredLancamentos.length && filteredLancamentos.length > 0}
+                    onCheckedChange={handleToggleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Situação</TableHead>
@@ -641,6 +839,12 @@ export default function Extrato() {
 
                 return (
                   <TableRow key={lanc.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(lanc.id)}
+                        onCheckedChange={() => handleToggleSelect(lanc.id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{formatDate(lanc.data_vencimento)}</TableCell>
                     <TableCell>
                       <div>
@@ -686,11 +890,13 @@ export default function Extrato() {
                       <ExtratoActionsDropdown
                         tipo={lanc.tipo}
                         status={lanc.status}
+                        isAvulso={!lanc.parcela_id}
                         onEdit={() => handleEdit(lanc)}
                         onMarkAsPaid={() => handleMarkAsPaid(lanc)}
                         onMarkAsOpen={() => handleMarkAsOpen(lanc)}
                         onView={() => handleView(lanc)}
                         onClone={() => handleClone(lanc)}
+                        onDelete={!lanc.parcela_id ? () => handleDeleteConfirm(lanc) : undefined}
                       />
                     </TableCell>
                   </TableRow>
@@ -729,6 +935,32 @@ export default function Extrato() {
         initialData={selectedLancamento}
         contasBancarias={contasBancarias}
       />
+
+      <BatchActionsDialog
+        open={batchDialogOpen}
+        onOpenChange={setBatchDialogOpen}
+        selectedCount={selectedIds.size}
+        actionType={batchActionType}
+        onConfirm={handleBatchAction}
+        tipo={lancamentos.find(l => selectedIds.has(l.id))?.tipo}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Lançamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

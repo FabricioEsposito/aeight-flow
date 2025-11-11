@@ -11,6 +11,7 @@ import {
 
 interface ActionsDropdownProps {
   status: string;
+  isAvulso?: boolean;
   onMarkAsPaid: () => void;
   onMarkAsOpen: () => void;
   onView: () => void;
@@ -19,7 +20,8 @@ interface ActionsDropdownProps {
 }
 
 export function ActionsDropdown({ 
-  status, 
+  status,
+  isAvulso = false,
   onMarkAsPaid, 
   onMarkAsOpen, 
   onView,
@@ -57,11 +59,15 @@ export function ActionsDropdown({
           <Eye className="w-4 h-4 mr-2 text-blue-500" />
           <span>Visualizar informações</span>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive">
-          <Trash2 className="w-4 h-4 mr-2" />
-          <span>Excluir parcela</span>
-        </DropdownMenuItem>
+        {isAvulso && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive">
+              <Trash2 className="w-4 h-4 mr-2" />
+              <span>Excluir lançamento</span>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

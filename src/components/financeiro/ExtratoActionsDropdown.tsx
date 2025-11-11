@@ -7,26 +7,30 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, CheckCircle, XCircle, Eye, Copy } from 'lucide-react';
+import { MoreVertical, Edit, CheckCircle, XCircle, Eye, Copy, Trash2 } from 'lucide-react';
 
 interface ExtratoActionsDropdownProps {
   tipo: 'entrada' | 'saida';
   status: string;
+  isAvulso?: boolean;
   onEdit: () => void;
   onMarkAsPaid: () => void;
   onMarkAsOpen: () => void;
   onView: () => void;
   onClone: () => void;
+  onDelete?: () => void;
 }
 
 export function ExtratoActionsDropdown({
   tipo,
   status,
+  isAvulso = false,
   onEdit,
   onMarkAsPaid,
   onMarkAsOpen,
   onView,
   onClone,
+  onDelete,
 }: ExtratoActionsDropdownProps) {
   const isPaid = status === 'pago' || status === 'recebido';
 
@@ -37,7 +41,7 @@ export function ExtratoActionsDropdown({
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-background">
+      <DropdownMenuContent align="end" className="w-56 bg-background z-50">
         <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
           <Edit className="mr-2 h-4 w-4" />
           Editar lançamento
@@ -68,6 +72,16 @@ export function ExtratoActionsDropdown({
           <Copy className="mr-2 h-4 w-4" />
           Clonar lançamento
         </DropdownMenuItem>
+
+        {isAvulso && onDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir lançamento
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
