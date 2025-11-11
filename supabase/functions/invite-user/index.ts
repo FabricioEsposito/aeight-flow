@@ -47,26 +47,29 @@ Deno.serve(async (req) => {
 
     console.log('User invited successfully:', userData.user.id);
 
-    // Insert role for the new user
-    const { error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .insert({
-        user_id: userData.user.id,
-        role: role
-      });
+    // O trigger handle_new_user já cria automaticamente uma role 'user'
+    // Se a role for 'admin', precisamos atualizar a role existente
+    if (role === 'admin') {
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .update({ role: 'admin' })
+        .eq('user_id', userData.user.id);
 
-    if (roleError) {
-      console.error('Error assigning role:', roleError);
-      return new Response(
-        JSON.stringify({ error: 'User invited but role assignment failed' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      if (roleError) {
+        console.error('Error updating role to admin:', roleError);
+        return new Response(
+          JSON.stringify({ error: 'User invited but role assignment failed' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      console.log('Role updated to admin successfully');
+    } else {
+      console.log('Role already set to user by trigger');
     }
-
-    console.log('Role assigned successfully');
 
     return new Response(
       JSON.stringify({ success: true, user: userData.user }),
