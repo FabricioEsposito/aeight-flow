@@ -402,6 +402,23 @@ export default function Extrato() {
     setViewDialogOpen(true);
   };
 
+  // Função para determinar o status de exibição
+  const getDisplayStatus = (lanc: LancamentoExtrato) => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataVencimento = new Date(lanc.data_vencimento + 'T00:00:00');
+    
+    if (lanc.status === 'pago') {
+      return lanc.tipo === 'entrada' ? 'recebido' : 'pago';
+    }
+    
+    if (dataVencimento < hoje) {
+      return 'vencido';
+    }
+    
+    return 'em dia';
+  };
+
   const filteredLancamentos = lancamentos.filter(lanc => {
     const matchesSearch = lanc.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (lanc.cliente_fornecedor || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -425,15 +442,25 @@ export default function Extrato() {
     return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
-  // Cálculos para resumo - Saldo: saldo das contas + contas a receber - contas a pagar
+  // Cálculos para resumo
   const saldoContas = contasBancarias.reduce((acc, conta) => acc + conta.saldo_atual, 0);
   
+  // Considerar apenas lançamentos em dia (não vencidos) para o saldo previsto
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  
   const totalReceber = filteredLancamentos
-    .filter(l => l.tipo === 'entrada' && l.status === 'pendente')
+    .filter(l => {
+      const dataVenc = new Date(l.data_vencimento + 'T00:00:00');
+      return l.tipo === 'entrada' && l.status === 'pendente' && dataVenc >= hoje;
+    })
     .reduce((acc, l) => acc + l.valor, 0);
 
   const totalPagar = filteredLancamentos
-    .filter(l => l.tipo === 'saida' && l.status === 'pendente')
+    .filter(l => {
+      const dataVenc = new Date(l.data_vencimento + 'T00:00:00');
+      return l.tipo === 'saida' && l.status === 'pendente' && dataVenc >= hoje;
+    })
     .reduce((acc, l) => acc + l.valor, 0);
 
   const saldoFinal = saldoContas + totalReceber - totalPagar;
@@ -507,7 +534,7 @@ export default function Extrato() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Saldo Final</p>
+              <p className="text-sm text-muted-foreground">Saldo Previsto</p>
               <p className={`text-2xl font-bold ${saldoFinal >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
                 {formatCurrency(saldoFinal)}
               </p>
@@ -569,7 +596,7 @@ export default function Extrato() {
             </SelectTrigger>
             <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Status</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="pendente">Em dia / Vencido</SelectItem>
               <SelectItem value="pago">Pago/Recebido</SelectItem>
             </SelectContent>
           </Select>
@@ -589,11 +616,28 @@ export default function Extrato() {
             </TableHeader>
             <TableBody>
               {filteredLancamentos.map((lanc, index) => {
-                // Calcular saldo acumulado
+                const displayStatus = getDisplayStatus(lanc);
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const dataVenc = new Date(lanc.data_vencimento + 'T00:00:00');
+                const isVencido = displayStatus === 'vencido';
+                
+                // Calcular saldo acumulado considerando APENAS lançamentos pagos/recebidos
                 const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
-                const saldoAcumulado = saldoContas + 
-                  lancamentosAteAqui.filter(l => l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0) -
-                  lancamentosAteAqui.filter(l => l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0);
+                const saldoRealizado = saldoContas + 
+                  lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0) -
+                  lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0);
+
+                // Calcular saldo previsto (realizado + em dia)
+                const saldoPrevisto = saldoRealizado +
+                  lancamentosAteAqui.filter(l => {
+                    const dataV = new Date(l.data_vencimento + 'T00:00:00');
+                    return l.status === 'pendente' && dataV >= hoje && l.tipo === 'entrada';
+                  }).reduce((acc, l) => acc + l.valor, 0) -
+                  lancamentosAteAqui.filter(l => {
+                    const dataV = new Date(l.data_vencimento + 'T00:00:00');
+                    return l.status === 'pendente' && dataV >= hoje && l.tipo === 'saida';
+                  }).reduce((acc, l) => acc + l.valor, 0);
 
                 return (
                   <TableRow key={lanc.id}>
@@ -610,15 +654,33 @@ export default function Extrato() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={lanc.status === 'pago' ? 'default' : 'secondary'}>
-                        {lanc.status === 'pago' ? 'Pago' : 'Pendente'}
+                      <Badge variant={
+                        displayStatus === 'pago' || displayStatus === 'recebido' ? 'default' : 
+                        displayStatus === 'vencido' ? 'destructive' : 
+                        'secondary'
+                      }>
+                        {displayStatus === 'pago' ? 'Pago' : 
+                         displayStatus === 'recebido' ? 'Recebido' : 
+                         displayStatus === 'vencido' ? 'Vencido' :
+                         'Em dia'}
                       </Badge>
                     </TableCell>
                     <TableCell className={`text-right font-semibold ${lanc.tipo === 'entrada' ? 'text-emerald-600' : 'text-destructive'}`}>
                       {lanc.tipo === 'entrada' ? '+' : '-'} {formatCurrency(lanc.valor)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(saldoAcumulado)}
+                      <div className="flex flex-col items-end">
+                        {lanc.status === 'pago' ? (
+                          <span>{formatCurrency(saldoRealizado)}</span>
+                        ) : isVencido ? (
+                          <span className="text-muted-foreground">{formatCurrency(saldoRealizado)}</span>
+                        ) : (
+                          <>
+                            <span className="text-xs text-muted-foreground">Previsto:</span>
+                            <span>{formatCurrency(saldoPrevisto)}</span>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <ExtratoActionsDropdown
