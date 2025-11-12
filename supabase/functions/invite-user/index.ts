@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
 
     // Enviar email via Resend
     try {
+      console.log('Attempting to send email to:', email);
+      
       const emailResponse = await resend.emails.send({
         from: 'Sistema <onboarding@resend.dev>',
         to: [email],
@@ -113,10 +115,15 @@ Deno.serve(async (req) => {
         `,
       });
 
+      console.log('Resend response:', JSON.stringify(emailResponse));
+
       if (emailResponse.error) {
-        console.error('Error sending email via Resend:', emailResponse.error);
+        console.error('Error sending email via Resend:', JSON.stringify(emailResponse.error));
         return new Response(
-          JSON.stringify({ error: 'User created but failed to send invitation email' }),
+          JSON.stringify({ 
+            error: 'Falha ao enviar email de convite',
+            details: emailResponse.error 
+          }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -124,11 +131,15 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log('Invitation email sent successfully:', emailResponse);
+      console.log('Invitation email sent successfully. Email ID:', emailResponse.data?.id);
     } catch (emailError) {
-      console.error('Error sending email:', emailError);
+      console.error('Exception sending email:', emailError);
+      console.error('Error details:', JSON.stringify(emailError, null, 2));
       return new Response(
-        JSON.stringify({ error: 'User created but failed to send invitation email' }),
+        JSON.stringify({ 
+          error: 'Erro ao enviar email de convite',
+          details: emailError.message || 'Unknown error'
+        }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
