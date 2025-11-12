@@ -81,7 +81,7 @@ export function Dashboard() {
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasReceberTotal = contasReceber
-        ?.filter(c => c.status === 'pendente' || c.status === 'vencido')
+        ?.filter(c => c.status === 'pendente')
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const inadimplentes = contasReceber
