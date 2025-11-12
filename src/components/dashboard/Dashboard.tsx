@@ -515,81 +515,85 @@ export function Dashboard() {
       )}
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Faturamento Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Faturamento - Receita de Serviços</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                valor: {
-                  label: "Faturamento",
-                  color: "hsl(var(--primary))",
-                },
-              }}
-              className="h-80"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={faturamentoData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-6">
+        {/* Faturamento Chart - Apenas em Análise de Faturamento */}
+        {analiseAtiva === 'faturamento' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Faturamento - Receita de Serviços</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  valor: {
+                    label: "Faturamento",
+                    color: "hsl(var(--primary))",
+                  },
+                }}
+                className="h-80"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={faturamentoData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Fluxo de Caixa Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Fluxo de Caixa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                saldoFinal: {
-                  label: "Saldo Final",
-                  color: "hsl(var(--primary))",
-                },
-                saldoPrevisto: {
-                  label: "Saldo Previsto",
-                  color: "hsl(var(--muted-foreground))",
-                },
-              }}
-              className="h-80"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={fluxoCaixaData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="saldoFinal" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    name="Saldo Final"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="saldoPrevisto" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    name="Saldo Previsto"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+        {/* Fluxo de Caixa Chart - Apenas em Análise de Caixa */}
+        {analiseAtiva === 'caixa' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Fluxo de Caixa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  saldoFinal: {
+                    label: "Saldo Final",
+                    color: "hsl(var(--primary))",
+                  },
+                  saldoPrevisto: {
+                    label: "Saldo Previsto",
+                    color: "hsl(var(--muted-foreground))",
+                  },
+                }}
+                className="h-80"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={fluxoCaixaData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="saldoFinal" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      name="Saldo Final"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="saldoPrevisto" 
+                      stroke="hsl(var(--muted-foreground))" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Saldo Previsto"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
