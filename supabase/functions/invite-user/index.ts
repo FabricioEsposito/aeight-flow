@@ -36,22 +36,23 @@ Deno.serve(async (req) => {
     const redirectUrl = `${req.headers.get('origin') || 'http://localhost:3000'}/auth`;
     
     if (existingUser) {
-      // Usuário já existe, reenviar convite
+      // Usuário já existe, gerar link de magic link para reenvio
       console.log('User already exists, resending invite:', existingUser.id);
       userId = existingUser.id;
       
-      // Enviar email de convite novamente usando o Supabase
-      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: redirectUrl,
-        data: {
-          nome: nome
+      // Gerar magic link para usuário existente
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: email,
+        options: {
+          redirectTo: redirectUrl
         }
       });
 
-      if (inviteError) {
-        console.error('Error resending invite:', inviteError);
+      if (linkError) {
+        console.error('Error generating magic link:', linkError);
         return new Response(
-          JSON.stringify({ error: 'Falha ao reenviar convite: ' + inviteError.message }),
+          JSON.stringify({ error: 'Falha ao gerar link de convite: ' + linkError.message }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log('Invitation resent successfully via Supabase');
+      console.log('Magic link generated successfully for existing user');
     } else {
       // Criar e convidar novo usuário usando o Supabase
       const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
       });
 
       if (inviteError) {
-        console.error('Error inviting user:', inviteError);
+        console.error('Error inviting new user:', inviteError);
         return new Response(
           JSON.stringify({ error: 'Falha ao convidar usuário: ' + inviteError.message }),
           { 
