@@ -266,7 +266,7 @@ export default function NovoContrato() {
 
   const calcularParcelas = () => {
     const valorTotal = calcularValorTotal();
-    const parcelas: { numero: number; data: Date; valor: number; tipo?: string; descricao?: string }[] = [];
+    const parcelas: { numero: number; data: Date; dataCompetencia: Date; valor: number; tipo?: string; descricao?: string }[] = [];
 
     if (!dataInicio || valorTotal <= 0) return parcelas;
 
@@ -281,6 +281,7 @@ export default function NovoContrato() {
         parcelas.push({
           numero: numeroParcela,
           data: dataVenc,
+          dataCompetencia: dataAtual, // Data de geração da venda/competência
           valor: valorTotal,
           tipo: 'normal'
         });
@@ -313,6 +314,7 @@ export default function NovoContrato() {
           parcelas.push({
             numero: index + 1,
             data: dataVenc,
+            dataCompetencia: dataGeracao, // Data de geração da venda/competência
             valor: valorParcela,
             tipo: parcelaCustom.tipo,
             descricao: parcelaCustom.descricao
@@ -329,6 +331,7 @@ export default function NovoContrato() {
           parcelas.push({
             numero: i + 1,
             data: dataVenc,
+            dataCompetencia: dataGeracao, // Data de geração da venda/competência
             valor: valorParcela,
             tipo: 'normal'
           });
@@ -456,22 +459,28 @@ export default function NovoContrato() {
       const parcelasNormais = parcelasInseridas.filter(p => p.status !== 'aguardando_conclusao');
       
       if (tipoContrato === 'venda' && parcelasNormais.length > 0) {
-        const contasReceberData = parcelasNormais.map(parcela => ({
-          parcela_id: parcela.id,
-          cliente_id: clienteId,
-          valor: parcela.valor,
-          valor_original: parcela.valor,
-          data_vencimento: parcela.data_vencimento,
-          data_competencia: dataInicio?.toISOString().split('T')[0],
-          plano_conta_id: planoContasId,
-          conta_bancaria_id: contaBancariaId,
-          centro_custo: centroCusto,
-          status: 'pendente',
-          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
-          juros: 0,
-          multa: 0,
-          desconto: 0
-        }));
+        const contasReceberData = parcelasNormais.map((parcela, index) => {
+          // Encontrar a data de competência correspondente no array de parcelas calculadas
+          const parcelaCalculada = parcelas[index];
+          const dataCompetencia = parcelaCalculada?.dataCompetencia || dataInicio;
+          
+          return {
+            parcela_id: parcela.id,
+            cliente_id: clienteId,
+            valor: parcela.valor,
+            valor_original: parcela.valor,
+            data_vencimento: parcela.data_vencimento,
+            data_competencia: dataCompetencia.toISOString().split('T')[0],
+            plano_conta_id: planoContasId,
+            conta_bancaria_id: contaBancariaId,
+            centro_custo: centroCusto,
+            status: 'pendente',
+            descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
+            juros: 0,
+            multa: 0,
+            desconto: 0
+          };
+        });
 
         const { error: receberError } = await supabase
           .from('contas_receber')
@@ -479,22 +488,28 @@ export default function NovoContrato() {
 
         if (receberError) throw receberError;
       } else if (parcelasNormais.length > 0) {
-        const contasPagarData = parcelasNormais.map(parcela => ({
-          parcela_id: parcela.id,
-          fornecedor_id: fornecedorId,
-          valor: parcela.valor,
-          valor_original: parcela.valor,
-          data_vencimento: parcela.data_vencimento,
-          data_competencia: dataInicio?.toISOString().split('T')[0],
-          plano_conta_id: planoContasId,
-          conta_bancaria_id: contaBancariaId,
-          centro_custo: centroCusto,
-          status: 'pendente',
-          descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
-          juros: 0,
-          multa: 0,
-          desconto: 0
-        }));
+        const contasPagarData = parcelasNormais.map((parcela, index) => {
+          // Encontrar a data de competência correspondente no array de parcelas calculadas
+          const parcelaCalculada = parcelas[index];
+          const dataCompetencia = parcelaCalculada?.dataCompetencia || dataInicio;
+          
+          return {
+            parcela_id: parcela.id,
+            fornecedor_id: fornecedorId,
+            valor: parcela.valor,
+            valor_original: parcela.valor,
+            data_vencimento: parcela.data_vencimento,
+            data_competencia: dataCompetencia.toISOString().split('T')[0],
+            plano_conta_id: planoContasId,
+            conta_bancaria_id: contaBancariaId,
+            centro_custo: centroCusto,
+            status: 'pendente',
+            descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
+            juros: 0,
+            multa: 0,
+            desconto: 0
+          };
+        });
 
         const { error: pagarError } = await supabase
           .from('contas_pagar')
