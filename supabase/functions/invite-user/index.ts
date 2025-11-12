@@ -31,27 +31,40 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Criar usuário com email já confirmado
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
-      email: email,
-      email_confirm: true,
-      user_metadata: {
-        nome: nome
-      }
-    });
-
-    if (userError) {
-      console.error('Error creating user:', userError);
-      return new Response(
-        JSON.stringify({ error: userError.message }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    // Verificar se usuário já existe
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(u => u.email === email);
+    
+    let userId: string;
+    
+    if (existingUser) {
+      // Usuário já existe, usar o ID existente
+      console.log('User already exists, resending invite:', existingUser.id);
+      userId = existingUser.id;
+    } else {
+      // Criar novo usuário com email já confirmado
+      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        email_confirm: true,
+        user_metadata: {
+          nome: nome
         }
-      );
-    }
+      });
 
-    console.log('User created successfully:', userData.user.id);
+      if (userError) {
+        console.error('Error creating user:', userError);
+        return new Response(
+          JSON.stringify({ error: userError.message }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      console.log('User created successfully:', userData.user.id);
+      userId = userData.user.id;
+    }
 
     // Gerar link de redefinição de senha
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -129,7 +142,7 @@ Deno.serve(async (req) => {
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
         .update({ role: 'admin' })
-        .eq('user_id', userData.user.id);
+        .eq('user_id', userId);
 
       if (roleError) {
         console.error('Error updating role to admin:', roleError);
@@ -150,8 +163,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        user: userData.user,
-        message: 'Usuário criado. Um email com link para definir a senha foi enviado.'
+        userId: userId,
+        message: existingUser ? 'Convite reenviado com sucesso.' : 'Usuário criado. Um email com link para definir a senha foi enviado.'
       }),
       { 
         status: 200, 
