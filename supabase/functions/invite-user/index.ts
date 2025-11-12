@@ -1,12 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2'
-import { Resend } from 'npm:resend@2.0.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -36,25 +33,25 @@ Deno.serve(async (req) => {
     const existingUser = existingUsers?.users?.find(u => u.email === email);
     
     let userId: string;
+    const redirectUrl = `${req.headers.get('origin') || 'http://localhost:3000'}/auth`;
     
     if (existingUser) {
-      // Usuário já existe, usar o ID existente
+      // Usuário já existe, reenviar convite
       console.log('User already exists, resending invite:', existingUser.id);
       userId = existingUser.id;
-    } else {
-      // Criar novo usuário com email já confirmado
-      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
-        email: email,
-        email_confirm: true,
-        user_metadata: {
+      
+      // Enviar email de convite novamente usando o Supabase
+      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+        data: {
           nome: nome
         }
       });
 
-      if (userError) {
-        console.error('Error creating user:', userError);
+      if (inviteError) {
+        console.error('Error resending invite:', inviteError);
         return new Response(
-          JSON.stringify({ error: userError.message }),
+          JSON.stringify({ error: 'Falha ao reenviar convite: ' + inviteError.message }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -62,68 +59,20 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log('User created successfully:', userData.user.id);
-      userId = userData.user.id;
-    }
-
-    // Gerar link de redefinição de senha
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email: email,
-      options: {
-        redirectTo: `${req.headers.get('origin') || 'http://localhost:3000'}/auth?type=recovery`
-      }
-    });
-
-    if (linkError) {
-      console.error('Error generating password reset link:', linkError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate password reset link' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      console.log('Invitation resent successfully via Supabase');
+    } else {
+      // Criar e convidar novo usuário usando o Supabase
+      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+        data: {
+          nome: nome
         }
-      );
-    }
-
-    console.log('Password reset link generated successfully');
-    console.log('Recovery link:', linkData.properties.action_link);
-
-    // Enviar email via Resend
-    try {
-      console.log('Attempting to send email to:', email);
-      
-      const emailResponse = await resend.emails.send({
-        from: 'Sistema <onboarding@resend.dev>',
-        to: [email],
-        subject: 'Convite para cadastro - Defina sua senha',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Olá, ${nome}!</h2>
-            <p>Você foi convidado para acessar o sistema.</p>
-            <p>Para criar sua senha e acessar o sistema, clique no botão abaixo:</p>
-            <a href="${linkData.properties.action_link}" 
-               style="display: inline-block; padding: 12px 24px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
-              Definir Senha
-            </a>
-            <p>Ou copie e cole o link abaixo no seu navegador:</p>
-            <p style="word-break: break-all; color: #666;">${linkData.properties.action_link}</p>
-            <p style="color: #999; font-size: 12px; margin-top: 30px;">
-              Se você não solicitou este convite, pode ignorar este email.
-            </p>
-          </div>
-        `,
       });
 
-      console.log('Resend response:', JSON.stringify(emailResponse));
-
-      if (emailResponse.error) {
-        console.error('Error sending email via Resend:', JSON.stringify(emailResponse.error));
+      if (inviteError) {
+        console.error('Error inviting user:', inviteError);
         return new Response(
-          JSON.stringify({ 
-            error: 'Falha ao enviar email de convite',
-            details: emailResponse.error 
-          }),
+          JSON.stringify({ error: 'Falha ao convidar usuário: ' + inviteError.message }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -131,20 +80,8 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log('Invitation email sent successfully. Email ID:', emailResponse.data?.id);
-    } catch (emailError) {
-      console.error('Exception sending email:', emailError);
-      console.error('Error details:', JSON.stringify(emailError, null, 2));
-      return new Response(
-        JSON.stringify({ 
-          error: 'Erro ao enviar email de convite',
-          details: emailError.message || 'Unknown error'
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.log('User invited successfully via Supabase');
+      userId = inviteData.user.id;
     }
 
     // O trigger handle_new_user já cria automaticamente uma role 'user'
