@@ -22,6 +22,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -140,16 +141,58 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const validated = authSchema.pick({ email: true }).parse({ email });
+      setIsLoading(true);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(validated.email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) {
+        toast({
+          title: "Erro ao enviar email",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Email enviado!",
+        description: "Verifique seu email para instruções de recuperação de senha.",
+      });
+
+      setIsForgotPasswordMode(false);
+      setEmail('');
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Dados inválidos",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl text-center">
-            {isRecoveryMode ? 'Definir Nova Senha' : 'Sistema Financeiro'}
+            {isRecoveryMode ? 'Definir Nova Senha' : isForgotPasswordMode ? 'Recuperar Senha' : 'Sistema Financeiro'}
           </CardTitle>
           <CardDescription className="text-center">
             {isRecoveryMode 
               ? 'Crie uma senha segura para acessar o sistema' 
+              : isForgotPasswordMode
+              ? 'Digite seu email para receber instruções de recuperação'
               : 'Entre com suas credenciais para acessar o sistema'
             }
           </CardDescription>
@@ -187,6 +230,36 @@ export default function Auth() {
                 {isLoading ? 'Definindo senha...' : 'Definir Senha'}
               </Button>
             </form>
+          ) : isForgotPasswordMode ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Enviando...' : 'Enviar Email de Recuperação'}
+              </Button>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full" 
+                onClick={() => {
+                  setIsForgotPasswordMode(false);
+                  setEmail('');
+                }}
+                disabled={isLoading}
+              >
+                Voltar para o Login
+              </Button>
+            </form>
           ) : (
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
@@ -215,6 +288,15 @@ export default function Auth() {
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Entrando...' : 'Entrar'}
+              </Button>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full text-sm" 
+                onClick={() => setIsForgotPasswordMode(true)}
+                disabled={isLoading}
+              >
+                Esqueci minha senha
               </Button>
             </form>
           )}
