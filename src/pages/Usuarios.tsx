@@ -48,7 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, MoreVertical, Edit, UserX, Trash2, UserCheck } from "lucide-react";
+import { UserPlus, MoreVertical, Edit, UserX, Trash2, UserCheck, Mail } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -150,6 +150,33 @@ export default function Usuarios() {
     onError: (error: any) => {
       toast({
         title: "Erro ao enviar convite",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reenviar convite
+  const resendInviteMutation = useMutation({
+    mutationFn: async ({ userId, email, nome, role }: { userId: string; email: string; nome: string; role: 'admin' | 'user' }) => {
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: { email, nome, role }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Convite reenviado!",
+        description: "O usuário receberá um novo email para definir sua senha.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao reenviar convite",
         description: error.message,
         variant: "destructive",
       });
@@ -396,6 +423,20 @@ export default function Usuarios() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Editar usuário
                               </DropdownMenuItem>
+                              {usuario.status === 'pendente' && !usuario.banned && (
+                                <DropdownMenuItem
+                                  onClick={() => resendInviteMutation.mutate({ 
+                                    userId: usuario.id,
+                                    email: usuario.email, 
+                                    nome: usuario.nome || usuario.email,
+                                    role: userRole 
+                                  })}
+                                  disabled={resendInviteMutation.isPending}
+                                >
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Reenviar convite
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => setToggleStatusUserId(usuario.id)}
                               >
