@@ -13,6 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, LineChart, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 
 interface DashboardStats {
   faturamento: number;
@@ -47,25 +50,130 @@ export function Dashboard() {
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Filtros
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('todos');
+  const [selectedContaBancaria, setSelectedContaBancaria] = useState<string>('todas');
+  const [centrosCusto, setCentrosCusto] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string }>>([]);
+
+  useEffect(() => {
+    fetchFiltersData();
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [datePreset, customRange, selectedCentroCusto, selectedContaBancaria]);
+
+  const getDateRange = () => {
+    const today = new Date();
+    let from: Date, to: Date;
+
+    switch (datePreset) {
+      case 'hoje':
+        from = to = today;
+        break;
+      case 'esta-semana':
+        from = startOfWeek(today, { weekStartsOn: 0 });
+        to = endOfWeek(today, { weekStartsOn: 0 });
+        break;
+      case 'este-mes':
+        from = startOfMonth(today);
+        to = endOfMonth(today);
+        break;
+      case 'este-ano':
+        from = startOfYear(today);
+        to = endOfYear(today);
+        break;
+      case 'ultimos-30-dias':
+        from = subDays(today, 30);
+        to = today;
+        break;
+      case 'ultimos-12-meses':
+        from = subMonths(today, 12);
+        to = today;
+        break;
+      case 'periodo-personalizado':
+        if (customRange?.from && customRange?.to) {
+          from = customRange.from;
+          to = customRange.to;
+        } else {
+          return null;
+        }
+        break;
+      case 'todo-periodo':
+      default:
+        return null;
+    }
+
+    return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
+  };
+
+  const fetchFiltersData = async () => {
+    try {
+      // Fetch centros de custo
+      const { data: centros } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo')
+        .order('codigo');
+      
+      setCentrosCusto(centros || []);
+
+      // Fetch contas bancárias
+      const { data: contas } = await supabase
+        .from('contas_bancarias')
+        .select('id, descricao')
+        .eq('status', 'ativo')
+        .order('descricao');
+      
+      setContasBancarias(contas || []);
+    } catch (error) {
+      console.error('Erro ao buscar dados dos filtros:', error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
       const today = new Date().toISOString().split('T')[0];
+      const dateRange = getDateRange();
 
       // Fetch Contas a Receber
-      const { data: contasReceber } = await supabase
+      let contasReceberQuery = supabase
         .from('contas_receber')
-        .select('valor, data_vencimento, data_competencia, status, plano_conta_id');
+        .select('valor, data_vencimento, data_competencia, status, plano_conta_id, centro_custo');
+      
+      if (dateRange) {
+        contasReceberQuery = contasReceberQuery
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
+      }
+      
+      if (selectedCentroCusto !== 'todos') {
+        contasReceberQuery = contasReceberQuery.eq('centro_custo', selectedCentroCusto);
+      }
+
+      const { data: contasReceber } = await contasReceberQuery;
 
       // Fetch Contas a Pagar
-      const { data: contasPagar } = await supabase
+      let contasPagarQuery = supabase
         .from('contas_pagar')
-        .select('valor, data_vencimento, status');
+        .select('valor, data_vencimento, data_competencia, status, centro_custo');
+      
+      if (dateRange) {
+        contasPagarQuery = contasPagarQuery
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
+      }
+      
+      if (selectedCentroCusto !== 'todos') {
+        contasPagarQuery = contasPagarQuery.eq('centro_custo', selectedCentroCusto);
+      }
+
+      const { data: contasPagar } = await contasPagarQuery;
 
       // Fetch Plano de Contas para filtrar Receita de Serviços
       const { data: planoContas } = await supabase
@@ -135,17 +243,34 @@ export function Dashboard() {
       setFaturamentoData(faturamentoChartData);
 
       // Fluxo de Caixa
-      const { data: contasBancarias } = await supabase
+      let contasBancariasQuery = supabase
         .from('contas_bancarias')
         .select('saldo_atual')
         .eq('status', 'ativo');
+      
+      if (selectedContaBancaria !== 'todas') {
+        contasBancariasQuery = contasBancariasQuery.eq('id', selectedContaBancaria);
+      }
 
+      const { data: contasBancarias } = await contasBancariasQuery;
       const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
 
-      const { data: movimentacoes } = await supabase
+      let movimentacoesQuery = supabase
         .from('movimentacoes')
         .select('data_movimento, tipo, valor')
         .order('data_movimento', { ascending: true });
+      
+      if (selectedContaBancaria !== 'todas') {
+        movimentacoesQuery = movimentacoesQuery.eq('conta_bancaria_id', selectedContaBancaria);
+      }
+      
+      if (dateRange) {
+        movimentacoesQuery = movimentacoesQuery
+          .gte('data_movimento', dateRange.from)
+          .lte('data_movimento', dateRange.to);
+      }
+
+      const { data: movimentacoes } = await movimentacoesQuery;
 
       const fluxoPorDia: Record<string, { recebido: number; pago: number }> = {};
       
@@ -217,14 +342,56 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do seu negócio</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground">Visão geral do seu negócio</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarDays className="w-4 h-4" />
+            Última atualização: agora
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CalendarDays className="w-4 h-4" />
-          Última atualização: agora
+
+        {/* Filtros */}
+        <div className="flex flex-wrap gap-4">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomRange(range);
+            }}
+            customRange={customRange}
+          />
+
+          <Select value={selectedCentroCusto} onValueChange={setSelectedCentroCusto}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Centro de Custo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os centros de custo</SelectItem>
+              {centrosCusto.map((cc) => (
+                <SelectItem key={cc.id} value={cc.id}>
+                  {cc.codigo} - {cc.descricao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedContaBancaria} onValueChange={setSelectedContaBancaria}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Conta Bancária (Fluxo de Caixa)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as contas</SelectItem>
+              {contasBancarias.map((cb) => (
+                <SelectItem key={cb.id} value={cb.id}>
+                  {cb.descricao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
