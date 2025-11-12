@@ -77,7 +77,7 @@ export function Dashboard() {
 
       // Calculate stats
       const faturamento = contasReceber
-        ?.filter(c => c.data_competencia)
+        ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago'))
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasReceberTotal = contasReceber
