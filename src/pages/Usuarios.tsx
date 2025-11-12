@@ -148,9 +148,11 @@ export default function Usuarios() {
       setRole("user");
     },
     onError: (error: any) => {
+      console.error('Invite error:', error);
+      const errorMessage = error?.message || error?.error || "Não foi possível enviar o convite. Verifique os dados e tente novamente.";
       toast({
         title: "Erro ao enviar convite",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -175,9 +177,11 @@ export default function Usuarios() {
       });
     },
     onError: (error: any) => {
+      console.error('Resend invite error:', error);
+      const errorMessage = error?.message || error?.error || "Não foi possível reenviar o convite. Tente novamente mais tarde.";
       toast({
         title: "Erro ao reenviar convite",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -205,9 +209,11 @@ export default function Usuarios() {
       setEditingUser(null);
     },
     onError: (error: any) => {
+      console.error('Update user error:', error);
+      const errorMessage = error?.message || error?.error || "Não foi possível atualizar o usuário. Verifique os dados e tente novamente.";
       toast({
         title: "Erro ao atualizar usuário",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -236,9 +242,11 @@ export default function Usuarios() {
       setToggleStatusUserId(null);
     },
     onError: (error: any) => {
+      console.error('Toggle status error:', error);
+      const errorMessage = error?.message || error?.error || "Não foi possível alterar o status do usuário.";
       toast({
         title: "Erro ao alterar status",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -265,9 +273,11 @@ export default function Usuarios() {
       setDeleteUserId(null);
     },
     onError: (error: any) => {
+      console.error('Delete user error:', error);
+      const errorMessage = error?.message || error?.error || "Não foi possível remover o usuário.";
       toast({
         title: "Erro ao remover usuário",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
