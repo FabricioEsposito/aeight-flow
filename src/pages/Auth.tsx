@@ -28,19 +28,20 @@ export default function Auth() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 
+  // Check recovery mode FIRST before redirecting
   useEffect(() => {
-    if (user && !isRecoveryMode) {
-      navigate('/');
-    }
-  }, [user, navigate, isRecoveryMode]);
-
-  useEffect(() => {
-    // Verificar se é modo de recuperação de senha
     const type = searchParams.get('type');
     if (type === 'recovery') {
       setIsRecoveryMode(true);
     }
   }, [searchParams]);
+
+  // Only redirect if NOT in recovery mode
+  useEffect(() => {
+    if (user && !isRecoveryMode) {
+      navigate('/');
+    }
+  }, [user, navigate, isRecoveryMode]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
