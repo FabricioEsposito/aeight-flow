@@ -227,24 +227,6 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
-      // Calcular saldos
-      const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
-      const saldoFinal = saldoAcumulado; // Último saldo calculado no fluxo de caixa
-
-      // Calcular percentual de inadimplentes
-      const percentualInadimplentes = faturamento > 0 ? (inadimplentes / faturamento) * 100 : 0;
-
-      setStats({
-        faturamento,
-        contasReceber: contasReceberTotal,
-        inadimplentes,
-        contasPagar: contasPagarTotal,
-        pagarAtrasado,
-        percentualInadimplentes,
-        saldoInicial,
-        saldoFinal,
-      });
-
       // Faturamento por mês (Receita de Serviços)
       const faturamentoReceitaServicos = contasReceber
         ?.filter(c => receitaServicosIds.includes(c.plano_conta_id || ''))
@@ -323,6 +305,25 @@ export function Dashboard() {
       });
 
       setFluxoCaixaData(fluxoChartData);
+
+      // Calcular saldos inicial e final
+      const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
+      const saldoFinal = saldoAcumulado;
+
+      // Calcular percentual de inadimplentes
+      const percentualInadimplentes = faturamento > 0 ? (inadimplentes / faturamento) * 100 : 0;
+
+      // Atualizar stats com todos os valores
+      setStats({
+        faturamento,
+        contasReceber: contasReceberTotal,
+        inadimplentes,
+        contasPagar: contasPagarTotal,
+        pagarAtrasado,
+        percentualInadimplentes,
+        saldoInicial,
+        saldoFinal,
+      });
 
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
