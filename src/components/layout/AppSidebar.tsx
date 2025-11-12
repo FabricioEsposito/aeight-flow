@@ -19,18 +19,6 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -68,8 +56,8 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-border" collapsible="none">
-      <SidebarHeader className="p-4 border-b border-border">
+    <aside className="w-64 border-r border-border bg-card flex flex-col">
+      <header className="p-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
             <Building2 className="w-5 h-5 text-primary-foreground" />
@@ -79,36 +67,31 @@ export function AppSidebar() {
             <p className="text-sm text-muted-foreground">ERP System</p>
           </div>
         </div>
-      </SidebarHeader>
+      </header>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                        isActive(item.url)
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">Menu Principal</p>
+          <nav className="space-y-1">
+            {navigationItems.map((item) => (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                  isActive(item.url)
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "hover:bg-secondary text-foreground"
+                }`}
+              >
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                <span>{item.title}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </div>
 
-      <SidebarFooter className="p-4 border-t border-border">
+      <footer className="p-4 border-t border-border">
         <div className="space-y-2">
           <div className="text-sm text-muted-foreground px-2">
             {user?.email}
@@ -122,7 +105,7 @@ export function AppSidebar() {
             Sair
           </Button>
         </div>
-      </SidebarFooter>
-    </Sidebar>
+      </footer>
+    </aside>
   );
 }
