@@ -166,6 +166,25 @@ export default function EditarContrato() {
       const dataVencimento = new Date(dataGoLive);
       dataVencimento.setDate(dataVencimento.getDate() + diaVencimento);
 
+      // Calcular data de competência baseada no número da parcela e recorrência
+      const contrato = parcela.contratos;
+      const dataInicio = new Date(contrato.data_inicio);
+      let dataCompetencia = new Date(dataInicio);
+      
+      if (contrato.recorrente && contrato.periodo_recorrencia) {
+        const mesesParaAdicionar = {
+          'mensal': (parcela.numero_parcela - 1),
+          'trimestral': (parcela.numero_parcela - 1) * 3,
+          'semestral': (parcela.numero_parcela - 1) * 6,
+          'anual': (parcela.numero_parcela - 1) * 12
+        }[contrato.periodo_recorrencia] || (parcela.numero_parcela - 1);
+        
+        dataCompetencia.setMonth(dataCompetencia.getMonth() + mesesParaAdicionar);
+      } else {
+        // Para vendas avulsas ou compras
+        dataCompetencia.setMonth(dataCompetencia.getMonth() + (parcela.numero_parcela - 1));
+      }
+
       // Atualizar status da parcela para pendente e data de vencimento
       const { error: updateError } = await supabase
         .from('parcelas_contrato')
@@ -178,7 +197,6 @@ export default function EditarContrato() {
       if (updateError) throw updateError;
 
       // Criar lançamento em contas a receber/pagar
-      const contrato = parcela.contratos;
       if (contrato.tipo_contrato === 'venda') {
         const { error: receberError } = await supabase
           .from('contas_receber')
@@ -188,7 +206,7 @@ export default function EditarContrato() {
             valor: parcela.valor,
             valor_original: parcela.valor,
             data_vencimento: dataVencimento.toISOString().split('T')[0],
-            data_competencia: new Date().toISOString().split('T')[0],
+            data_competencia: dataCompetencia.toISOString().split('T')[0],
             plano_conta_id: contrato.plano_contas_id,
             conta_bancaria_id: parcela.conta_bancaria_id,
             centro_custo: contrato.centro_custo,
@@ -209,7 +227,7 @@ export default function EditarContrato() {
             valor: parcela.valor,
             valor_original: parcela.valor,
             data_vencimento: dataVencimento.toISOString().split('T')[0],
-            data_competencia: new Date().toISOString().split('T')[0],
+            data_competencia: dataCompetencia.toISOString().split('T')[0],
             plano_conta_id: contrato.plano_contas_id,
             conta_bancaria_id: parcela.conta_bancaria_id,
             centro_custo: contrato.centro_custo,
