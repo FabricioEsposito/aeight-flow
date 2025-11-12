@@ -5,7 +5,9 @@ import {
   DollarSign,
   AlertTriangle,
   CalendarDays,
-  Wallet
+  Wallet,
+  LineChart as LineChartIcon,
+  BarChart3
 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +25,9 @@ interface DashboardStats {
   inadimplentes: number;
   contasPagar: number;
   pagarAtrasado: number;
+  percentualInadimplentes: number;
+  saldoInicial: number;
+  saldoFinal: number;
 }
 
 interface FaturamentoData {
@@ -46,6 +51,9 @@ export function Dashboard() {
     inadimplentes: 0,
     contasPagar: 0,
     pagarAtrasado: 0,
+    percentualInadimplentes: 0,
+    saldoInicial: 0,
+    saldoFinal: 0,
   });
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
@@ -58,6 +66,9 @@ export function Dashboard() {
   const [selectedContaBancaria, setSelectedContaBancaria] = useState<string>('todas');
   const [centrosCusto, setCentrosCusto] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string }>>([]);
+  
+  // Controle de visualização
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa'>('faturamento');
 
   useEffect(() => {
     fetchFiltersData();
@@ -216,12 +227,22 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
+      // Calcular saldos
+      const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
+      const saldoFinal = saldoAcumulado; // Último saldo calculado no fluxo de caixa
+
+      // Calcular percentual de inadimplentes
+      const percentualInadimplentes = faturamento > 0 ? (inadimplentes / faturamento) * 100 : 0;
+
       setStats({
         faturamento,
         contasReceber: contasReceberTotal,
         inadimplentes,
         contasPagar: contasPagarTotal,
         pagarAtrasado,
+        percentualInadimplentes,
+        saldoInicial,
+        saldoFinal,
       });
 
       // Faturamento por mês (Receita de Serviços)
@@ -348,9 +369,35 @@ export function Dashboard() {
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Visão geral do seu negócio</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CalendarDays className="w-4 h-4" />
-            Última atualização: agora
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 border rounded-lg p-1 bg-muted/50">
+              <button
+                onClick={() => setAnaliseAtiva('faturamento')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'faturamento'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Faturamento
+              </button>
+              <button
+                onClick={() => setAnaliseAtiva('caixa')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'caixa'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LineChartIcon className="w-4 h-4" />
+                Caixa
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarDays className="w-4 h-4" />
+              Última atualização: agora
+            </div>
           </div>
         </div>
 
@@ -379,55 +426,92 @@ export function Dashboard() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedContaBancaria} onValueChange={setSelectedContaBancaria}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Conta Bancária (Fluxo de Caixa)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as contas</SelectItem>
-              {contasBancarias.map((cb) => (
-                <SelectItem key={cb.id} value={cb.id}>
-                  {cb.descricao}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {analiseAtiva === 'caixa' && (
+            <Select value={selectedContaBancaria} onValueChange={setSelectedContaBancaria}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Conta Bancária" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as contas</SelectItem>
+                {contasBancarias.map((cb) => (
+                  <SelectItem key={cb.id} value={cb.id}>
+                    {cb.descricao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatsCard
-          title="Faturamento"
-          value={formatCurrency(stats.faturamento)}
-          icon={DollarSign}
-          changeType="neutral"
-        />
-        <StatsCard
-          title="Contas a Receber"
-          value={formatCurrency(stats.contasReceber)}
-          icon={TrendingUp}
-          changeType="neutral"
-        />
-        <StatsCard
-          title="Inadimplentes"
-          value={formatCurrency(stats.inadimplentes)}
-          icon={AlertTriangle}
-          changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
-        />
-        <StatsCard
-          title="Contas a Pagar"
-          value={formatCurrency(stats.contasPagar)}
-          icon={TrendingDown}
-          changeType="neutral"
-        />
-        <StatsCard
-          title="À Pagar Atrasado"
-          value={formatCurrency(stats.pagarAtrasado)}
-          icon={Wallet}
-          changeType={stats.pagarAtrasado > 0 ? "negative" : "neutral"}
-        />
-      </div>
+      {analiseAtiva === 'faturamento' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatsCard
+            title="Faturamento"
+            value={formatCurrency(stats.faturamento)}
+            icon={DollarSign}
+            changeType="neutral"
+          />
+          <StatsCard
+            title="Contas a Receber"
+            value={formatCurrency(stats.contasReceber)}
+            icon={TrendingUp}
+            changeType="neutral"
+          />
+          <StatsCard
+            title="Inadimplentes"
+            value={formatCurrency(stats.inadimplentes)}
+            icon={AlertTriangle}
+            changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
+          />
+          <StatsCard
+            title="% Inadimplentes"
+            value={`${stats.percentualInadimplentes.toFixed(2)}%`}
+            icon={AlertTriangle}
+            changeType={stats.percentualInadimplentes > 5 ? "negative" : "neutral"}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <StatsCard
+            title="Saldo Inicial"
+            value={formatCurrency(stats.saldoInicial)}
+            icon={Wallet}
+            changeType="neutral"
+          />
+          <StatsCard
+            title="Contas a Pagar"
+            value={formatCurrency(stats.contasPagar)}
+            icon={TrendingDown}
+            changeType="neutral"
+          />
+          <StatsCard
+            title="À Pagar Atrasado"
+            value={formatCurrency(stats.pagarAtrasado)}
+            icon={AlertTriangle}
+            changeType={stats.pagarAtrasado > 0 ? "negative" : "neutral"}
+          />
+          <StatsCard
+            title="Contas a Receber"
+            value={formatCurrency(stats.contasReceber)}
+            icon={TrendingUp}
+            changeType="neutral"
+          />
+          <StatsCard
+            title="Inadimplentes"
+            value={formatCurrency(stats.inadimplentes)}
+            icon={AlertTriangle}
+            changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
+          />
+          <StatsCard
+            title="Saldo Final"
+            value={formatCurrency(stats.saldoFinal)}
+            icon={Wallet}
+            changeType="neutral"
+          />
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
