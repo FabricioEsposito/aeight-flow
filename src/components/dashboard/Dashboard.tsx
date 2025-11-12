@@ -81,19 +81,31 @@ export function Dashboard() {
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasReceberTotal = contasReceber
-        ?.filter(c => c.status === 'pendente')
+        ?.filter(c => {
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          return c.status === 'pendente' && !isOverdue;
+        })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const inadimplentes = contasReceber
-        ?.filter(c => c.status === 'vencido')
+        ?.filter(c => {
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
+        })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasPagarTotal = contasPagar
-        ?.filter(c => c.status === 'pendente' || c.status === 'vencido')
+        ?.filter(c => {
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          return c.status === 'pendente' && !isOverdue;
+        })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const pagarAtrasado = contasPagar
-        ?.filter(c => c.status === 'vencido')
+        ?.filter(c => {
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
+        })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       setStats({
