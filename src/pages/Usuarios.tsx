@@ -61,16 +61,10 @@ const inviteSchema = z.object({
 });
 
 export default function Usuarios() {
-  const [openInvite, setOpenInvite] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [toggleStatusUserId, setToggleStatusUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [email, setEmail] = useState("");
-  const [nome, setNome] = useState("");
-  const [role, setRole] = useState<"admin" | "user">("user");
-  const [editNome, setEditNome] = useState("");
-  const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "user">("user");
   const { toast } = useToast();
   const queryClient = useQueryClient();
