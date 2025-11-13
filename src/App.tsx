@@ -22,6 +22,8 @@ import Extrato from "./pages/Extrato";
 import CentroCustos from "./pages/CentroCustos";
 import EditarContratoCompleto from "./pages/EditarContratoCompleto";
 import Usuarios from "./pages/Usuarios";
+import Perfil from "./pages/Perfil";
+import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +53,8 @@ const App = () => (
             <Route path="/extrato" element={<ProtectedRoute><Extrato /></ProtectedRoute>} />
             <Route path="/centro-custos" element={<ProtectedRoute><CentroCustos /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+            <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
