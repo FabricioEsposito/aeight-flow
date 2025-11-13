@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 
 export function AppHeader() {
   const { signOut, user } = useAuth();
@@ -40,10 +41,7 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive"></span>
-        </Button>
+        <NotificationsDropdown />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -56,8 +54,12 @@ export function AppHeader() {
               {user?.email || 'Minha Conta'}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/perfil')}>
+              Perfil
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/configuracoes')}>
+              Configurações
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
