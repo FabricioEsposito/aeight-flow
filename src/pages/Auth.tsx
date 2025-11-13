@@ -123,16 +123,18 @@ export default function Auth() {
       }
 
       toast({
-        title: "Senha definida!",
-        description: "Sua senha foi criada com sucesso. Você pode fazer login agora.",
+        title: "Senha definida com sucesso!",
+        description: "Você já pode fazer login com sua nova senha.",
       });
 
       setIsRecoveryMode(false);
-      navigate('/auth');
+      setPassword('');
+      setConfirmPassword('');
+      navigate('/');
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
-          title: "Dados inválidos",
+          title: "Senha inválida",
           description: error.errors[0].message,
           variant: "destructive",
         });
@@ -145,12 +147,21 @@ export default function Auth() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!email) {
+      toast({
+        title: "Email obrigatório",
+        description: "Por favor, informe seu email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const validated = authSchema.pick({ email: true }).parse({ email });
       setIsLoading(true);
 
       const { error } = await supabase.auth.resetPasswordForEmail(validated.email, {
-        redirectTo: `${window.location.origin}/auth`,
+        redirectTo: `${window.location.origin}/auth?type=recovery`,
       });
 
       if (error) {
@@ -164,11 +175,78 @@ export default function Auth() {
 
       toast({
         title: "Email enviado!",
-        description: "Verifique seu email para instruções de recuperação de senha.",
+        description: "Verifique sua caixa de entrada para redefinir sua senha.",
       });
-
       setIsForgotPasswordMode(false);
       setEmail('');
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Email inválido",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Senhas não coincidem",
+        description: "As senhas digitadas não são iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const validated = authSchema.parse({ email, password, nome });
+      setIsLoading(true);
+
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email: validated.email,
+        password: validated.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            nome: validated.nome,
+          },
+        },
+      });
+
+      if (error) {
+        if (error.message.includes('already registered')) {
+          toast({
+            title: "Erro ao criar conta",
+            description: "Este email já está cadastrado.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Erro ao criar conta",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Você já pode fazer login.",
+      });
+      
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setNome('');
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
@@ -183,123 +261,183 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/20 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">
-            {isRecoveryMode ? 'Definir Nova Senha' : isForgotPasswordMode ? 'Recuperar Senha' : 'Sistema Financeiro'}
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            {isRecoveryMode ? "Definir Nova Senha" : isForgotPasswordMode ? "Recuperar Senha" : "Bem-vindo"}
           </CardTitle>
           <CardDescription className="text-center">
             {isRecoveryMode 
-              ? 'Crie uma senha segura para acessar o sistema' 
-              : isForgotPasswordMode
-              ? 'Digite seu email para receber instruções de recuperação'
-              : 'Entre com suas credenciais para acessar o sistema'
-            }
+              ? "Crie sua nova senha abaixo" 
+              : isForgotPasswordMode 
+              ? "Digite seu email para receber o link de recuperação"
+              : "Acesse sua conta ou crie uma nova"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isRecoveryMode ? (
             <form onSubmit={handlePasswordReset} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="new-password">Nova Senha</Label>
+                <Label htmlFor="password">Nova Senha</Label>
                 <Input
-                  id="new-password"
+                  id="password"
                   type="password"
-                  placeholder="••••••"
+                  placeholder="Digite sua nova senha"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                   disabled={isLoading}
-                  minLength={6}
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirmar Senha</Label>
+                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
                 <Input
-                  id="confirm-password"
+                  id="confirmPassword"
                   type="password"
-                  placeholder="••••••"
+                  placeholder="Confirme sua nova senha"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
                   disabled={isLoading}
-                  minLength={6}
+                  required
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Definindo senha...' : 'Definir Senha'}
+                {isLoading ? "Definindo..." : "Definir Senha"}
               </Button>
             </form>
           ) : isForgotPasswordMode ? (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="forgot-email">Email</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="forgot-email"
+                  id="email"
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
                   disabled={isLoading}
+                  required
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Enviando...' : 'Enviar Email de Recuperação'}
+                {isLoading ? "Enviando..." : "Enviar Link de Recuperação"}
               </Button>
               <Button 
                 type="button" 
                 variant="ghost" 
-                className="w-full" 
+                className="w-full"
                 onClick={() => {
                   setIsForgotPasswordMode(false);
                   setEmail('');
                 }}
-                disabled={isLoading}
               >
-                Voltar para o Login
+                Voltar ao login
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="login-password">Senha</Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Entrando...' : 'Entrar'}
-              </Button>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                className="w-full text-sm" 
-                onClick={() => setIsForgotPasswordMode(true)}
-                disabled={isLoading}
-              >
-                Esqueci minha senha
-              </Button>
-            </form>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Senha</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="Digite sua senha"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Entrando..." : "Entrar"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="w-full"
+                    onClick={() => setIsForgotPasswordMode(true)}
+                  >
+                    Esqueci minha senha
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="cadastro">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-nome">Nome</Label>
+                    <Input
+                      id="signup-nome"
+                      type="text"
+                      placeholder="Seu nome completo"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Senha</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password">Confirmar Senha</Label>
+                    <Input
+                      id="signup-confirm-password"
+                      type="password"
+                      placeholder="Confirme sua senha"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Criando conta..." : "Criar Conta"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           )}
         </CardContent>
       </Card>
