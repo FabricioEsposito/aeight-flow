@@ -205,10 +205,10 @@ export function NotificationsDropdown() {
                   className="p-3 border rounded-lg space-y-2"
                 >
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-xs text-muted-foreground">
                       {request.profiles?.nome || request.profiles?.email}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium mt-1">
                       Solicita mudança para: <strong>{getRoleLabel(request.requested_role)}</strong>
                     </p>
                   </div>
