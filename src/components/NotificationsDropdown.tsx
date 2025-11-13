@@ -81,7 +81,7 @@ export function NotificationsDropdown() {
 
   const loadRequests = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('hierarchy_requests')
         .select(`
           *,
@@ -95,7 +95,7 @@ export function NotificationsDropdown() {
 
       if (error) throw error;
 
-      setRequests(data as any || []);
+      setRequests(data || []);
     } catch (error) {
       console.error('Error loading requests:', error);
     }
@@ -105,7 +105,7 @@ export function NotificationsDropdown() {
     setLoading(true);
     try {
       // Update the request status
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('hierarchy_requests')
         .update({
           status: 'approved',
@@ -145,7 +145,7 @@ export function NotificationsDropdown() {
   const handleReject = async (requestId: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('hierarchy_requests')
         .update({
           status: 'rejected',

@@ -47,7 +47,7 @@ export default function Configuracoes() {
 
   const loadPendingRequest = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('hierarchy_requests')
         .select('*')
         .eq('user_id', user?.id)
@@ -75,7 +75,7 @@ export default function Configuracoes() {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('hierarchy_requests')
         .insert({
           user_id: user?.id,
