@@ -303,6 +303,7 @@ export default function Extrato() {
       delete dadosClone.updated_at;
       delete dadosClone.data_recebimento;
       delete dadosClone.data_pagamento;
+      delete dadosClone.parcela_id; // Remove vínculo com contrato para permitir exclusão
       
       const { error: insertError } = await supabase
         .from(table)
@@ -502,6 +503,7 @@ export default function Extrato() {
             delete cloneData.updated_at;
             delete cloneData.data_recebimento;
             delete cloneData.data_pagamento;
+            delete cloneData.parcela_id; // Remove vínculo com contrato para permitir exclusão
             
             await supabase
               .from(table)
