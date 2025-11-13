@@ -587,7 +587,14 @@ export default function Extrato() {
     const matchesSearch = lanc.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (lanc.cliente_fornecedor || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = tipoFilter === 'todos' || lanc.tipo === tipoFilter;
-    const matchesStatus = statusFilter === 'todos' || lanc.status === statusFilter;
+    
+    // Ajustar filtro de status para considerar o displayStatus
+    const displayStatus = getDisplayStatus(lanc);
+    const matchesStatus = statusFilter === 'todos' || 
+                         (statusFilter === 'pago' && (displayStatus === 'pago' || displayStatus === 'recebido')) ||
+                         (statusFilter === 'vencido' && displayStatus === 'vencido') ||
+                         (statusFilter === 'em dia' && displayStatus === 'em dia');
+    
     const matchesConta = contaBancariaFilter === 'todas' || 
                         lanc.conta_bancaria_id === contaBancariaFilter;
 
@@ -760,8 +767,9 @@ export default function Extrato() {
             </SelectTrigger>
             <SelectContent className="bg-background z-50">
               <SelectItem value="todos">Todos os Status</SelectItem>
-              <SelectItem value="pendente">Em dia / Vencido</SelectItem>
               <SelectItem value="pago">Pago/Recebido</SelectItem>
+              <SelectItem value="vencido">Vencido</SelectItem>
+              <SelectItem value="em dia">Em dia</SelectItem>
             </SelectContent>
           </Select>
         </div>
