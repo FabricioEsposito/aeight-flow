@@ -439,10 +439,20 @@ export default function Extrato() {
       if (actionType === 'change-date' && data?.newDate) {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          
+          // Atualiza a conta a receber/pagar
           await supabase
             .from(table)
             .update({ data_vencimento: data.newDate })
             .eq('id', lanc.id);
+          
+          // Se tiver parcela_id, atualiza também a parcela do contrato
+          if (lanc.parcela_id) {
+            await supabase
+              .from('parcelas_contrato')
+              .update({ data_vencimento: data.newDate })
+              .eq('id', lanc.parcela_id);
+          }
         }
         toast({
           title: "Sucesso",
@@ -452,6 +462,8 @@ export default function Extrato() {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           const dateField = lanc.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
+          
+          // Atualiza a conta a receber/pagar
           await supabase
             .from(table)
             .update({ 
@@ -459,6 +471,14 @@ export default function Extrato() {
               [dateField]: format(new Date(), 'yyyy-MM-dd')
             })
             .eq('id', lanc.id);
+          
+          // Se tiver parcela_id, atualiza também a parcela do contrato
+          if (lanc.parcela_id) {
+            await supabase
+              .from('parcelas_contrato')
+              .update({ status: 'pago' })
+              .eq('id', lanc.parcela_id);
+          }
         }
         toast({
           title: "Sucesso",
@@ -687,56 +707,6 @@ export default function Extrato() {
       </div>
 
       <Card className="p-6">
-        {selectedIds.size > 0 && (
-          <div className="mb-4 flex items-center gap-2 p-4 bg-muted rounded-lg">
-            <span className="text-sm font-medium">
-              {selectedIds.size} lançamento(s) selecionado(s)
-            </span>
-            <div className="flex gap-2 ml-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setBatchActionType('change-date');
-                  setBatchDialogOpen(true);
-                }}
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Alterar Data
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setBatchActionType('mark-paid');
-                  setBatchDialogOpen(true);
-                }}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Marcar como Pago
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setBatchActionType('clone');
-                  setBatchDialogOpen(true);
-                }}
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Clonar
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        )}
-        
         <div className="flex flex-wrap gap-4 mb-6">
           <DateRangeFilter
             value={datePreset}
@@ -793,6 +763,58 @@ export default function Extrato() {
             </SelectContent>
           </Select>
         </div>
+
+        {selectedIds.size > 0 && (
+          <div className="mb-6 p-4 bg-muted rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {selectedIds.size} lançamento(s) selecionado(s)
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('change-date');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Alterar Data
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('mark-paid');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Marcar como Pago
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('clone');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Clonar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="rounded-md border">
           <Table>
