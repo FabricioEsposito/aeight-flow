@@ -432,11 +432,13 @@ export default function Extrato() {
     }
   };
 
-  const handleBatchAction = async (actionType: 'change-date' | 'mark-paid' | 'clone', data?: any) => {
+  const handleBatchAction = async (data?: any) => {
+    if (!batchActionType) return;
+    
     const selectedLancamentos = lancamentos.filter(l => selectedIds.has(l.id));
     
     try {
-      if (actionType === 'change-date' && data?.newDate) {
+      if (batchActionType === 'change-date' && data?.newDate) {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           
@@ -458,7 +460,7 @@ export default function Extrato() {
           title: "Sucesso",
           description: `Data de vencimento alterada para ${selectedLancamentos.length} lançamento(s)!`,
         });
-      } else if (actionType === 'mark-paid') {
+      } else if (batchActionType === 'mark-paid') {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           const dateField = lanc.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
@@ -484,7 +486,7 @@ export default function Extrato() {
           title: "Sucesso",
           description: `${selectedLancamentos.length} lançamento(s) marcado(s) como pago/recebido!`,
         });
-      } else if (actionType === 'clone') {
+      } else if (batchActionType === 'clone') {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           const { data: originalData, error: fetchError } = await supabase
