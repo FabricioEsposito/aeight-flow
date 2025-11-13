@@ -13,7 +13,7 @@ import { StatsCard } from "./StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, LineChart, Legend } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, LineChart, Legend, ComposedChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -548,51 +548,132 @@ export function Dashboard() {
 
         {/* Fluxo de Caixa Chart - Apenas em Análise de Caixa */}
         {analiseAtiva === 'caixa' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Fluxo de Caixa</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  saldoFinal: {
-                    label: "Saldo Final",
-                    color: "hsl(var(--primary))",
-                  },
-                  saldoPrevisto: {
-                    label: "Saldo Previsto",
-                    color: "hsl(var(--muted-foreground))",
-                  },
-                }}
-                className="h-80"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={fluxoCaixaData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="saldoFinal" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      name="Saldo Final"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="saldoPrevisto" 
-                      stroke="hsl(var(--muted-foreground))" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      name="Saldo Previsto"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Fluxo de Caixa Diário</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={{
+                    recebido: {
+                      label: "Receitas",
+                      color: "hsl(142, 76%, 36%)",
+                    },
+                    pago: {
+                      label: "Despesas",
+                      color: "hsl(0, 84%, 60%)",
+                    },
+                    saldoFinal: {
+                      label: "Saldo",
+                      color: "hsl(47, 96%, 53%)",
+                    },
+                  }}
+                  className="h-80"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={fluxoCaixaData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                      <ChartTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                <div className="grid gap-2">
+                                  <div className="flex flex-col">
+                                    <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                      {payload[0]?.payload?.date}
+                                    </span>
+                                  </div>
+                                  {payload.map((entry: any) => (
+                                    <div key={entry.name} className="flex items-center gap-2">
+                                      <div 
+                                        className="h-2 w-2 rounded-full" 
+                                        style={{ backgroundColor: entry.color }}
+                                      />
+                                      <span className="text-[0.70rem] text-muted-foreground">
+                                        {entry.name}:
+                                      </span>
+                                      <span className="font-bold">
+                                        {formatCurrency(entry.value)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend />
+                      <Bar 
+                        dataKey="recebido" 
+                        fill="hsl(142, 76%, 36%)" 
+                        radius={[4, 4, 0, 0]}
+                        name="Receitas"
+                      />
+                      <Bar 
+                        dataKey="pago" 
+                        fill="hsl(0, 84%, 60%)" 
+                        radius={[4, 4, 0, 0]}
+                        name="Despesas"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="saldoFinal" 
+                        stroke="hsl(47, 96%, 53%)" 
+                        strokeWidth={3}
+                        name="Saldo"
+                        dot={{ r: 4 }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Tabela de Fluxo Diário */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumo Diário</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-auto max-h-80">
+                  <table className="w-full">
+                    <thead className="sticky top-0 bg-muted">
+                      <tr>
+                        <th className="text-left p-2 text-xs font-semibold">Dia</th>
+                        <th className="text-right p-2 text-xs font-semibold">Receita</th>
+                        <th className="text-right p-2 text-xs font-semibold">Despesa</th>
+                        <th className="text-right p-2 text-xs font-semibold">Saldo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fluxoCaixaData.map((item, index) => (
+                        <tr key={index} className="border-b border-border hover:bg-muted/50">
+                          <td className="p-2 text-xs">{item.date}</td>
+                          <td className="p-2 text-xs text-right font-medium text-green-600">
+                            {formatCurrency(item.recebido)}
+                          </td>
+                          <td className="p-2 text-xs text-right font-medium text-red-600">
+                            {formatCurrency(item.pago)}
+                          </td>
+                          <td className={`p-2 text-xs text-right font-bold ${
+                            item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
+                          }`}>
+                            {formatCurrency(item.saldoFinal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
