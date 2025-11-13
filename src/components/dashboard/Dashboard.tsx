@@ -258,39 +258,37 @@ export function Dashboard() {
       const { data: contasBancarias } = await contasBancariasQuery;
       const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
 
-      let movimentacoesQuery = supabase
-        .from('movimentacoes')
-        .select('data_movimento, tipo, valor')
-        .order('data_movimento', { ascending: true });
-      
-      if (selectedContaBancaria !== 'todas') {
-        movimentacoesQuery = movimentacoesQuery.eq('conta_bancaria_id', selectedContaBancaria);
-      }
-      
-      if (dateRange) {
-        movimentacoesQuery = movimentacoesQuery
-          .gte('data_movimento', dateRange.from)
-          .lte('data_movimento', dateRange.to);
-      }
-
-      const { data: movimentacoes } = await movimentacoesQuery;
-
+      // Agregar dados de contas a receber e contas a pagar por data de vencimento
       const fluxoPorDia: Record<string, { recebido: number; pago: number }> = {};
       
-      movimentacoes?.forEach(m => {
-        const date = m.data_movimento;
+      // Adicionar contas a receber
+      contasReceber?.forEach(c => {
+        const date = c.data_vencimento;
+        if (!date) return;
+        
         if (!fluxoPorDia[date]) {
           fluxoPorDia[date] = { recebido: 0, pago: 0 };
         }
-        if (m.tipo === 'entrada') {
-          fluxoPorDia[date].recebido += Number(m.valor);
-        } else {
-          fluxoPorDia[date].pago += Number(m.valor);
-        }
+        fluxoPorDia[date].recebido += Number(c.valor);
       });
 
+      // Adicionar contas a pagar
+      contasPagar?.forEach(c => {
+        const date = c.data_vencimento;
+        if (!date) return;
+        
+        if (!fluxoPorDia[date]) {
+          fluxoPorDia[date] = { recebido: 0, pago: 0 };
+        }
+        fluxoPorDia[date].pago += Number(c.valor);
+      });
+
+      // Ordenar por data e criar array de dados para o gráfico
+      const sortedDates = Object.keys(fluxoPorDia).sort();
       let saldoAcumulado = saldoContas;
-      const fluxoChartData = Object.entries(fluxoPorDia).map(([date, valores]) => {
+      
+      const fluxoChartData = sortedDates.map(date => {
+        const valores = fluxoPorDia[date];
         const saldoFinal = saldoAcumulado + valores.recebido - valores.pago;
         const result = {
           date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
