@@ -305,11 +305,14 @@ export default function Extrato() {
       delete dadosClone.data_pagamento;
       delete dadosClone.parcela_id; // Remove vínculo com contrato para permitir exclusão
       
+      console.log('Clonando lançamento - parcela_id removido:', !dadosClone.parcela_id);
+      
       const { error: insertError } = await supabase
         .from(table)
         .insert({
           ...dadosClone,
           status: 'pendente',
+          parcela_id: null, // Garante que parcela_id seja null
         });
 
       if (insertError) throw insertError;
@@ -510,6 +513,7 @@ export default function Extrato() {
               .insert({
                 ...cloneData,
                 status: 'pendente',
+                parcela_id: null, // Garante que parcela_id seja null
               });
           }
         }
