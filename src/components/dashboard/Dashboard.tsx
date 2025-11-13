@@ -291,7 +291,7 @@ export function Dashboard() {
         const valores = fluxoPorDia[date];
         const saldoFinal = saldoAcumulado + valores.recebido - valores.pago;
         const result = {
-          date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+          date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
           saldoConta: saldoAcumulado,
           recebido: valores.recebido,
           pago: valores.pago,
