@@ -70,6 +70,7 @@ export function BatchActionsDialog({
       onConfirm({});
     }
     setNewDate('');
+    onOpenChange(false);
   };
 
   return (
