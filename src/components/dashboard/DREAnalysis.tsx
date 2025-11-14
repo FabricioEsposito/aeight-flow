@@ -209,38 +209,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         }
       });
 
-      // Processar Transações Internas (7.1)
-      const transInternasIds = getAccountIds('7.1');
-      const transInternasDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let transInternasTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && transInternasIds.includes(d.plano_conta_id)) {
-          transInternasTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          transInternasDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
-
-      // Processar Pesquisa e Desenvolvimento (8.1)
-      const pesquisaIds = getAccountIds('8.1');
-      const pesquisaDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let pesquisaTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && pesquisaIds.includes(d.plano_conta_id)) {
-          pesquisaTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          pesquisaDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
-
       // Calcular indicadores
       const margemContribuicao = receitaTotal > 0 ? ((receitaTotal - cmvTotal) / receitaTotal) * 100 : 0;
       const ebtida = receitaTotal - cmvTotal - despAdmTotal;
@@ -263,10 +231,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         emprestimosDetalhes,
         despFinanceiras: despFinTotal,
         despFinanceirasDetalhes: despFinDetalhes,
-        transacoesInternas: transInternasTotal,
-        transacoesInternasDetalhes: transInternasDetalhes,
-        pesquisaDesenvolvimento: pesquisaTotal,
-        pesquisaDesenvolvimentoDetalhes: pesquisaDetalhes,
+        transacoesInternas: 0,
+        transacoesInternasDetalhes: [],
+        pesquisaDesenvolvimento: 0,
+        pesquisaDesenvolvimentoDetalhes: [],
         ebit,
         provisaoCsllIrrf,
         resultadoExercicio,
@@ -416,14 +384,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Desp. Financeiras */}
           {renderLine('Desp. Financeiras', dreData.despFinanceiras, false, true, true, 'despFinanceiras')}
           {renderDetails('despFinanceiras', dreData.despFinanceirasDetalhes)}
-
-          {/* Transações Internas */}
-          {renderLine('Transações Internas', dreData.transacoesInternas, false, false, true, 'transacoesInternas')}
-          {renderDetails('transacoesInternas', dreData.transacoesInternasDetalhes)}
-
-          {/* Pesquisa e Desenvolvimento */}
-          {renderLine('Pesquisa e Desenvolvimento (P&D)', dreData.pesquisaDesenvolvimento, false, dreData.pesquisaDesenvolvimento === 0 ? false : true, true, 'pesquisa')}
-          {renderDetails('pesquisa', dreData.pesquisaDesenvolvimentoDetalhes)}
 
           {/* EBIT */}
           {renderLine('Lucro Antes do Imposto de Renda (EBIT)', dreData.ebit, true, dreData.ebit < 0)}
