@@ -89,16 +89,16 @@ export function Dashboard() {
         from = to = today;
         break;
       case 'esta-semana':
-        from = startOfWeek(today, { weekStartsOn: 0 });
-        to = endOfWeek(today, { weekStartsOn: 0 });
+        from = startOfWeek(today, { weekStartsOn: 1 }); // Segunda-feira como primeiro dia
+        to = endOfWeek(today, { weekStartsOn: 1 });
         break;
       case 'este-mes':
-        from = startOfMonth(today);
-        to = endOfMonth(today);
+        from = startOfMonth(today); // Primeiro dia do mês
+        to = endOfMonth(today); // Último dia do mês
         break;
       case 'este-ano':
-        from = startOfYear(today);
-        to = endOfYear(today);
+        from = startOfYear(today); // 01/01 do ano
+        to = endOfYear(today); // 31/12 do ano
         break;
       case 'ultimos-30-dias':
         from = subDays(today, 30);
