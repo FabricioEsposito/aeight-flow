@@ -86,8 +86,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência)
       let receitasQuery = supabase
         .from('contas_receber')
-        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), clientes(razao_social)')
-        .eq('status', 'recebido');
+        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), clientes(razao_social)');
 
       if (dateRange) {
         receitasQuery = receitasQuery
