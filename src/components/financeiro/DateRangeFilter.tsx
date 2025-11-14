@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -37,9 +37,47 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
     to: customRange?.to,
   });
 
-  const getCurrentMonthYear = () => {
-    const monthYear = format(new Date(), 'MMMM yyyy', { locale: ptBR });
-    return monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+  const getDisplayLabel = () => {
+    const today = new Date();
+    
+    if (value === 'periodo-personalizado' && customRange?.from && customRange?.to) {
+      return `${format(customRange.from, 'dd/MM/yyyy')} - ${format(customRange.to, 'dd/MM/yyyy')}`;
+    }
+    
+    // Sempre mostrar as datas do período selecionado
+    let from: Date, to: Date;
+    
+    switch (value) {
+      case 'hoje':
+        from = to = today;
+        break;
+      case 'esta-semana':
+        from = startOfWeek(today, { weekStartsOn: 1 });
+        to = endOfWeek(today, { weekStartsOn: 1 });
+        break;
+      case 'este-mes':
+        from = startOfMonth(today);
+        to = endOfMonth(today);
+        break;
+      case 'este-ano':
+        from = startOfYear(today);
+        to = endOfYear(today);
+        break;
+      case 'ultimos-30-dias':
+        from = subDays(today, 30);
+        to = today;
+        break;
+      case 'ultimos-12-meses':
+        from = subMonths(today, 12);
+        to = today;
+        break;
+      case 'todo-periodo':
+        return 'Todo período';
+      default:
+        return presetOptions.find(opt => opt.value === value)?.label || 'Selecione';
+    }
+    
+    return `${format(from, 'dd/MM/yyyy')} - ${format(to, 'dd/MM/yyyy')}`;
   };
 
   const handlePresetChange = (preset: DateRangePreset) => {
@@ -87,10 +125,7 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
           className="justify-between min-w-[200px]"
         >
           <CalendarIcon className="w-4 h-4 mr-2" />
-          {value === 'periodo-personalizado' && customRange?.from && customRange?.to
-            ? `${format(customRange.from, 'dd/MM/yyyy')} - ${format(customRange.to, 'dd/MM/yyyy')}`
-            : presetOptions.find(opt => opt.value === value)?.label || getCurrentMonthYear()
-          }
+          {getDisplayLabel()}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
