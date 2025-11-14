@@ -100,17 +100,15 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       const { data: receitas } = await receitasQuery;
 
-      // Buscar despesas (regime de caixa - apenas pagas)
+      // Buscar despesas (regime de competência)
       let despesasQuery = supabase
         .from('contas_pagar')
-        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), fornecedores(razao_social)')
-        .eq('status', 'pago')
-        .not('data_pagamento', 'is', null);
+        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), fornecedores(razao_social)');
 
       if (dateRange) {
         despesasQuery = despesasQuery
-          .gte('data_pagamento', dateRange.from.toISOString().split('T')[0])
-          .lte('data_pagamento', dateRange.to.toISOString().split('T')[0]);
+          .gte('data_competencia', dateRange.from.toISOString().split('T')[0])
+          .lte('data_competencia', dateRange.to.toISOString().split('T')[0]);
       }
 
       if (centroCusto && centroCusto !== 'todos') {
