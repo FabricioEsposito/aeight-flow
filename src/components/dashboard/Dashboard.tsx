@@ -18,6 +18,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
+import { DREAnalysis } from "./DREAnalysis";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DashboardStats {
   faturamento: number;
@@ -68,7 +70,7 @@ export function Dashboard() {
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string }>>([]);
   
   // Controle de visualização
-  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa'>('faturamento');
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre'>('faturamento');
 
   useEffect(() => {
     fetchFiltersData();
@@ -392,6 +394,17 @@ export function Dashboard() {
                 <LineChartIcon className="w-4 h-4" />
                 Caixa
               </button>
+              <button
+                onClick={() => setAnaliseAtiva('dre')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'dre'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" />
+                DRE
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4" />
@@ -672,6 +685,21 @@ export function Dashboard() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* DRE Analysis */}
+        {analiseAtiva === 'dre' && (
+          <DREAnalysis 
+            dateRange={(() => {
+              const range = getDateRange();
+              if (!range) return null;
+              return {
+                from: new Date(range.from),
+                to: new Date(range.to)
+              };
+            })()}
+            centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
+          />
         )}
       </div>
     </div>
