@@ -484,7 +484,7 @@ export function Dashboard() {
             changeType={stats.percentualInadimplentes > 5 ? "negative" : "neutral"}
           />
         </div>
-      ) : (
+      ) : analiseAtiva === 'caixa' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatsCard
             title="Saldo Inicial"
@@ -523,7 +523,7 @@ export function Dashboard() {
             changeType="neutral"
           />
         </div>
-      )}
+      ) : null}
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-6">
