@@ -232,18 +232,26 @@ export function Dashboard() {
       // Faturamento por mês (Receita de Serviços)
       const faturamentoReceitaServicos = contasReceber
         ?.filter(c => receitaServicosIds.includes(c.plano_conta_id || ''))
-        .reduce((acc: Record<string, number>, c) => {
+        .reduce((acc: Record<string, { valor: number; date: Date }>, c) => {
           if (c.data_competencia) {
-            const month = new Date(c.data_competencia).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-            acc[month] = (acc[month] || 0) + Number(c.valor);
+            const date = new Date(c.data_competencia);
+            const month = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+            if (!acc[month]) {
+              acc[month] = { valor: 0, date };
+            }
+            acc[month].valor += Number(c.valor);
           }
           return acc;
         }, {});
 
-      const faturamentoChartData = Object.entries(faturamentoReceitaServicos || {}).map(([month, valor]) => ({
-        month,
-        valor: valor as number,
-      }));
+      const faturamentoChartData = Object.entries(faturamentoReceitaServicos || {})
+        .map(([month, data]) => ({
+          month,
+          valor: data.valor,
+          sortDate: data.date.getTime(),
+        }))
+        .sort((a, b) => a.sortDate - b.sortDate)
+        .map(({ month, valor }) => ({ month, valor }));
 
       setFaturamentoData(faturamentoChartData);
 
