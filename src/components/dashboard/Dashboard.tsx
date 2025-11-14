@@ -154,10 +154,10 @@ export function Dashboard() {
       const today = new Date().toISOString().split('T')[0];
       const dateRange = getDateRange();
 
-      // Fetch Contas a Receber
+      // Fetch Contas a Receber para Faturamento (pela data de competência)
       let contasReceberQuery = supabase
         .from('contas_receber')
-        .select('valor, data_vencimento, data_competencia, status, plano_conta_id, centro_custo');
+        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo');
       
       if (dateRange) {
         contasReceberQuery = contasReceberQuery
@@ -171,10 +171,32 @@ export function Dashboard() {
 
       const { data: contasReceber } = await contasReceberQuery;
 
-      // Fetch Contas a Pagar
+      // Fetch Contas a Receber para Fluxo de Caixa (pela data de recebimento - apenas pagas)
+      let contasReceberFluxoQuery = supabase
+        .from('contas_receber')
+        .select('valor, data_recebimento, centro_custo, conta_bancaria_id')
+        .eq('status', 'recebido');
+      
+      if (dateRange) {
+        contasReceberFluxoQuery = contasReceberFluxoQuery
+          .gte('data_recebimento', dateRange.from)
+          .lte('data_recebimento', dateRange.to);
+      }
+      
+      if (selectedCentroCusto !== 'todos') {
+        contasReceberFluxoQuery = contasReceberFluxoQuery.eq('centro_custo', selectedCentroCusto);
+      }
+
+      if (selectedContaBancaria !== 'todas') {
+        contasReceberFluxoQuery = contasReceberFluxoQuery.eq('conta_bancaria_id', selectedContaBancaria);
+      }
+
+      const { data: contasReceberFluxo } = await contasReceberFluxoQuery;
+
+      // Fetch Contas a Pagar para estatísticas (pela data de competência)
       let contasPagarQuery = supabase
         .from('contas_pagar')
-        .select('valor, data_vencimento, data_competencia, status, centro_custo');
+        .select('valor, data_vencimento, data_competencia, data_pagamento, status, centro_custo');
       
       if (dateRange) {
         contasPagarQuery = contasPagarQuery
@@ -187,6 +209,28 @@ export function Dashboard() {
       }
 
       const { data: contasPagar } = await contasPagarQuery;
+
+      // Fetch Contas a Pagar para Fluxo de Caixa (pela data de pagamento - apenas pagas)
+      let contasPagarFluxoQuery = supabase
+        .from('contas_pagar')
+        .select('valor, data_pagamento, centro_custo, conta_bancaria_id')
+        .eq('status', 'pago');
+      
+      if (dateRange) {
+        contasPagarFluxoQuery = contasPagarFluxoQuery
+          .gte('data_pagamento', dateRange.from)
+          .lte('data_pagamento', dateRange.to);
+      }
+      
+      if (selectedCentroCusto !== 'todos') {
+        contasPagarFluxoQuery = contasPagarFluxoQuery.eq('centro_custo', selectedCentroCusto);
+      }
+
+      if (selectedContaBancaria !== 'todas') {
+        contasPagarFluxoQuery = contasPagarFluxoQuery.eq('conta_bancaria_id', selectedContaBancaria);
+      }
+
+      const { data: contasPagarFluxo } = await contasPagarFluxoQuery;
 
       // Fetch Plano de Contas para filtrar Receita de Serviços
       const { data: planoContas } = await supabase
@@ -268,12 +312,12 @@ export function Dashboard() {
       const { data: contasBancarias } = await contasBancariasQuery;
       const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
 
-      // Agregar dados de contas a receber e contas a pagar por data de vencimento
+      // Agregar dados de contas recebidas e pagas por data efetiva (data de recebimento/pagamento)
       const fluxoPorDia: Record<string, { recebido: number; pago: number }> = {};
       
-      // Adicionar contas a receber
-      contasReceber?.forEach(c => {
-        const date = c.data_vencimento;
+      // Adicionar contas recebidas (apenas as efetivamente recebidas)
+      contasReceberFluxo?.forEach(c => {
+        const date = c.data_recebimento;
         if (!date) return;
         
         if (!fluxoPorDia[date]) {
@@ -282,9 +326,9 @@ export function Dashboard() {
         fluxoPorDia[date].recebido += Number(c.valor);
       });
 
-      // Adicionar contas a pagar
-      contasPagar?.forEach(c => {
-        const date = c.data_vencimento;
+      // Adicionar contas pagas (apenas as efetivamente pagas)
+      contasPagarFluxo?.forEach(c => {
+        const date = c.data_pagamento;
         if (!date) return;
         
         if (!fluxoPorDia[date]) {
