@@ -6,25 +6,32 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+interface DetalheItem {
+  codigo: string;
+  descricao: string;
+  valor: number;
+  items: Array<{ nome: string; valor: number }>;
+}
+
 interface DREData {
   receita: number;
-  receitaDetalhes: Array<{ descricao: string; valor: number }>;
+  receitaDetalhes: DetalheItem[];
   cmv: number;
-  cmvDetalhes: Array<{ descricao: string; valor: number }>;
+  cmvDetalhes: DetalheItem[];
   margemContribuicao: number;
   despAdm: number;
-  despAdmDetalhes: Array<{ descricao: string; valor: number }>;
+  despAdmDetalhes: DetalheItem[];
   ebtida: number;
   impostos: number;
-  impostosDetalhes: Array<{ descricao: string; valor: number }>;
+  impostosDetalhes: DetalheItem[];
   emprestimos: number;
-  emprestimosDetalhes: Array<{ descricao: string; valor: number }>;
+  emprestimosDetalhes: DetalheItem[];
   despFinanceiras: number;
-  despFinanceirasDetalhes: Array<{ descricao: string; valor: number }>;
+  despFinanceirasDetalhes: DetalheItem[];
   transacoesInternas: number;
-  transacoesInternasDetalhes: Array<{ descricao: string; valor: number }>;
+  transacoesInternasDetalhes: DetalheItem[];
   pesquisaDesenvolvimento: number;
-  pesquisaDesenvolvimentoDetalhes: Array<{ descricao: string; valor: number }>;
+  pesquisaDesenvolvimentoDetalhes: DetalheItem[];
   ebit: number;
   provisaoCsllIrrf: number;
   resultadoExercicio: number;
@@ -79,7 +86,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência)
       let receitasQuery = supabase
         .from('contas_receber')
-        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao)')
+        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), clientes(razao_social)')
         .eq('status', 'recebido');
 
       if (dateRange) {
@@ -97,7 +104,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar despesas (regime de caixa - apenas pagas)
       let despesasQuery = supabase
         .from('contas_pagar')
-        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao)')
+        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), fornecedores(razao_social)')
         .eq('status', 'pago')
         .not('data_pagamento', 'is', null);
 
@@ -113,101 +120,105 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       const { data: despesas } = await despesasQuery;
 
+      // Função auxiliar para agrupar detalhes
+      const agruparDetalhes = (
+        lancamentos: any[],
+        accountIds: string[],
+        planosContas: any[],
+        tipo: 'receita' | 'despesa'
+      ): { detalhes: DetalheItem[]; total: number } => {
+        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, number>; total: number }>();
+        let total = 0;
+
+        lancamentos?.forEach(l => {
+          if (l.plano_conta_id && accountIds.includes(l.plano_conta_id)) {
+            total += Number(l.valor);
+            const plano = planosContas.find(p => p.id === l.plano_conta_id);
+            const codigo = plano?.codigo || '';
+            const descricao = plano?.descricao || l.descricao;
+            const nome = tipo === 'receita' 
+              ? (l.clientes?.razao_social || 'Cliente não informado')
+              : (l.fornecedores?.razao_social || 'Fornecedor não informado');
+
+            if (!grouped.has(l.plano_conta_id)) {
+              grouped.set(l.plano_conta_id, {
+                codigo,
+                descricao,
+                items: new Map(),
+                total: 0
+              });
+            }
+
+            const group = grouped.get(l.plano_conta_id)!;
+            group.total += Number(l.valor);
+            const currentValue = group.items.get(nome) || 0;
+            group.items.set(nome, currentValue + Number(l.valor));
+          }
+        });
+
+        const detalhes: DetalheItem[] = Array.from(grouped.values()).map(g => ({
+          codigo: g.codigo,
+          descricao: g.descricao,
+          valor: g.total,
+          items: Array.from(g.items.entries()).map(([nome, valor]) => ({ nome, valor }))
+        }));
+
+        return { detalhes, total };
+      };
+
       // Processar receitas (1.1)
       const receitaIds = getAccountIds('1.1');
-      const receitaDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let receitaTotal = 0;
-
-      receitas?.forEach(r => {
-        if (r.plano_conta_id && receitaIds.includes(r.plano_conta_id)) {
-          receitaTotal += Number(r.valor);
-          const plano = planosContas.find(p => p.id === r.plano_conta_id);
-          receitaDetalhes.push({
-            descricao: plano?.descricao || r.descricao,
-            valor: Number(r.valor)
-          });
-        }
-      });
+      const { detalhes: receitaDetalhes, total: receitaTotal } = agruparDetalhes(
+        receitas,
+        receitaIds,
+        planosContas,
+        'receita'
+      );
 
       // Processar CMV - Custos Variáveis (2.1)
       const cmvIds = getAccountIds('2.1');
-      const cmvDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let cmvTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && cmvIds.includes(d.plano_conta_id)) {
-          cmvTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          cmvDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
+      const { detalhes: cmvDetalhes, total: cmvTotal } = agruparDetalhes(
+        despesas,
+        cmvIds,
+        planosContas,
+        'despesa'
+      );
 
       // Processar Desp. ADM - Custos Fixos (3.1)
       const despAdmIds = getAccountIds('3.1');
-      const despAdmDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let despAdmTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && despAdmIds.includes(d.plano_conta_id)) {
-          despAdmTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          despAdmDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
+      const { detalhes: despAdmDetalhes, total: despAdmTotal } = agruparDetalhes(
+        despesas,
+        despAdmIds,
+        planosContas,
+        'despesa'
+      );
 
       // Processar Impostos (4.1)
       const impostosIds = getAccountIds('4.1');
-      const impostosDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let impostosTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && impostosIds.includes(d.plano_conta_id)) {
-          impostosTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          impostosDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
+      const { detalhes: impostosDetalhes, total: impostosTotal } = agruparDetalhes(
+        despesas,
+        impostosIds,
+        planosContas,
+        'despesa'
+      );
 
       // Processar Desp. Financeiras (5.1)
       const despFinIds = getAccountIds('5.1');
-      const despFinDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let despFinTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && despFinIds.includes(d.plano_conta_id)) {
-          despFinTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          despFinDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
+      const { detalhes: despFinDetalhes, total: despFinTotal } = agruparDetalhes(
+        despesas,
+        despFinIds,
+        planosContas,
+        'despesa'
+      );
 
       // Processar Empréstimos (6.1)
       const emprestimosIds = getAccountIds('6.1');
-      const emprestimosDetalhes: Array<{ descricao: string; valor: number }> = [];
-      let emprestimosTotal = 0;
-
-      despesas?.forEach(d => {
-        if (d.plano_conta_id && emprestimosIds.includes(d.plano_conta_id)) {
-          emprestimosTotal += Number(d.valor);
-          const plano = planosContas.find(p => p.id === d.plano_conta_id);
-          emprestimosDetalhes.push({
-            descricao: plano?.descricao || d.descricao,
-            valor: Number(d.valor)
-          });
-        }
-      });
+      const { detalhes: emprestimosDetalhes, total: emprestimosTotal } = agruparDetalhes(
+        despesas,
+        emprestimosIds,
+        planosContas,
+        'despesa'
+      );
 
       // Calcular indicadores
       const margemContribuicao = receitaTotal > 0 ? ((receitaTotal - cmvTotal) / receitaTotal) * 100 : 0;
@@ -321,17 +332,51 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     );
   };
 
-  const renderDetails = (detailsKey: string, details: Array<{ descricao: string; valor: number }>) => {
+  const renderDetails = (detailsKey: string, details: DetalheItem[]) => {
     if (!expandedSections.has(detailsKey) || details.length === 0) return null;
 
     return (
       <div className="bg-muted/30">
-        {details.map((item, index) => (
-          <div key={index} className="flex justify-between items-center py-2 px-4 ml-16 text-sm">
-            <span className="text-muted-foreground">{item.descricao}</span>
-            <span>{formatCurrency(item.valor)}</span>
-          </div>
-        ))}
+        {details.map((item, index) => {
+          const subKey = `${detailsKey}_${index}`;
+          const isSubExpanded = expandedSections.has(subKey);
+
+          return (
+            <div key={index}>
+              {/* Linha da subcategoria */}
+              <div className="flex justify-between items-center py-2 px-4 ml-12 text-sm border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  {item.items.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => toggleSection(subKey)}
+                    >
+                      {isSubExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    </Button>
+                  )}
+                  <span className="text-muted-foreground font-medium">
+                    {item.codigo} {item.descricao}
+                  </span>
+                </div>
+                <span className="font-medium">{formatCurrency(item.valor)}</span>
+              </div>
+
+              {/* Detalhes por fornecedor/cliente */}
+              {isSubExpanded && item.items.length > 0 && (
+                <div className="bg-muted/20">
+                  {item.items.map((subItem, subIndex) => (
+                    <div key={subIndex} className="flex justify-between items-center py-2 px-4 ml-24 text-sm">
+                      <span className="text-muted-foreground">{subItem.nome}</span>
+                      <span>{formatCurrency(subItem.valor)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };
