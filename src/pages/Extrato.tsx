@@ -465,30 +465,54 @@ export default function Extrato() {
           description: `Data de vencimento alterada para ${selectedLancamentos.length} lançamento(s)!`,
         });
       } else if (batchActionType === 'mark-paid') {
+        // Verifica se todos os lançamentos selecionados já estão pagos
+        const allPaid = selectedLancamentos.every(l => l.status === 'pago');
+        
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           const dateField = lanc.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
           
-          // Atualiza a conta a receber/pagar
-          await supabase
-            .from(table)
-            .update({ 
-              status: 'pago',
-              [dateField]: format(new Date(), 'yyyy-MM-dd')
-            })
-            .eq('id', lanc.id);
-          
-          // Se tiver parcela_id, atualiza também a parcela do contrato
-          if (lanc.parcela_id) {
+          if (allPaid) {
+            // Reverte para pendente
             await supabase
-              .from('parcelas_contrato')
-              .update({ status: 'pago' })
-              .eq('id', lanc.parcela_id);
+              .from(table)
+              .update({ 
+                status: 'pendente',
+                [dateField]: null
+              })
+              .eq('id', lanc.id);
+            
+            // Se tiver parcela_id, atualiza também a parcela do contrato
+            if (lanc.parcela_id) {
+              await supabase
+                .from('parcelas_contrato')
+                .update({ status: 'pendente' })
+                .eq('id', lanc.parcela_id);
+            }
+          } else {
+            // Marca como pago
+            await supabase
+              .from(table)
+              .update({ 
+                status: 'pago',
+                [dateField]: format(new Date(), 'yyyy-MM-dd')
+              })
+              .eq('id', lanc.id);
+            
+            // Se tiver parcela_id, atualiza também a parcela do contrato
+            if (lanc.parcela_id) {
+              await supabase
+                .from('parcelas_contrato')
+                .update({ status: 'pago' })
+                .eq('id', lanc.parcela_id);
+            }
           }
         }
         toast({
           title: "Sucesso",
-          description: `${selectedLancamentos.length} lançamento(s) marcado(s) como pago/recebido!`,
+          description: allPaid 
+            ? `${selectedLancamentos.length} lançamento(s) voltado(s) para em aberto!`
+            : `${selectedLancamentos.length} lançamento(s) marcado(s) como pago/recebido!`,
         });
       } else if (batchActionType === 'clone') {
         for (const lanc of selectedLancamentos) {
@@ -807,7 +831,9 @@ export default function Extrato() {
                   }}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Marcar como Pago
+                  {lancamentos.filter(l => selectedIds.has(l.id)).every(l => l.status === 'pago')
+                    ? 'Voltar para Em Aberto'
+                    : 'Marcar como Pago'}
                 </Button>
                 <Button
                   size="sm"
