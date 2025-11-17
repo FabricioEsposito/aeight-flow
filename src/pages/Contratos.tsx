@@ -9,6 +9,7 @@ import { ContratosTable } from '@/components/contratos/ContratosTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
 interface Contrato {
@@ -36,6 +37,8 @@ export default function Contratos() {
   const [filterGoLive, setFilterGoLive] = useState<string>('todos');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const fetchContratos = async () => {
     try {
@@ -183,6 +186,21 @@ export default function Contratos() {
     return matchesSearch && matchesType && matchesGoLive && matchesDate;
   });
 
+  // Paginação
+  const totalItems = filteredContratos.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedContratos = filteredContratos.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
+
 
   if (loading) {
     return (
@@ -255,12 +273,22 @@ export default function Contratos() {
         </div>
 
         <ContratosTable 
-          contratos={filteredContratos}
+          contratos={paginatedContratos}
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onInactivate={handleInactivate}
         />
+
+        {filteredContratos.length > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </Card>
     </div>
   );
