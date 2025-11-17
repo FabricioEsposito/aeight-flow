@@ -16,6 +16,7 @@ import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/Edit
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { format } from 'date-fns';
 
 interface LancamentoExtrato {
@@ -60,6 +61,8 @@ export default function Extrato() {
   const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [lancamentoToDelete, setLancamentoToDelete] = useState<LancamentoExtrato | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const { toast } = useToast();
 
   const getDateRange = () => {
@@ -668,6 +671,23 @@ export default function Extrato() {
 
   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
+  // Paginação
+  const totalItems = filteredLancamentos.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLancamentos = filteredLancamentos.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setSelectedIds(new Set()); // Limpa seleção ao mudar de página
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1); // Volta para primeira página
+    setSelectedIds(new Set()); // Limpa seleção
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -864,7 +884,7 @@ export default function Extrato() {
               <TableRow>
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={selectedIds.size === filteredLancamentos.length && filteredLancamentos.length > 0}
+                    checked={paginatedLancamentos.length > 0 && paginatedLancamentos.every(l => selectedIds.has(l.id))}
                     onCheckedChange={handleToggleSelectAll}
                   />
                 </TableHead>
@@ -878,7 +898,7 @@ export default function Extrato() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLancamentos.map((lanc, index) => {
+              {paginatedLancamentos.map((lanc, index) => {
                 const displayStatus = getDisplayStatus(lanc);
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
@@ -982,6 +1002,16 @@ export default function Extrato() {
             <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Nenhum lançamento encontrado no período.</p>
           </div>
+        )}
+
+        {filteredLancamentos.length > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         )}
       </Card>
 

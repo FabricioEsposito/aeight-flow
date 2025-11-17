@@ -12,6 +12,7 @@ import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRa
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 interface ContaPagar {
@@ -59,6 +60,8 @@ export default function ContasPagar() {
   const [selectedConta, setSelectedConta] = useState<ContaPagar | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const {
     toast
   } = useToast();
@@ -320,6 +323,22 @@ export default function ContasPagar() {
     }
     return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria;
   });
+  
+  // Paginação
+  const totalItems = filteredContas.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedContas = filteredContas.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
+  
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -454,7 +473,7 @@ export default function ContasPagar() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContas.map(conta => <TableRow key={conta.id}>
+              {paginatedContas.map(conta => <TableRow key={conta.id}>
                   <TableCell>{formatDate(conta.data_competencia)}</TableCell>
                   <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
@@ -496,6 +515,16 @@ export default function ContasPagar() {
             <TrendingDown className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Nenhuma conta a pagar encontrada.</p>
           </div>}
+
+        {filteredContas.length > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </Card>
 
       <ViewInfoDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} data={selectedConta} type="pagar" />
