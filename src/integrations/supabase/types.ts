@@ -101,7 +101,6 @@ export type Database = {
       contas_bancarias: {
         Row: {
           banco: string
-          centro_custo_id: string | null
           created_at: string
           data_inicio: string
           descricao: string
@@ -114,7 +113,6 @@ export type Database = {
         }
         Insert: {
           banco: string
-          centro_custo_id?: string | null
           created_at?: string
           data_inicio: string
           descricao: string
@@ -127,7 +125,6 @@ export type Database = {
         }
         Update: {
           banco?: string
-          centro_custo_id?: string | null
           created_at?: string
           data_inicio?: string
           descricao?: string
@@ -138,15 +135,7 @@ export type Database = {
           tipo_conta?: Database["public"]["Enums"]["conta_tipo"]
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "contas_bancarias_centro_custo_id_fkey"
-            columns: ["centro_custo_id"]
-            isOneToOne: false
-            referencedRelation: "centros_custo"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       contas_pagar: {
         Row: {
@@ -532,6 +521,54 @@ export type Database = {
         }
         Relationships: []
       }
+      hierarchy_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          requested_role: Database["public"]["Enums"]["app_role"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          requested_role: Database["public"]["Enums"]["app_role"]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          requested_role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hierarchy_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hierarchy_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes: {
         Row: {
           centro_custo: string | null
@@ -695,6 +732,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cargo: string | null
+          contato: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -702,6 +741,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          cargo?: string | null
+          contato?: string | null
           created_at?: string | null
           email?: string | null
           id: string
@@ -709,6 +750,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          cargo?: string | null
+          contato?: string | null
           created_at?: string | null
           email?: string | null
           id?: string

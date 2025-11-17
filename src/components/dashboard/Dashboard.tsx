@@ -30,6 +30,7 @@ interface DashboardStats {
   percentualInadimplentes: number;
   saldoInicial: number;
   saldoFinal: number;
+  saldoFinalPrevisto?: number;
   previsaoReceber: number;
   previsaoPagar: number;
 }
@@ -58,6 +59,7 @@ export function Dashboard() {
     percentualInadimplentes: 0,
     saldoInicial: 0,
     saldoFinal: 0,
+    saldoFinalPrevisto: 0,
     previsaoReceber: 0,
     previsaoPagar: 0,
   });
@@ -175,16 +177,19 @@ export function Dashboard() {
 
       const { data: contasReceber } = await contasReceberQuery;
 
-      // Fetch Contas a Receber para Fluxo de Caixa (pela data de recebimento - apenas pagas)
+      // Fetch Contas a Receber para Fluxo de Caixa (recebidas + pendentes/vencidas para previsão)
       let contasReceberFluxoQuery = supabase
         .from('contas_receber')
-        .select('valor, data_recebimento, centro_custo, conta_bancaria_id')
-        .eq('status', 'recebido');
+        .select('valor, data_recebimento, data_vencimento, status, centro_custo, conta_bancaria_id');
       
       if (dateRange) {
-        contasReceberFluxoQuery = contasReceberFluxoQuery
-          .gte('data_recebimento', dateRange.from)
-          .lte('data_recebimento', dateRange.to);
+        // Para contas recebidas, filtrar pela data de recebimento
+        // Para contas pendentes/vencidas, filtrar pela data de vencimento
+        contasReceberFluxoQuery = contasReceberFluxoQuery.or(
+          `and(status.eq.recebido,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.in.(pendente,vencido),data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+        );
+      } else {
+        contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['recebido', 'pendente', 'vencido']);
       }
       
       if (selectedCentroCusto !== 'todos') {
@@ -214,16 +219,19 @@ export function Dashboard() {
 
       const { data: contasPagar } = await contasPagarQuery;
 
-      // Fetch Contas a Pagar para Fluxo de Caixa (pela data de pagamento - apenas pagas)
+      // Fetch Contas a Pagar para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
       let contasPagarFluxoQuery = supabase
         .from('contas_pagar')
-        .select('valor, data_pagamento, centro_custo, conta_bancaria_id')
-        .eq('status', 'pago');
+        .select('valor, data_pagamento, data_vencimento, status, centro_custo, conta_bancaria_id');
       
       if (dateRange) {
-        contasPagarFluxoQuery = contasPagarFluxoQuery
-          .gte('data_pagamento', dateRange.from)
-          .lte('data_pagamento', dateRange.to);
+        // Para contas pagas, filtrar pela data de pagamento
+        // Para contas pendentes/vencidas, filtrar pela data de vencimento
+        contasPagarFluxoQuery = contasPagarFluxoQuery.or(
+          `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.in.(pendente,vencido),data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+        );
+      } else {
+        contasPagarFluxoQuery = contasPagarFluxoQuery.in('status', ['pago', 'pendente', 'vencido']);
       }
       
       if (selectedCentroCusto !== 'todos') {
@@ -330,9 +338,8 @@ export function Dashboard() {
       const fluxoPorDia: Record<string, { recebido: number; pago: number; previsaoReceber: number; previsaoPagar: number }> = {};
       
       // Adicionar contas recebidas (apenas as efetivamente recebidas)
-      contasReceberFluxo?.forEach(c => {
-        const date = c.data_recebimento;
-        if (!date) return;
+      contasReceberFluxo?.filter(c => c.status === 'recebido' && c.data_recebimento).forEach(c => {
+        const date = c.data_recebimento!;
         
         if (!fluxoPorDia[date]) {
           fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
@@ -341,9 +348,8 @@ export function Dashboard() {
       });
 
       // Adicionar contas pagas (apenas as efetivamente pagas)
-      contasPagarFluxo?.forEach(c => {
-        const date = c.data_pagamento;
-        if (!date) return;
+      contasPagarFluxo?.filter(c => c.status === 'pago' && c.data_pagamento).forEach(c => {
+        const date = c.data_pagamento!;
         
         if (!fluxoPorDia[date]) {
           fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
@@ -351,20 +357,18 @@ export function Dashboard() {
         fluxoPorDia[date].pago += Number(c.valor);
       });
       
-      // Adicionar previsões (contas pendentes)
-      contasReceber?.filter(c => c.status === 'pendente').forEach(c => {
-        const date = c.data_vencimento;
-        if (!date) return;
+      // Adicionar previsões (contas pendentes e vencidas)
+      contasReceberFluxo?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento).forEach(c => {
+        const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
           fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
         }
         fluxoPorDia[date].previsaoReceber += Number(c.valor);
       });
-      
-      contasPagar?.filter(c => c.status === 'pendente').forEach(c => {
-        const date = c.data_vencimento;
-        if (!date) return;
+
+      contasPagarFluxo?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento).forEach(c => {
+        const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
           fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
@@ -375,27 +379,32 @@ export function Dashboard() {
       // Ordenar por data e criar array de dados para o gráfico
       const sortedDates = Object.keys(fluxoPorDia).sort();
       let saldoAcumulado = saldoContas;
+      let saldoPrevisto = saldoContas;
       
       const fluxoChartData = sortedDates.map(date => {
         const valores = fluxoPorDia[date];
-        const saldoFinal = saldoAcumulado + valores.recebido - valores.pago;
-        const result = {
-          date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-          saldoConta: saldoAcumulado,
+        saldoAcumulado = saldoAcumulado + valores.recebido - valores.pago;
+        saldoPrevisto = saldoAcumulado + valores.previsaoReceber - valores.previsaoPagar;
+        
+        return {
+          date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          saldoConta: saldoContas,
           recebido: valores.recebido,
           pago: valores.pago,
-          saldoFinal: saldoFinal,
-          saldoPrevisto: date > today ? saldoFinal : undefined,
+          previsaoReceber: valores.previsaoReceber,
+          previsaoPagar: valores.previsaoPagar,
+          saldoFinal: saldoAcumulado,
+          saldoPrevisto: saldoPrevisto,
         };
-        saldoAcumulado = saldoFinal;
-        return result;
       });
 
       setFluxoCaixaData(fluxoChartData);
 
-      // Calcular saldos inicial e final
+      // Calcular saldos inicial e final (último dia útil do mês)
       const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
-      const saldoFinal = saldoAcumulado;
+      const ultimoDia = fluxoChartData.length > 0 ? fluxoChartData[fluxoChartData.length - 1] : null;
+      const saldoFinal = ultimoDia ? ultimoDia.saldoFinal : saldoInicial;
+      const saldoFinalPrevisto = ultimoDia ? ultimoDia.saldoPrevisto : saldoInicial;
 
       // Calcular percentual de inadimplentes
       const percentualInadimplentes = faturamento > 0 ? (inadimplentes / faturamento) * 100 : 0;
@@ -410,6 +419,7 @@ export function Dashboard() {
         percentualInadimplentes,
         saldoInicial,
         saldoFinal,
+        saldoFinalPrevisto,
         previsaoReceber,
         previsaoPagar,
       });
@@ -611,6 +621,7 @@ export function Dashboard() {
           <StatsCard
             title="Saldo Final"
             value={formatCurrency(stats.saldoFinal)}
+            subtitle={stats.saldoFinalPrevisto ? `Previsto: ${formatCurrency(stats.saldoFinalPrevisto)}` : undefined}
             icon={Wallet}
             changeType="neutral"
           />
@@ -667,9 +678,21 @@ export function Dashboard() {
                       label: "Despesas",
                       color: "hsl(0, 84%, 60%)",
                     },
+                    previsaoReceber: {
+                      label: "Previsão Receber",
+                      color: "hsl(142, 76%, 60%)",
+                    },
+                    previsaoPagar: {
+                      label: "Previsão Pagar",
+                      color: "hsl(0, 84%, 80%)",
+                    },
                     saldoFinal: {
                       label: "Saldo",
                       color: "hsl(47, 96%, 53%)",
+                    },
+                    saldoPrevisto: {
+                      label: "Saldo Previsto",
+                      color: "hsl(220, 90%, 56%)",
                     },
                   }}
                   className="h-80"
@@ -717,12 +740,30 @@ export function Dashboard() {
                         fill="hsl(142, 76%, 36%)" 
                         radius={[4, 4, 0, 0]}
                         name="Receitas"
+                        stackId="real"
                       />
                       <Bar 
                         dataKey="pago" 
                         fill="hsl(0, 84%, 60%)" 
                         radius={[4, 4, 0, 0]}
                         name="Despesas"
+                        stackId="real"
+                      />
+                      <Bar 
+                        dataKey="previsaoReceber" 
+                        fill="hsl(142, 76%, 60%)" 
+                        radius={[4, 4, 0, 0]}
+                        name="Previsão Receber"
+                        stackId="previsao"
+                        opacity={0.6}
+                      />
+                      <Bar 
+                        dataKey="previsaoPagar" 
+                        fill="hsl(0, 84%, 80%)" 
+                        radius={[4, 4, 0, 0]}
+                        name="Previsão Pagar"
+                        stackId="previsao"
+                        opacity={0.6}
                       />
                       <Line 
                         type="monotone" 
@@ -731,6 +772,15 @@ export function Dashboard() {
                         strokeWidth={3}
                         name="Saldo"
                         dot={{ r: 4 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="saldoPrevisto" 
+                        stroke="hsl(220, 90%, 56%)" 
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        name="Saldo Previsto"
+                        dot={{ r: 3 }}
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
