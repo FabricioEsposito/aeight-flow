@@ -122,7 +122,7 @@ export default function Extrato() {
           clientes:cliente_id (razao_social, cnpj_cpf),
           parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato))
         `)
-        .order('data_vencimento', { ascending: false });
+        .order('data_vencimento', { ascending: true });
 
       if (dateRange) {
         queryReceber = queryReceber.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
@@ -139,7 +139,7 @@ export default function Extrato() {
           fornecedores:fornecedor_id (razao_social, cnpj_cpf),
           parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato))
         `)
-        .order('data_vencimento', { ascending: false });
+        .order('data_vencimento', { ascending: true });
 
       if (dateRange) {
         queryPagar = queryPagar.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
@@ -203,7 +203,7 @@ export default function Extrato() {
       }));
 
       const todosLancamentos = [...lancamentosReceber, ...lancamentosPagar].sort(
-        (a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()
+        (a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
       );
 
       setLancamentos(todosLancamentos);
