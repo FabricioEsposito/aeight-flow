@@ -33,6 +33,8 @@ interface DashboardStats {
   saldoFinalPrevisto?: number;
   previsaoReceber: number;
   previsaoPagar: number;
+  valorRecebido: number;
+  valorPago: number;
 }
 
 interface FaturamentoData {
@@ -62,6 +64,8 @@ export function Dashboard() {
     saldoFinalPrevisto: 0,
     previsaoReceber: 0,
     previsaoPagar: 0,
+    valorRecebido: 0,
+    valorPago: 0,
   });
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
@@ -177,19 +181,19 @@ export function Dashboard() {
 
       const { data: contasReceber } = await contasReceberQuery;
 
-      // Fetch Contas a Receber para Fluxo de Caixa (recebidas + pendentes/vencidas para previsão)
+      // Fetch Contas a Receber para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
       let contasReceberFluxoQuery = supabase
         .from('contas_receber')
         .select('valor, data_recebimento, data_vencimento, status, centro_custo, conta_bancaria_id');
       
       if (dateRange) {
-        // Para contas recebidas, filtrar pela data de recebimento
+        // Para contas pagas, filtrar pela data de recebimento
         // Para contas pendentes/vencidas, filtrar pela data de vencimento
         contasReceberFluxoQuery = contasReceberFluxoQuery.or(
-          `and(status.eq.recebido,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.in.(pendente,vencido),data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+          `and(status.eq.pago,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.in.(pendente,vencido),data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
         );
       } else {
-        contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['recebido', 'pendente', 'vencido']);
+        contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['pago', 'pendente', 'vencido']);
       }
       
       if (selectedCentroCusto !== 'todos') {
@@ -337,8 +341,8 @@ export function Dashboard() {
       // Agregar dados de contas recebidas e pagas por data efetiva (data de recebimento/pagamento)
       const fluxoPorDia: Record<string, { recebido: number; pago: number; previsaoReceber: number; previsaoPagar: number }> = {};
       
-      // Adicionar contas recebidas (apenas as efetivamente recebidas)
-      contasReceberFluxo?.filter(c => c.status === 'recebido' && c.data_recebimento).forEach(c => {
+      // Adicionar contas recebidas (apenas as efetivamente pagas)
+      contasReceberFluxo?.filter(c => c.status === 'pago' && c.data_recebimento).forEach(c => {
         const date = c.data_recebimento!;
         
         if (!fluxoPorDia[date]) {
@@ -406,6 +410,15 @@ export function Dashboard() {
       const saldoFinal = ultimoDia ? ultimoDia.saldoFinal : saldoInicial;
       const saldoFinalPrevisto = ultimoDia ? ultimoDia.saldoPrevisto : saldoInicial;
 
+      // Calcular valores efetivamente recebidos e pagos no período
+      const valorRecebido = contasReceberFluxo
+        ?.filter(c => c.status === 'pago' && c.data_recebimento)
+        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
+
+      const valorPago = contasPagarFluxo
+        ?.filter(c => c.status === 'pago' && c.data_pagamento)
+        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
+
       // Calcular percentual de inadimplentes
       const percentualInadimplentes = faturamento > 0 ? (inadimplentes / faturamento) * 100 : 0;
 
@@ -422,6 +435,8 @@ export function Dashboard() {
         saldoFinalPrevisto,
         previsaoReceber,
         previsaoPagar,
+        valorRecebido,
+        valorPago,
       });
 
     } catch (error) {
@@ -597,7 +612,7 @@ export function Dashboard() {
             value={formatCurrency(stats.contasPagar)}
             icon={TrendingDown}
             changeType="neutral"
-            subtitle={stats.previsaoPagar > 0 ? `Previsão: ${formatCurrency(stats.previsaoPagar)}` : undefined}
+            subtitle={`Pago: ${formatCurrency(stats.valorPago)}${stats.previsaoPagar > 0 ? ` | Previsão: ${formatCurrency(stats.previsaoPagar)}` : ''}`}
           />
           <StatsCard
             title="À Pagar Atrasado"
@@ -610,7 +625,7 @@ export function Dashboard() {
             value={formatCurrency(stats.contasReceber)}
             icon={TrendingUp}
             changeType="neutral"
-            subtitle={stats.previsaoReceber > 0 ? `Previsão: ${formatCurrency(stats.previsaoReceber)}` : undefined}
+            subtitle={`Recebido: ${formatCurrency(stats.valorRecebido)}${stats.previsaoReceber > 0 ? ` | Previsão: ${formatCurrency(stats.previsaoReceber)}` : ''}`}
           />
           <StatsCard
             title="Inadimplentes"
