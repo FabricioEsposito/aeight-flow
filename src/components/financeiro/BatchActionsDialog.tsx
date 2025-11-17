@@ -25,6 +25,7 @@ interface BatchActionsDialogProps {
   actionType: 'change-date' | 'mark-paid' | 'clone' | null;
   onConfirm: (data: any) => void;
   tipo?: 'entrada' | 'saida';
+  allPaid?: boolean;
 }
 
 export function BatchActionsDialog({
@@ -34,6 +35,7 @@ export function BatchActionsDialog({
   actionType,
   onConfirm,
   tipo,
+  allPaid = false,
 }: BatchActionsDialogProps) {
   const [newDate, setNewDate] = useState('');
 
@@ -42,6 +44,9 @@ export function BatchActionsDialog({
       case 'change-date':
         return 'Alterar Data de Vencimento';
       case 'mark-paid':
+        if (allPaid) {
+          return 'Voltar para Em Aberto';
+        }
         return tipo === 'entrada' ? 'Marcar como Recebido' : 'Marcar como Pago';
       case 'clone':
         return 'Clonar Lançamentos';
@@ -55,6 +60,9 @@ export function BatchActionsDialog({
       case 'change-date':
         return `Alterar a data de vencimento de ${selectedCount} lançamento(s) selecionado(s)`;
       case 'mark-paid':
+        if (allPaid) {
+          return `Voltar ${selectedCount} lançamento(s) para status em aberto?`;
+        }
         return `Marcar ${selectedCount} lançamento(s) como ${tipo === 'entrada' ? 'recebido' : 'pago'}?`;
       case 'clone':
         return `Deseja clonar ${selectedCount} lançamento(s) selecionado(s)?`;

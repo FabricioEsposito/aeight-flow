@@ -842,7 +842,8 @@ export default function Extrato() {
                     onCheckedChange={handleToggleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Data</TableHead>
+                <TableHead>Data de Vencimento</TableHead>
+                <TableHead>Data da Movimentação</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor (R$)</TableHead>
@@ -884,6 +885,12 @@ export default function Extrato() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{formatDate(lanc.data_vencimento)}</TableCell>
+                    <TableCell className="font-medium">
+                      {lanc.status === 'pago' 
+                        ? formatDate(lanc.origem === 'receber' ? lanc.data_recebimento || '' : lanc.data_pagamento || '')
+                        : '-'
+                      }
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{lanc.descricao}</p>
@@ -981,6 +988,10 @@ export default function Extrato() {
         actionType={batchActionType}
         onConfirm={handleBatchAction}
         tipo={lancamentos.find(l => selectedIds.has(l.id))?.tipo}
+        allPaid={
+          batchActionType === 'mark-paid' &&
+          lancamentos.filter(l => selectedIds.has(l.id)).every(l => l.status === 'pago')
+        }
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
