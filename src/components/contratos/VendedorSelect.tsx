@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 
 interface VendedorSelectProps {
   value: string;
@@ -15,18 +15,20 @@ export function VendedorSelect({ value, onChange, disabled }: VendedorSelectProp
     { id: 'vendedor4', nome: 'Ana Costa' },
   ];
 
+  const options: SearchableSelectOption[] = vendedores.map((vendedor) => ({
+    value: vendedor.id,
+    label: vendedor.nome,
+  }));
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger>
-        <SelectValue placeholder="Selecione um vendedor" />
-      </SelectTrigger>
-      <SelectContent>
-        {vendedores.map((vendedor) => (
-          <SelectItem key={vendedor.id} value={vendedor.id}>
-            {vendedor.nome}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={value}
+      onValueChange={onChange}
+      options={options}
+      placeholder="Selecione um vendedor"
+      searchPlaceholder="Buscar vendedor..."
+      emptyMessage="Nenhum vendedor encontrado."
+      disabled={disabled}
+    />
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,18 +40,20 @@ export default function CentroCustoSelect({ value, onValueChange, placeholder = 
     }
   };
 
+  const options: SearchableSelectOption[] = centrosCusto.map((cc) => ({
+    value: cc.id,
+    label: `${cc.codigo} - ${cc.descricao}`,
+  }));
+
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={loading}>
-      <SelectTrigger>
-        <SelectValue placeholder={loading ? "Carregando..." : placeholder} />
-      </SelectTrigger>
-      <SelectContent className="bg-background z-50">
-        {centrosCusto.map((cc) => (
-          <SelectItem key={cc.id} value={cc.id}>
-            {cc.codigo} - {cc.descricao}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={value}
+      onValueChange={onValueChange}
+      options={options}
+      placeholder={loading ? "Carregando..." : placeholder}
+      searchPlaceholder="Buscar centro de custo..."
+      emptyMessage="Nenhum centro de custo encontrado."
+      disabled={loading}
+    />
   );
 }

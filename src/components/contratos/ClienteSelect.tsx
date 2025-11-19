@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Cliente {
@@ -39,18 +39,20 @@ export function ClienteSelect({ value, onChange, disabled }: ClienteSelectProps)
     }
   };
 
+  const options: SearchableSelectOption[] = clientes.map((cliente) => ({
+    value: cliente.id,
+    label: `${cliente.razao_social} - ${cliente.cnpj_cpf}`,
+  }));
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled || loading}>
-      <SelectTrigger>
-        <SelectValue placeholder={loading ? "Carregando..." : "Selecione um cliente"} />
-      </SelectTrigger>
-      <SelectContent>
-        {clientes.map((cliente) => (
-          <SelectItem key={cliente.id} value={cliente.id}>
-            {cliente.razao_social} - {cliente.cnpj_cpf}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={value}
+      onValueChange={onChange}
+      options={options}
+      placeholder={loading ? "Carregando..." : "Selecione um cliente"}
+      searchPlaceholder="Buscar cliente..."
+      emptyMessage="Nenhum cliente encontrado."
+      disabled={disabled || loading}
+    />
   );
 }
