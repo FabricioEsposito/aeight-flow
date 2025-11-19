@@ -46,7 +46,7 @@ interface LancamentoExtrato {
 
 export default function Extrato() {
   const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
-  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; saldo_atual: number }>>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
@@ -158,7 +158,7 @@ export default function Extrato() {
       // Buscar contas bancárias
       const { data: dataContas, error: errorContas } = await supabase
         .from('contas_bancarias')
-        .select('id, descricao, saldo_atual')
+        .select('id, descricao, banco, saldo_atual')
         .eq('status', 'ativo');
 
       if (errorContas) throw errorContas;
