@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -456,16 +456,14 @@ export default function Solicitacoes() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando solicitações...</p>
-        </div>
-      </AppLayout>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Carregando solicitações...</p>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -586,6 +584,6 @@ export default function Solicitacoes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   );
 }
