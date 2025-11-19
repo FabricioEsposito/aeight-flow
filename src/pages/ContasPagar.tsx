@@ -12,6 +12,8 @@ import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRa
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
+import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
+import { useUserRole } from '@/hooks/useUserRole';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -42,6 +44,7 @@ interface ContaPagar {
 interface ContaBancaria {
   id: string;
   descricao: string;
+  banco: string;
 }
 export default function ContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
@@ -57,11 +60,13 @@ export default function ContasPagar() {
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [solicitarAjusteDialogOpen, setSolicitarAjusteDialogOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<ContaPagar | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const {
     toast
   } = useToast();
@@ -124,11 +129,11 @@ export default function ContasPagar() {
       const {
         data,
         error
-      } = await supabase.from('contas_bancarias').select('id, descricao').eq('status', 'ativo').order('descricao');
+      } = await supabase.from('contas_bancarias').select('id, descricao, banco').eq('status', 'ativo').order('descricao');
       if (error) throw error;
       setContasBancarias(data || []);
     } catch (error) {
-      console.error('Erro ao buscar contas bancárias:', error);
+      console.error('Erro ao buscar contas bancárias:',error);
     }
   };
   const handleView = (conta: ContaPagar) => {
@@ -137,7 +142,11 @@ export default function ContasPagar() {
   };
   const handleEdit = (conta: ContaPagar) => {
     setSelectedConta(conta);
-    setEditDialogOpen(true);
+    if (isAdmin) {
+      setEditDialogOpen(true);
+    } else {
+      setSolicitarAjusteDialogOpen(true);
+    }
   };
   const handleSaveEdit = async (data: EditParcelaData) => {
     try {
@@ -547,6 +556,35 @@ export default function ContasPagar() {
           desconto: selectedConta.desconto
         } : undefined} 
         contasBancarias={contasBancarias} 
+      />
+
+      <SolicitarAjusteDialog 
+        open={solicitarAjusteDialogOpen}
+        onOpenChange={setSolicitarAjusteDialogOpen}
+        onSuccess={fetchContas}
+        lancamentoId={selectedConta?.id || ''}
+        tipoLancamento="pagar"
+        tipo="saida"
+        initialData={selectedConta ? {
+          data_vencimento: selectedConta.data_vencimento,
+          descricao: selectedConta.descricao,
+          valor: selectedConta.valor_original || selectedConta.valor_parcela,
+          juros: selectedConta.juros || 0,
+          multa: selectedConta.multa || 0,
+          desconto: selectedConta.desconto || 0,
+          conta_bancaria_id: selectedConta.conta_bancaria_id || '',
+          plano_conta_id: selectedConta.plano_conta_id,
+          centro_custo: selectedConta.centro_custo,
+        } : {
+          data_vencimento: '',
+          descricao: '',
+          valor: 0,
+          juros: 0,
+          multa: 0,
+          desconto: 0,
+          conta_bancaria_id: '',
+        }}
+        contasBancarias={contasBancarias}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
