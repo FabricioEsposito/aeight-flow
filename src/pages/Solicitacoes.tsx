@@ -207,7 +207,7 @@ export default function Solicitacoes() {
       const { error: solicitacaoError } = await supabase
         .from('solicitacoes_ajuste_financeiro')
         .update({
-          status: 'aprovado',
+          status: 'aprovada',
           aprovador_id: user?.id,
           data_resposta: new Date().toISOString(),
         })
@@ -243,7 +243,7 @@ export default function Solicitacoes() {
       const { error } = await supabase
         .from('solicitacoes_ajuste_financeiro')
         .update({
-          status: 'rejeitado',
+          status: 'rejeitada',
           aprovador_id: user?.id,
           data_resposta: new Date().toISOString(),
         })
