@@ -161,16 +161,16 @@ export default function Solicitacoes() {
         updateData.data_vencimento = solicitacao.data_vencimento_solicitada;
       }
       
-      if (solicitacao.juros_atual !== solicitacao.juros_solicitado) {
-        updateData.juros = solicitacao.juros_solicitado;
+      if ((solicitacao.juros_atual || 0) !== (solicitacao.juros_solicitado || 0)) {
+        updateData.juros = solicitacao.juros_solicitado || 0;
       }
       
-      if (solicitacao.multa_atual !== solicitacao.multa_solicitada) {
-        updateData.multa = solicitacao.multa_solicitada;
+      if ((solicitacao.multa_atual || 0) !== (solicitacao.multa_solicitada || 0)) {
+        updateData.multa = solicitacao.multa_solicitada || 0;
       }
       
-      if (solicitacao.desconto_atual !== solicitacao.desconto_solicitado) {
-        updateData.desconto = solicitacao.desconto_solicitado;
+      if ((solicitacao.desconto_atual || 0) !== (solicitacao.desconto_solicitado || 0)) {
+        updateData.desconto = solicitacao.desconto_solicitado || 0;
       }
       
       // Buscar valores atuais do lançamento
@@ -182,15 +182,15 @@ export default function Solicitacoes() {
       
       if (fetchError) throw fetchError;
       
-      if (lancamentoAtual.plano_conta_id !== solicitacao.plano_conta_id) {
+      if (lancamentoAtual && solicitacao.plano_conta_id && lancamentoAtual.plano_conta_id !== solicitacao.plano_conta_id) {
         updateData.plano_conta_id = solicitacao.plano_conta_id;
       }
       
-      if (lancamentoAtual.centro_custo !== solicitacao.centro_custo) {
+      if (lancamentoAtual && solicitacao.centro_custo && lancamentoAtual.centro_custo !== solicitacao.centro_custo) {
         updateData.centro_custo = solicitacao.centro_custo;
       }
       
-      if (lancamentoAtual.conta_bancaria_id !== solicitacao.conta_bancaria_id) {
+      if (lancamentoAtual && solicitacao.conta_bancaria_id && lancamentoAtual.conta_bancaria_id !== solicitacao.conta_bancaria_id) {
         updateData.conta_bancaria_id = solicitacao.conta_bancaria_id;
       }
       
@@ -264,6 +264,34 @@ export default function Solicitacoes() {
       toast({
         title: 'Erro ao rejeitar',
         description: 'Não foi possível rejeitar a solicitação.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelarSolicitacao = async (solicitacaoId: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('solicitacoes_ajuste_financeiro')
+        .delete()
+        .eq('id', solicitacaoId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Solicitação cancelada',
+        description: 'A solicitação foi cancelada com sucesso.',
+      });
+
+      loadSolicitacoes();
+    } catch (error) {
+      console.error('Erro ao cancelar:', error);
+      toast({
+        title: 'Erro ao cancelar',
+        description: 'Não foi possível cancelar a solicitação.',
         variant: 'destructive',
       });
     } finally {
@@ -398,6 +426,22 @@ export default function Solicitacoes() {
                 >
                   <X className="w-4 h-4 mr-1" />
                   Rejeitar
+                </Button>
+              </div>
+            )}
+            
+            {/* Cancel button for common users on pending requests */}
+            {!isAdmin && solicitacao.status === 'pendente' && (
+              <div className="flex flex-col gap-2 pt-12">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 hover:bg-red-50 border-red-300"
+                  onClick={() => handleCancelarSolicitacao(solicitacao.id)}
+                  disabled={loading}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Cancelar
                 </Button>
               </div>
             )}
