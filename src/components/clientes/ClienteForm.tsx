@@ -15,8 +15,8 @@ import { useCnpjApi } from "@/hooks/useCnpjApi";
 
 const clienteSchema = z.object({
   razao_social: z.string().min(1, "Razão Social é obrigatória"),
-  cnpj_cpf: z.string().min(1, "CNPJ/CPF é obrigatório"),
-  tipo_pessoa: z.enum(["fisica", "juridica"]),
+  cnpj_cpf: z.string().optional(),
+  tipo_pessoa: z.enum(["fisica", "juridica", "internacional"]),
   endereco: z.string().optional(),
   numero: z.string().optional(),
   complemento: z.string().optional(),
@@ -96,7 +96,7 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
         const { error } = await supabase
           .from("clientes")
           .insert({
-            cnpj_cpf: data.cnpj_cpf,
+            cnpj_cpf: data.cnpj_cpf || "",
             razao_social: data.razao_social,
             tipo_pessoa: data.tipo_pessoa,
             endereco: data.endereco,
@@ -165,7 +165,7 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
                 <Label htmlFor="tipo_pessoa" className="text-xs">Tipo de Pessoa</Label>
                 <Select
                   value={tipoPessoa}
-                  onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica")}
+                  onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica" | "internacional")}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -173,52 +173,55 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
                   <SelectContent>
                     <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
                     <SelectItem value="fisica">Pessoa Física</SelectItem>
+                    <SelectItem value="internacional">Internacional</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="cnpj_cpf" className="text-xs">
-                  {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    {...register("cnpj_cpf")}
-                    placeholder={tipoPessoa === "juridica" ? "00.000.000/0000-00" : "000.000.000-00"}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const formatted = tipoPessoa === "juridica" 
-                        ? formatCNPJ(value)
-                        : formatCPF(value);
-                      setValue("cnpj_cpf", formatted);
-                    }}
-                  />
-                  {tipoPessoa === "juridica" && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={buscarDadosCNPJ}
-                      disabled={isSearchingCNPJ}
-                      title="Buscar dados pelo CNPJ"
-                    >
-                      {isSearchingCNPJ ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4" />
-                      )}
-                    </Button>
+              {tipoPessoa !== "internacional" && (
+                <div className="space-y-1">
+                  <Label htmlFor="cnpj_cpf" className="text-xs">
+                    {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      {...register("cnpj_cpf")}
+                      placeholder={tipoPessoa === "juridica" ? "00.000.000/0000-00" : "000.000.000-00"}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const formatted = tipoPessoa === "juridica" 
+                          ? formatCNPJ(value)
+                          : formatCPF(value);
+                        setValue("cnpj_cpf", formatted);
+                      }}
+                    />
+                    {tipoPessoa === "juridica" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={buscarDadosCNPJ}
+                        disabled={isSearchingCNPJ}
+                        title="Buscar dados pelo CNPJ"
+                      >
+                        {isSearchingCNPJ ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Search className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  {errors.cnpj_cpf && (
+                    <span className="text-sm text-destructive">{errors.cnpj_cpf.message}</span>
                   )}
                 </div>
-                {errors.cnpj_cpf && (
-                  <span className="text-sm text-destructive">{errors.cnpj_cpf.message}</span>
-                )}
-              </div>
+              )}
             </div>
 
             <div className="space-y-1">
               <Label htmlFor="razao_social" className="text-xs">
-                {tipoPessoa === "juridica" ? "Razão Social" : "Nome Completo"}
+                {tipoPessoa === "juridica" ? "Razão Social" : tipoPessoa === "internacional" ? "Nome da Empresa" : "Nome Completo"}
               </Label>
               <Input {...register("razao_social")} />
               {errors.razao_social && (

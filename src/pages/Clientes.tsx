@@ -22,7 +22,7 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
 
 interface Cliente {
   id: string;
-  tipo_pessoa: 'fisica' | 'juridica';
+  tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
   razao_social: string;
   cnpj_cpf: string;
   email?: string;
@@ -293,8 +293,8 @@ export default function Clientes() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={cliente.tipo_pessoa === 'juridica' ? 'default' : 'secondary'}>
-                      {cliente.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}
+                    <Badge variant={cliente.tipo_pessoa === 'juridica' ? 'default' : cliente.tipo_pessoa === 'internacional' ? 'outline' : 'secondary'}>
+                      {cliente.tipo_pessoa === 'juridica' ? 'PJ' : cliente.tipo_pessoa === 'internacional' ? 'INT' : 'PF'}
                     </Badge>
                   </TableCell>
                   <TableCell>{cliente.telefone || '-'}</TableCell>
