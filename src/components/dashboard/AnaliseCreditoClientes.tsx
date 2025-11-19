@@ -31,11 +31,11 @@ export function AnaliseCreditoClientes({ dataInicio, dataFim, centroCusto }: Ana
   }, [dataInicio, dataFim, centroCusto]);
 
   const getScoreInfo = (agingMedio: number): { score: string; color: string } => {
-    if (agingMedio <= 5) return { score: 'Excelente', color: 'bg-green-500' };
-    if (agingMedio <= 15) return { score: 'Bom', color: 'bg-blue-500' };
-    if (agingMedio <= 30) return { score: 'Regular', color: 'bg-yellow-500' };
-    if (agingMedio <= 60) return { score: 'Ruim', color: 'bg-orange-500' };
-    return { score: 'Péssimo', color: 'bg-red-500' };
+    if (agingMedio <= 1) return { score: 'Ótimo Pagador', color: 'bg-green-500' };
+    if (agingMedio <= 3) return { score: 'Bom Pagador', color: 'bg-green-500' };
+    if (agingMedio <= 5) return { score: 'Pagador Mediano', color: 'bg-yellow-500' };
+    if (agingMedio <= 7) return { score: 'Péssimo Pagador', color: 'bg-red-500' };
+    return { score: 'Péssimo Pagador', color: 'bg-red-500' };
   };
 
   const fetchAnalise = async () => {
