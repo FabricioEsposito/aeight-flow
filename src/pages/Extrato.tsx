@@ -454,27 +454,64 @@ export default function Extrato() {
     
     try {
       if (batchActionType === 'change-date' && data?.newDate) {
-        for (const lanc of selectedLancamentos) {
-          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
-          
-          // Atualiza a conta a receber/pagar
-          await supabase
-            .from(table)
-            .update({ data_vencimento: data.newDate })
-            .eq('id', lanc.id);
-          
-          // Se tiver parcela_id, atualiza também a parcela do contrato
-          if (lanc.parcela_id) {
+        // Se não for admin, criar solicitações de ajuste
+        if (!isAdmin) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Usuário não autenticado');
+
+          // Criar uma solicitação para cada lançamento
+          for (const lanc of selectedLancamentos) {
             await supabase
-              .from('parcelas_contrato')
-              .update({ data_vencimento: data.newDate })
-              .eq('id', lanc.parcela_id);
+              .from('solicitacoes_ajuste_financeiro')
+              .insert({
+                tipo_lancamento: lanc.origem === 'receber' ? 'receber' : 'pagar',
+                lancamento_id: lanc.id,
+                data_vencimento_atual: lanc.data_vencimento,
+                data_vencimento_solicitada: data.newDate,
+                solicitante_id: user.id,
+                motivo_solicitacao: 'Alteração em lote de data de vencimento',
+                status: 'pendente',
+                valor_original: lanc.valor || 0,
+                juros_atual: lanc.juros || 0,
+                juros_solicitado: lanc.juros || 0,
+                multa_atual: lanc.multa || 0,
+                multa_solicitada: lanc.multa || 0,
+                desconto_atual: lanc.desconto || 0,
+                desconto_solicitado: lanc.desconto || 0,
+                plano_conta_id: lanc.plano_conta_id || null,
+                centro_custo: lanc.centro_custo || null,
+                conta_bancaria_id: lanc.conta_bancaria_id || null,
+              });
           }
+          
+          toast({
+            title: "Solicitações enviadas",
+            description: `${selectedLancamentos.length} solicitação(ões) de ajuste enviada(s) para aprovação do administrador`,
+          });
+        } else {
+          // Admin pode executar diretamente
+          for (const lanc of selectedLancamentos) {
+            const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+            
+            // Atualiza a conta a receber/pagar
+            await supabase
+              .from(table)
+              .update({ data_vencimento: data.newDate })
+              .eq('id', lanc.id);
+            
+            // Se tiver parcela_id, atualiza também a parcela do contrato
+            if (lanc.parcela_id) {
+              await supabase
+                .from('parcelas_contrato')
+                .update({ data_vencimento: data.newDate })
+                .eq('id', lanc.parcela_id);
+            }
+          }
+          toast({
+            title: "Sucesso",
+            description: `Data de vencimento alterada para ${selectedLancamentos.length} lançamento(s)!`,
+          });
         }
-        toast({
-          title: "Sucesso",
-          description: `Data de vencimento alterada para ${selectedLancamentos.length} lançamento(s)!`,
-        });
       } else if (batchActionType === 'mark-paid') {
         // Verifica se todos os lançamentos selecionados já estão pagos
         const allPaid = selectedLancamentos.every(l => l.status === 'pago');
