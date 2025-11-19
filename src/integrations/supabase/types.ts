@@ -805,54 +805,84 @@ export type Database = {
         }
         Relationships: []
       }
-      solicitacoes_alteracao_vencimento: {
+      solicitacoes_ajuste_financeiro: {
         Row: {
           aprovador_id: string | null
+          centro_custo: string | null
+          conta_bancaria_id: string | null
           created_at: string | null
           data_resposta: string | null
           data_solicitacao: string
           data_vencimento_atual: string
           data_vencimento_solicitada: string
+          desconto_atual: number | null
+          desconto_solicitado: number | null
           id: string
+          juros_atual: number | null
+          juros_solicitado: number | null
           lancamento_id: string
           motivo_rejeicao: string | null
           motivo_solicitacao: string | null
+          multa_atual: number | null
+          multa_solicitada: number | null
+          plano_conta_id: string | null
           solicitante_id: string
           status: string
           tipo_lancamento: string
           updated_at: string | null
+          valor_original: number | null
         }
         Insert: {
           aprovador_id?: string | null
+          centro_custo?: string | null
+          conta_bancaria_id?: string | null
           created_at?: string | null
           data_resposta?: string | null
           data_solicitacao?: string
           data_vencimento_atual: string
           data_vencimento_solicitada: string
+          desconto_atual?: number | null
+          desconto_solicitado?: number | null
           id?: string
+          juros_atual?: number | null
+          juros_solicitado?: number | null
           lancamento_id: string
           motivo_rejeicao?: string | null
           motivo_solicitacao?: string | null
+          multa_atual?: number | null
+          multa_solicitada?: number | null
+          plano_conta_id?: string | null
           solicitante_id: string
           status?: string
           tipo_lancamento: string
           updated_at?: string | null
+          valor_original?: number | null
         }
         Update: {
           aprovador_id?: string | null
+          centro_custo?: string | null
+          conta_bancaria_id?: string | null
           created_at?: string | null
           data_resposta?: string | null
           data_solicitacao?: string
           data_vencimento_atual?: string
           data_vencimento_solicitada?: string
+          desconto_atual?: number | null
+          desconto_solicitado?: number | null
           id?: string
+          juros_atual?: number | null
+          juros_solicitado?: number | null
           lancamento_id?: string
           motivo_rejeicao?: string | null
           motivo_solicitacao?: string | null
+          multa_atual?: number | null
+          multa_solicitada?: number | null
+          plano_conta_id?: string | null
           solicitante_id?: string
           status?: string
           tipo_lancamento?: string
           updated_at?: string | null
+          valor_original?: number | null
         }
         Relationships: []
       }

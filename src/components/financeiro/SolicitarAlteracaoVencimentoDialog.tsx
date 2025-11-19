@@ -59,7 +59,7 @@ export function SolicitarAlteracaoVencimentoDialog({
       if (!user) throw new Error('Usuário não autenticado');
 
       const { error } = await supabase
-        .from('solicitacoes_alteracao_vencimento')
+        .from('solicitacoes_ajuste_financeiro')
         .insert({
           tipo_lancamento: tipoLancamento,
           lancamento_id: lancamentoId,

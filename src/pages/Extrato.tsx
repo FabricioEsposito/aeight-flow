@@ -13,6 +13,8 @@ import { NovoLancamentoDialog } from '@/components/financeiro/NovoLancamentoDial
 import { ExtratoActionsDropdown } from '@/components/financeiro/ExtratoActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
+import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
+import { useUserRole } from '@/hooks/useUserRole';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -55,6 +57,7 @@ export default function Extrato() {
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [solicitarAjusteDialogOpen, setSolicitarAjusteDialogOpen] = useState(false);
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
@@ -63,6 +66,7 @@ export default function Extrato() {
   const [lancamentoToDelete, setLancamentoToDelete] = useState<LancamentoExtrato | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
 
   const getDateRange = () => {
@@ -354,7 +358,11 @@ export default function Extrato() {
     }
 
     setSelectedLancamento(data);
-    setEditDialogOpen(true);
+    if (isAdmin) {
+      setEditDialogOpen(true);
+    } else {
+      setSolicitarAjusteDialogOpen(true);
+    }
   };
 
   const handleSaveEdit = async (data: EditParcelaData) => {
@@ -1034,6 +1042,35 @@ export default function Extrato() {
         onSave={handleSaveEdit}
         tipo={selectedLancamento?.cliente_id ? 'entrada' : 'saida'}
         initialData={selectedLancamento}
+        contasBancarias={contasBancarias}
+      />
+
+      <SolicitarAjusteDialog 
+        open={solicitarAjusteDialogOpen}
+        onOpenChange={setSolicitarAjusteDialogOpen}
+        onSuccess={fetchLancamentos}
+        lancamentoId={selectedLancamento?.id || ''}
+        tipoLancamento={selectedLancamento?.origem || 'receber'}
+        tipo={selectedLancamento?.tipo || 'entrada'}
+        initialData={selectedLancamento ? {
+          data_vencimento: selectedLancamento.data_vencimento,
+          descricao: selectedLancamento.descricao,
+          valor: selectedLancamento.valor_original || selectedLancamento.valor,
+          juros: selectedLancamento.juros || 0,
+          multa: selectedLancamento.multa || 0,
+          desconto: selectedLancamento.desconto || 0,
+          conta_bancaria_id: selectedLancamento.conta_bancaria_id || '',
+          plano_conta_id: selectedLancamento.plano_conta_id,
+          centro_custo: selectedLancamento.centro_custo,
+        } : {
+          data_vencimento: '',
+          descricao: '',
+          valor: 0,
+          juros: 0,
+          multa: 0,
+          desconto: 0,
+          conta_bancaria_id: '',
+        }}
         contasBancarias={contasBancarias}
       />
 

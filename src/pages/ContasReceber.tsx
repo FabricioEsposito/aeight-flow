@@ -12,6 +12,8 @@ import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRa
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
+import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
+import { useUserRole } from '@/hooks/useUserRole';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import {
@@ -54,6 +56,7 @@ interface ContaReceber {
 interface ContaBancaria {
   id: string;
   descricao: string;
+  banco: string;
 }
 
 export default function ContasReceber() {
@@ -67,11 +70,13 @@ export default function ContasReceber() {
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [solicitarAjusteDialogOpen, setSolicitarAjusteDialogOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<ContaReceber | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
 
   const fetchContas = async () => {
@@ -120,7 +125,7 @@ export default function ContasReceber() {
     try {
       const { data, error } = await supabase
         .from('contas_bancarias')
-        .select('id, descricao')
+        .select('id, descricao, banco')
         .eq('status', 'ativo')
         .order('descricao');
 
@@ -143,7 +148,11 @@ export default function ContasReceber() {
 
   const handleEdit = (conta: ContaReceber) => {
     setSelectedConta(conta);
-    setEditDialogOpen(true);
+    if (isAdmin) {
+      setEditDialogOpen(true);
+    } else {
+      setSolicitarAjusteDialogOpen(true);
+    }
   };
 
   const handleSaveEdit = async (data: EditParcelaData) => {
@@ -592,6 +601,35 @@ export default function ContasReceber() {
           multa: selectedConta.multa,
           desconto: selectedConta.desconto,
         } : undefined}
+        contasBancarias={contasBancarias}
+      />
+
+      <SolicitarAjusteDialog 
+        open={solicitarAjusteDialogOpen}
+        onOpenChange={setSolicitarAjusteDialogOpen}
+        onSuccess={fetchContas}
+        lancamentoId={selectedConta?.id || ''}
+        tipoLancamento="receber"
+        tipo="entrada"
+        initialData={selectedConta ? {
+          data_vencimento: selectedConta.data_vencimento,
+          descricao: selectedConta.descricao,
+          valor: selectedConta.valor_original || selectedConta.valor,
+          juros: selectedConta.juros || 0,
+          multa: selectedConta.multa || 0,
+          desconto: selectedConta.desconto || 0,
+          conta_bancaria_id: selectedConta.conta_bancaria_id || '',
+          plano_conta_id: selectedConta.plano_conta_id,
+          centro_custo: selectedConta.centro_custo,
+        } : {
+          data_vencimento: '',
+          descricao: '',
+          valor: 0,
+          juros: 0,
+          multa: 0,
+          desconto: 0,
+          conta_bancaria_id: '',
+        }}
         contasBancarias={contasBancarias}
       />
 
