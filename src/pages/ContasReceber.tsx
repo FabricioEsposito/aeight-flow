@@ -59,9 +59,16 @@ interface ContaBancaria {
   banco: string;
 }
 
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 export default function ContasReceber() {
   const [contas, setContas] = useState<ContaReceber[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -136,9 +143,25 @@ export default function ContasReceber() {
     }
   };
 
+  const fetchCentrosCusto = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo')
+        .order('codigo');
+
+      if (error) throw error;
+      setCentrosCusto(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar centros de custo:', error);
+    }
+  };
+
   useEffect(() => {
     fetchContas();
     fetchContasBancarias();
+    fetchCentrosCusto();
   }, []);
 
   const handleView = (conta: ContaReceber) => {
@@ -534,7 +557,14 @@ export default function ContasReceber() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
-                  <TableCell>{conta.centro_custo || '-'}</TableCell>
+                  <TableCell>
+                    {conta.centro_custo ? (
+                      (() => {
+                        const cc = centrosCusto.find(c => c.id === conta.centro_custo);
+                        return cc ? `${cc.codigo} - ${cc.descricao}` : conta.centro_custo;
+                      })()
+                    ) : '-'}
+                  </TableCell>
                   <TableCell className="font-semibold text-emerald-600">
                     {formatCurrency(conta.valor)}
                   </TableCell>
