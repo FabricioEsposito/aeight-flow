@@ -25,7 +25,10 @@ const clienteSchema = z.object({
   uf: z.string().optional(),
   cep: z.string().optional(),
   telefone: z.string().optional(),
-  email: z.string().email("E-mail inválido").optional().or(z.literal("")),
+  email: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().email("E-mail inválido").optional()
+  ),
 });
 
 type ClienteFormData = z.infer<typeof clienteSchema>;
