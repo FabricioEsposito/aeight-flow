@@ -144,146 +144,167 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
+    <Card className="w-full max-w-5xl mx-auto">
+      <CardHeader className="border-b bg-muted/30">
         <div className="flex items-center justify-between">
-          <CardTitle>
+          <CardTitle className="text-2xl font-bold">
             {cliente ? "Editar Cliente" : "Novo Cliente"}
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="w-4 h-4" />
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="w-5 h-5" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="tipo_pessoa">Tipo de Pessoa</Label>
-              <Select
-                value={tipoPessoa}
-                onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
-                  <SelectItem value="fisica">Pessoa Física</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* Seção: Informações Básicas */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground border-b pb-2">
+              Informações Básicas
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="tipo_pessoa">Tipo de Pessoa</Label>
+                <Select
+                  value={tipoPessoa}
+                  onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
+                    <SelectItem value="fisica">Pessoa Física</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cnpj_cpf">
-                {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  {...register("cnpj_cpf")}
-                  placeholder={tipoPessoa === "juridica" ? "00.000.000/0000-00" : "000.000.000-00"}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const formatted = tipoPessoa === "juridica" 
-                      ? formatCNPJ(value)
-                      : formatCPF(value);
-                    setValue("cnpj_cpf", formatted);
-                  }}
-                />
-                {tipoPessoa === "juridica" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={buscarDadosCNPJ}
-                    disabled={isSearchingCNPJ}
-                  >
-                    {isSearchingCNPJ ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4" />
-                    )}
-                  </Button>
+              <div className="space-y-2">
+                <Label htmlFor="cnpj_cpf">
+                  {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    {...register("cnpj_cpf")}
+                    placeholder={tipoPessoa === "juridica" ? "00.000.000/0000-00" : "000.000.000-00"}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const formatted = tipoPessoa === "juridica" 
+                        ? formatCNPJ(value)
+                        : formatCPF(value);
+                      setValue("cnpj_cpf", formatted);
+                    }}
+                  />
+                  {tipoPessoa === "juridica" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={buscarDadosCNPJ}
+                      disabled={isSearchingCNPJ}
+                      title="Buscar dados pelo CNPJ"
+                    >
+                      {isSearchingCNPJ ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+                {errors.cnpj_cpf && (
+                  <span className="text-sm text-destructive">{errors.cnpj_cpf.message}</span>
                 )}
               </div>
-              {errors.cnpj_cpf && (
-                <span className="text-sm text-destructive">{errors.cnpj_cpf.message}</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="razao_social">
+                {tipoPessoa === "juridica" ? "Razão Social" : "Nome Completo"}
+              </Label>
+              <Input {...register("razao_social")} />
+              {errors.razao_social && (
+                <span className="text-sm text-destructive">{errors.razao_social.message}</span>
               )}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="razao_social">
-              {tipoPessoa === "juridica" ? "Razão Social" : "Nome Completo"}
-            </Label>
-            <Input {...register("razao_social")} />
-            {errors.razao_social && (
-              <span className="text-sm text-destructive">{errors.razao_social.message}</span>
-            )}
-          </div>
+          {/* Seção: Endereço */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground border-b pb-2">
+              Endereço
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="md:col-span-3 space-y-2">
+                <Label htmlFor="endereco">Logradouro</Label>
+                <Input {...register("endereco")} placeholder="Rua, Avenida..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="numero">Número</Label>
+                <Input {...register("numero")} />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="endereco">Endereço</Label>
-              <Input {...register("endereco")} placeholder="Rua, Avenida..." />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="complemento">Complemento</Label>
+                <Input {...register("complemento")} placeholder="Apto, Sala..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bairro">Bairro</Label>
+                <Input {...register("bairro")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cep">CEP</Label>
+                <Input
+                  {...register("cep")}
+                  placeholder="00000-000"
+                  onChange={(e) => {
+                    const formatted = formatCEP(e.target.value);
+                    setValue("cep", formatted);
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="numero">Número</Label>
-              <Input {...register("numero")} />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="complemento">Complemento</Label>
-              <Input {...register("complemento")} placeholder="Apto, Sala..." />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bairro">Bairro</Label>
-              <Input {...register("bairro")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cep">CEP</Label>
-              <Input
-                {...register("cep")}
-                placeholder="00000-000"
-                onChange={(e) => {
-                  const formatted = formatCEP(e.target.value);
-                  setValue("cep", formatted);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="cidade">Cidade</Label>
-              <Input {...register("cidade")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="uf">UF</Label>
-              <Input {...register("uf")} maxLength={2} placeholder="SP" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="cidade">Cidade</Label>
+                <Input {...register("cidade")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="uf">UF</Label>
+                <Input {...register("uf")} maxLength={2} placeholder="SP" />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="telefone">Telefone</Label>
-              <Input {...register("telefone")} placeholder="(11) 99999-9999" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input {...register("email")} type="email" />
-              {errors.email && (
-                <span className="text-sm text-destructive">{errors.email.message}</span>
-              )}
+          {/* Seção: Contato */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground border-b pb-2">
+              Contato
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="telefone">Telefone</Label>
+                <Input {...register("telefone")} placeholder="(11) 99999-9999" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input {...register("email")} type="email" />
+                {errors.email && (
+                  <span className="text-sm text-destructive">{errors.email.message}</span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+          {/* Botões de Ação */}
+          <div className="flex justify-end gap-3 pt-6 border-t">
+            <Button type="button" variant="outline" onClick={onClose} className="min-w-[120px]">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="min-w-[120px]">
               {isLoading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
