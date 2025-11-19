@@ -16,6 +16,7 @@ interface ParcelaVencida {
   dias_atraso: number;
   nivel_atraso: string;
   nivel_color: string;
+  regra_cobranca: string;
   percentual_receita: number;
 }
 
@@ -40,6 +41,14 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
     if (diasAtraso <= 5) return { nivel: 'Pagador Mediano', color: 'bg-yellow-500' };
     if (diasAtraso <= 7) return { nivel: 'Péssimo Pagador', color: 'bg-red-500' };
     return { nivel: 'Péssimo Pagador', color: 'bg-red-500' };
+  };
+
+  const getRegraCobranca = (diasAtraso: number): string => {
+    if (diasAtraso <= 1) return 'Cobrar 1x no dia';
+    if (diasAtraso <= 3) return 'Cobrar 2x no dia';
+    if (diasAtraso <= 5) return 'Cobrar 3x no dia';
+    if (diasAtraso <= 7) return 'Acionar Sócios';
+    return 'Informar Negativação';
   };
 
   const fetchParcelas = async () => {
@@ -83,6 +92,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
         const agora = new Date();
         const diasAtraso = Math.floor((agora.getTime() - vencimento.getTime()) / (1000 * 60 * 60 * 24));
         const nivelInfo = getNivelAtraso(diasAtraso);
+        const regraCobranca = getRegraCobranca(diasAtraso);
         const percentualReceita = receita > 0 ? ((conta.valor || 0) / receita) * 100 : 0;
 
         return {
@@ -94,6 +104,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
           dias_atraso: diasAtraso,
           nivel_atraso: nivelInfo.nivel,
           nivel_color: nivelInfo.color,
+          regra_cobranca: regraCobranca,
           percentual_receita: percentualReceita,
         };
       }) || [];
@@ -148,6 +159,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                 <TableHead className="text-center">Vencimento</TableHead>
                 <TableHead className="text-center">Dias Atraso</TableHead>
                 <TableHead className="text-center">Nível</TableHead>
+                <TableHead className="text-center">Regra de Cobrança</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="text-right">% Receita</TableHead>
               </TableRow>
@@ -155,7 +167,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
             <TableBody>
               {parcelas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     Nenhuma parcela vencida encontrada
                   </TableCell>
                 </TableRow>
@@ -176,6 +188,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                       <Badge className={parcela.nivel_color}>
                         {parcela.nivel_atraso}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm font-medium">
+                        {parcela.regra_cobranca}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(parcela.valor)}
