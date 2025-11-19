@@ -259,21 +259,63 @@ export function NotificationsDropdown() {
     try {
       const tabela = solicitacao.tipo_lancamento === 'receber' ? 'contas_receber' : 'contas_pagar';
       
-      // Atualizar o lançamento
-      const { error: updateError } = await supabase
+      // Construir objeto de atualização apenas com campos alterados
+      const updateData: any = {};
+      
+      // Verificar data de vencimento
+      if (solicitacao.data_vencimento_atual !== solicitacao.data_vencimento_solicitada) {
+        updateData.data_vencimento = solicitacao.data_vencimento_solicitada;
+      }
+      
+      // Verificar juros
+      if (solicitacao.juros_atual !== solicitacao.juros_solicitado) {
+        updateData.juros = solicitacao.juros_solicitado;
+      }
+      
+      // Verificar multa
+      if (solicitacao.multa_atual !== solicitacao.multa_solicitada) {
+        updateData.multa = solicitacao.multa_solicitada;
+      }
+      
+      // Verificar desconto
+      if (solicitacao.desconto_atual !== solicitacao.desconto_solicitado) {
+        updateData.desconto = solicitacao.desconto_solicitado;
+      }
+      
+      // Para plano_conta_id, centro_custo e conta_bancaria_id, 
+      // precisamos buscar os valores atuais do lançamento
+      const { data: lancamentoAtual, error: fetchError } = await supabase
         .from(tabela)
-        .update({
-          data_vencimento: solicitacao.data_vencimento_solicitada,
-          juros: solicitacao.juros_solicitado,
-          multa: solicitacao.multa_solicitada,
-          desconto: solicitacao.desconto_solicitado,
-          plano_conta_id: solicitacao.plano_conta_id,
-          centro_custo: solicitacao.centro_custo,
-          conta_bancaria_id: solicitacao.conta_bancaria_id,
-        })
-        .eq('id', solicitacao.lancamento_id);
+        .select('plano_conta_id, centro_custo, conta_bancaria_id')
+        .eq('id', solicitacao.lancamento_id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Verificar plano de contas
+      if (lancamentoAtual.plano_conta_id !== solicitacao.plano_conta_id) {
+        updateData.plano_conta_id = solicitacao.plano_conta_id;
+      }
+      
+      // Verificar centro de custo
+      if (lancamentoAtual.centro_custo !== solicitacao.centro_custo) {
+        updateData.centro_custo = solicitacao.centro_custo;
+      }
+      
+      // Verificar conta bancária
+      if (lancamentoAtual.conta_bancaria_id !== solicitacao.conta_bancaria_id) {
+        updateData.conta_bancaria_id = solicitacao.conta_bancaria_id;
+      }
+      
+      // Atualizar apenas se houver mudanças
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from(tabela)
+          .update(updateData)
+          .eq('id', solicitacao.lancamento_id);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
 
       // Marcar solicitação como aprovada
       const { error: solicitacaoError } = await supabase
