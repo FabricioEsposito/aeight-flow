@@ -46,9 +46,17 @@ interface ContaBancaria {
   descricao: string;
   banco: string;
 }
+
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 export default function ContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -236,9 +244,26 @@ export default function ContasPagar() {
       });
     }
   };
+
+  const fetchCentrosCusto = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo')
+        .order('codigo');
+
+      if (error) throw error;
+      setCentrosCusto(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar centros de custo:', error);
+    }
+  };
+
   useEffect(() => {
     fetchContas();
     fetchContasBancarias();
+    fetchCentrosCusto();
   }, []);
   const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'default';
@@ -503,7 +528,14 @@ export default function ContasPagar() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
-                  <TableCell>{conta.centro_custo || '-'}</TableCell>
+                  <TableCell>
+                    {conta.centro_custo ? (
+                      (() => {
+                        const cc = centrosCusto.find(c => c.id === conta.centro_custo);
+                        return cc ? `${cc.codigo} - ${cc.descricao}` : conta.centro_custo;
+                      })()
+                    ) : '-'}
+                  </TableCell>
                   <TableCell className="font-semibold text-destructive">
                     {formatCurrency(conta.valor_parcela)}
                   </TableCell>
