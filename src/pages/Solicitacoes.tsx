@@ -291,34 +291,100 @@ export default function Solicitacoes() {
     const hasChangedDesconto = solicitacao.desconto_atual !== solicitacao.desconto_solicitado;
 
     return (
-      <Card key={solicitacao.id} className="mb-4">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <CardTitle className="text-lg">
+      <Card key={solicitacao.id}>
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between gap-4">
+            {/* Left Section - Info */}
+            <div className="flex-1 space-y-4">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <Badge variant={solicitacao.tipo_lancamento === 'receber' ? 'default' : 'secondary'}>
                   {solicitacao.tipo_lancamento === 'receber' ? 'Contas a Receber' : 'Contas a Pagar'}
-                </CardTitle>
+                </Badge>
                 {getStatusBadge(solicitacao.status)}
               </div>
-              <CardDescription>
-                Solicitado por: {solicitacao.solicitante.nome} ({solicitacao.solicitante.email})
-                <br />
-                Data: {format(new Date(solicitacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                {solicitacao.aprovador && solicitacao.data_resposta && (
-                  <>
-                    <br />
-                    {solicitacao.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'} por: {solicitacao.aprovador.nome} em {format(new Date(solicitacao.data_resposta), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                  </>
-                )}
-              </CardDescription>
+
+              {/* Solicitante */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Solicitado por:</p>
+                  <p className="font-medium">{solicitacao.solicitante.nome}</p>
+                  <p className="text-xs text-muted-foreground">{solicitacao.solicitante.email}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Data:</p>
+                  <p className="font-medium">{format(new Date(solicitacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                </div>
+              </div>
+
+              {/* Aprovador (se houver) */}
+              {solicitacao.aprovador && solicitacao.data_resposta && (
+                <div className="bg-secondary/30 p-3 rounded-md text-sm">
+                  <p className="text-muted-foreground">
+                    {solicitacao.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'} por: <span className="font-medium">{solicitacao.aprovador.nome}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {format(new Date(solicitacao.data_resposta), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+              )}
+
+              {/* Motivo */}
+              <div className="bg-muted/50 p-3 rounded-md">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Motivo da Solicitação:</p>
+                <p className="text-sm">{solicitacao.motivo_solicitacao}</p>
+              </div>
+
+              {/* Alterações */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold mb-3">Alterações Solicitadas</p>
+                <div className="grid gap-2">
+                  <div className="flex justify-between text-sm py-2 border-b">
+                    <span className="text-muted-foreground">Valor Original:</span>
+                    <span className="font-medium">R$ {solicitacao.valor_original.toFixed(2)}</span>
+                  </div>
+                  {hasChangedDate && (
+                    <div className="flex justify-between text-sm py-2 border-b bg-orange-50 -mx-3 px-3">
+                      <span className="text-muted-foreground">Data de Vencimento:</span>
+                      <span className="font-medium text-orange-600">
+                        {format(new Date(solicitacao.data_vencimento_atual), 'dd/MM/yyyy')} → {format(new Date(solicitacao.data_vencimento_solicitada), 'dd/MM/yyyy')}
+                      </span>
+                    </div>
+                  )}
+                  {hasChangedJuros && (
+                    <div className="flex justify-between text-sm py-2 border-b bg-orange-50 -mx-3 px-3">
+                      <span className="text-muted-foreground">Juros:</span>
+                      <span className="font-medium text-orange-600">
+                        R$ {solicitacao.juros_atual.toFixed(2)} → R$ {solicitacao.juros_solicitado.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {hasChangedMulta && (
+                    <div className="flex justify-between text-sm py-2 border-b bg-orange-50 -mx-3 px-3">
+                      <span className="text-muted-foreground">Multa:</span>
+                      <span className="font-medium text-orange-600">
+                        R$ {solicitacao.multa_atual.toFixed(2)} → R$ {solicitacao.multa_solicitada.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {hasChangedDesconto && (
+                    <div className="flex justify-between text-sm py-2 bg-orange-50 -mx-3 px-3">
+                      <span className="text-muted-foreground">Desconto:</span>
+                      <span className="font-medium text-orange-600">
+                        R$ {solicitacao.desconto_atual.toFixed(2)} → R$ {solicitacao.desconto_solicitado.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Right Section - Actions */}
             {isAdmin && solicitacao.status === 'pendente' && (
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 pt-12">
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="text-green-600 hover:bg-green-50"
+                  className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => handleOpenConfirmDialog(solicitacao, 'aprovar')}
                 >
                   <Check className="w-4 h-4 mr-1" />
@@ -327,7 +393,7 @@ export default function Solicitacoes() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-red-600 hover:bg-red-50"
+                  className="text-red-600 hover:bg-red-50 border-red-300"
                   onClick={() => handleOpenConfirmDialog(solicitacao, 'rejeitar')}
                 >
                   <X className="w-4 h-4 mr-1" />
@@ -335,43 +401,6 @@ export default function Solicitacoes() {
                 </Button>
               </div>
             )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Motivo da Solicitação:</p>
-              <p className="text-sm">{solicitacao.motivo_solicitacao}</p>
-            </div>
-
-            <div className="border-t pt-3">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Alterações Solicitadas:</p>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <strong>Valor Original:</strong> R$ {solicitacao.valor_original.toFixed(2)}
-                </p>
-                {hasChangedDate && (
-                  <p className="text-orange-600">
-                    <strong>Data de Vencimento:</strong> {format(new Date(solicitacao.data_vencimento_atual), 'dd/MM/yyyy')} → {format(new Date(solicitacao.data_vencimento_solicitada), 'dd/MM/yyyy')}
-                  </p>
-                )}
-                {hasChangedJuros && (
-                  <p className="text-orange-600">
-                    <strong>Juros:</strong> R$ {solicitacao.juros_atual.toFixed(2)} → R$ {solicitacao.juros_solicitado.toFixed(2)}
-                  </p>
-                )}
-                {hasChangedMulta && (
-                  <p className="text-orange-600">
-                    <strong>Multa:</strong> R$ {solicitacao.multa_atual.toFixed(2)} → R$ {solicitacao.multa_solicitada.toFixed(2)}
-                  </p>
-                )}
-                {hasChangedDesconto && (
-                  <p className="text-orange-600">
-                    <strong>Desconto:</strong> R$ {solicitacao.desconto_atual.toFixed(2)} → R$ {solicitacao.desconto_solicitado.toFixed(2)}
-                  </p>
-                )}
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
