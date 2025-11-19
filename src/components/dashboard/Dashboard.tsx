@@ -19,6 +19,8 @@ import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRa
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { DREAnalysis } from "./DREAnalysis";
+import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
+import { ReguaCobranca } from "./ReguaCobranca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DashboardStats {
@@ -80,7 +82,7 @@ export function Dashboard() {
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string }>>([]);
   
   // Controle de visualização
-  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre'>('faturamento');
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca'>('faturamento');
 
   useEffect(() => {
     fetchFiltersData();
@@ -519,6 +521,28 @@ export function Dashboard() {
                 <DollarSign className="w-4 h-4" />
                 DRE
               </button>
+              <button
+                onClick={() => setAnaliseAtiva('credito')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'credito'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Crédito
+              </button>
+              <button
+                onClick={() => setAnaliseAtiva('cobranca')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'cobranca'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Cobrança
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4" />
@@ -857,6 +881,40 @@ export function Dashboard() {
             })()}
             centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
           />
+        )}
+
+        {/* Análise de Crédito */}
+        {analiseAtiva === 'credito' && (
+          <div className="space-y-6">
+            <AnaliseCreditoClientes 
+              dataInicio={(() => {
+                const range = getDateRange();
+                return range?.from || '';
+              })()}
+              dataFim={(() => {
+                const range = getDateRange();
+                return range?.to || '';
+              })()}
+              centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
+            />
+          </div>
+        )}
+
+        {/* Régua de Cobrança */}
+        {analiseAtiva === 'cobranca' && (
+          <div className="space-y-6">
+            <ReguaCobranca 
+              dataInicio={(() => {
+                const range = getDateRange();
+                return range?.from || '';
+              })()}
+              dataFim={(() => {
+                const range = getDateRange();
+                return range?.to || '';
+              })()}
+              centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
+            />
+          </div>
         )}
       </div>
     </div>
