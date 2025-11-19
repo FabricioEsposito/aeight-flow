@@ -144,19 +144,19 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
 
   return (
     <Card className="w-full max-w-6xl mx-auto">
-      <CardHeader className="border-b bg-muted/30 py-4">
-        <CardTitle className="text-xl font-bold">
+      <CardHeader className="border-b bg-muted/30 py-3">
+        <CardTitle className="text-lg font-bold">
           {fornecedor ? "Editar Fornecedor" : "Novo Fornecedor"}
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-4 pb-4">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <CardContent className="pt-3 pb-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Seção: Informações Básicas */}
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold text-foreground border-b pb-1.5">
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground border-b pb-1">
               Informações Básicas
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="tipo_pessoa">Tipo de Pessoa</Label>
                 <Select
@@ -224,11 +224,11 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           </div>
 
           {/* Seção: Endereço */}
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold text-foreground border-b pb-1.5">
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground border-b pb-1">
               Endereço
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="md:col-span-3 space-y-2">
                 <Label htmlFor="endereco">Logradouro</Label>
                 <Input {...register("endereco")} placeholder="Rua, Avenida..." />
@@ -239,7 +239,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="complemento">Complemento</Label>
                 <Input {...register("complemento")} placeholder="Apto, Sala..." />
@@ -261,7 +261,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="cidade">Cidade</Label>
                 <Input {...register("cidade")} />
@@ -274,11 +274,11 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           </div>
 
           {/* Seção: Contato */}
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold text-foreground border-b pb-1.5">
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground border-b pb-1">
               Contato
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone</Label>
                 <Input {...register("telefone")} placeholder="(11) 99999-9999" />
@@ -294,7 +294,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           </div>
 
           {/* Botões de Ação */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-3 border-t">
             <Button type="button" variant="outline" onClick={onClose} className="min-w-[120px]">
               Cancelar
             </Button>
