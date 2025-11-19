@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Fornecedor {
@@ -39,18 +39,20 @@ export function FornecedorSelect({ value, onChange, disabled }: FornecedorSelect
     }
   };
 
+  const options: SearchableSelectOption[] = fornecedores.map((fornecedor) => ({
+    value: fornecedor.id,
+    label: `${fornecedor.razao_social} - ${fornecedor.cnpj_cpf}`,
+  }));
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled || loading}>
-      <SelectTrigger>
-        <SelectValue placeholder={loading ? "Carregando..." : "Selecione um fornecedor"} />
-      </SelectTrigger>
-      <SelectContent>
-        {fornecedores.map((fornecedor) => (
-          <SelectItem key={fornecedor.id} value={fornecedor.id}>
-            {fornecedor.razao_social} - {fornecedor.cnpj_cpf}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={value}
+      onValueChange={onChange}
+      options={options}
+      placeholder={loading ? "Carregando..." : "Selecione um fornecedor"}
+      searchPlaceholder="Buscar fornecedor..."
+      emptyMessage="Nenhum fornecedor encontrado."
+      disabled={disabled || loading}
+    />
   );
 }

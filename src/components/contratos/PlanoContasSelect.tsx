@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PlanoConta {
@@ -43,18 +43,20 @@ export function PlanoContasSelect({ value, onChange, tipo, disabled }: PlanoCont
     }
   };
 
+  const options: SearchableSelectOption[] = planos.map((plano) => ({
+    value: plano.id,
+    label: `${plano.codigo} - ${plano.descricao}`,
+  }));
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled || loading}>
-      <SelectTrigger>
-        <SelectValue placeholder={loading ? "Carregando..." : "Selecione um plano de contas"} />
-      </SelectTrigger>
-      <SelectContent>
-        {planos.map((plano) => (
-          <SelectItem key={plano.id} value={plano.id}>
-            {plano.codigo} - {plano.descricao}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={value}
+      onValueChange={onChange}
+      options={options}
+      placeholder={loading ? "Carregando..." : "Selecione um plano de contas"}
+      searchPlaceholder="Buscar plano de contas..."
+      emptyMessage="Nenhum plano de contas encontrado."
+      disabled={disabled || loading}
+    />
   );
 }
