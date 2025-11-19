@@ -35,10 +35,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   }, [dataInicio, dataFim, centroCusto]);
 
   const getNivelAtraso = (diasAtraso: number): { nivel: string; color: string } => {
-    if (diasAtraso <= 7) return { nivel: 'Leve', color: 'bg-yellow-500' };
-    if (diasAtraso <= 15) return { nivel: 'Moderado', color: 'bg-orange-500' };
-    if (diasAtraso <= 30) return { nivel: 'Grave', color: 'bg-red-500' };
-    return { nivel: 'Crítico', color: 'bg-red-900' };
+    if (diasAtraso <= 1) return { nivel: 'Ótimo Pagador', color: 'bg-green-500' };
+    if (diasAtraso <= 3) return { nivel: 'Bom Pagador', color: 'bg-green-500' };
+    if (diasAtraso <= 5) return { nivel: 'Pagador Mediano', color: 'bg-yellow-500' };
+    if (diasAtraso <= 7) return { nivel: 'Péssimo Pagador', color: 'bg-red-500' };
+    return { nivel: 'Péssimo Pagador', color: 'bg-red-500' };
   };
 
   const fetchParcelas = async () => {
