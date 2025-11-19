@@ -84,6 +84,9 @@ export default function NovoContrato() {
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
   const [diaVencimento, setDiaVencimento] = useState('5');
   
+  // Importância do cliente/fornecedor
+  const [importanciaClienteFornecedor, setImportanciaClienteFornecedor] = useState<'importante' | 'mediano' | 'nao_importante'>('mediano');
+  
   // Parcelamento (para venda avulsa e compra)
   const [numeroParcelas, setNumeroParcelas] = useState(1);
   const [tipoParcelamento, setTipoParcelamento] = useState<'simples' | 'customizado'>('simples');
@@ -395,6 +398,7 @@ export default function NovoContrato() {
         plano_contas_id: planoContasId,
         centro_custo: centroCusto,
         vendedor_responsavel: tipoContrato === 'venda' ? vendedorId : null,
+        importancia_cliente_fornecedor: importanciaClienteFornecedor,
         servicos: itens.map(item => item.servicoId).filter(Boolean),
         descricao_servico: itens.map(item => `${item.detalhes} (${item.quantidade}x R$ ${item.valorUnitario})`).join('\n'),
         quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
@@ -470,6 +474,7 @@ export default function NovoContrato() {
             valor: parcela.valor,
             valor_original: parcela.valor,
             data_vencimento: parcela.data_vencimento,
+            data_vencimento_original: parcela.data_vencimento,
             data_competencia: dataCompetencia.toISOString().split('T')[0],
             plano_conta_id: planoContasId,
             conta_bancaria_id: contaBancariaId,
@@ -499,6 +504,7 @@ export default function NovoContrato() {
             valor: parcela.valor,
             valor_original: parcela.valor,
             data_vencimento: parcela.data_vencimento,
+            data_vencimento_original: parcela.data_vencimento,
             data_competencia: dataCompetencia.toISOString().split('T')[0],
             plano_conta_id: planoContasId,
             conta_bancaria_id: contaBancariaId,
@@ -618,6 +624,20 @@ export default function NovoContrato() {
                   ) : (
                     <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} />
                   )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Importância do {tipoContrato === 'venda' ? 'Cliente' : 'Fornecedor'} *</Label>
+                  <Select value={importanciaClienteFornecedor} onValueChange={(value: any) => setImportanciaClienteFornecedor(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="importante">Importante</SelectItem>
+                      <SelectItem value="mediano">Mediano</SelectItem>
+                      <SelectItem value="nao_importante">Não Importante</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
