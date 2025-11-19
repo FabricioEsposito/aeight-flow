@@ -22,7 +22,7 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
 
 interface Fornecedor {
   id: string;
-  tipo_pessoa: 'fisica' | 'juridica';
+  tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
   razao_social: string;
   cnpj_cpf: string;
   email?: string;

@@ -924,7 +924,7 @@ export type Database = {
       app_role: "admin" | "user"
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
-      pessoa_tipo: "fisica" | "juridica"
+      pessoa_tipo: "fisica" | "juridica" | "internacional"
       status_contrato: "ativo" | "encerrado" | "suspenso"
       status_geral: "ativo" | "inativo"
       status_pagamento: "pendente" | "pago" | "vencido" | "cancelado"
@@ -1059,7 +1059,7 @@ export const Constants = {
       app_role: ["admin", "user"],
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],
-      pessoa_tipo: ["fisica", "juridica"],
+      pessoa_tipo: ["fisica", "juridica", "internacional"],
       status_contrato: ["ativo", "encerrado", "suspenso"],
       status_geral: ["ativo", "inativo"],
       status_pagamento: ["pendente", "pago", "vencido", "cancelado"],
