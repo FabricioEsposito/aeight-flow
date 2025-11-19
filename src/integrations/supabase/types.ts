@@ -145,6 +145,7 @@ export type Database = {
           data_competencia: string
           data_pagamento: string | null
           data_vencimento: string
+          data_vencimento_original: string | null
           desconto: number | null
           descricao: string
           fornecedor_id: string
@@ -166,6 +167,7 @@ export type Database = {
           data_competencia: string
           data_pagamento?: string | null
           data_vencimento: string
+          data_vencimento_original?: string | null
           desconto?: number | null
           descricao: string
           fornecedor_id: string
@@ -187,6 +189,7 @@ export type Database = {
           data_competencia?: string
           data_pagamento?: string | null
           data_vencimento?: string
+          data_vencimento_original?: string | null
           desconto?: number | null
           descricao?: string
           fornecedor_id?: string
@@ -241,6 +244,7 @@ export type Database = {
           data_competencia: string
           data_recebimento: string | null
           data_vencimento: string
+          data_vencimento_original: string | null
           desconto: number | null
           descricao: string
           id: string
@@ -263,6 +267,7 @@ export type Database = {
           data_competencia: string
           data_recebimento?: string | null
           data_vencimento: string
+          data_vencimento_original?: string | null
           desconto?: number | null
           descricao: string
           id?: string
@@ -285,6 +290,7 @@ export type Database = {
           data_competencia?: string
           data_recebimento?: string | null
           data_vencimento?: string
+          data_vencimento_original?: string | null
           desconto?: number | null
           descricao?: string
           id?: string
@@ -346,6 +352,9 @@ export type Database = {
           descricao_servico: string | null
           fornecedor_id: string | null
           id: string
+          importancia_cliente_fornecedor:
+            | Database["public"]["Enums"]["importancia_nivel"]
+            | null
           irrf_percentual: number | null
           link_contrato: string | null
           numero_contrato: string
@@ -380,6 +389,9 @@ export type Database = {
           descricao_servico?: string | null
           fornecedor_id?: string | null
           id?: string
+          importancia_cliente_fornecedor?:
+            | Database["public"]["Enums"]["importancia_nivel"]
+            | null
           irrf_percentual?: number | null
           link_contrato?: string | null
           numero_contrato: string
@@ -414,6 +426,9 @@ export type Database = {
           descricao_servico?: string | null
           fornecedor_id?: string | null
           id?: string
+          importancia_cliente_fornecedor?:
+            | Database["public"]["Enums"]["importancia_nivel"]
+            | null
           irrf_percentual?: number | null
           link_contrato?: string | null
           numero_contrato?: string
@@ -790,6 +805,57 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes_alteracao_vencimento: {
+        Row: {
+          aprovador_id: string | null
+          created_at: string | null
+          data_resposta: string | null
+          data_solicitacao: string
+          data_vencimento_atual: string
+          data_vencimento_solicitada: string
+          id: string
+          lancamento_id: string
+          motivo_rejeicao: string | null
+          motivo_solicitacao: string | null
+          solicitante_id: string
+          status: string
+          tipo_lancamento: string
+          updated_at: string | null
+        }
+        Insert: {
+          aprovador_id?: string | null
+          created_at?: string | null
+          data_resposta?: string | null
+          data_solicitacao?: string
+          data_vencimento_atual: string
+          data_vencimento_solicitada: string
+          id?: string
+          lancamento_id: string
+          motivo_rejeicao?: string | null
+          motivo_solicitacao?: string | null
+          solicitante_id: string
+          status?: string
+          tipo_lancamento: string
+          updated_at?: string | null
+        }
+        Update: {
+          aprovador_id?: string | null
+          created_at?: string | null
+          data_resposta?: string | null
+          data_solicitacao?: string
+          data_vencimento_atual?: string
+          data_vencimento_solicitada?: string
+          id?: string
+          lancamento_id?: string
+          motivo_rejeicao?: string | null
+          motivo_solicitacao?: string | null
+          solicitante_id?: string
+          status?: string
+          tipo_lancamento?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -827,6 +893,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       conta_tipo: "corrente" | "poupanca" | "investimento"
+      importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica"
       status_contrato: "ativo" | "encerrado" | "suspenso"
       status_geral: "ativo" | "inativo"
@@ -961,6 +1028,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       conta_tipo: ["corrente", "poupanca", "investimento"],
+      importancia_nivel: ["importante", "mediano", "nao_importante"],
       pessoa_tipo: ["fisica", "juridica"],
       status_contrato: ["ativo", "encerrado", "suspenso"],
       status_geral: ["ativo", "inativo"],

@@ -23,10 +23,27 @@ interface HierarchyRequest {
   };
 }
 
+interface SolicitacaoAlteracaoVencimento {
+  id: string;
+  tipo_lancamento: string;
+  lancamento_id: string;
+  data_vencimento_atual: string;
+  data_vencimento_solicitada: string;
+  solicitante_id: string;
+  motivo_solicitacao: string;
+  status: string;
+  created_at: string;
+  profiles: {
+    nome: string;
+    email: string;
+  };
+}
+
 export function NotificationsDropdown() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<HierarchyRequest[]>([]);
+  const [solicitacoesVencimento, setSolicitacoesVencimento] = useState<SolicitacaoAlteracaoVencimento[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
 
