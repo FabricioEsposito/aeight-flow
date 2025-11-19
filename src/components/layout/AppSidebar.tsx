@@ -13,7 +13,8 @@ import {
   Settings,
   FolderKanban,
   UserCog,
-  LogOut
+  LogOut,
+  ClipboardList
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +33,7 @@ const navigationItems = [
   { title: "Contas a Receber", url: "/contas-receber", icon: TrendingUp },
   { title: "Contas a Pagar", url: "/contas-pagar", icon: TrendingDown },
   { title: "Extrato", url: "/extrato", icon: BarChart3 },
+  { title: "Solicitações", url: "/solicitacoes", icon: ClipboardList },
   { title: "Usuários", url: "/usuarios", icon: UserCog },
 ];
 
