@@ -143,22 +143,22 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
   };
 
   return (
-    <Card className="w-full max-w-6xl mx-auto">
-      <CardHeader className="border-b bg-muted/30 py-3">
-        <CardTitle className="text-lg font-bold">
+    <Card className="w-full">
+      <CardHeader className="border-b bg-muted/30 py-2 px-4">
+        <CardTitle className="text-base font-bold">
           {fornecedor ? "Editar Fornecedor" : "Novo Fornecedor"}
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-3 pb-3">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <CardContent className="pt-3 pb-3 px-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           {/* Seção: Informações Básicas */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground border-b pb-1">
+            <h3 className="text-xs font-semibold text-foreground border-b pb-1">
               Informações Básicas
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="tipo_pessoa">Tipo de Pessoa</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="tipo_pessoa" className="text-xs">Tipo de Pessoa</Label>
                 <Select
                   value={tipoPessoa}
                   onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica")}
@@ -173,8 +173,8 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cnpj_cpf">
+              <div className="space-y-1">
+                <Label htmlFor="cnpj_cpf" className="text-xs">
                   {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
                 </Label>
                 <div className="flex gap-2">
@@ -212,8 +212,8 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="razao_social">
+            <div className="space-y-1">
+              <Label htmlFor="razao_social" className="text-xs">
                 {tipoPessoa === "juridica" ? "Razão Social" : "Nome Completo"}
               </Label>
               <Input {...register("razao_social")} />
@@ -225,34 +225,35 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
 
           {/* Seção: Endereço */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground border-b pb-1">
+            <h3 className="text-xs font-semibold text-foreground border-b pb-1">
               Endereço
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="md:col-span-3 space-y-2">
-                <Label htmlFor="endereco">Logradouro</Label>
-                <Input {...register("endereco")} placeholder="Rua, Avenida..." />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <div className="md:col-span-3 space-y-1">
+                <Label htmlFor="endereco" className="text-xs">Logradouro</Label>
+                <Input {...register("endereco")} placeholder="Rua, Avenida..." className="h-8 text-sm" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="numero">Número</Label>
-                <Input {...register("numero")} />
+              <div className="space-y-1">
+                <Label htmlFor="numero" className="text-xs">Número</Label>
+                <Input {...register("numero")} className="h-8 text-sm" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="complemento">Complemento</Label>
-                <Input {...register("complemento")} placeholder="Apto, Sala..." />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="complemento" className="text-xs">Complemento</Label>
+                <Input {...register("complemento")} placeholder="Apto, Sala..." className="h-8 text-sm" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bairro">Bairro</Label>
-                <Input {...register("bairro")} />
+              <div className="space-y-1">
+                <Label htmlFor="bairro" className="text-xs">Bairro</Label>
+                <Input {...register("bairro")} className="h-8 text-sm" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cep">CEP</Label>
+              <div className="space-y-1">
+                <Label htmlFor="cep" className="text-xs">CEP</Label>
                 <Input
                   {...register("cep")}
                   placeholder="00000-000"
+                  className="h-8 text-sm"
                   onChange={(e) => {
                     const formatted = formatCEP(e.target.value);
                     setValue("cep", formatted);
@@ -261,31 +262,31 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="cidade">Cidade</Label>
-                <Input {...register("cidade")} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="cidade" className="text-xs">Cidade</Label>
+                <Input {...register("cidade")} className="h-8 text-sm" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="uf">UF</Label>
-                <Input {...register("uf")} maxLength={2} placeholder="SP" />
+              <div className="space-y-1">
+                <Label htmlFor="uf" className="text-xs">UF</Label>
+                <Input {...register("uf")} maxLength={2} placeholder="SP" className="h-8 text-sm" />
               </div>
             </div>
           </div>
 
           {/* Seção: Contato */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground border-b pb-1">
+            <h3 className="text-xs font-semibold text-foreground border-b pb-1">
               Contato
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input {...register("telefone")} placeholder="(11) 99999-9999" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="telefone" className="text-xs">Telefone</Label>
+                <Input {...register("telefone")} placeholder="(11) 99999-9999" className="h-8 text-sm" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input {...register("email")} type="email" />
+              <div className="space-y-1">
+                <Label htmlFor="email" className="text-xs">E-mail</Label>
+                <Input {...register("email")} type="email" className="h-8 text-sm" />
                 {errors.email && (
                   <span className="text-sm text-destructive">{errors.email.message}</span>
                 )}
@@ -294,11 +295,11 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           </div>
 
           {/* Botões de Ação */}
-          <div className="flex justify-end gap-3 pt-3 border-t">
-            <Button type="button" variant="outline" onClick={onClose} className="min-w-[120px]">
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={onClose} className="min-w-[100px] h-8 text-sm">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading} className="min-w-[120px]">
+            <Button type="submit" disabled={isLoading} className="min-w-[100px] h-8 text-sm">
               {isLoading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
