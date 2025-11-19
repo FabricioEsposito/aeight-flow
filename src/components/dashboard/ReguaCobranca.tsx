@@ -154,9 +154,9 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="text-center">Vencimento</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead className="text-center">Vencimento</TableHead>
                 <TableHead className="text-center">Dias Atraso</TableHead>
                 <TableHead className="text-center">Nível</TableHead>
                 <TableHead className="text-center">Regra de Cobrança</TableHead>
@@ -174,11 +174,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
               ) : (
                 parcelas.map((parcela) => (
                   <TableRow key={parcela.id}>
-                    <TableCell className="font-medium">{parcela.cliente_nome}</TableCell>
-                    <TableCell>{parcela.descricao}</TableCell>
                     <TableCell className="text-center">
                       {format(new Date(parcela.data_vencimento), 'dd/MM/yyyy', { locale: ptBR })}
                     </TableCell>
+                    <TableCell className="font-medium">{parcela.cliente_nome}</TableCell>
+                    <TableCell>{parcela.descricao}</TableCell>
                     <TableCell className="text-center">
                       <span className="font-semibold text-destructive">
                         {parcela.dias_atraso} dias
