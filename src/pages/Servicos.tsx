@@ -29,8 +29,15 @@ interface Servico {
   created_at: string;
 }
 
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 export default function Servicos() {
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -68,8 +75,24 @@ export default function Servicos() {
     }
   };
 
+  const fetchCentrosCusto = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo')
+        .order('codigo');
+
+      if (error) throw error;
+      setCentrosCusto(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar centros de custo:', error);
+    }
+  };
+
   useEffect(() => {
     fetchServicos();
+    fetchCentrosCusto();
   }, []);
 
   const onSubmit = async (data: any) => {
@@ -323,7 +346,14 @@ export default function Servicos() {
                   <TableCell>
                     <Badge variant="outline">{servico.codigo}</Badge>
                   </TableCell>
-                  <TableCell>{servico.centro_custo || '-'}</TableCell>
+                  <TableCell>
+                    {servico.centro_custo ? (
+                      (() => {
+                        const cc = centrosCusto.find(c => c.id === servico.centro_custo);
+                        return cc ? `${cc.codigo} - ${cc.descricao}` : servico.centro_custo;
+                      })()
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={servico.status === 'ativo' ? 'default' : 'destructive'}>
                       {servico.status}
