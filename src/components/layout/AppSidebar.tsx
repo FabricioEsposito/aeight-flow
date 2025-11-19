@@ -20,6 +20,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -34,7 +35,7 @@ const navigationItems = [
   { title: "Contas a Pagar", url: "/contas-pagar", icon: TrendingDown },
   { title: "Extrato", url: "/extrato", icon: BarChart3 },
   { title: "Solicitações", url: "/solicitacoes", icon: ClipboardList },
-  { title: "Usuários", url: "/usuarios", icon: UserCog },
+  { title: "Usuários", url: "/usuarios", icon: UserCog, adminOnly: true },
 ];
 
 export function AppSidebar() {
@@ -42,6 +43,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -75,7 +77,9 @@ export function AppSidebar() {
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">Menu Principal</p>
           <nav className="space-y-1">
-            {navigationItems.map((item) => (
+            {navigationItems
+              .filter(item => !item.adminOnly || isAdmin)
+              .map((item) => (
               <NavLink
                 key={item.title}
                 to={item.url}
