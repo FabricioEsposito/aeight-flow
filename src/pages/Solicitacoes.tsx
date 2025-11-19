@@ -108,7 +108,7 @@ export default function Solicitacoes() {
             .from('profiles')
             .select('nome, email')
             .eq('id', sol.solicitante_id)
-            .single();
+            .maybeSingle();
           
           let aprovadorData = null;
           if (sol.aprovador_id) {
@@ -116,7 +116,7 @@ export default function Solicitacoes() {
               .from('profiles')
               .select('nome, email')
               .eq('id', sol.aprovador_id)
-              .single();
+              .maybeSingle();
             aprovadorData = aprovador;
           }
           
