@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       
       return {
         ...profile,
-        user_roles: roleData ? [{ role: roleData.role }] : [],
+        role: roleData?.role || 'user',
         status: authUser?.last_sign_in_at ? 'ativo' : 'pendente',
         banned: authUser?.banned_until ? new Date(authUser.banned_until) > new Date() : false,
         last_sign_in_at: authUser?.last_sign_in_at,
