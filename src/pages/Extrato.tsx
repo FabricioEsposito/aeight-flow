@@ -33,7 +33,8 @@ interface LancamentoExtrato {
   parcela_id?: string | null;
   cliente_fornecedor?: string;
   numero_contrato?: string;
-  servicos_contrato?: any;
+  servicos_contrato?: string[] | null;
+  servicos_detalhes?: Array<{ codigo: string; nome: string }>;
   importancia_contrato?: string;
   centro_custo?: string;
   plano_conta_id?: string;
@@ -157,6 +158,86 @@ export default function Extrato() {
       const { data: dataPagar, error: errorPagar } = await queryPagar;
       if (errorPagar) throw errorPagar;
 
+      // Buscar detalhes dos serviços para contas a receber
+      const receberComServicos = await Promise.all((dataReceber || []).map(async (r: any) => {
+        const lancamento: any = {
+          id: r.id,
+          tipo: 'entrada' as const,
+          valor: r.valor,
+          data_vencimento: r.data_vencimento,
+          data_competencia: r.data_competencia,
+          descricao: r.descricao,
+          status: r.status,
+          origem: 'receber' as const,
+          parcela_id: r.parcela_id,
+          cliente_fornecedor: r.clientes?.razao_social,
+          numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
+          servicos_contrato: r.parcelas_contrato?.contratos?.servicos,
+          importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
+          centro_custo: r.centro_custo,
+          plano_conta_id: r.plano_conta_id,
+          conta_bancaria_id: r.conta_bancaria_id,
+          valor_original: r.valor_original,
+          juros: r.juros,
+          multa: r.multa,
+          desconto: r.desconto,
+          data_recebimento: r.data_recebimento,
+        };
+
+        if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
+          const { data: servicosData } = await supabase
+            .from('servicos')
+            .select('id, codigo, nome')
+            .in('id', r.parcelas_contrato.contratos.servicos);
+          
+          if (servicosData) {
+            lancamento.servicos_detalhes = servicosData;
+          }
+        }
+
+        return lancamento;
+      }));
+
+      // Buscar detalhes dos serviços para contas a pagar
+      const pagarComServicos = await Promise.all((dataPagar || []).map(async (p: any) => {
+        const lancamento: any = {
+          id: p.id,
+          tipo: 'saida' as const,
+          valor: p.valor,
+          data_vencimento: p.data_vencimento,
+          data_competencia: p.data_competencia,
+          descricao: p.descricao,
+          status: p.status,
+          origem: 'pagar' as const,
+          parcela_id: p.parcela_id,
+          cliente_fornecedor: p.fornecedores?.razao_social,
+          numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
+          servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
+          importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
+          centro_custo: p.centro_custo,
+          plano_conta_id: p.plano_conta_id,
+          conta_bancaria_id: p.conta_bancaria_id,
+          valor_original: p.valor_original,
+          juros: p.juros,
+          multa: p.multa,
+          desconto: p.desconto,
+          data_pagamento: p.data_pagamento,
+        };
+
+        if (p.parcelas_contrato?.contratos?.servicos && Array.isArray(p.parcelas_contrato.contratos.servicos) && p.parcelas_contrato.contratos.servicos.length > 0) {
+          const { data: servicosData } = await supabase
+            .from('servicos')
+            .select('id, codigo, nome')
+            .in('id', p.parcelas_contrato.contratos.servicos);
+          
+          if (servicosData) {
+            lancamento.servicos_detalhes = servicosData;
+          }
+        }
+
+        return lancamento;
+      }));
+
       // Buscar contas bancárias
       const { data: dataContas, error: errorContas } = await supabase
         .from('contas_bancarias')
@@ -166,56 +247,7 @@ export default function Extrato() {
       if (errorContas) throw errorContas;
       setContasBancarias(dataContas || []);
 
-      // Combinar e formatar os lançamentos
-      const lancamentosReceber: LancamentoExtrato[] = (dataReceber || []).map((r: any) => ({
-        id: r.id,
-        tipo: 'entrada' as const,
-        valor: r.valor,
-        data_vencimento: r.data_vencimento,
-        data_competencia: r.data_competencia,
-        descricao: r.descricao,
-        status: r.status,
-        origem: 'receber' as const,
-        parcela_id: r.parcela_id,
-        cliente_fornecedor: r.clientes?.razao_social,
-        numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
-        servicos_contrato: r.parcelas_contrato?.contratos?.servicos,
-        importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
-        centro_custo: r.centro_custo,
-        plano_conta_id: r.plano_conta_id,
-        conta_bancaria_id: r.conta_bancaria_id,
-        valor_original: r.valor_original,
-        juros: r.juros,
-        multa: r.multa,
-        desconto: r.desconto,
-        data_recebimento: r.data_recebimento,
-      }));
-
-      const lancamentosPagar: LancamentoExtrato[] = (dataPagar || []).map((p: any) => ({
-        id: p.id,
-        tipo: 'saida' as const,
-        valor: p.valor,
-        data_vencimento: p.data_vencimento,
-        data_competencia: p.data_competencia,
-        descricao: p.descricao,
-        status: p.status,
-        origem: 'pagar' as const,
-        parcela_id: p.parcela_id,
-        cliente_fornecedor: p.fornecedores?.razao_social,
-        numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
-        servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
-        importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
-        centro_custo: p.centro_custo,
-        plano_conta_id: p.plano_conta_id,
-        conta_bancaria_id: p.conta_bancaria_id,
-        valor_original: p.valor_original,
-        juros: p.juros,
-        multa: p.multa,
-        desconto: p.desconto,
-        data_pagamento: p.data_pagamento,
-      }));
-
-      const todosLancamentos = [...lancamentosReceber, ...lancamentosPagar].sort(
+      const todosLancamentos = [...receberComServicos, ...pagarComServicos].sort(
         (a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
       );
 
@@ -1002,9 +1034,9 @@ export default function Extrato() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        {lanc.servicos_contrato && Array.isArray(lanc.servicos_contrato) && lanc.servicos_contrato.length > 0 && (
+                        {lanc.servicos_detalhes && lanc.servicos_detalhes.length > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            {lanc.servicos_contrato.map((s: any) => s.nome || s).join(', ')}
+                            {lanc.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}
                           </span>
                         )}
                         {lanc.importancia_contrato && (
@@ -1013,7 +1045,7 @@ export default function Extrato() {
                              lanc.importancia_contrato === 'mediano' ? 'Mediano' : 'Não Importante'}
                           </Badge>
                         )}
-                        {!lanc.servicos_contrato && !lanc.importancia_contrato && '-'}
+                        {!lanc.servicos_detalhes && !lanc.importancia_contrato && '-'}
                       </div>
                     </TableCell>
                     <TableCell>

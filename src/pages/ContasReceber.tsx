@@ -50,8 +50,9 @@ interface ContaReceber {
   };
   contratos?: {
     numero: string;
-    servicos: any;
+    servicos: string[] | null;
     importancia: string;
+    servicos_detalhes?: Array<{ codigo: string; nome: string }>;
   };
 }
 
@@ -111,17 +112,33 @@ export default function ContasReceber() {
 
       if (error) throw error;
       
-      // Map data to include contract number from nested relationship
-      const mappedData = (data || []).map((conta: any) => ({
-        ...conta,
-        contratos: conta.parcelas_contrato?.contratos ? {
+      // Buscar detalhes dos serviços
+      const contasComServicos = await Promise.all((data || []).map(async (conta: any) => {
+        const contratos = conta.parcelas_contrato?.contratos ? {
           numero: conta.parcelas_contrato.contratos.numero_contrato,
           servicos: conta.parcelas_contrato.contratos.servicos,
-          importancia: conta.parcelas_contrato.contratos.importancia_cliente_fornecedor
-        } : null
+          importancia: conta.parcelas_contrato.contratos.importancia_cliente_fornecedor,
+          servicos_detalhes: [] as Array<{ codigo: string; nome: string }>
+        } : null;
+
+        if (contratos?.servicos && Array.isArray(contratos.servicos) && contratos.servicos.length > 0) {
+          const { data: servicosData } = await supabase
+            .from('servicos')
+            .select('id, codigo, nome')
+            .in('id', contratos.servicos);
+          
+          if (servicosData) {
+            contratos.servicos_detalhes = servicosData;
+          }
+        }
+
+        return {
+          ...conta,
+          contratos
+        };
       }));
       
-      setContas(mappedData);
+      setContas(contasComServicos as ContaReceber[]);
     } catch (error) {
       console.error('Erro ao buscar contas a receber:', error);
       toast({
@@ -561,9 +578,9 @@ export default function ContasReceber() {
                     {conta.contratos ? (
                       <div className="flex flex-col gap-1">
                         <Badge variant="outline" className="w-fit">{conta.contratos.numero}</Badge>
-                        {conta.contratos.servicos && Array.isArray(conta.contratos.servicos) && conta.contratos.servicos.length > 0 && (
+                        {conta.contratos.servicos_detalhes && conta.contratos.servicos_detalhes.length > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            Serviço: {conta.contratos.servicos.map((s: any) => s.nome || s).join(', ')}
+                            {conta.contratos.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}
                           </span>
                         )}
                         {conta.contratos.importancia && (

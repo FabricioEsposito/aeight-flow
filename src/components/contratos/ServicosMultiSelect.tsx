@@ -107,7 +107,7 @@ export function ServicosMultiSelect({ value, onChange, disabled }: ServicosMulti
         <div className="flex flex-wrap gap-2">
           {selectedServicos.map((servico) => (
             <Badge key={servico.id} variant="secondary">
-              {servico.nome}
+              {servico.codigo} - {servico.nome}
             </Badge>
           ))}
         </div>

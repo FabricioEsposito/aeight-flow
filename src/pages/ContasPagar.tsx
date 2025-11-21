@@ -39,8 +39,9 @@ interface ContaPagar {
   };
   contratos?: {
     numero: string;
-    servicos: any;
+    servicos: string[] | null;
     importancia: string;
+    servicos_detalhes?: Array<{ codigo: string; nome: string }>;
   };
 }
 interface ContaBancaria {
@@ -102,31 +103,48 @@ export default function ContasPagar() {
         `).order('data_vencimento');
       if (error) throw error;
 
-      // Map data to match the interface
-      const contasMapeadas = (data || []).map((item: any) => ({
-        id: item.id,
-        descricao: item.descricao,
-        valor_parcela: item.valor,
-        valor_original: item.valor_original || item.valor,
-        juros: item.juros || 0,
-        multa: item.multa || 0,
-        desconto: item.desconto || 0,
-        numero_parcela: item.parcelas_contrato?.numero_parcela || 0,
-        status_pagamento: item.status,
-        data_vencimento: item.data_vencimento,
-        data_competencia: item.data_competencia,
-        data_pagamento: item.data_pagamento,
-        conta_bancaria_id: item.conta_bancaria_id,
-        plano_conta_id: item.plano_conta_id,
-        centro_custo: item.centro_custo,
-        fornecedores: item.fornecedores,
-        contratos: item.parcelas_contrato?.contratos ? {
+      // Buscar detalhes dos serviços
+      const contasComServicos = await Promise.all((data || []).map(async (item: any) => {
+        const contratos = item.parcelas_contrato?.contratos ? {
           numero: item.parcelas_contrato.contratos.numero_contrato,
           servicos: item.parcelas_contrato.contratos.servicos,
-          importancia: item.parcelas_contrato.contratos.importancia_cliente_fornecedor
-        } : null
+          importancia: item.parcelas_contrato.contratos.importancia_cliente_fornecedor,
+          servicos_detalhes: [] as Array<{ codigo: string; nome: string }>
+        } : null;
+
+        if (contratos?.servicos && Array.isArray(contratos.servicos) && contratos.servicos.length > 0) {
+          const { data: servicosData } = await supabase
+            .from('servicos')
+            .select('id, codigo, nome')
+            .in('id', contratos.servicos);
+          
+          if (servicosData) {
+            contratos.servicos_detalhes = servicosData;
+          }
+        }
+
+        return {
+          id: item.id,
+          descricao: item.descricao,
+          valor_parcela: item.valor,
+          valor_original: item.valor_original || item.valor,
+          juros: item.juros || 0,
+          multa: item.multa || 0,
+          desconto: item.desconto || 0,
+          numero_parcela: item.parcelas_contrato?.numero_parcela || 0,
+          status_pagamento: item.status,
+          data_vencimento: item.data_vencimento,
+          data_competencia: item.data_competencia,
+          data_pagamento: item.data_pagamento,
+          conta_bancaria_id: item.conta_bancaria_id,
+          plano_conta_id: item.plano_conta_id,
+          centro_custo: item.centro_custo,
+          fornecedores: item.fornecedores,
+          contratos
+        };
       }));
-      setContas(contasMapeadas);
+      
+      setContas(contasComServicos as ContaPagar[]);
     } catch (error) {
       console.error('Erro ao buscar contas a pagar:', error);
       toast({
@@ -532,9 +550,9 @@ export default function ContasPagar() {
                     {conta.contratos ? (
                       <div className="flex flex-col gap-1">
                         <Badge variant="outline" className="w-fit">{conta.contratos.numero}</Badge>
-                        {conta.contratos.servicos && Array.isArray(conta.contratos.servicos) && conta.contratos.servicos.length > 0 && (
+                        {conta.contratos.servicos_detalhes && conta.contratos.servicos_detalhes.length > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            Serviço: {conta.contratos.servicos.map((s: any) => s.nome || s).join(', ')}
+                            {conta.contratos.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}
                           </span>
                         )}
                         {conta.contratos.importancia && (
