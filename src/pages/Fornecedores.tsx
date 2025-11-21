@@ -25,7 +25,7 @@ interface Fornecedor {
   tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
   razao_social: string;
   cnpj_cpf: string;
-  email?: string;
+  email?: string[] | null;
   telefone?: string;
   endereco?: string;
   status: 'ativo' | 'inativo';
@@ -298,7 +298,11 @@ export default function Fornecedores() {
                     </Badge>
                   </TableCell>
                   <TableCell>{fornecedor.telefone || '-'}</TableCell>
-                  <TableCell>{fornecedor.email || '-'}</TableCell>
+                  <TableCell>
+                    {fornecedor.email && Array.isArray(fornecedor.email) && fornecedor.email.length > 0
+                      ? fornecedor.email.join(', ')
+                      : '-'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={fornecedor.status === 'ativo' ? 'default' : 'destructive'}>
                       {fornecedor.status}

@@ -49,7 +49,7 @@ export type Database = {
           cnpj_cpf: string
           complemento: string | null
           created_at: string
-          email: string | null
+          email: string[] | null
           endereco: string | null
           id: string
           numero: string | null
@@ -67,7 +67,7 @@ export type Database = {
           cnpj_cpf: string
           complemento?: string | null
           created_at?: string
-          email?: string | null
+          email?: string[] | null
           endereco?: string | null
           id?: string
           numero?: string | null
@@ -85,7 +85,7 @@ export type Database = {
           cnpj_cpf?: string
           complemento?: string | null
           created_at?: string
-          email?: string | null
+          email?: string[] | null
           endereco?: string | null
           id?: string
           numero?: string | null
@@ -487,7 +487,7 @@ export type Database = {
           cnpj_cpf: string
           complemento: string | null
           created_at: string
-          email: string | null
+          email: string[] | null
           endereco: string | null
           id: string
           numero: string | null
@@ -505,7 +505,7 @@ export type Database = {
           cnpj_cpf: string
           complemento?: string | null
           created_at?: string
-          email?: string | null
+          email?: string[] | null
           endereco?: string | null
           id?: string
           numero?: string | null
@@ -523,7 +523,7 @@ export type Database = {
           cnpj_cpf?: string
           complemento?: string | null
           created_at?: string
-          email?: string | null
+          email?: string[] | null
           endereco?: string | null
           id?: string
           numero?: string | null

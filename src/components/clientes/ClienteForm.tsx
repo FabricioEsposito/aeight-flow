@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Save, X, Loader2 } from "lucide-react";
+import { Search, Save, X, Loader2, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCnpjApi } from "@/hooks/useCnpjApi";
@@ -25,10 +25,7 @@ const clienteSchema = z.object({
   uf: z.string().optional(),
   cep: z.string().optional(),
   telefone: z.string().optional(),
-  email: z.preprocess(
-    (val) => (val === "" ? undefined : val),
-    z.string().email("E-mail inválido").optional()
-  ),
+  emails: z.array(z.string().email("E-mail inválido").or(z.literal(""))).optional(),
 });
 
 type ClienteFormData = z.infer<typeof clienteSchema>;
@@ -41,6 +38,9 @@ interface ClienteFormProps {
 
 export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [emails, setEmails] = useState<string[]>(
+    cliente?.email && Array.isArray(cliente.email) ? cliente.email : [""]
+  );
   const { toast } = useToast();
   const { buscarCnpj, isLoading: isSearchingCNPJ } = useCnpjApi();
 
@@ -52,8 +52,10 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
     formState: { errors },
   } = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
-    defaultValues: cliente || {
-      tipo_pessoa: "juridica",
+    defaultValues: {
+      ...cliente,
+      emails: cliente?.email && Array.isArray(cliente.email) ? cliente.email : [""],
+      tipo_pessoa: cliente?.tipo_pessoa || "juridica",
     },
   });
 
@@ -72,18 +74,49 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
       setValue("uf", dados.uf);
       setValue("cep", dados.cep);
       setValue("telefone", dados.telefone);
-      setValue("email", dados.email);
+      if (dados.email) {
+        setEmails([dados.email]);
+        setValue("emails", [dados.email]);
+      }
     }
+  };
+
+  const addEmail = () => {
+    const newEmails = [...emails, ""];
+    setEmails(newEmails);
+    setValue("emails", newEmails);
+  };
+
+  const removeEmail = (index: number) => {
+    if (emails.length > 1) {
+      const newEmails = emails.filter((_, i) => i !== index);
+      setEmails(newEmails);
+      setValue("emails", newEmails);
+    }
+  };
+
+  const updateEmail = (index: number, value: string) => {
+    const newEmails = [...emails];
+    newEmails[index] = value;
+    setEmails(newEmails);
+    setValue("emails", newEmails);
   };
 
   const onSubmit = async (data: ClienteFormData) => {
     setIsLoading(true);
 
     try {
+      const emailsFiltered = emails.filter(email => email.trim() !== "");
+      const submitData = {
+        ...data,
+        email: emailsFiltered.length > 0 ? emailsFiltered : null,
+      };
+      delete (submitData as any).emails;
+
       if (cliente?.id) {
         const { error } = await supabase
           .from("clientes")
-          .update(data)
+          .update(submitData)
           .eq("id", cliente.id);
 
         if (error) throw error;
@@ -96,18 +129,18 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
         const { error } = await supabase
           .from("clientes")
           .insert({
-            cnpj_cpf: data.cnpj_cpf || "",
-            razao_social: data.razao_social,
-            tipo_pessoa: data.tipo_pessoa,
-            endereco: data.endereco,
-            numero: data.numero,
-            complemento: data.complemento,
-            bairro: data.bairro,
-            cidade: data.cidade,
-            uf: data.uf,
-            cep: data.cep,
-            telefone: data.telefone,
-            email: data.email,
+            cnpj_cpf: submitData.cnpj_cpf || "",
+            razao_social: submitData.razao_social,
+            tipo_pessoa: submitData.tipo_pessoa,
+            endereco: submitData.endereco,
+            numero: submitData.numero,
+            complemento: submitData.complemento,
+            bairro: submitData.bairro,
+            cidade: submitData.cidade,
+            uf: submitData.uf,
+            cep: submitData.cep,
+            telefone: submitData.telefone,
+            email: submitData.email,
             status: "ativo"
           });
 
@@ -286,17 +319,47 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
             <h3 className="text-xs font-semibold text-foreground border-b pb-1">
               Contato
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="space-y-2">
               <div className="space-y-1">
                 <Label htmlFor="telefone" className="text-xs">Telefone</Label>
                 <Input {...register("telefone")} placeholder="(11) 99999-9999" className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="email" className="text-xs">E-mail</Label>
-                <Input {...register("email")} type="email" className="h-8 text-sm" />
-                {errors.email && (
-                  <span className="text-sm text-destructive">{errors.email.message}</span>
-                )}
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">E-mails</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addEmail}
+                    className="h-6 text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Adicionar E-mail
+                  </Button>
+                </div>
+                {emails.map((email, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => updateEmail(index, e.target.value)}
+                      placeholder="exemplo@email.com"
+                      className="h-8 text-sm"
+                    />
+                    {emails.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEmail(index)}
+                        className="h-8 w-8"
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
