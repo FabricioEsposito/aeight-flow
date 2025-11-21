@@ -39,6 +39,8 @@ interface ContaPagar {
   };
   contratos?: {
     numero: string;
+    servicos: any;
+    importancia: string;
   };
 }
 interface ContaBancaria {
@@ -92,7 +94,9 @@ export default function ContasPagar() {
           parcelas_contrato:parcela_id (
             numero_parcela,
             contratos:contrato_id (
-              numero_contrato
+              numero_contrato,
+              servicos,
+              importancia_cliente_fornecedor
             )
           )
         `).order('data_vencimento');
@@ -117,7 +121,9 @@ export default function ContasPagar() {
         centro_custo: item.centro_custo,
         fornecedores: item.fornecedores,
         contratos: item.parcelas_contrato?.contratos ? {
-          numero: item.parcelas_contrato.contratos.numero_contrato
+          numero: item.parcelas_contrato.contratos.numero_contrato,
+          servicos: item.parcelas_contrato.contratos.servicos,
+          importancia: item.parcelas_contrato.contratos.importancia_cliente_fornecedor
         } : null
       }));
       setContas(contasMapeadas);
@@ -523,8 +529,21 @@ export default function ContasPagar() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {conta.contratos?.numero ? (
-                      <Badge variant="outline">{conta.contratos.numero}</Badge>
+                    {conta.contratos ? (
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className="w-fit">{conta.contratos.numero}</Badge>
+                        {conta.contratos.servicos && Array.isArray(conta.contratos.servicos) && conta.contratos.servicos.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            Serviço: {conta.contratos.servicos.map((s: any) => s.nome || s).join(', ')}
+                          </span>
+                        )}
+                        {conta.contratos.importancia && (
+                          <Badge variant="secondary" className="w-fit text-xs">
+                            {conta.contratos.importancia === 'importante' ? 'Importante' : 
+                             conta.contratos.importancia === 'mediano' ? 'Mediano' : 'Não Importante'}
+                          </Badge>
+                        )}
+                      </div>
                     ) : '-'}
                   </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
