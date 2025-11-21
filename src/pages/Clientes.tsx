@@ -25,7 +25,7 @@ interface Cliente {
   tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
   razao_social: string;
   cnpj_cpf: string;
-  email?: string;
+  email?: string[] | null;
   telefone?: string;
   endereco?: string;
   status: 'ativo' | 'inativo';
@@ -298,7 +298,11 @@ export default function Clientes() {
                     </Badge>
                   </TableCell>
                   <TableCell>{cliente.telefone || '-'}</TableCell>
-                  <TableCell>{cliente.email || '-'}</TableCell>
+                  <TableCell>
+                    {cliente.email && Array.isArray(cliente.email) && cliente.email.length > 0
+                      ? cliente.email.join(', ')
+                      : '-'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={cliente.status === 'ativo' ? 'default' : 'destructive'}>
                       {cliente.status}
