@@ -57,6 +57,7 @@ export default function EditarContratoCompleto() {
   const [tipoPagamento, setTipoPagamento] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [linkContrato, setLinkContrato] = useState('');
+  const [importanciaClienteFornecedor, setImportanciaClienteFornecedor] = useState<'importante' | 'mediano' | 'nao_importante'>('mediano');
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
 
   useEffect(() => {
@@ -108,6 +109,7 @@ export default function EditarContratoCompleto() {
       setTipoPagamento(data.tipo_pagamento || '');
       setContaBancariaId(data.conta_bancaria_id || '');
       setLinkContrato(data.link_contrato || '');
+      setImportanciaClienteFornecedor(data.importancia_cliente_fornecedor || 'mediano');
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -166,6 +168,7 @@ export default function EditarContratoCompleto() {
           conta_bancaria_id: contaBancariaId,
           valor_total: valorTotal,
           link_contrato: linkContrato,
+          importancia_cliente_fornecedor: importanciaClienteFornecedor,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
@@ -370,12 +373,26 @@ export default function EditarContratoCompleto() {
             </div>
           </div>
 
-          {tipoContrato === 'venda' && (
+            {tipoContrato === 'venda' && (
             <div className="space-y-2">
               <Label>Vendedor Responsável</Label>
               <VendedorSelect value={vendedorId} onChange={setVendedorId} />
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>Importância do {tipoContrato === 'venda' ? 'Cliente' : 'Fornecedor'}</Label>
+            <Select value={importanciaClienteFornecedor} onValueChange={(value: any) => setImportanciaClienteFornecedor(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a importância" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="importante">Importante</SelectItem>
+                <SelectItem value="mediano">Mediano</SelectItem>
+                <SelectItem value="nao_importante">Não Importante</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 

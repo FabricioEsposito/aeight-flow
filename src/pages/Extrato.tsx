@@ -33,6 +33,8 @@ interface LancamentoExtrato {
   parcela_id?: string | null;
   cliente_fornecedor?: string;
   numero_contrato?: string;
+  servicos_contrato?: any;
+  importancia_contrato?: string;
   centro_custo?: string;
   plano_conta_id?: string;
   conta_bancaria_id?: string;
@@ -127,7 +129,7 @@ export default function Extrato() {
         .select(`
           *,
           clientes:cliente_id (razao_social, cnpj_cpf),
-          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato))
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor))
         `)
         .order('data_vencimento', { ascending: true });
 
@@ -144,7 +146,7 @@ export default function Extrato() {
         .select(`
           *,
           fornecedores:fornecedor_id (razao_social, cnpj_cpf),
-          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato))
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor))
         `)
         .order('data_vencimento', { ascending: true });
 
@@ -177,6 +179,8 @@ export default function Extrato() {
         parcela_id: r.parcela_id,
         cliente_fornecedor: r.clientes?.razao_social,
         numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
+        servicos_contrato: r.parcelas_contrato?.contratos?.servicos,
+        importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
         centro_custo: r.centro_custo,
         plano_conta_id: r.plano_conta_id,
         conta_bancaria_id: r.conta_bancaria_id,
@@ -199,6 +203,8 @@ export default function Extrato() {
         parcela_id: p.parcela_id,
         cliente_fornecedor: p.fornecedores?.razao_social,
         numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
+        servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
+        importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
         centro_custo: p.centro_custo,
         plano_conta_id: p.plano_conta_id,
         conta_bancaria_id: p.conta_bancaria_id,
@@ -936,6 +942,7 @@ export default function Extrato() {
                 <TableHead>Data de Vencimento</TableHead>
                 <TableHead>Data da Movimentação</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Serviço / Importância</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor (R$)</TableHead>
                 <TableHead className="text-right">Saldo (R$)</TableHead>
@@ -991,6 +998,22 @@ export default function Extrato() {
                         {lanc.numero_contrato && (
                           <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
                         )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {lanc.servicos_contrato && Array.isArray(lanc.servicos_contrato) && lanc.servicos_contrato.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {lanc.servicos_contrato.map((s: any) => s.nome || s).join(', ')}
+                          </span>
+                        )}
+                        {lanc.importancia_contrato && (
+                          <Badge variant="secondary" className="w-fit text-xs">
+                            {lanc.importancia_contrato === 'importante' ? 'Importante' : 
+                             lanc.importancia_contrato === 'mediano' ? 'Mediano' : 'Não Importante'}
+                          </Badge>
+                        )}
+                        {!lanc.servicos_contrato && !lanc.importancia_contrato && '-'}
                       </div>
                     </TableCell>
                     <TableCell>

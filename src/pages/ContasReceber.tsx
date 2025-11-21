@@ -50,6 +50,8 @@ interface ContaReceber {
   };
   contratos?: {
     numero: string;
+    servicos: any;
+    importancia: string;
   };
 }
 
@@ -99,7 +101,9 @@ export default function ContasReceber() {
           parcelas_contrato:parcela_id (
             contrato_id,
             contratos:contrato_id (
-              numero_contrato
+              numero_contrato,
+              servicos,
+              importancia_cliente_fornecedor
             )
           )
         `)
@@ -111,7 +115,9 @@ export default function ContasReceber() {
       const mappedData = (data || []).map((conta: any) => ({
         ...conta,
         contratos: conta.parcelas_contrato?.contratos ? {
-          numero: conta.parcelas_contrato.contratos.numero_contrato
+          numero: conta.parcelas_contrato.contratos.numero_contrato,
+          servicos: conta.parcelas_contrato.contratos.servicos,
+          importancia: conta.parcelas_contrato.contratos.importancia_cliente_fornecedor
         } : null
       }));
       
@@ -552,8 +558,21 @@ export default function ContasReceber() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {conta.contratos?.numero ? (
-                      <Badge variant="outline">{conta.contratos.numero}</Badge>
+                    {conta.contratos ? (
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className="w-fit">{conta.contratos.numero}</Badge>
+                        {conta.contratos.servicos && Array.isArray(conta.contratos.servicos) && conta.contratos.servicos.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            Serviço: {conta.contratos.servicos.map((s: any) => s.nome || s).join(', ')}
+                          </span>
+                        )}
+                        {conta.contratos.importancia && (
+                          <Badge variant="secondary" className="w-fit text-xs">
+                            {conta.contratos.importancia === 'importante' ? 'Importante' : 
+                             conta.contratos.importancia === 'mediano' ? 'Mediano' : 'Não Importante'}
+                          </Badge>
+                        )}
+                      </div>
                     ) : '-'}
                   </TableCell>
                   <TableCell>{conta.descricao}</TableCell>
