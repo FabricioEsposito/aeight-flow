@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ClienteForm } from '@/components/clientes/ClienteForm';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
 interface Cliente {
@@ -42,6 +43,8 @@ export default function Clientes() {
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const { toast } = useToast();
 
   const fetchClientes = async () => {
@@ -159,20 +162,30 @@ export default function Clientes() {
   };
 
   const filteredClientes = clientes.filter(cliente => {
-    const matchesSearch = cliente.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         cliente.cnpj_cpf.includes(searchTerm);
-    const matchesStatus = statusFilter === 'todos' || cliente.status === statusFilter;
-    const matchesTipo = tipoFilter === 'todos' || cliente.tipo_pessoa === tipoFilter;
-
-    let matchesDate = true;
+    const matchesSearch = 
+      cliente.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (cliente.email && Array.isArray(cliente.email) && cliente.email.some(e => e.toLowerCase().includes(searchTerm.toLowerCase())));
+    
+    const matchesStatus = statusFilter === "todos" || cliente.status === statusFilter;
+    const matchesTipo = tipoFilter === "todos" || cliente.tipo_pessoa === tipoFilter;
+    
     const dateRange = getDateRange();
-    if (dateRange?.from && dateRange?.to) {
-      const createdAt = new Date(cliente.created_at);
-      matchesDate = createdAt >= dateRange.from && createdAt <= dateRange.to;
-    }
-
-    return matchesSearch && matchesStatus && matchesTipo && matchesDate;
+    const clienteDate = new Date(cliente.created_at);
+    const matchesDateRange = !dateRange || (clienteDate >= dateRange.from! && clienteDate <= dateRange.to!);
+    
+    return matchesSearch && matchesStatus && matchesTipo && matchesDateRange;
   });
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, tipoFilter, datePreset]);
+
+  // Paginate filtered results
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedClientes = filteredClientes.slice(startIndex, endIndex);
 
   const formatCnpjCpf = (value: string) => {
     if (!value) return '';
@@ -279,10 +292,10 @@ export default function Clientes() {
                 <TableHead>E-mail</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClientes.map((cliente) => (
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedClientes.map((cliente) => (
                 <TableRow key={cliente.id}>
                   <TableCell>
                     <div className="flex flex-col">
@@ -340,6 +353,13 @@ export default function Clientes() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={filteredClientes.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
         </div>
 
         {filteredClientes.length === 0 && (
