@@ -780,25 +780,19 @@ export default function Extrato() {
     return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
-  // Cálculos para resumo
+  // Cálculos para resumo - baseado em filteredLancamentos para respeitar o período selecionado
   const saldoContas = contasBancarias.reduce((acc, conta) => acc + conta.saldo_atual, 0);
   
-  // Considerar apenas lançamentos em dia (não vencidos) para o saldo previsto
+  // Considerar todos os lançamentos pendentes dentro do período filtrado
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   
   const totalReceber = filteredLancamentos
-    .filter(l => {
-      const dataVenc = new Date(l.data_vencimento + 'T00:00:00');
-      return l.tipo === 'entrada' && l.status === 'pendente' && dataVenc >= hoje;
-    })
+    .filter(l => l.tipo === 'entrada' && l.status === 'pendente')
     .reduce((acc, l) => acc + l.valor, 0);
 
   const totalPagar = filteredLancamentos
-    .filter(l => {
-      const dataVenc = new Date(l.data_vencimento + 'T00:00:00');
-      return l.tipo === 'saida' && l.status === 'pendente' && dataVenc >= hoje;
-    })
+    .filter(l => l.tipo === 'saida' && l.status === 'pendente')
     .reduce((acc, l) => acc + l.valor, 0);
 
   const saldoFinal = saldoContas + totalReceber - totalPagar;

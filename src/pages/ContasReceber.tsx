@@ -450,12 +450,12 @@ export default function ContasReceber() {
     }
   };
 
-  // Cálculos para resumo
-  const totalPendente = contas
+  // Cálculos para resumo - baseado em filteredContas para respeitar o período selecionado
+  const totalPendente = filteredContas
     .filter(c => c.status === 'pendente')
     .reduce((acc, c) => acc + c.valor, 0);
 
-  const totalVencido = contas
+  const totalVencido = filteredContas
     .filter(c => {
       const hoje = new Date();
       const vencimento = new Date(c.data_vencimento);
@@ -463,7 +463,7 @@ export default function ContasReceber() {
     })
     .reduce((acc, c) => acc + c.valor, 0);
 
-  const totalRecebido = contas
+  const totalRecebido = filteredContas
     .filter(c => c.status === 'pago')
     .reduce((acc, c) => acc + c.valor, 0);
 

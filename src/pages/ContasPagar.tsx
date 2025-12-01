@@ -445,14 +445,14 @@ export default function ContasPagar() {
     }
   };
 
-  // Cálculos para resumo
-  const totalPendente = contas.filter(c => c.status_pagamento === 'pendente').reduce((acc, c) => acc + c.valor_parcela, 0);
-  const totalVencido = contas.filter(c => {
+  // Cálculos para resumo - baseado em filteredContas para respeitar o período selecionado
+  const totalPendente = filteredContas.filter(c => c.status_pagamento === 'pendente').reduce((acc, c) => acc + c.valor_parcela, 0);
+  const totalVencido = filteredContas.filter(c => {
     const hoje = new Date();
     const vencimento = new Date(c.data_vencimento);
     return vencimento < hoje && c.status_pagamento === 'pendente';
   }).reduce((acc, c) => acc + c.valor_parcela, 0);
-  const totalPago = contas.filter(c => c.status_pagamento === 'pago').reduce((acc, c) => acc + c.valor_parcela, 0);
+  const totalPago = filteredContas.filter(c => c.status_pagamento === 'pago').reduce((acc, c) => acc + c.valor_parcela, 0);
   if (loading) {
     return <div className="p-6">
         <div className="animate-pulse space-y-4">
