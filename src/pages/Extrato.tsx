@@ -16,6 +16,7 @@ import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/Edit
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
 import { useUserRole } from '@/hooks/useUserRole';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -56,6 +57,7 @@ export default function Extrato() {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
+  const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -66,7 +68,9 @@ export default function Extrato() {
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [lancamentoToDelete, setLancamentoToDelete] = useState<LancamentoExtrato | null>(null);
+  const [statusChangeData, setStatusChangeData] = useState<{ lancamento: LancamentoExtrato; newStatus: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -553,6 +557,7 @@ export default function Extrato() {
       } else if (batchActionType === 'mark-paid') {
         // Verifica se todos os lançamentos selecionados já estão pagos
         const allPaid = selectedLancamentos.every(l => l.status === 'pago');
+        const paymentDate = data?.paymentDate || format(new Date(), 'yyyy-MM-dd');
         
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
@@ -576,12 +581,12 @@ export default function Extrato() {
                 .eq('id', lanc.parcela_id);
             }
           } else {
-            // Marca como pago
+            // Marca como pago usando a data fornecida
             await supabase
               .from(table)
               .update({ 
                 status: 'pago',
-                [dateField]: format(new Date(), 'yyyy-MM-dd')
+                [dateField]: paymentDate
               })
               .eq('id', lanc.id);
             
@@ -704,7 +709,6 @@ export default function Extrato() {
                          (lanc.cliente_fornecedor || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = tipoFilter === 'todos' || lanc.tipo === tipoFilter;
     
-    // Ajustar filtro de status para considerar o displayStatus
     const displayStatus = getDisplayStatus(lanc);
     const matchesStatus = statusFilter === 'todos' || 
                          (statusFilter === 'pago' && (displayStatus === 'pago' || displayStatus === 'recebido')) ||
@@ -714,7 +718,32 @@ export default function Extrato() {
     const matchesConta = contaBancariaFilter === 'todas' || 
                         lanc.conta_bancaria_id === contaBancariaFilter;
 
-    return matchesSearch && matchesTipo && matchesStatus && matchesConta;
+    let matchesDate = true;
+    const dateRange = getDateRange();
+    if (dateRange) {
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      let dateToCheck: Date | null = null;
+
+      if (dateFilterType === 'vencimento') {
+        dateToCheck = new Date(lanc.data_vencimento);
+      } else if (dateFilterType === 'competencia') {
+        dateToCheck = new Date(lanc.data_competencia);
+      } else if (dateFilterType === 'movimento') {
+        const movDate = lanc.data_recebimento || lanc.data_pagamento;
+        if (movDate) {
+          dateToCheck = new Date(movDate);
+        } else {
+          return false;
+        }
+      }
+
+      if (dateToCheck) {
+        matchesDate = dateToCheck >= startDate && dateToCheck <= endDate;
+      }
+    }
+
+    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesDate;
   });
 
   const formatCurrency = (value: number) => {
@@ -850,6 +879,11 @@ export default function Extrato() {
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
+          <DateTypeFilter
+            value={dateFilterType}
+            onChange={setDateFilterType}
+          />
+          
           <DateRangeFilter
             value={datePreset}
             onChange={(preset, range) => {
@@ -1083,8 +1117,8 @@ export default function Extrato() {
                         status={lanc.status}
                         isAvulso={!lanc.parcela_id}
                         onEdit={() => handleEdit(lanc)}
-                        onMarkAsPaid={() => handleMarkAsPaid(lanc)}
-                        onMarkAsOpen={() => handleMarkAsOpen(lanc)}
+                      onMarkAsPaid={() => handleMarkAsPaidClick(lanc)}
+                      onMarkAsOpen={() => handleMarkAsOpenClick(lanc)}
                         onView={() => handleView(lanc)}
                         onClone={() => handleClone(lanc)}
                         onDelete={!lanc.parcela_id ? () => handleDeleteConfirm(lanc) : undefined}
