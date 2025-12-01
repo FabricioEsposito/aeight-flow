@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
@@ -76,6 +77,7 @@ export default function ContasReceber() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
+  const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -84,6 +86,8 @@ export default function ContasReceber() {
   const [selectedConta, setSelectedConta] = useState<ContaReceber | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
+  const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+  const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -270,8 +274,16 @@ export default function ContasReceber() {
     }
   };
 
-  const handleToggleStatus = async (id: string, currentStatus: string) => {
+  const handleToggleStatusClick = (id: string, currentStatus: string) => {
+    setStatusChangeData({ id, currentStatus });
+    setStatusChangeDialogOpen(true);
+  };
+
+  const handleToggleStatus = async () => {
+    if (!statusChangeData) return;
+
     try {
+      const { id, currentStatus } = statusChangeData;
       const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
       const updateData: any = { status: newStatus };
       
@@ -300,6 +312,9 @@ export default function ContasReceber() {
         description: "Não foi possível alterar o status.",
         variant: "destructive",
       });
+    } finally {
+      setStatusChangeDialogOpen(false);
+      setStatusChangeData(null);
     }
   };
 
@@ -374,8 +389,21 @@ export default function ContasReceber() {
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange?.from && dateRange?.to) {
-      const vencimento = new Date(conta.data_vencimento);
-      matchesDate = vencimento >= dateRange.from && vencimento <= dateRange.to;
+      let dateToCheck: Date;
+      
+      if (dateFilterType === 'vencimento') {
+        dateToCheck = new Date(conta.data_vencimento);
+      } else if (dateFilterType === 'competencia') {
+        dateToCheck = new Date(conta.data_competencia);
+      } else { // movimento
+        if (conta.data_recebimento) {
+          dateToCheck = new Date(conta.data_recebimento);
+        } else {
+          return false;
+        }
+      }
+      
+      matchesDate = dateToCheck >= dateRange.from && dateToCheck <= dateRange.to;
     }
 
     let matchesContaBancaria = true;
@@ -495,6 +523,11 @@ export default function ContasReceber() {
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
+          <DateTypeFilter
+            value={dateFilterType}
+            onChange={setDateFilterType}
+          />
+
           <DateRangeFilter
             value={datePreset}
             onChange={(preset, range) => {
@@ -612,8 +645,8 @@ export default function ContasReceber() {
                   <TableCell className="text-right">
                     <ActionsDropdown
                       status={conta.status}
-                      onMarkAsPaid={() => handleToggleStatus(conta.id, 'pendente')}
-                      onMarkAsOpen={() => handleToggleStatus(conta.id, 'pago')}
+                      onMarkAsPaid={() => handleToggleStatusClick(conta.id, 'pendente')}
+                      onMarkAsOpen={() => handleToggleStatusClick(conta.id, 'pago')}
                       onView={() => handleView(conta)}
                       onEdit={() => handleEdit(conta)}
                       onDelete={() => handleDeleteConfirm(conta.id)}
@@ -711,6 +744,25 @@ export default function ContasReceber() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={statusChangeDialogOpen} onOpenChange={setStatusChangeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusChangeData?.currentStatus === 'pago' 
+                ? 'Tem certeza que deseja marcar esta parcela como pendente?' 
+                : 'Tem certeza que deseja marcar esta parcela como recebida?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleToggleStatus}>
+              Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

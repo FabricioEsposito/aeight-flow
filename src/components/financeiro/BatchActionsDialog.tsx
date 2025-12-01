@@ -38,6 +38,7 @@ export function BatchActionsDialog({
   allPaid = false,
 }: BatchActionsDialogProps) {
   const [newDate, setNewDate] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
 
   const getTitle = () => {
     switch (actionType) {
@@ -74,10 +75,13 @@ export function BatchActionsDialog({
   const handleConfirm = () => {
     if (actionType === 'change-date') {
       onConfirm({ newDate });
+    } else if (actionType === 'mark-paid') {
+      onConfirm({ paymentDate });
     } else {
       onConfirm({});
     }
     setNewDate('');
+    setPaymentDate('');
     onOpenChange(false);
   };
 
@@ -102,6 +106,18 @@ export function BatchActionsDialog({
               />
             </div>
           )}
+
+          {actionType === 'mark-paid' && !allPaid && (
+            <div className="space-y-2">
+              <Label htmlFor="payment-date">Data da Baixa</Label>
+              <Input
+                id="payment-date"
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -110,7 +126,10 @@ export function BatchActionsDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={actionType === 'change-date' && !newDate}
+            disabled={
+              (actionType === 'change-date' && !newDate) ||
+              (actionType === 'mark-paid' && !allPaid && !paymentDate)
+            }
           >
             Confirmar
           </Button>
