@@ -272,8 +272,21 @@ export default function Extrato() {
     fetchLancamentos();
   }, [datePreset, customDateRange]);
 
-  const handleMarkAsPaid = async (lancamento: LancamentoExtrato) => {
+  const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
+    setStatusChangeData({ lancamento, newStatus: 'pago' });
+    setStatusChangeDialogOpen(true);
+  };
+
+  const handleMarkAsOpenClick = (lancamento: LancamentoExtrato) => {
+    setStatusChangeData({ lancamento, newStatus: 'pendente' });
+    setStatusChangeDialogOpen(true);
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!statusChangeData) return;
+
     try {
+      const { lancamento } = statusChangeData;
       const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
@@ -299,11 +312,17 @@ export default function Extrato() {
         description: "Não foi possível atualizar o status.",
         variant: "destructive",
       });
+    } finally {
+      setStatusChangeDialogOpen(false);
+      setStatusChangeData(null);
     }
   };
 
-  const handleMarkAsOpen = async (lancamento: LancamentoExtrato) => {
+  const handleMarkAsOpen = async () => {
+    if (!statusChangeData) return;
+
     try {
+      const { lancamento } = statusChangeData;
       const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
@@ -329,6 +348,9 @@ export default function Extrato() {
         description: "Não foi possível atualizar o status.",
         variant: "destructive",
       });
+    } finally {
+      setStatusChangeDialogOpen(false);
+      setStatusChangeData(null);
     }
   };
 
@@ -1216,15 +1238,34 @@ export default function Extrato() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Lançamento</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={statusChangeDialogOpen} onOpenChange={setStatusChangeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusChangeData?.newStatus === 'pago' 
+                ? `Tem certeza que deseja marcar este lançamento como ${statusChangeData.lancamento.tipo === 'entrada' ? 'recebido' : 'pago'}?`
+                : 'Tem certeza que deseja marcar este lançamento como pendente?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => statusChangeData?.newStatus === 'pago' ? handleMarkAsPaid() : handleMarkAsOpen()}>
+              Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
