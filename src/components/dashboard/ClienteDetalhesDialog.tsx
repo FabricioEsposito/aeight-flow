@@ -174,6 +174,12 @@ export function ClienteDetalhesDialog({
       const servicosArray = typeof servicosJson === 'string' ? JSON.parse(servicosJson) : servicosJson;
       if (Array.isArray(servicosArray) && servicosArray.length > 0) {
         return servicosArray.map((s: any) => {
+          // Se for uma string (ID direto), buscar no map
+          if (typeof s === 'string') {
+            const servico = servicos.get(s);
+            return servico ? `${servico.codigo} - ${servico.nome}` : '-';
+          }
+          // Se for um objeto, buscar pelo servico_id ou id
           const servico = servicos.get(s.servico_id || s.id);
           return servico ? `${servico.codigo} - ${servico.nome}` : s.nome || '-';
         }).join(', ');
