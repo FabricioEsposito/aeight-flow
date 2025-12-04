@@ -965,17 +965,7 @@ export function Dashboard() {
         {/* Análise de Crédito */}
         {analiseAtiva === 'credito' && (
           <div className="space-y-6">
-            <AnaliseCreditoClientes 
-              dataInicio={(() => {
-                const range = getDateRange();
-                return range?.from || '';
-              })()}
-              dataFim={(() => {
-                const range = getDateRange();
-                return range?.to || '';
-              })()}
-              centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
-            />
+            <AnaliseCreditoClientes />
           </div>
         )}
 
