@@ -44,6 +44,11 @@ interface FaturamentoData {
   valor: number;
 }
 
+interface FaturamentoClienteData {
+  cliente: string;
+  valor: number;
+}
+
 interface FluxoCaixaData {
   date: string;
   saldoConta: number;
@@ -70,6 +75,7 @@ export function Dashboard() {
     valorPago: 0,
   });
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
+  const [faturamentoClienteData, setFaturamentoClienteData] = useState<FaturamentoClienteData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -169,7 +175,7 @@ export function Dashboard() {
       // Fetch Contas a Receber para Faturamento (pela data de competência)
       let contasReceberQuery = supabase
         .from('contas_receber')
-        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo');
+        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo, cliente_id, clientes(razao_social)');
       
       if (dateRange) {
         contasReceberQuery = contasReceberQuery
@@ -327,7 +333,25 @@ export function Dashboard() {
 
       setFaturamentoData(faturamentoChartData);
 
-      // Fluxo de Caixa
+      // Faturamento por Cliente (ordenado do maior para o menor)
+      const faturamentoPorCliente = contasReceber
+        ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago'))
+        .reduce((acc: Record<string, { cliente: string; valor: number }>, c) => {
+          const clienteId = c.cliente_id || 'sem_cliente';
+          const clienteNome = (c.clientes as any)?.razao_social || 'Sem Cliente';
+          if (!acc[clienteId]) {
+            acc[clienteId] = { cliente: clienteNome, valor: 0 };
+          }
+          acc[clienteId].valor += Number(c.valor);
+          return acc;
+        }, {});
+
+      const faturamentoClienteChartData = Object.values(faturamentoPorCliente || {})
+        .sort((a, b) => b.valor - a.valor)
+        .slice(0, 10); // Top 10 clientes
+
+      setFaturamentoClienteData(faturamentoClienteChartData);
+
       let contasBancariasQuery = supabase
         .from('contas_bancarias')
         .select('saldo_atual')
@@ -669,34 +693,89 @@ export function Dashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-6">
-        {/* Faturamento Chart - Apenas em Análise de Faturamento */}
+        {/* Faturamento Charts - Apenas em Análise de Faturamento */}
         {analiseAtiva === 'faturamento' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Faturamento - Receita de Serviços</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  valor: {
-                    label: "Faturamento",
-                    color: "hsl(var(--primary))",
-                  },
-                }}
-                className="h-80"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={faturamentoData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Faturamento por Período</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={{
+                    valor: {
+                      label: "Faturamento",
+                      color: "hsl(var(--primary))",
+                    },
+                  }}
+                  className="h-80"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={faturamentoData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Faturamento por Cliente (Top 10)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={{
+                    valor: {
+                      label: "Faturamento",
+                      color: "hsl(142, 76%, 36%)",
+                    },
+                  }}
+                  className="h-80"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={faturamentoClienteData} 
+                      layout="vertical"
+                      margin={{ left: 20, right: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
+                      <YAxis 
+                        type="category" 
+                        dataKey="cliente" 
+                        width={150}
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => value.length > 20 ? value.substring(0, 20) + '...' : value}
+                      />
+                      <ChartTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-sm font-medium">{payload[0]?.payload?.cliente}</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {formatCurrency(payload[0]?.value as number)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="valor" fill="hsl(142, 76%, 36%)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Fluxo de Caixa Chart - Apenas em Análise de Caixa */}
