@@ -13,9 +13,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
+import { UserNotificationsDropdown } from "@/components/UserNotificationsDropdown";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export function AppHeader() {
   const { signOut, user } = useAuth();
+  const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -41,7 +44,7 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        <NotificationsDropdown />
+        {isAdmin ? <NotificationsDropdown /> : <UserNotificationsDropdown />}
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

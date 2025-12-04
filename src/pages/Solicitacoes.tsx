@@ -145,6 +145,23 @@ export default function Solicitacoes() {
     setConfirmDialog({ open: true, solicitacao, action });
   };
 
+  const createNotification = async (userId: string, titulo: string, mensagem: string, tipo: string, referenciaId: string) => {
+    try {
+      await supabase
+        .from('notificacoes')
+        .insert({
+          user_id: userId,
+          titulo,
+          mensagem,
+          tipo,
+          referencia_id: referenciaId,
+          referencia_tipo: 'solicitacao_ajuste',
+        });
+    } catch (error) {
+      console.error('Erro ao criar notificação:', error);
+    }
+  };
+
   const handleAprovarAjuste = async () => {
     const solicitacao = confirmDialog.solicitacao;
     if (!solicitacao) return;
@@ -215,6 +232,15 @@ export default function Solicitacoes() {
 
       if (solicitacaoError) throw solicitacaoError;
 
+      // Criar notificação para o solicitante
+      await createNotification(
+        solicitacao.solicitante_id,
+        'Solicitação Aprovada',
+        `Sua solicitação de ajuste de ${solicitacao.tipo_lancamento === 'receber' ? 'conta a receber' : 'conta a pagar'} foi aprovada.`,
+        'aprovado',
+        solicitacao.id
+      );
+
       toast({
         title: 'Ajuste aprovado',
         description: 'O lançamento foi atualizado com sucesso.',
@@ -250,6 +276,15 @@ export default function Solicitacoes() {
         .eq('id', solicitacao.id);
 
       if (error) throw error;
+
+      // Criar notificação para o solicitante
+      await createNotification(
+        solicitacao.solicitante_id,
+        'Solicitação Rejeitada',
+        `Sua solicitação de ajuste de ${solicitacao.tipo_lancamento === 'receber' ? 'conta a receber' : 'conta a pagar'} foi rejeitada.`,
+        'rejeitado',
+        solicitacao.id
+      );
 
       toast({
         title: 'Solicitação rejeitada',
