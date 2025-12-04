@@ -46,6 +46,7 @@ interface LancamentoExtrato {
   desconto?: number;
   data_recebimento?: string;
   data_pagamento?: string;
+  numero_nf?: string | null;
 }
 
 export default function Extrato() {
@@ -186,6 +187,7 @@ export default function Extrato() {
           multa: r.multa,
           desconto: r.desconto,
           data_recebimento: r.data_recebimento,
+          numero_nf: r.numero_nf,
         };
 
         if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
@@ -1024,6 +1026,7 @@ export default function Extrato() {
                 <TableHead>Data de Vencimento</TableHead>
                 <TableHead>Data da Movimentação</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>NF</TableHead>
                 <TableHead>Serviço / Importância</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor (R$)</TableHead>
@@ -1081,6 +1084,9 @@ export default function Extrato() {
                           <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {lanc.origem === 'receber' && lanc.numero_nf ? lanc.numero_nf : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
