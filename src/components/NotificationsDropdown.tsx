@@ -215,9 +215,16 @@ export function NotificationsDropdown() {
     return null;
   }
 
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      loadRequests();
+      loadSolicitacoesCount();
+    }
+  };
+
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
