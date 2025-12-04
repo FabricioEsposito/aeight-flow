@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -60,6 +62,7 @@ export default function Solicitacoes() {
     solicitacao: null,
     action: null,
   });
+  const [motivoRejeicao, setMotivoRejeicao] = useState('');
 
   useEffect(() => {
     loadSolicitacoes();
@@ -264,6 +267,15 @@ export default function Solicitacoes() {
     const solicitacao = confirmDialog.solicitacao;
     if (!solicitacao) return;
 
+    if (!motivoRejeicao.trim()) {
+      toast({
+        title: 'Motivo obrigatório',
+        description: 'Por favor, informe o motivo da rejeição.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase
@@ -272,16 +284,17 @@ export default function Solicitacoes() {
           status: 'rejeitada',
           aprovador_id: user?.id,
           data_resposta: new Date().toISOString(),
+          motivo_rejeicao: motivoRejeicao.trim(),
         })
         .eq('id', solicitacao.id);
 
       if (error) throw error;
 
-      // Criar notificação para o solicitante
+      // Criar notificação para o solicitante com o motivo da rejeição
       await createNotification(
         solicitacao.solicitante_id,
         'Solicitação Rejeitada',
-        `Sua solicitação de ajuste de ${solicitacao.tipo_lancamento === 'receber' ? 'conta a receber' : 'conta a pagar'} foi rejeitada.`,
+        `Sua solicitação de ajuste de ${solicitacao.tipo_lancamento === 'receber' ? 'conta a receber' : 'conta a pagar'} foi rejeitada. Motivo: ${motivoRejeicao.trim()}`,
         'rejeitado',
         solicitacao.id
       );
@@ -293,6 +306,7 @@ export default function Solicitacoes() {
 
       loadSolicitacoes();
       setConfirmDialog({ open: false, solicitacao: null, action: null });
+      setMotivoRejeicao('');
     } catch (error) {
       console.error('Erro ao rejeitar:', error);
       toast({
@@ -396,6 +410,14 @@ export default function Solicitacoes() {
                 <p className="text-xs font-medium text-muted-foreground mb-1">Motivo da Solicitação:</p>
                 <p className="text-sm">{solicitacao.motivo_solicitacao}</p>
               </div>
+
+              {/* Motivo da Rejeição (se houver) */}
+              {solicitacao.status === 'rejeitada' && solicitacao.motivo_rejeicao && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded-md">
+                  <p className="text-xs font-medium text-red-600 mb-1">Motivo da Rejeição:</p>
+                  <p className="text-sm text-red-700">{solicitacao.motivo_rejeicao}</p>
+                </div>
+              )}
 
               {/* Alterações */}
               <div className="border-t pt-4">
@@ -566,51 +588,70 @@ export default function Solicitacoes() {
       </div>
 
       {/* Dialog de Confirmação */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, solicitacao: null, action: null })}>
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => {
+        setConfirmDialog({ open, solicitacao: null, action: null });
+        if (!open) setMotivoRejeicao('');
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmDialog.action === 'aprovar' ? 'Aprovar Solicitação?' : 'Rejeitar Solicitação?'}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog.action === 'aprovar' ? (
-                <>
-                  Você está prestes a aprovar esta solicitação. As seguintes alterações serão aplicadas ao lançamento:
-                  {confirmDialog.solicitacao && (
-                    <div className="mt-4 space-y-2 text-sm">
-                      {confirmDialog.solicitacao.data_vencimento_atual !== confirmDialog.solicitacao.data_vencimento_solicitada && (
-                        <p>
-                          <strong>Data de Vencimento:</strong> {format(new Date(confirmDialog.solicitacao.data_vencimento_atual), 'dd/MM/yyyy')} → {format(new Date(confirmDialog.solicitacao.data_vencimento_solicitada), 'dd/MM/yyyy')}
-                        </p>
-                      )}
-                      {confirmDialog.solicitacao.juros_atual !== confirmDialog.solicitacao.juros_solicitado && (
-                        <p>
-                          <strong>Juros:</strong> R$ {confirmDialog.solicitacao.juros_atual.toFixed(2)} → R$ {confirmDialog.solicitacao.juros_solicitado.toFixed(2)}
-                        </p>
-                      )}
-                      {confirmDialog.solicitacao.multa_atual !== confirmDialog.solicitacao.multa_solicitada && (
-                        <p>
-                          <strong>Multa:</strong> R$ {confirmDialog.solicitacao.multa_atual.toFixed(2)} → R$ {confirmDialog.solicitacao.multa_solicitada.toFixed(2)}
-                        </p>
-                      )}
-                      {confirmDialog.solicitacao.desconto_atual !== confirmDialog.solicitacao.desconto_solicitado && (
-                        <p>
-                          <strong>Desconto:</strong> R$ {confirmDialog.solicitacao.desconto_atual.toFixed(2)} → R$ {confirmDialog.solicitacao.desconto_solicitado.toFixed(2)}
-                        </p>
-                      )}
+            <AlertDialogDescription asChild>
+              <div>
+                {confirmDialog.action === 'aprovar' ? (
+                  <>
+                    Você está prestes a aprovar esta solicitação. As seguintes alterações serão aplicadas ao lançamento:
+                    {confirmDialog.solicitacao && (
+                      <div className="mt-4 space-y-2 text-sm">
+                        {confirmDialog.solicitacao.data_vencimento_atual !== confirmDialog.solicitacao.data_vencimento_solicitada && (
+                          <p>
+                            <strong>Data de Vencimento:</strong> {format(new Date(confirmDialog.solicitacao.data_vencimento_atual), 'dd/MM/yyyy')} → {format(new Date(confirmDialog.solicitacao.data_vencimento_solicitada), 'dd/MM/yyyy')}
+                          </p>
+                        )}
+                        {confirmDialog.solicitacao.juros_atual !== confirmDialog.solicitacao.juros_solicitado && (
+                          <p>
+                            <strong>Juros:</strong> R$ {confirmDialog.solicitacao.juros_atual.toFixed(2)} → R$ {confirmDialog.solicitacao.juros_solicitado.toFixed(2)}
+                          </p>
+                        )}
+                        {confirmDialog.solicitacao.multa_atual !== confirmDialog.solicitacao.multa_solicitada && (
+                          <p>
+                            <strong>Multa:</strong> R$ {confirmDialog.solicitacao.multa_atual.toFixed(2)} → R$ {confirmDialog.solicitacao.multa_solicitada.toFixed(2)}
+                          </p>
+                        )}
+                        {confirmDialog.solicitacao.desconto_atual !== confirmDialog.solicitacao.desconto_solicitado && (
+                          <p>
+                            <strong>Desconto:</strong> R$ {confirmDialog.solicitacao.desconto_atual.toFixed(2)} → R$ {confirmDialog.solicitacao.desconto_solicitado.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <p>Você está prestes a rejeitar esta solicitação. Esta ação não poderá ser desfeita.</p>
+                    <div className="space-y-2">
+                      <Label htmlFor="motivo-rejeicao" className="text-foreground">
+                        Motivo da Rejeição <span className="text-red-500">*</span>
+                      </Label>
+                      <Textarea
+                        id="motivo-rejeicao"
+                        placeholder="Informe o motivo da rejeição..."
+                        value={motivoRejeicao}
+                        onChange={(e) => setMotivoRejeicao(e.target.value)}
+                        className="min-h-[100px]"
+                      />
                     </div>
-                  )}
-                </>
-              ) : (
-                'Você está prestes a rejeitar esta solicitação. Esta ação não poderá ser desfeita.'
-              )}
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDialog.action === 'aprovar' ? handleAprovarAjuste : handleRejeitarAjuste}
-              disabled={loading}
+              disabled={loading || (confirmDialog.action === 'rejeitar' && !motivoRejeicao.trim())}
               className={confirmDialog.action === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
             >
               {loading ? 'Processando...' : confirmDialog.action === 'aprovar' ? 'Confirmar Aprovação' : 'Confirmar Rejeição'}
