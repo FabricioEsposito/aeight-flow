@@ -98,6 +98,11 @@ export function Dashboard() {
     fetchDashboardData();
   }, [datePreset, customRange, selectedCentroCusto, selectedContaBancaria]);
 
+  // Função auxiliar para formatar data sem problemas de timezone
+  const formatDateLocal = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
   const getDateRange = () => {
     const today = new Date();
     let from: Date, to: Date;
@@ -139,7 +144,7 @@ export function Dashboard() {
         return null;
     }
 
-    return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
+    return { from: formatDateLocal(from), to: formatDateLocal(to) };
   };
 
   const fetchFiltersData = async () => {

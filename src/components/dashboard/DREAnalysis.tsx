@@ -89,9 +89,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), clientes(razao_social)');
 
       if (dateRange) {
+        // Usar formato de data local para evitar problemas de timezone
+        const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
+        const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         receitasQuery = receitasQuery
-          .gte('data_competencia', dateRange.from.toISOString().split('T')[0])
-          .lte('data_competencia', dateRange.to.toISOString().split('T')[0]);
+          .gte('data_competencia', fromDate)
+          .lte('data_competencia', toDate);
       }
 
       if (centroCusto && centroCusto !== 'todos') {
@@ -106,9 +109,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), fornecedores(razao_social)');
 
       if (dateRange) {
+        // Usar formato de data local para evitar problemas de timezone
+        const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
+        const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         despesasQuery = despesasQuery
-          .gte('data_competencia', dateRange.from.toISOString().split('T')[0])
-          .lte('data_competencia', dateRange.to.toISOString().split('T')[0]);
+          .gte('data_competencia', fromDate)
+          .lte('data_competencia', toDate);
       }
 
       if (centroCusto && centroCusto !== 'todos') {
