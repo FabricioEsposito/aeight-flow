@@ -271,7 +271,8 @@ export function Dashboard() {
 
       const contasReceberTotal = contasReceber
         ?.filter(c => {
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          const todayDate = new Date(today + 'T00:00:00');
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
           return c.status === 'pendente' && !isOverdue;
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
@@ -283,14 +284,16 @@ export function Dashboard() {
 
       const inadimplentes = contasReceber
         ?.filter(c => {
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          const todayDate = new Date(today + 'T00:00:00');
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
           return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasPagarTotal = contasPagar
         ?.filter(c => {
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          const todayDate = new Date(today + 'T00:00:00');
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
           return c.status === 'pendente' && !isOverdue;
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
@@ -302,7 +305,8 @@ export function Dashboard() {
 
       const pagarAtrasado = contasPagar
         ?.filter(c => {
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento) < new Date(today);
+          const todayDate = new Date(today + 'T00:00:00');
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
           return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
@@ -312,7 +316,7 @@ export function Dashboard() {
         ?.filter(c => receitaServicosIds.includes(c.plano_conta_id || ''))
         .reduce((acc: Record<string, { valor: number; date: Date }>, c) => {
           if (c.data_competencia) {
-            const date = new Date(c.data_competencia);
+            const date = new Date(c.data_competencia + 'T00:00:00');
             const month = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
             if (!acc[month]) {
               acc[month] = { valor: 0, date };
@@ -417,7 +421,7 @@ export function Dashboard() {
         saldoPrevisto = saldoAcumulado + valores.previsaoReceber - valores.previsaoPagar;
         
         return {
-          date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
           saldoConta: saldoContas,
           recebido: valores.recebido,
           pago: valores.pago,
