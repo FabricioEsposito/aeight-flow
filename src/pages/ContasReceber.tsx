@@ -379,7 +379,8 @@ export default function ContasReceber() {
     if (statusFilter !== 'todos') {
       if (statusFilter === 'vencido') {
         const hoje = new Date();
-        const vencimento = new Date(conta.data_vencimento);
+        hoje.setHours(0, 0, 0, 0);
+        const vencimento = new Date(conta.data_vencimento + 'T00:00:00');
         matchesStatus = vencimento < hoje && conta.status === 'pendente';
       } else {
         matchesStatus = conta.status === statusFilter;
@@ -392,12 +393,12 @@ export default function ContasReceber() {
       let dateToCheck: Date;
       
       if (dateFilterType === 'vencimento') {
-        dateToCheck = new Date(conta.data_vencimento);
+        dateToCheck = new Date(conta.data_vencimento + 'T00:00:00');
       } else if (dateFilterType === 'competencia') {
-        dateToCheck = new Date(conta.data_competencia);
+        dateToCheck = new Date(conta.data_competencia + 'T00:00:00');
       } else { // movimento
         if (conta.data_recebimento) {
-          dateToCheck = new Date(conta.data_recebimento);
+          dateToCheck = new Date(conta.data_recebimento + 'T00:00:00');
         } else {
           return false;
         }
