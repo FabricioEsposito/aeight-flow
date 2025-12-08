@@ -22,6 +22,45 @@ Deno.serve(async (req) => {
       }
     );
 
+    // Verify the caller is an admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      console.error('Error getting user:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || roleData?.role !== 'admin') {
+      console.error('User is not an admin:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Admin', user.id, 'fetching users list');
+
     // Buscar todos os usuários do auth
     const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     
@@ -54,11 +93,11 @@ Deno.serve(async (req) => {
     // Combinar dados de auth com profiles e roles
     const usersWithStatus = profiles.map(profile => {
       const authUser = authUsers.users.find(u => u.id === profile.id);
-      const roleData = userRoles?.find(r => r.user_id === profile.id);
+      const roleDataItem = userRoles?.find(r => r.user_id === profile.id);
       
       return {
         ...profile,
-        role: roleData?.role || 'user',
+        role: roleDataItem?.role || 'user',
         status: authUser?.last_sign_in_at ? 'ativo' : 'pendente',
         banned: authUser?.banned_until ? new Date(authUser.banned_until) > new Date() : false,
         last_sign_in_at: authUser?.last_sign_in_at,

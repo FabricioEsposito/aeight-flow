@@ -12,10 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, nome, role } = await req.json();
-
-    console.log('Inviting user:', { email, nome, role });
-
     // Create Supabase client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -27,6 +23,47 @@ Deno.serve(async (req) => {
         }
       }
     );
+
+    // Verify the caller is an admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      console.error('Error getting user:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || roleData?.role !== 'admin') {
+      console.error('User is not an admin:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { email, nome, role } = await req.json();
+
+    console.log('Admin', user.id, 'inviting user:', { email, nome, role });
 
     // Verificar se usuário já existe
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
@@ -88,13 +125,13 @@ Deno.serve(async (req) => {
     // O trigger handle_new_user já cria automaticamente uma role 'user'
     // Se a role for 'admin', precisamos atualizar a role existente
     if (role === 'admin') {
-      const { error: roleError } = await supabaseAdmin
+      const { error: roleUpdateError } = await supabaseAdmin
         .from('user_roles')
         .update({ role: 'admin' })
         .eq('user_id', userId);
 
-      if (roleError) {
-        console.error('Error updating role to admin:', roleError);
+      if (roleUpdateError) {
+        console.error('Error updating role to admin:', roleUpdateError);
         return new Response(
           JSON.stringify({ error: 'User invited but role assignment failed' }),
           { 
