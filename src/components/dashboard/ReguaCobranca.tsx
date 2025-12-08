@@ -2,15 +2,35 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Mail, Send, Loader2 } from 'lucide-react';
+import { useEmailLogs } from '@/hooks/useEmailLogs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ParcelaVencida {
   id: string;
   descricao: string;
+  cliente_id: string;
   cliente_nome: string;
+  cliente_emails: string[];
   data_vencimento: string;
   valor: number;
   dias_atraso: number;
@@ -30,6 +50,16 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   const [parcelas, setParcelas] = useState<ParcelaVencida[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalReceita, setTotalReceita] = useState(0);
+  const [sendingClientId, setSendingClientId] = useState<string | null>(null);
+  const [showConfirmAll, setShowConfirmAll] = useState(false);
+  
+  const { 
+    loading: sendingAll, 
+    sendCollectionEmail, 
+    fetchLastEmailsByClient, 
+    formatLastEmail,
+    getMaxEmailsPerDay 
+  } = useEmailLogs();
 
   useEffect(() => {
     fetchParcelas();
@@ -74,7 +104,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       // Buscar parcelas vencidas
       let query = supabase
         .from('contas_receber')
-        .select('*, clientes(razao_social)')
+        .select('*, clientes(id, razao_social, email)')
         .eq('status', 'pendente')
         .lt('data_vencimento', hoje)
         .gte('data_vencimento', dataInicio)
@@ -88,7 +118,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       if (error) throw error;
 
       const parcelasVencidas: ParcelaVencida[] = data?.map((conta: any) => {
-        const vencimento = new Date(conta.data_vencimento);
+        const vencimento = new Date(conta.data_vencimento + 'T00:00:00');
         const agora = new Date();
         const diasAtraso = Math.floor((agora.getTime() - vencimento.getTime()) / (1000 * 60 * 60 * 24));
         const nivelInfo = getNivelAtraso(diasAtraso);
@@ -98,7 +128,9 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
         return {
           id: conta.id,
           descricao: conta.descricao,
+          cliente_id: conta.clientes?.id || '',
           cliente_nome: conta.clientes?.razao_social || 'N/A',
+          cliente_emails: conta.clientes?.email || [],
           data_vencimento: conta.data_vencimento,
           valor: conta.valor || 0,
           dias_atraso: diasAtraso,
@@ -110,6 +142,12 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       }) || [];
 
       setParcelas(parcelasVencidas);
+
+      // Fetch last email dates for all clients
+      const clienteIds = [...new Set(parcelasVencidas.map(p => p.cliente_id).filter(id => id))];
+      if (clienteIds.length > 0) {
+        await fetchLastEmailsByClient(clienteIds);
+      }
     } catch (error) {
       console.error('Erro ao buscar régua de cobrança:', error);
     } finally {
@@ -123,6 +161,26 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       currency: 'BRL',
     }).format(value);
   };
+
+  const handleSendEmail = async (clienteId: string) => {
+    setSendingClientId(clienteId);
+    await sendCollectionEmail(clienteId);
+    setSendingClientId(null);
+    // Refresh last email dates
+    const clienteIds = [...new Set(parcelas.map(p => p.cliente_id).filter(id => id))];
+    await fetchLastEmailsByClient(clienteIds);
+  };
+
+  const handleSendAllEmails = async () => {
+    setShowConfirmAll(false);
+    await sendCollectionEmail();
+    // Refresh last email dates
+    const clienteIds = [...new Set(parcelas.map(p => p.cliente_id).filter(id => id))];
+    await fetchLastEmailsByClient(clienteIds);
+  };
+
+  // Group parcelas by client to show unique clients
+  const uniqueClients = [...new Map(parcelas.map(p => [p.cliente_id, p])).values()];
 
   if (loading) {
     return (
@@ -140,73 +198,155 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   const totalVencido = parcelas.reduce((sum, p) => sum + p.valor, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Régua de Cobrança</CardTitle>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>Total vencido: {formatCurrency(totalVencido)}</span>
-          <span>•</span>
-          <span>{parcelas.length} parcela(s) em atraso</span>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-center">Vencimento</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-center">Dias Atraso</TableHead>
-                <TableHead className="text-center">Nível</TableHead>
-                <TableHead className="text-center">Regra de Cobrança</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-right">% Receita</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {parcelas.length === 0 ? (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Régua de Cobrança</CardTitle>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                <span>Total vencido: {formatCurrency(totalVencido)}</span>
+                <span>•</span>
+                <span>{parcelas.length} parcela(s) em atraso</span>
+              </div>
+            </div>
+            {parcelas.length > 0 && (
+              <Button 
+                onClick={() => setShowConfirmAll(true)} 
+                disabled={sendingAll}
+                className="gap-2"
+              >
+                {sendingAll ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Enviar Todas as Cobranças
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
-                    Nenhuma parcela vencida encontrada
-                  </TableCell>
+                  <TableHead className="text-center">Vencimento</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-center">Dias Atraso</TableHead>
+                  <TableHead className="text-center">Nível</TableHead>
+                  <TableHead className="text-center">Regra de Cobrança</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right">% Receita</TableHead>
+                  <TableHead className="text-center">Ações</TableHead>
                 </TableRow>
-              ) : (
-                parcelas.map((parcela) => (
-                  <TableRow key={parcela.id}>
-                    <TableCell className="text-center">
-                      {format(new Date(parcela.data_vencimento), 'dd/MM/yyyy', { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="font-medium">{parcela.cliente_nome}</TableCell>
-                    <TableCell>{parcela.descricao}</TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-semibold text-destructive">
-                        {parcela.dias_atraso} dias
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge className={parcela.nivel_color}>
-                        {parcela.nivel_atraso}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="text-sm font-medium">
-                        {parcela.regra_cobranca}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(parcela.valor)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {parcela.percentual_receita.toFixed(1)}%
+              </TableHeader>
+              <TableBody>
+                {parcelas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
+                      Nenhuma parcela vencida encontrada
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+                ) : (
+                  parcelas.map((parcela) => {
+                    const lastEmail = formatLastEmail(parcela.cliente_id);
+                    const hasEmails = parcela.cliente_emails && parcela.cliente_emails.length > 0;
+                    const isSending = sendingClientId === parcela.cliente_id;
+
+                    return (
+                      <TableRow key={parcela.id}>
+                        <TableCell className="text-center">
+                          {format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="font-medium">{parcela.cliente_nome}</TableCell>
+                        <TableCell>{parcela.descricao}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="font-semibold text-destructive">
+                            {parcela.dias_atraso} dias
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={parcela.nivel_color}>
+                            {parcela.nivel_atraso}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-medium">
+                            {parcela.regra_cobranca}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(parcela.valor)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {parcela.percentual_receita.toFixed(1)}%
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSendEmail(parcela.cliente_id)}
+                                  disabled={!hasEmails || isSending || sendingAll}
+                                  className="gap-1"
+                                >
+                                  {isSending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Mail className="h-3 w-3" />
+                                  )}
+                                  Enviar
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {!hasEmails 
+                                  ? 'Cliente sem e-mail cadastrado' 
+                                  : `Enviar para: ${parcela.cliente_emails.join(', ')}`
+                                }
+                              </TooltipContent>
+                            </Tooltip>
+                            {lastEmail && (
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {lastEmail}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showConfirmAll} onOpenChange={setShowConfirmAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enviar E-mails de Cobrança</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a enviar e-mails de cobrança para todos os clientes com parcelas vencidas.
+              O sistema respeitará o limite de frequência de acordo com os dias de atraso de cada cliente.
+              <br /><br />
+              <strong>Clientes afetados:</strong> {uniqueClients.length}
+              <br />
+              <strong>Total em aberto:</strong> {formatCurrency(totalVencido)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSendAllEmails}>
+              Confirmar Envio
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

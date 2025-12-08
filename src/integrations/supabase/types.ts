@@ -482,6 +482,47 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          cliente_id: string
+          conta_receber_id: string | null
+          created_at: string | null
+          email_destino: string
+          erro: string | null
+          id: string
+          status: string
+          tipo: string
+        }
+        Insert: {
+          cliente_id: string
+          conta_receber_id?: string | null
+          created_at?: string | null
+          email_destino: string
+          erro?: string | null
+          id?: string
+          status?: string
+          tipo?: string
+        }
+        Update: {
+          cliente_id?: string
+          conta_receber_id?: string | null
+          created_at?: string | null
+          email_destino?: string
+          erro?: string | null
+          id?: string
+          status?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_conta_receber_id_fkey"
+            columns: ["conta_receber_id"]
+            isOneToOne: false
+            referencedRelation: "contas_receber"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fornecedores: {
         Row: {
           bairro: string | null
