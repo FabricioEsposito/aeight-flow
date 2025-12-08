@@ -179,7 +179,8 @@ export default function ContasBancarias() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    if (!dateString) return '-';
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
   const getTipoIcon = (tipo: string) => {
