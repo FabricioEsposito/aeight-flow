@@ -4,7 +4,6 @@ import {
   Truck, 
   FileText, 
   CreditCard, 
-  PiggyBank, 
   TreePine, 
   TrendingUp, 
   TrendingDown, 
@@ -15,29 +14,54 @@ import {
   UserCog,
   LogOut,
   ClipboardList,
-  Receipt
+  Receipt,
+  Star,
+  ChevronDown
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useFavorites } from "@/hooks/useFavorites";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-const navigationItems = [
+const navigationGroups = [
+  {
+    name: "Cadastro",
+    items: [
+      { title: "Clientes", url: "/clientes", icon: Users },
+      { title: "Fornecedores", url: "/fornecedores", icon: Truck },
+      { title: "Contratos", url: "/contratos", icon: FileText },
+      { title: "Serviços", url: "/servicos", icon: Settings },
+    ]
+  },
+  {
+    name: "Financeiro",
+    items: [
+      { title: "Controle de Faturamento", url: "/controle-faturamento", icon: Receipt },
+      { title: "Extrato", url: "/extrato", icon: BarChart3 },
+      { title: "Contas a Receber", url: "/contas-receber", icon: TrendingUp },
+      { title: "Contas a Pagar", url: "/contas-pagar", icon: TrendingDown },
+      { title: "Contas Bancárias", url: "/contas-bancarias", icon: CreditCard },
+      { title: "Centro de Custos", url: "/centro-custos", icon: FolderKanban },
+      { title: "Plano de Contas", url: "/plano-contas", icon: TreePine },
+    ]
+  },
+];
+
+const standaloneItems = [
   { title: "Dashboard", url: "/", icon: Home },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Fornecedores", url: "/fornecedores", icon: Truck },
-  { title: "Contratos", url: "/contratos", icon: FileText },
-  { title: "Serviços", url: "/servicos", icon: Settings },
-  { title: "Contas Bancárias", url: "/contas-bancarias", icon: CreditCard },
-  { title: "Centro de Custos", url: "/centro-custos", icon: FolderKanban },
-  { title: "Plano de Contas", url: "/plano-contas", icon: TreePine },
-  { title: "Contas a Receber", url: "/contas-receber", icon: TrendingUp },
-  { title: "Contas a Pagar", url: "/contas-pagar", icon: TrendingDown },
-  { title: "Controle de Faturamento", url: "/controle-faturamento", icon: Receipt },
-  { title: "Extrato", url: "/extrato", icon: BarChart3 },
   { title: "Solicitações", url: "/solicitacoes", icon: ClipboardList },
   { title: "Usuários", url: "/usuarios", icon: UserCog, adminOnly: true },
+];
+
+// Flatten all navigation items for favorites lookup
+const allNavigationItems = [
+  ...standaloneItems,
+  ...navigationGroups.flatMap(g => g.items)
 ];
 
 export function AppSidebar() {
@@ -46,6 +70,11 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    "Cadastro": true,
+    "Financeiro": true
+  });
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -60,6 +89,47 @@ export function AppSidebar() {
     });
     navigate('/auth');
   };
+
+  const toggleGroup = (groupName: string) => {
+    setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
+
+  const favoriteItems = allNavigationItems.filter(item => 
+    isFavorite(item.url) && (!('adminOnly' in item) || !item.adminOnly || isAdmin)
+  );
+
+  const renderNavItem = (item: typeof standaloneItems[0], showFavoriteStar = true) => (
+    <div key={item.title} className="flex items-center gap-1 group">
+      <NavLink
+        to={item.url}
+        className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+          isActive(item.url)
+            ? "bg-primary text-primary-foreground font-medium"
+            : "hover:bg-secondary text-foreground"
+        }`}
+      >
+        <item.icon className="w-4 h-4 flex-shrink-0" />
+        <span className="text-sm">{item.title}</span>
+      </NavLink>
+      {showFavoriteStar && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFavorite(item.url);
+          }}
+          className={cn(
+            "p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100",
+            isFavorite(item.url) 
+              ? "text-yellow-500 opacity-100" 
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Star className={cn("w-3.5 h-3.5", isFavorite(item.url) && "fill-current")} />
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <aside className="w-64 border-r border-border bg-card flex flex-col fixed left-0 top-0 h-screen">
@@ -76,25 +146,53 @@ export function AppSidebar() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">Menu Principal</p>
+        {/* Dashboard */}
+        <div className="mb-4">
+          {renderNavItem(standaloneItems[0])}
+        </div>
+
+        {/* Favoritos */}
+        {favoriteItems.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-muted-foreground mb-2 px-3 flex items-center gap-2">
+              <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+              Favoritos
+            </p>
+            <nav className="space-y-1">
+              {favoriteItems.map((item) => renderNavItem(item, false))}
+            </nav>
+          </div>
+        )}
+
+        {/* Grouped Navigation */}
+        {navigationGroups.map((group) => (
+          <Collapsible 
+            key={group.name} 
+            open={openGroups[group.name]} 
+            onOpenChange={() => toggleGroup(group.name)}
+            className="mb-4"
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+              <span>{group.name}</span>
+              <ChevronDown className={cn(
+                "w-4 h-4 transition-transform",
+                openGroups[group.name] && "rotate-180"
+              )} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-1">
+              <nav className="space-y-1">
+                {group.items.map((item) => renderNavItem(item))}
+              </nav>
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
+
+        {/* Standalone Items (Solicitações, Usuários) */}
+        <div className="mt-4 pt-4 border-t border-border">
           <nav className="space-y-1">
-            {navigationItems
+            {standaloneItems.slice(1)
               .filter(item => !item.adminOnly || isAdmin)
-              .map((item) => (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                  isActive(item.url)
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "hover:bg-secondary text-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                <span>{item.title}</span>
-              </NavLink>
-            ))}
+              .map((item) => renderNavItem(item))}
           </nav>
         </div>
       </div>
