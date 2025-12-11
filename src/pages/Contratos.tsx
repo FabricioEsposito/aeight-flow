@@ -22,8 +22,8 @@ interface Contrato {
   quantidade?: number;
   valor_unitario?: number;
   status: string;
-  clientes?: { razao_social: string; cnpj_cpf: string };
-  fornecedores?: { razao_social: string; cnpj_cpf: string };
+  clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
+  fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
 }
 
@@ -46,8 +46,8 @@ export default function Contratos() {
         .from('contratos')
         .select(`
           *,
-          clientes:cliente_id (razao_social, cnpj_cpf),
-          fornecedores:fornecedor_id (razao_social, cnpj_cpf),
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
+          fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
           parcelas_contrato (
             id,
             status

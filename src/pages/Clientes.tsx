@@ -25,6 +25,7 @@ interface Cliente {
   id: string;
   tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
   razao_social: string;
+  nome_fantasia?: string | null;
   cnpj_cpf: string;
   email?: string[] | null;
   telefone?: string;
@@ -164,6 +165,7 @@ export default function Clientes() {
   const filteredClientes = clientes.filter(cliente => {
     const matchesSearch = 
       cliente.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (cliente.nome_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (cliente.email && Array.isArray(cliente.email) && cliente.email.some(e => e.toLowerCase().includes(searchTerm.toLowerCase())));
     
@@ -299,7 +301,7 @@ export default function Clientes() {
                 <TableRow key={cliente.id}>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-medium">{cliente.razao_social}</span>
+                      <span className="font-medium">{cliente.nome_fantasia || cliente.razao_social}</span>
                       <span className="text-sm text-muted-foreground">
                         {formatCnpjCpf(cliente.cnpj_cpf)}
                       </span>

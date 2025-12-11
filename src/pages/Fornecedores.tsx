@@ -25,6 +25,7 @@ interface Fornecedor {
   id: string;
   tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
   razao_social: string;
+  nome_fantasia?: string | null;
   cnpj_cpf: string;
   email?: string[] | null;
   telefone?: string;
@@ -164,6 +165,7 @@ export default function Fornecedores() {
   const filteredFornecedores = fornecedores.filter(fornecedor => {
     const matchesSearch = 
       fornecedor.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (fornecedor.nome_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       fornecedor.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (fornecedor.email && Array.isArray(fornecedor.email) && fornecedor.email.some(e => e.toLowerCase().includes(searchTerm.toLowerCase())));
     
@@ -286,7 +288,8 @@ export default function Fornecedores() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fornecedor</TableHead>
+                <TableHead>Razão Social</TableHead>
+                <TableHead>Nome Fantasia</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>E-mail</TableHead>
@@ -305,6 +308,7 @@ export default function Fornecedores() {
                       </span>
                     </div>
                   </TableCell>
+                  <TableCell>{fornecedor.nome_fantasia || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={fornecedor.tipo_pessoa === 'juridica' ? 'default' : 'secondary'}>
                       {fornecedor.tipo_pessoa === 'juridica' ? 'PJ' : 'PF'}

@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Fornecedor {
   id: string;
   razao_social: string;
+  nome_fantasia: string | null;
   cnpj_cpf: string;
 }
 
@@ -26,7 +27,7 @@ export function FornecedorSelect({ value, onChange, disabled }: FornecedorSelect
     try {
       const { data, error } = await supabase
         .from('fornecedores')
-        .select('id, razao_social, cnpj_cpf')
+        .select('id, razao_social, nome_fantasia, cnpj_cpf')
         .eq('status', 'ativo')
         .order('razao_social');
 
@@ -41,7 +42,9 @@ export function FornecedorSelect({ value, onChange, disabled }: FornecedorSelect
 
   const options: SearchableSelectOption[] = fornecedores.map((fornecedor) => ({
     value: fornecedor.id,
-    label: `${fornecedor.razao_social} - ${fornecedor.cnpj_cpf}`,
+    label: fornecedor.nome_fantasia 
+      ? `${fornecedor.nome_fantasia} - ${fornecedor.cnpj_cpf}`
+      : `${fornecedor.razao_social} - ${fornecedor.cnpj_cpf}`,
   }));
 
   return (

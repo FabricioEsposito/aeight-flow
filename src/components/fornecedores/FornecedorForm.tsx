@@ -14,6 +14,7 @@ import { useCnpjApi } from "@/hooks/useCnpjApi";
 
 const fornecedorSchema = z.object({
   razao_social: z.string().min(1, "Razão Social é obrigatória"),
+  nome_fantasia: z.string().optional(),
   cnpj_cpf: z.string().min(1, "CNPJ/CPF é obrigatório"),
   tipo_pessoa: z.enum(["fisica", "juridica"]),
   endereco: z.string().optional(),
@@ -130,6 +131,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           .insert({
             cnpj_cpf: submitData.cnpj_cpf,
             razao_social: submitData.razao_social,
+            nome_fantasia: submitData.nome_fantasia,
             tipo_pessoa: submitData.tipo_pessoa,
             endereco: submitData.endereco,
             numero: submitData.numero,
@@ -248,14 +250,20 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="razao_social" className="text-xs">
-                {tipoPessoa === "juridica" ? "Razão Social" : "Nome Completo"}
-              </Label>
-              <Input {...register("razao_social")} />
-              {errors.razao_social && (
-                <span className="text-sm text-destructive">{errors.razao_social.message}</span>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="razao_social" className="text-xs">
+                  {tipoPessoa === "juridica" ? "Razão Social" : "Nome Completo"}
+                </Label>
+                <Input {...register("razao_social")} />
+                {errors.razao_social && (
+                  <span className="text-sm text-destructive">{errors.razao_social.message}</span>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="nome_fantasia" className="text-xs">Nome Fantasia</Label>
+                <Input {...register("nome_fantasia")} placeholder="Nome fantasia (opcional)" />
+              </div>
             </div>
           </div>
 

@@ -134,7 +134,7 @@ export default function Extrato() {
         .from('contas_receber')
         .select(`
           *,
-          clientes:cliente_id (razao_social, cnpj_cpf),
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
           parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor))
         `)
         .order('data_vencimento', { ascending: true });
@@ -151,7 +151,7 @@ export default function Extrato() {
         .from('contas_pagar')
         .select(`
           *,
-          fornecedores:fornecedor_id (razao_social, cnpj_cpf),
+          fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
           parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor))
         `)
         .order('data_vencimento', { ascending: true });
@@ -175,7 +175,7 @@ export default function Extrato() {
           status: r.status,
           origem: 'receber' as const,
           parcela_id: r.parcela_id,
-          cliente_fornecedor: r.clientes?.razao_social,
+          cliente_fornecedor: r.clientes?.nome_fantasia || r.clientes?.razao_social,
           numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
           servicos_contrato: r.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
@@ -216,7 +216,7 @@ export default function Extrato() {
           status: p.status,
           origem: 'pagar' as const,
           parcela_id: p.parcela_id,
-          cliente_fornecedor: p.fornecedores?.razao_social,
+          cliente_fornecedor: p.fornecedores?.nome_fantasia || p.fornecedores?.razao_social,
           numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
           servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,

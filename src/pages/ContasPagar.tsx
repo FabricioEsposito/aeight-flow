@@ -36,6 +36,7 @@ interface ContaPagar {
   centro_custo?: string;
   fornecedores?: {
     razao_social: string;
+    nome_fantasia: string | null;
     cnpj_cpf: string;
   };
   contratos?: {
@@ -94,6 +95,7 @@ export default function ContasPagar() {
           *,
           fornecedores:fornecedor_id (
             razao_social,
+            nome_fantasia,
             cnpj_cpf
           ),
           parcelas_contrato:parcela_id (
@@ -373,7 +375,8 @@ export default function ContasPagar() {
     }
   };
   const filteredContas = contas.filter(conta => {
-    const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) || (conta.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const fornecedorNome = conta.fornecedores?.nome_fantasia || conta.fornecedores?.razao_social || '';
+    const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) || fornecedorNome.toLowerCase().includes(searchTerm.toLowerCase());
     let matchesStatus = true;
     if (statusFilter !== 'todos') {
       if (statusFilter === 'vencido') {
@@ -572,7 +575,7 @@ export default function ContasPagar() {
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium">
-                        {conta.fornecedores?.razao_social || '-'}
+                        {conta.fornecedores?.nome_fantasia || conta.fornecedores?.razao_social || '-'}
                       </span>
                       {conta.fornecedores?.cnpj_cpf && (
                         <span className="text-sm text-muted-foreground">

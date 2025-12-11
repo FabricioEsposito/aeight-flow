@@ -47,6 +47,7 @@ interface ContaReceber {
   centro_custo?: string;
   clientes?: {
     razao_social: string;
+    nome_fantasia: string | null;
     cnpj_cpf: string;
   };
   contratos?: {
@@ -101,6 +102,7 @@ export default function ContasReceber() {
           *,
           clientes:cliente_id (
             razao_social,
+            nome_fantasia,
             cnpj_cpf
           ),
           parcelas_contrato:parcela_id (
@@ -372,8 +374,9 @@ export default function ContasReceber() {
   };
 
   const filteredContas = contas.filter(conta => {
+    const clienteNome = conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '';
     const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (conta.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
+                         clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesStatus = true;
     if (statusFilter !== 'todos') {
@@ -600,7 +603,7 @@ export default function ContasReceber() {
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium">
-                        {conta.clientes?.razao_social || '-'}
+                        {conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '-'}
                       </span>
                       {conta.clientes?.cnpj_cpf && (
                         <span className="text-sm text-muted-foreground">
