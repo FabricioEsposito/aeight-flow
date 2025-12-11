@@ -1,4 +1,4 @@
-import { Search, User, LogOut } from "lucide-react";
+import { Search, User, LogOut, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,12 +15,15 @@ import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { UserNotificationsDropdown } from "@/components/UserNotificationsDropdown";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function AppHeader() {
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { totalRemainingTime } = useSessionTimeout();
 
   const handleSignOut = async () => {
     await signOut();
@@ -29,6 +32,12 @@ export function AppHeader() {
       description: "Até logo!",
     });
     navigate('/auth');
+  };
+
+  const formatTime = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
   return (
@@ -44,6 +53,21 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Session Timer */}
+        {user && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{formatTime(totalRemainingTime)}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Tempo restante da sessão</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {isAdmin ? <NotificationsDropdown /> : <UserNotificationsDropdown />}
         
         <DropdownMenu>
