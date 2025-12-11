@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, Eye, MoreVertical, XCircle } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, MoreVertical, XCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -316,9 +316,19 @@ export default function Fornecedores() {
                   </TableCell>
                   <TableCell>{fornecedor.telefone || '-'}</TableCell>
                   <TableCell>
-                    {fornecedor.email && Array.isArray(fornecedor.email) && fornecedor.email.length > 0
-                      ? fornecedor.email.join(', ')
-                      : '-'}
+                    {fornecedor.email && Array.isArray(fornecedor.email) && fornecedor.email.length > 0 ? (
+                      <div className="flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate max-w-[120px]" title={fornecedor.email.join(', ')}>
+                          {fornecedor.email[0]}
+                        </span>
+                        {fornecedor.email.length > 1 && (
+                          <Badge variant="secondary" className="text-xs px-1 py-0">
+                            +{fornecedor.email.length - 1}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : '-'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={fornecedor.status === 'ativo' ? 'default' : 'destructive'}>
