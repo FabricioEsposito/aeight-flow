@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Search, TrendingUp, Calendar, DollarSign, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useExportReport } from '@/hooks/useExportReport';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
@@ -16,7 +18,7 @@ import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/Edit
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
 import { useUserRole } from '@/hooks/useUserRole';
 import { TablePagination } from '@/components/ui/table-pagination';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +95,48 @@ export default function ContasReceber() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
+  const { exportToPDF, exportToExcel } = useExportReport();
+
+  const getDateRangeLabel = () => {
+    const dateRange = getDateRange();
+    if (!dateRange) return 'Todo período';
+    return `${formatDate(dateRange.from?.toISOString().split('T')[0] || '')} - ${formatDate(dateRange.to?.toISOString().split('T')[0] || '')}`;
+  };
+
+  const exportColumns = [
+    { header: 'Data Vencimento', accessor: (row: ContaReceber) => formatDate(row.data_vencimento) },
+    { header: 'Data Competência', accessor: (row: ContaReceber) => formatDate(row.data_competencia) },
+    { header: 'Data Recebimento', accessor: (row: ContaReceber) => row.data_recebimento ? formatDate(row.data_recebimento) : '-' },
+    { header: 'Cliente', accessor: (row: ContaReceber) => row.clientes?.nome_fantasia || row.clientes?.razao_social || '-' },
+    { header: 'CNPJ/CPF', accessor: (row: ContaReceber) => formatCnpjCpf(row.clientes?.cnpj_cpf || '') },
+    { header: 'Descrição', accessor: 'descricao' },
+    { header: 'Valor Original', accessor: (row: ContaReceber) => formatCurrency(row.valor_original || row.valor) },
+    { header: 'Juros', accessor: (row: ContaReceber) => formatCurrency(row.juros || 0) },
+    { header: 'Multa', accessor: (row: ContaReceber) => formatCurrency(row.multa || 0) },
+    { header: 'Desconto', accessor: (row: ContaReceber) => formatCurrency(row.desconto || 0) },
+    { header: 'Valor Total', accessor: (row: ContaReceber) => formatCurrency(row.valor) },
+    { header: 'Status', accessor: (row: ContaReceber) => getStatusLabel(row.status, row.data_vencimento) },
+  ];
+
+  const handleExportPDF = () => {
+    exportToPDF({
+      title: 'Relatório de Contas a Receber',
+      filename: `contas-a-receber-${format(new Date(), 'yyyy-MM-dd')}`,
+      columns: exportColumns,
+      data: filteredContas,
+      dateRange: getDateRangeLabel(),
+    });
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: 'Contas a Receber',
+      filename: `contas-a-receber-${format(new Date(), 'yyyy-MM-dd')}`,
+      columns: exportColumns,
+      data: filteredContas,
+      dateRange: getDateRangeLabel(),
+    });
+  };
 
   const fetchContas = async () => {
     try {
@@ -491,6 +535,24 @@ export default function ContasReceber() {
           <h1 className="text-3xl font-bold text-foreground">Contas a Receber</h1>
           <p className="text-muted-foreground">Gerencie suas receitas e recebimentos</p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <FileDown className="w-4 h-4 mr-2" />
+              Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportPDF}>
+              <FileDown className="w-4 h-4 mr-2" />
+              Exportar PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportExcel}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Exportar Excel (.xls)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Cards de Resumo */}
