@@ -4,49 +4,83 @@ import { useAuth } from '@/contexts/AuthContext';
 const SESSION_TIMEOUT = 60 * 60 * 1000; // 60 minutes in milliseconds
 const WARNING_TIME = 2 * 60 * 1000; // 2 minutes before timeout
 
+interface SessionTimeoutState {
+  showWarning: boolean;
+  remainingTime: number;
+  totalRemainingTime: number;
+}
+
+// Shared state across hook instances
+let globalState: SessionTimeoutState = {
+  showWarning: false,
+  remainingTime: WARNING_TIME,
+  totalRemainingTime: SESSION_TIMEOUT
+};
+
+const listeners = new Set<(state: SessionTimeoutState) => void>();
+
+function notifyListeners() {
+  listeners.forEach(listener => listener({ ...globalState }));
+}
+
+let timeoutRef: NodeJS.Timeout | null = null;
+let warningTimeoutRef: NodeJS.Timeout | null = null;
+let countdownRef: NodeJS.Timeout | null = null;
+let totalCountdownRef: NodeJS.Timeout | null = null;
+let lastActivityTime = Date.now();
+let isInitialized = false;
+
+function clearAllTimers() {
+  if (timeoutRef) {
+    clearTimeout(timeoutRef);
+    timeoutRef = null;
+  }
+  if (warningTimeoutRef) {
+    clearTimeout(warningTimeoutRef);
+    warningTimeoutRef = null;
+  }
+  if (countdownRef) {
+    clearInterval(countdownRef);
+    countdownRef = null;
+  }
+  if (totalCountdownRef) {
+    clearInterval(totalCountdownRef);
+    totalCountdownRef = null;
+  }
+}
+
 export function useSessionTimeout() {
   const { user, signOut } = useAuth();
-  const [showWarning, setShowWarning] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(WARNING_TIME);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
-  const lastActivityRef = useRef<number>(Date.now());
+  const [state, setState] = useState<SessionTimeoutState>(globalState);
+  const signOutRef = useRef(signOut);
+  signOutRef.current = signOut;
 
-  const clearAllTimers = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    if (warningTimeoutRef.current) {
-      clearTimeout(warningTimeoutRef.current);
-      warningTimeoutRef.current = null;
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
+  useEffect(() => {
+    listeners.add(setState);
+    return () => {
+      listeners.delete(setState);
+    };
   }, []);
 
   const handleLogout = useCallback(async () => {
     clearAllTimers();
-    setShowWarning(false);
-    await signOut();
-  }, [signOut, clearAllTimers]);
+    globalState = { showWarning: false, remainingTime: WARNING_TIME, totalRemainingTime: 0 };
+    notifyListeners();
+    isInitialized = false;
+    await signOutRef.current();
+  }, []);
 
   const startCountdown = useCallback(() => {
-    setRemainingTime(WARNING_TIME);
-    countdownRef.current = setInterval(() => {
-      setRemainingTime(prev => {
-        const newTime = prev - 1000;
-        if (newTime <= 0) {
-          if (countdownRef.current) {
-            clearInterval(countdownRef.current);
-          }
-          return 0;
-        }
-        return newTime;
-      });
+    globalState.remainingTime = WARNING_TIME;
+    notifyListeners();
+    
+    countdownRef = setInterval(() => {
+      globalState.remainingTime = Math.max(0, globalState.remainingTime - 1000);
+      notifyListeners();
+      
+      if (globalState.remainingTime <= 0) {
+        if (countdownRef) clearInterval(countdownRef);
+      }
     }, 1000);
   }, []);
 
@@ -54,23 +88,37 @@ export function useSessionTimeout() {
     if (!user) return;
 
     clearAllTimers();
-    setShowWarning(false);
-    lastActivityRef.current = Date.now();
+    globalState = { 
+      showWarning: false, 
+      remainingTime: WARNING_TIME,
+      totalRemainingTime: SESSION_TIMEOUT 
+    };
+    lastActivityTime = Date.now();
+    notifyListeners();
+
+    // Total countdown for display
+    totalCountdownRef = setInterval(() => {
+      const elapsed = Date.now() - lastActivityTime;
+      globalState.totalRemainingTime = Math.max(0, SESSION_TIMEOUT - elapsed);
+      notifyListeners();
+    }, 1000);
 
     // Set warning timeout (58 minutes)
-    warningTimeoutRef.current = setTimeout(() => {
-      setShowWarning(true);
+    warningTimeoutRef = setTimeout(() => {
+      globalState.showWarning = true;
+      notifyListeners();
       startCountdown();
     }, SESSION_TIMEOUT - WARNING_TIME);
 
     // Set logout timeout (60 minutes)
-    timeoutRef.current = setTimeout(() => {
+    timeoutRef = setTimeout(() => {
       handleLogout();
     }, SESSION_TIMEOUT);
-  }, [user, clearAllTimers, handleLogout, startCountdown]);
+  }, [user, handleLogout, startCountdown]);
 
   const renewSession = useCallback(() => {
-    setShowWarning(false);
+    globalState.showWarning = false;
+    notifyListeners();
     resetTimer();
   }, [resetTimer]);
 
@@ -78,6 +126,7 @@ export function useSessionTimeout() {
   useEffect(() => {
     if (!user) {
       clearAllTimers();
+      isInitialized = false;
       return;
     }
 
@@ -85,10 +134,10 @@ export function useSessionTimeout() {
     
     const handleActivity = () => {
       // Only reset if warning is not showing
-      if (!showWarning) {
+      if (!globalState.showWarning) {
         const now = Date.now();
         // Throttle: only reset if more than 1 minute since last activity
-        if (now - lastActivityRef.current > 60000) {
+        if (now - lastActivityTime > 60000) {
           resetTimer();
         }
       }
@@ -98,20 +147,23 @@ export function useSessionTimeout() {
       window.addEventListener(event, handleActivity, { passive: true });
     });
 
-    // Start the timer
-    resetTimer();
+    // Start the timer only once
+    if (!isInitialized) {
+      isInitialized = true;
+      resetTimer();
+    }
 
     return () => {
       events.forEach(event => {
         window.removeEventListener(event, handleActivity);
       });
-      clearAllTimers();
     };
-  }, [user, showWarning, resetTimer, clearAllTimers]);
+  }, [user, resetTimer]);
 
   return {
-    showWarning,
-    remainingTime,
+    showWarning: state.showWarning,
+    remainingTime: state.remainingTime,
+    totalRemainingTime: state.totalRemainingTime,
     renewSession,
     handleLogout
   };
