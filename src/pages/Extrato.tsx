@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useExportReport } from '@/hooks/useExportReport';
 import { NovoLancamentoDialog } from '@/components/financeiro/NovoLancamentoDialog';
 import { ExtratoActionsDropdown } from '@/components/financeiro/ExtratoActionsDropdown';
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
@@ -76,6 +78,62 @@ export default function Extrato() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
+  const { exportToPDF, exportToExcel } = useExportReport();
+
+  const formatCurrencyExport = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatDateExport = (dateString: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
+  };
+
+  const getDateRangeLabel = () => {
+    const dateRange = getDateRange();
+    if (!dateRange) return 'Todo período';
+    return `${dateRange.start} - ${dateRange.end}`;
+  };
+
+  const exportColumns = [
+    { header: 'Data Vencimento', accessor: (row: LancamentoExtrato) => formatDateExport(row.data_vencimento) },
+    { header: 'Data Competência', accessor: (row: LancamentoExtrato) => formatDateExport(row.data_competencia) },
+    { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => formatDateExport(row.data_recebimento || row.data_pagamento || '') },
+    { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'Entrada' : 'Saída' },
+    { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
+    { header: 'Descrição', accessor: 'descricao' },
+    { header: 'Valor', accessor: (row: LancamentoExtrato) => formatCurrencyExport(row.valor) },
+    { header: 'Status', accessor: (row: LancamentoExtrato) => {
+      const status = getDisplayStatus(row);
+      if (status === 'recebido') return 'Recebido';
+      if (status === 'pago') return 'Pago';
+      if (status === 'vencido') return 'Vencido';
+      return 'Em dia';
+    }},
+  ];
+
+  const handleExportPDF = () => {
+    exportToPDF({
+      title: 'Relatório de Extrato e Conciliação',
+      filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
+      columns: exportColumns,
+      data: filteredLancamentos,
+      dateRange: getDateRangeLabel(),
+    });
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: 'Extrato e Conciliação',
+      filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
+      columns: exportColumns,
+      data: filteredLancamentos,
+      dateRange: getDateRangeLabel(),
+    });
+  };
 
   const getDateRange = () => {
     const today = new Date();
@@ -843,10 +901,24 @@ export default function Extrato() {
             <Plus className="w-4 h-4 mr-2" />
             Novo Lançamento
           </Button>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <FileDown className="w-4 h-4 mr-2" />
+                Exportar PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Exportar Excel (.xls)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

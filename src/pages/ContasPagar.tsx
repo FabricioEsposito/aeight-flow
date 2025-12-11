@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, TrendingDown, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Search, TrendingDown, Calendar, DollarSign, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useExportReport } from '@/hooks/useExportReport';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { ActionsDropdown } from '@/components/financeiro/ActionsDropdown';
@@ -16,7 +18,7 @@ import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/Edit
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
 import { useUserRole } from '@/hooks/useUserRole';
 import { TablePagination } from '@/components/ui/table-pagination';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 interface ContaPagar {
   id: string;
@@ -83,9 +85,49 @@ export default function ContasPagar() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const { exportToPDF, exportToExcel } = useExportReport();
+
+  const getDateRangeLabel = () => {
+    const dateRange = getDateRange();
+    if (!dateRange) return 'Todo período';
+    return `${formatDate(dateRange.from?.toISOString().split('T')[0] || '')} - ${formatDate(dateRange.to?.toISOString().split('T')[0] || '')}`;
+  };
+
+  const exportColumns = [
+    { header: 'Data Vencimento', accessor: (row: ContaPagar) => formatDate(row.data_vencimento) },
+    { header: 'Data Competência', accessor: (row: ContaPagar) => formatDate(row.data_competencia) },
+    { header: 'Data Pagamento', accessor: (row: ContaPagar) => row.data_pagamento ? formatDate(row.data_pagamento) : '-' },
+    { header: 'Fornecedor', accessor: (row: ContaPagar) => row.fornecedores?.nome_fantasia || row.fornecedores?.razao_social || '-' },
+    { header: 'CNPJ/CPF', accessor: (row: ContaPagar) => formatCnpjCpf(row.fornecedores?.cnpj_cpf || '') },
+    { header: 'Descrição', accessor: 'descricao' },
+    { header: 'Valor Original', accessor: (row: ContaPagar) => formatCurrency(row.valor_original || row.valor_parcela) },
+    { header: 'Juros', accessor: (row: ContaPagar) => formatCurrency(row.juros || 0) },
+    { header: 'Multa', accessor: (row: ContaPagar) => formatCurrency(row.multa || 0) },
+    { header: 'Desconto', accessor: (row: ContaPagar) => formatCurrency(row.desconto || 0) },
+    { header: 'Valor Total', accessor: (row: ContaPagar) => formatCurrency(row.valor_parcela) },
+    { header: 'Status', accessor: (row: ContaPagar) => getStatusLabel(row.status_pagamento, row.data_vencimento) },
+  ];
+
+  const handleExportPDF = () => {
+    exportToPDF({
+      title: 'Relatório de Contas a Pagar',
+      filename: `contas-a-pagar-${format(new Date(), 'yyyy-MM-dd')}`,
+      columns: exportColumns,
+      data: filteredContas,
+      dateRange: getDateRangeLabel(),
+    });
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: 'Contas a Pagar',
+      filename: `contas-a-pagar-${format(new Date(), 'yyyy-MM-dd')}`,
+      columns: exportColumns,
+      data: filteredContas,
+      dateRange: getDateRangeLabel(),
+    });
+  };
   const fetchContas = async () => {
     try {
       const {
@@ -473,8 +515,24 @@ export default function ContasPagar() {
           <h1 className="text-3xl font-bold text-foreground">Contas a Pagar</h1>
           <p className="text-muted-foreground">Gerencie suas despesas e pagamentos</p>
         </div>
-        
-        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <FileDown className="w-4 h-4 mr-2" />
+              Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportPDF}>
+              <FileDown className="w-4 h-4 mr-2" />
+              Exportar PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportExcel}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Exportar Excel (.xls)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Cards de Resumo */}
