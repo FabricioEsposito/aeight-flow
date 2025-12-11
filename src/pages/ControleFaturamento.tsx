@@ -19,6 +19,7 @@ interface Faturamento {
   data_vencimento: string;
   cliente_id: string;
   cliente_razao_social: string;
+  cliente_nome_fantasia: string | null;
   cliente_cnpj: string;
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
@@ -117,7 +118,7 @@ export default function ControleFaturamento() {
         .from('contas_receber')
         .select(`
           *,
-          clientes:cliente_id (razao_social, cnpj_cpf),
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
           parcelas_contrato:parcela_id (
             contrato_id,
             contratos:contrato_id (
@@ -174,6 +175,7 @@ export default function ControleFaturamento() {
           data_vencimento: item.data_vencimento,
           cliente_id: item.cliente_id,
           cliente_razao_social: item.clientes?.razao_social || 'N/A',
+          cliente_nome_fantasia: item.clientes?.nome_fantasia || null,
           cliente_cnpj: item.clientes?.cnpj_cpf || 'N/A',
           servicos_detalhes: servicosDetalhes,
           numero_nf: item.numero_nf,
@@ -277,6 +279,7 @@ export default function ControleFaturamento() {
   const filteredFaturamentos = faturamentos.filter(f => {
     const matchesSearch = 
       f.cliente_razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (f.cliente_nome_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       f.cliente_cnpj.includes(searchTerm) ||
       (f.numero_nf && f.numero_nf.includes(searchTerm)) ||
       (f.numero_contrato && f.numero_contrato.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -420,7 +423,8 @@ export default function ControleFaturamento() {
           <TableHeader>
             <TableRow>
               <TableHead>Data Competência</TableHead>
-              <TableHead>Cliente</TableHead>
+              <TableHead>Razão Social</TableHead>
+              <TableHead>Nome Fantasia</TableHead>
               <TableHead>Serviço</TableHead>
               <TableHead>CNPJ</TableHead>
               <TableHead>NF</TableHead>
@@ -434,7 +438,7 @@ export default function ControleFaturamento() {
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
@@ -443,6 +447,7 @@ export default function ControleFaturamento() {
                 <TableRow key={faturamento.id}>
                   <TableCell>{formatDate(faturamento.data_competencia)}</TableCell>
                   <TableCell className="font-medium">{faturamento.cliente_razao_social}</TableCell>
+                  <TableCell>{faturamento.cliente_nome_fantasia || '-'}</TableCell>
                   <TableCell>
                     {faturamento.servicos_detalhes.length > 0 
                       ? faturamento.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')

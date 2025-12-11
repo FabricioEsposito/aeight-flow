@@ -52,6 +52,7 @@ export type Database = {
           email: string[] | null
           endereco: string | null
           id: string
+          nome_fantasia: string | null
           numero: string | null
           razao_social: string
           status: Database["public"]["Enums"]["status_geral"]
@@ -70,6 +71,7 @@ export type Database = {
           email?: string[] | null
           endereco?: string | null
           id?: string
+          nome_fantasia?: string | null
           numero?: string | null
           razao_social: string
           status?: Database["public"]["Enums"]["status_geral"]
@@ -88,6 +90,7 @@ export type Database = {
           email?: string[] | null
           endereco?: string | null
           id?: string
+          nome_fantasia?: string | null
           numero?: string | null
           razao_social?: string
           status?: Database["public"]["Enums"]["status_geral"]
@@ -534,6 +537,7 @@ export type Database = {
           email: string[] | null
           endereco: string | null
           id: string
+          nome_fantasia: string | null
           numero: string | null
           razao_social: string
           status: Database["public"]["Enums"]["status_geral"]
@@ -552,6 +556,7 @@ export type Database = {
           email?: string[] | null
           endereco?: string | null
           id?: string
+          nome_fantasia?: string | null
           numero?: string | null
           razao_social: string
           status?: Database["public"]["Enums"]["status_geral"]
@@ -570,6 +575,7 @@ export type Database = {
           email?: string[] | null
           endereco?: string | null
           id?: string
+          nome_fantasia?: string | null
           numero?: string | null
           razao_social?: string
           status?: Database["public"]["Enums"]["status_geral"]

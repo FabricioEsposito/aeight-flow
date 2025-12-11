@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Cliente {
   id: string;
   razao_social: string;
+  nome_fantasia: string | null;
   cnpj_cpf: string;
 }
 
@@ -26,7 +27,7 @@ export function ClienteSelect({ value, onChange, disabled }: ClienteSelectProps)
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, razao_social, cnpj_cpf')
+        .select('id, razao_social, nome_fantasia, cnpj_cpf')
         .eq('status', 'ativo')
         .order('razao_social');
 
@@ -41,7 +42,9 @@ export function ClienteSelect({ value, onChange, disabled }: ClienteSelectProps)
 
   const options: SearchableSelectOption[] = clientes.map((cliente) => ({
     value: cliente.id,
-    label: `${cliente.razao_social} - ${cliente.cnpj_cpf}`,
+    label: cliente.nome_fantasia 
+      ? `${cliente.nome_fantasia} - ${cliente.cnpj_cpf}`
+      : `${cliente.razao_social} - ${cliente.cnpj_cpf}`,
   }));
 
   return (

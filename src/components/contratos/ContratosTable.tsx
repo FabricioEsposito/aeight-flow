@@ -31,8 +31,8 @@ interface Contrato {
   quantidade?: number;
   valor_unitario?: number;
   status: string;
-  clientes?: { razao_social: string; cnpj_cpf: string };
-  fornecedores?: { razao_social: string; cnpj_cpf: string };
+  clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
+  fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
 }
 
@@ -72,7 +72,8 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
         <TableHeader>
           <TableRow>
             <TableHead>Data</TableHead>
-            <TableHead>Cliente/Fornecedor</TableHead>
+            <TableHead>Razão Social</TableHead>
+            <TableHead>Nome Fantasia</TableHead>
             <TableHead>Contrato</TableHead>
             <TableHead>Descrição</TableHead>
             <TableHead>Valor Bruto</TableHead>
@@ -84,7 +85,7 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
         <TableBody>
           {contratos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                 Nenhum contrato encontrado
               </TableCell>
             </TableRow>
@@ -108,6 +109,11 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                           : formatCnpjCpf(contrato.fornecedores?.cnpj_cpf || '')}
                       </span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {contrato.tipo_contrato === 'venda' 
+                      ? contrato.clientes?.nome_fantasia || '-'
+                      : contrato.fornecedores?.nome_fantasia || '-'}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
