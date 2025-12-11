@@ -104,17 +104,17 @@ export default function ContasReceber() {
   };
 
   const exportColumns = [
-    { header: 'Data Vencimento', accessor: (row: ContaReceber) => formatDate(row.data_vencimento) },
-    { header: 'Data Competência', accessor: (row: ContaReceber) => formatDate(row.data_competencia) },
-    { header: 'Data Recebimento', accessor: (row: ContaReceber) => row.data_recebimento ? formatDate(row.data_recebimento) : '-' },
+    { header: 'Data Vencimento', accessor: (row: ContaReceber) => row.data_vencimento, type: 'date' as const },
+    { header: 'Data Competência', accessor: (row: ContaReceber) => row.data_competencia, type: 'date' as const },
+    { header: 'Data Recebimento', accessor: (row: ContaReceber) => row.data_recebimento || '', type: 'date' as const },
     { header: 'Cliente', accessor: (row: ContaReceber) => row.clientes?.nome_fantasia || row.clientes?.razao_social || '-' },
     { header: 'CNPJ/CPF', accessor: (row: ContaReceber) => formatCnpjCpf(row.clientes?.cnpj_cpf || '') },
     { header: 'Descrição', accessor: 'descricao' },
-    { header: 'Valor Original', accessor: (row: ContaReceber) => formatCurrency(row.valor_original || row.valor) },
-    { header: 'Juros', accessor: (row: ContaReceber) => formatCurrency(row.juros || 0) },
-    { header: 'Multa', accessor: (row: ContaReceber) => formatCurrency(row.multa || 0) },
-    { header: 'Desconto', accessor: (row: ContaReceber) => formatCurrency(row.desconto || 0) },
-    { header: 'Valor Total', accessor: (row: ContaReceber) => formatCurrency(row.valor) },
+    { header: 'Valor Original', accessor: (row: ContaReceber) => row.valor_original || row.valor, type: 'currency' as const },
+    { header: 'Juros', accessor: (row: ContaReceber) => row.juros || 0, type: 'currency' as const },
+    { header: 'Multa', accessor: (row: ContaReceber) => row.multa || 0, type: 'currency' as const },
+    { header: 'Desconto', accessor: (row: ContaReceber) => row.desconto || 0, type: 'currency' as const },
+    { header: 'Valor Total', accessor: (row: ContaReceber) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: ContaReceber) => getStatusLabel(row.status, row.data_vencimento) },
   ];
 

@@ -99,13 +99,13 @@ export default function Extrato() {
   };
 
   const exportColumns = [
-    { header: 'Data Vencimento', accessor: (row: LancamentoExtrato) => formatDateExport(row.data_vencimento) },
-    { header: 'Data Competência', accessor: (row: LancamentoExtrato) => formatDateExport(row.data_competencia) },
-    { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => formatDateExport(row.data_recebimento || row.data_pagamento || '') },
+    { header: 'Data Vencimento', accessor: (row: LancamentoExtrato) => row.data_vencimento, type: 'date' as const },
+    { header: 'Data Competência', accessor: (row: LancamentoExtrato) => row.data_competencia, type: 'date' as const },
+    { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => row.data_recebimento || row.data_pagamento || '', type: 'date' as const },
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'Entrada' : 'Saída' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
     { header: 'Descrição', accessor: 'descricao' },
-    { header: 'Valor', accessor: (row: LancamentoExtrato) => formatCurrencyExport(row.valor) },
+    { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
       const status = getDisplayStatus(row);
       if (status === 'recebido') return 'Recebido';

@@ -95,17 +95,17 @@ export default function ContasPagar() {
   };
 
   const exportColumns = [
-    { header: 'Data Vencimento', accessor: (row: ContaPagar) => formatDate(row.data_vencimento) },
-    { header: 'Data Competência', accessor: (row: ContaPagar) => formatDate(row.data_competencia) },
-    { header: 'Data Pagamento', accessor: (row: ContaPagar) => row.data_pagamento ? formatDate(row.data_pagamento) : '-' },
+    { header: 'Data Vencimento', accessor: (row: ContaPagar) => row.data_vencimento, type: 'date' as const },
+    { header: 'Data Competência', accessor: (row: ContaPagar) => row.data_competencia, type: 'date' as const },
+    { header: 'Data Pagamento', accessor: (row: ContaPagar) => row.data_pagamento || '', type: 'date' as const },
     { header: 'Fornecedor', accessor: (row: ContaPagar) => row.fornecedores?.nome_fantasia || row.fornecedores?.razao_social || '-' },
     { header: 'CNPJ/CPF', accessor: (row: ContaPagar) => formatCnpjCpf(row.fornecedores?.cnpj_cpf || '') },
     { header: 'Descrição', accessor: 'descricao' },
-    { header: 'Valor Original', accessor: (row: ContaPagar) => formatCurrency(row.valor_original || row.valor_parcela) },
-    { header: 'Juros', accessor: (row: ContaPagar) => formatCurrency(row.juros || 0) },
-    { header: 'Multa', accessor: (row: ContaPagar) => formatCurrency(row.multa || 0) },
-    { header: 'Desconto', accessor: (row: ContaPagar) => formatCurrency(row.desconto || 0) },
-    { header: 'Valor Total', accessor: (row: ContaPagar) => formatCurrency(row.valor_parcela) },
+    { header: 'Valor Original', accessor: (row: ContaPagar) => row.valor_original || row.valor_parcela, type: 'currency' as const },
+    { header: 'Juros', accessor: (row: ContaPagar) => row.juros || 0, type: 'currency' as const },
+    { header: 'Multa', accessor: (row: ContaPagar) => row.multa || 0, type: 'currency' as const },
+    { header: 'Desconto', accessor: (row: ContaPagar) => row.desconto || 0, type: 'currency' as const },
+    { header: 'Valor Total', accessor: (row: ContaPagar) => row.valor_parcela, type: 'currency' as const },
     { header: 'Status', accessor: (row: ContaPagar) => getStatusLabel(row.status_pagamento, row.data_vencimento) },
   ];
 

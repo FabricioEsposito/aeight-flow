@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 interface ExportColumn {
   header: string;
   accessor: string | ((row: any) => string | number);
+  type?: 'text' | 'number' | 'date' | 'currency';
 }
 
 interface ExportOptions {
@@ -19,16 +20,51 @@ interface ExportOptions {
 export const useExportReport = () => {
   const { toast } = useToast();
 
-  const formatValue = (row: any, accessor: string | ((row: any) => string | number)) => {
-    if (typeof accessor === 'function') {
-      return accessor(row);
+  const formatValue = (row: any, column: ExportColumn, forPdf = false) => {
+    const rawValue = typeof column.accessor === 'function' ? column.accessor(row) : row[column.accessor] ?? '';
+    
+    // Para PDF, formatar valores para exibição
+    if (forPdf) {
+      if (column.type === 'currency') {
+        const num = typeof rawValue === 'number' ? rawValue : parseNumericValue(rawValue);
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+      }
+      if (column.type === 'date') {
+        if (!rawValue) return '-';
+        const date = typeof rawValue === 'string' ? parseDateValue(rawValue) : rawValue;
+        return date ? date.toLocaleDateString('pt-BR') : '-';
+      }
     }
-    return row[accessor] ?? '';
+    
+    return rawValue;
+  };
+
+  const parseNumericValue = (value: string | number): number => {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    // Remove R$, espaços e converte vírgula para ponto
+    const cleaned = String(value).replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.').trim();
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const parseDateValue = (value: string): Date | null => {
+    if (!value) return null;
+    // Tenta parse de formato DD/MM/YYYY
+    const parts = value.split('/');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+    // Tenta parse de formato ISO
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
   };
 
   const exportToPDF = ({ title, filename, columns, data, dateRange }: ExportOptions) => {
     try {
-      const doc = new jsPDF();
+      // Orientação paisagem para melhor visualização
+      const doc = new jsPDF('landscape');
       
       // Título
       doc.setFontSize(18);
@@ -46,7 +82,7 @@ export const useExportReport = () => {
       
       // Tabela
       const tableData = data.map(row => 
-        columns.map(col => formatValue(row, col.accessor))
+        columns.map(col => formatValue(row, col, true))
       );
       
       autoTable(doc, {
@@ -85,11 +121,21 @@ export const useExportReport = () => {
 
   const exportToExcel = ({ title, filename, columns, data, dateRange }: ExportOptions) => {
     try {
-      // Preparar dados
+      // Preparar dados com tipos corretos
       const worksheetData = data.map(row => {
         const rowData: Record<string, any> = {};
         columns.forEach(col => {
-          rowData[col.header] = formatValue(row, col.accessor);
+          const rawValue = formatValue(row, col, false);
+          
+          // Formatar valor baseado no tipo
+          if (col.type === 'currency' || col.type === 'number') {
+            rowData[col.header] = parseNumericValue(rawValue);
+          } else if (col.type === 'date') {
+            const dateVal = parseDateValue(String(rawValue));
+            rowData[col.header] = dateVal || rawValue;
+          } else {
+            rowData[col.header] = rawValue;
+          }
         });
         return rowData;
       });
@@ -103,8 +149,27 @@ export const useExportReport = () => {
         wch: Math.max(col.header.length + 2, 15)
       }));
       ws['!cols'] = colWidths;
+
+      // Aplicar formato numérico com separador de milhares para colunas de moeda
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const colType = columns[C]?.type;
+        for (let R = range.s.r + 1; R <= range.e.r; R++) {
+          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+          const cell = ws[cellRef];
+          if (cell) {
+            if (colType === 'currency' || colType === 'number') {
+              cell.t = 'n'; // tipo numérico
+              cell.z = '#,##0.00'; // formato com separador de milhares
+            } else if (colType === 'date' && cell.v instanceof Date) {
+              cell.t = 'd'; // tipo data
+              cell.z = 'dd/mm/yyyy'; // formato data abreviada
+            }
+          }
+        }
+      }
       
-      XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 31)); // Excel limita nome da aba em 31 chars
+      XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 31));
       
       // Exportar
       XLSX.writeFile(wb, `${filename}.xls`);
