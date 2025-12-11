@@ -1025,6 +1025,7 @@ export default function Extrato() {
                 </TableHead>
                 <TableHead>Data de Vencimento</TableHead>
                 <TableHead>Data da Movimentação</TableHead>
+                <TableHead>Cliente/Fornecedor</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>NF</TableHead>
                 <TableHead>Serviço / Importância</TableHead>
@@ -1075,11 +1076,11 @@ export default function Extrato() {
                       }
                     </TableCell>
                     <TableCell>
+                      {lanc.cliente_fornecedor || '-'}
+                    </TableCell>
+                    <TableCell>
                       <div>
                         <p className="font-medium">{lanc.descricao}</p>
-                        {lanc.cliente_fornecedor && (
-                          <p className="text-xs text-muted-foreground">{lanc.cliente_fornecedor}</p>
-                        )}
                         {lanc.numero_contrato && (
                           <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
                         )}
