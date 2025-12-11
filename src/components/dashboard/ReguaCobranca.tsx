@@ -104,7 +104,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       // Buscar parcelas vencidas
       let query = supabase
         .from('contas_receber')
-        .select('*, clientes(id, razao_social, email)')
+        .select('*, clientes(id, razao_social, nome_fantasia, email)')
         .eq('status', 'pendente')
         .lt('data_vencimento', hoje)
         .gte('data_vencimento', dataInicio)
@@ -129,7 +129,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
           id: conta.id,
           descricao: conta.descricao,
           cliente_id: conta.clientes?.id || '',
-          cliente_nome: conta.clientes?.razao_social || 'N/A',
+          cliente_nome: conta.clientes?.nome_fantasia || conta.clientes?.razao_social || 'N/A',
           cliente_emails: conta.clientes?.email || [],
           data_vencimento: conta.data_vencimento,
           valor: conta.valor || 0,
