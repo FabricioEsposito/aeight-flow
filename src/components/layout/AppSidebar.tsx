@@ -72,8 +72,8 @@ export function AppSidebar() {
   const { isAdmin } = useUserRole();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    "Cadastro": true,
-    "Financeiro": true
+    "Cadastro": false,
+    "Financeiro": false
   });
 
   const isActive = (path: string) => {
