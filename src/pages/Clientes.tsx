@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, MoreVertical, XCircle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, MoreVertical, XCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -314,9 +314,19 @@ export default function Clientes() {
                   </TableCell>
                   <TableCell>{cliente.telefone || '-'}</TableCell>
                   <TableCell>
-                    {cliente.email && Array.isArray(cliente.email) && cliente.email.length > 0
-                      ? cliente.email.join(', ')
-                      : '-'}
+                    {cliente.email && Array.isArray(cliente.email) && cliente.email.length > 0 ? (
+                      <div className="flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate max-w-[120px]" title={cliente.email.join(', ')}>
+                          {cliente.email[0]}
+                        </span>
+                        {cliente.email.length > 1 && (
+                          <Badge variant="secondary" className="text-xs px-1 py-0">
+                            +{cliente.email.length - 1}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : '-'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={cliente.status === 'ativo' ? 'default' : 'destructive'}>
