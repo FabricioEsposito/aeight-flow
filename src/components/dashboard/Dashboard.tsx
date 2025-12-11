@@ -180,7 +180,7 @@ export function Dashboard() {
       // Fetch Contas a Receber para Faturamento (pela data de competência)
       let contasReceberQuery = supabase
         .from('contas_receber')
-        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo, cliente_id, clientes(razao_social)');
+        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo, cliente_id, clientes(razao_social, nome_fantasia)');
       
       if (dateRange) {
         contasReceberQuery = contasReceberQuery
@@ -347,7 +347,8 @@ export function Dashboard() {
         ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago'))
         .reduce((acc: Record<string, { cliente: string; valor: number }>, c) => {
           const clienteId = c.cliente_id || 'sem_cliente';
-          const clienteNome = (c.clientes as any)?.razao_social || 'Sem Cliente';
+          const clienteData = c.clientes as any;
+          const clienteNome = clienteData?.nome_fantasia || clienteData?.razao_social || 'Sem Cliente';
           if (!acc[clienteId]) {
             acc[clienteId] = { cliente: clienteNome, valor: 0 };
           }

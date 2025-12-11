@@ -13,6 +13,7 @@ import { ClienteDetalhesDialog } from './ClienteDetalhesDialog';
 interface ClienteAnalise {
   id: string;
   razao_social: string;
+  nome_fantasia: string | null;
   aging_medio: number;
   total_a_receber: number;
   percentual_receita: number;
@@ -69,7 +70,7 @@ export function AnaliseCreditoClientes() {
       // Buscar todas as contas a receber (todo o período)
       let query = supabase
         .from('contas_receber')
-        .select('*, clientes(id, razao_social)')
+        .select('*, clientes(id, razao_social, nome_fantasia)')
         .eq('status', 'pendente');
 
       if (selectedCentroCusto && selectedCentroCusto !== 'todos') {
@@ -98,6 +99,7 @@ export function AnaliseCreditoClientes() {
           clientesMap.set(clienteId, {
             id: clienteId,
             razao_social: conta.clientes.razao_social,
+            nome_fantasia: conta.clientes.nome_fantasia,
             total_a_receber: 0,
             soma_aging: 0,
             count_parcelas: 0,
@@ -124,6 +126,7 @@ export function AnaliseCreditoClientes() {
           return {
             id: cliente.id,
             razao_social: cliente.razao_social,
+            nome_fantasia: cliente.nome_fantasia,
             aging_medio: Math.round(agingMedio),
             total_a_receber: cliente.total_a_receber,
             percentual_receita: percentualReceita,
@@ -149,13 +152,13 @@ export function AnaliseCreditoClientes() {
   };
 
   const handleViewDetails = (cliente: ClienteAnalise) => {
-    setSelectedCliente({ id: cliente.id, nome: cliente.razao_social });
+    setSelectedCliente({ id: cliente.id, nome: cliente.nome_fantasia || cliente.razao_social });
     setDialogOpen(true);
   };
 
   // Filtrar clientes pelo termo de busca
   const filteredClientes = clientes.filter(cliente =>
-    cliente.razao_social.toLowerCase().includes(searchTerm.toLowerCase())
+    (cliente.nome_fantasia || cliente.razao_social).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -229,7 +232,7 @@ export function AnaliseCreditoClientes() {
                 ) : (
                   filteredClientes.map((cliente) => (
                     <TableRow key={cliente.id}>
-                      <TableCell className="font-medium">{cliente.razao_social}</TableCell>
+                      <TableCell className="font-medium">{cliente.nome_fantasia || cliente.razao_social}</TableCell>
                       <TableCell className="text-center">
                         {cliente.aging_medio} dias
                       </TableCell>
