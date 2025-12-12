@@ -64,7 +64,11 @@ const allNavigationItems = [
   ...navigationGroups.flatMap(g => g.items)
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onNavigate?: () => void;
+}
+
+export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
@@ -98,10 +102,15 @@ export function AppSidebar() {
     isFavorite(item.url) && (!('adminOnly' in item) || !item.adminOnly || isAdmin)
   );
 
+  const handleNavigation = () => {
+    onNavigate?.();
+  };
+
   const renderNavItem = (item: typeof standaloneItems[0], showFavoriteStar = true) => (
     <div key={item.title} className="flex items-center gap-1 group">
       <NavLink
         to={item.url}
+        onClick={handleNavigation}
         className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
           isActive(item.url)
             ? "bg-primary text-primary-foreground font-medium"
@@ -132,7 +141,7 @@ export function AppSidebar() {
   );
 
   return (
-    <aside className="w-64 border-r border-border bg-card flex flex-col fixed left-0 top-0 h-screen">
+    <aside className="w-64 border-r border-border bg-card flex flex-col h-full md:fixed md:left-0 md:top-0 md:h-screen">
       <header className="p-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
