@@ -182,198 +182,201 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="border-b bg-muted/30 py-2 px-4">
+    <Card className="w-full flex flex-col max-h-[80vh]">
+      <CardHeader className="border-b bg-muted/30 py-2 px-4 flex-shrink-0">
         <CardTitle className="text-base font-bold">
           {cliente ? "Editar Cliente" : "Novo Cliente"}
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-3 pb-3 px-4">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          {/* Seção: Informações Básicas */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-foreground border-b pb-1">
-              Informações Básicas
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="tipo_pessoa" className="text-xs">Tipo de Pessoa</Label>
-                <Select
-                  value={tipoPessoa}
-                  onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica" | "internacional")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
-                    <SelectItem value="fisica">Pessoa Física</SelectItem>
-                    <SelectItem value="internacional">Internacional</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {tipoPessoa !== "internacional" && (
+      <CardContent className="pt-3 pb-3 px-4 flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          {/* Área com scroll */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+            {/* Seção: Informações Básicas */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-foreground border-b pb-1">
+                Informações Básicas
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label htmlFor="cnpj_cpf" className="text-xs">
-                    {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      {...register("cnpj_cpf")}
-                      placeholder={tipoPessoa === "juridica" ? "00.000.000/0000-00" : "000.000.000-00"}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const formatted = tipoPessoa === "juridica" 
-                          ? formatCNPJ(value)
-                          : formatCPF(value);
-                        setValue("cnpj_cpf", formatted);
-                      }}
-                    />
-                    {tipoPessoa === "juridica" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={buscarDadosCNPJ}
-                        disabled={isSearchingCNPJ}
-                        title="Buscar dados pelo CNPJ"
-                      >
-                        {isSearchingCNPJ ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Search className="w-4 h-4" />
-                        )}
-                      </Button>
+                  <Label htmlFor="tipo_pessoa" className="text-xs">Tipo de Pessoa</Label>
+                  <Select
+                    value={tipoPessoa}
+                    onValueChange={(value) => setValue("tipo_pessoa", value as "fisica" | "juridica" | "internacional")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
+                      <SelectItem value="fisica">Pessoa Física</SelectItem>
+                      <SelectItem value="internacional">Internacional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {tipoPessoa !== "internacional" && (
+                  <div className="space-y-1">
+                    <Label htmlFor="cnpj_cpf" className="text-xs">
+                      {tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        {...register("cnpj_cpf")}
+                        placeholder={tipoPessoa === "juridica" ? "00.000.000/0000-00" : "000.000.000-00"}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const formatted = tipoPessoa === "juridica" 
+                            ? formatCNPJ(value)
+                            : formatCPF(value);
+                          setValue("cnpj_cpf", formatted);
+                        }}
+                      />
+                      {tipoPessoa === "juridica" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={buscarDadosCNPJ}
+                          disabled={isSearchingCNPJ}
+                          title="Buscar dados pelo CNPJ"
+                        >
+                          {isSearchingCNPJ ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Search className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    {errors.cnpj_cpf && (
+                      <span className="text-sm text-destructive">{errors.cnpj_cpf.message}</span>
                     )}
                   </div>
-                  {errors.cnpj_cpf && (
-                    <span className="text-sm text-destructive">{errors.cnpj_cpf.message}</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="razao_social" className="text-xs">
-                  {tipoPessoa === "juridica" ? "Razão Social" : tipoPessoa === "internacional" ? "Nome da Empresa" : "Nome Completo"}
-                </Label>
-                <Input {...register("razao_social")} />
-                {errors.razao_social && (
-                  <span className="text-sm text-destructive">{errors.razao_social.message}</span>
                 )}
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="nome_fantasia" className="text-xs">Nome Fantasia</Label>
-                <Input {...register("nome_fantasia")} placeholder="Nome fantasia (opcional)" />
-              </div>
-            </div>
-          </div>
 
-          {/* Seção: Endereço */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-foreground border-b pb-1">
-              Endereço
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <div className="md:col-span-3 space-y-1">
-                <Label htmlFor="endereco" className="text-xs">Logradouro</Label>
-                <Input {...register("endereco")} placeholder="Rua, Avenida..." className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="numero" className="text-xs">Número</Label>
-                <Input {...register("numero")} className="h-8 text-sm" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="complemento" className="text-xs">Complemento</Label>
-                <Input {...register("complemento")} placeholder="Apto, Sala..." className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="bairro" className="text-xs">Bairro</Label>
-                <Input {...register("bairro")} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="cep" className="text-xs">CEP</Label>
-                <Input
-                  {...register("cep")}
-                  placeholder="00000-000"
-                  className="h-8 text-sm"
-                  onChange={(e) => {
-                    const formatted = formatCEP(e.target.value);
-                    setValue("cep", formatted);
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="cidade" className="text-xs">Cidade</Label>
-                <Input {...register("cidade")} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="uf" className="text-xs">UF</Label>
-                <Input {...register("uf")} maxLength={2} placeholder="SP" className="h-8 text-sm" />
-              </div>
-            </div>
-          </div>
-
-          {/* Seção: Contato */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-foreground border-b pb-1">
-              Contato
-            </h3>
-            <div className="space-y-2">
-              <div className="space-y-1">
-                <Label htmlFor="telefone" className="text-xs">Telefone</Label>
-                <Input {...register("telefone")} placeholder="(11) 99999-9999" className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">E-mails</Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={addEmail}
-                    className="h-6 text-xs"
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Adicionar E-mail
-                  </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="razao_social" className="text-xs">
+                    {tipoPessoa === "juridica" ? "Razão Social" : tipoPessoa === "internacional" ? "Nome da Empresa" : "Nome Completo"}
+                  </Label>
+                  <Input {...register("razao_social")} />
+                  {errors.razao_social && (
+                    <span className="text-sm text-destructive">{errors.razao_social.message}</span>
+                  )}
                 </div>
-                {emails.map((email, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => updateEmail(index, e.target.value)}
-                      placeholder="exemplo@email.com"
-                      className="h-8 text-sm"
-                    />
-                    {emails.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeEmail(index)}
-                        className="h-8 w-8"
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    )}
+                <div className="space-y-1">
+                  <Label htmlFor="nome_fantasia" className="text-xs">Nome Fantasia</Label>
+                  <Input {...register("nome_fantasia")} placeholder="Nome fantasia (opcional)" />
+                </div>
+              </div>
+            </div>
+
+            {/* Seção: Endereço */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-foreground border-b pb-1">
+                Endereço
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <div className="md:col-span-3 space-y-1">
+                  <Label htmlFor="endereco" className="text-xs">Logradouro</Label>
+                  <Input {...register("endereco")} placeholder="Rua, Avenida..." className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="numero" className="text-xs">Número</Label>
+                  <Input {...register("numero")} className="h-8 text-sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="complemento" className="text-xs">Complemento</Label>
+                  <Input {...register("complemento")} placeholder="Apto, Sala..." className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="bairro" className="text-xs">Bairro</Label>
+                  <Input {...register("bairro")} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cep" className="text-xs">CEP</Label>
+                  <Input
+                    {...register("cep")}
+                    placeholder="00000-000"
+                    className="h-8 text-sm"
+                    onChange={(e) => {
+                      const formatted = formatCEP(e.target.value);
+                      setValue("cep", formatted);
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="cidade" className="text-xs">Cidade</Label>
+                  <Input {...register("cidade")} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="uf" className="text-xs">UF</Label>
+                  <Input {...register("uf")} maxLength={2} placeholder="SP" className="h-8 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            {/* Seção: Contato */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-foreground border-b pb-1">
+                Contato
+              </h3>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label htmlFor="telefone" className="text-xs">Telefone</Label>
+                  <Input {...register("telefone")} placeholder="(11) 99999-9999" className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">E-mails</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={addEmail}
+                      className="h-6 text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Adicionar E-mail
+                    </Button>
                   </div>
-                ))}
+                  {emails.map((email, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => updateEmail(index, e.target.value)}
+                        placeholder="exemplo@email.com"
+                        className="h-8 text-sm"
+                      />
+                      {emails.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeEmail(index)}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Botões de Ação */}
-          <div className="flex justify-end gap-2 pt-2 border-t">
+          {/* Botões de Ação - Fixos */}
+          <div className="flex justify-end gap-2 pt-3 mt-3 border-t flex-shrink-0 bg-card">
             <Button type="button" variant="outline" onClick={onClose} className="min-w-[100px] h-8 text-sm">
               Cancelar
             </Button>
