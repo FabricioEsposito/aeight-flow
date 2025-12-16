@@ -7,9 +7,10 @@ interface CentroCustoSelectProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
+  showAllOption?: boolean;
 }
 
-export default function CentroCustoSelect({ value, onValueChange, placeholder = "Selecione o centro de custo" }: CentroCustoSelectProps) {
+export default function CentroCustoSelect({ value, onValueChange, placeholder = "Selecione o centro de custo", showAllOption = false }: CentroCustoSelectProps) {
   const [centrosCusto, setCentrosCusto] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -40,10 +41,13 @@ export default function CentroCustoSelect({ value, onValueChange, placeholder = 
     }
   };
 
-  const options: SearchableSelectOption[] = centrosCusto.map((cc) => ({
-    value: cc.id,
-    label: `${cc.codigo} - ${cc.descricao}`,
-  }));
+  const options: SearchableSelectOption[] = [
+    ...(showAllOption ? [{ value: "", label: "Todos os centros de custo" }] : []),
+    ...centrosCusto.map((cc) => ({
+      value: cc.id,
+      label: `${cc.codigo} - ${cc.descricao}`,
+    })),
+  ];
 
   return (
     <SearchableSelect
