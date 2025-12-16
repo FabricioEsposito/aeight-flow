@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -186,17 +185,16 @@ export default function Vendedores() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Vendedores</h1>
@@ -380,6 +378,5 @@ export default function Vendedores() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </AppLayout>
   );
 }

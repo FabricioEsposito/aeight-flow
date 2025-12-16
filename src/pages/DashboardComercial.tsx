@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -173,17 +172,16 @@ export default function DashboardComercial() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="p-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Dashboard Comercial</h1>
@@ -388,6 +386,5 @@ export default function DashboardComercial() {
           </Card>
         </div>
       </div>
-    </AppLayout>
   );
 }
