@@ -37,6 +37,7 @@ interface VendaVendedor {
 }
 
 interface CentroCusto {
+  id: string;
   codigo: string;
   descricao: string;
 }
@@ -109,7 +110,7 @@ export default function DashboardComercial() {
       // Fetch centros_custo
       const centrosCustoRes = await supabase
         .from("centros_custo")
-        .select("codigo, descricao");
+        .select("id, codigo, descricao");
 
       // Fetch vendedores
       let vendedoresQuery = supabase.from("vendedores").select("*").eq("status", "ativo");
@@ -415,7 +416,7 @@ export default function DashboardComercial() {
                   <tbody>
                     {vendasPorVendedor.map((v) => {
                       const percentMeta = v.meta > 0 ? (v.valor / v.meta) * 100 : 0;
-                      const centroCusto = centrosCusto.find((c) => c.codigo === v.centro_custo);
+                      const centroCusto = centrosCusto.find((c) => c.id === v.centro_custo);
                       const centroCustoLabel = centroCusto 
                         ? `${centroCusto.codigo} - ${centroCusto.descricao}` 
                         : v.centro_custo || "-";
