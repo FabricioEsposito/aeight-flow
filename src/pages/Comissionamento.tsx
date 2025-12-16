@@ -552,6 +552,7 @@ export default function Comissionamento() {
                 value={selectedCentroCusto}
                 onValueChange={setSelectedCentroCusto}
                 placeholder="Todos os centros de custo"
+                showAllOption
               />
             </div>
           </div>
