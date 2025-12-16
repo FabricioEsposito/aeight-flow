@@ -3,17 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Users, Target, DollarSign } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
+import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
 
 interface Vendedor {
   id: string;
   nome: string;
   meta: number;
   percentual_comissao: number;
+  centro_custo: string | null;
 }
 
 interface Contrato {
@@ -22,6 +24,7 @@ interface Contrato {
   valor_total: number;
   cliente_id: string | null;
   created_at: string;
+  centro_custo: string | null;
   clientes?: { razao_social: string; nome_fantasia: string | null } | null;
 }
 
@@ -37,50 +40,89 @@ interface VendaCliente {
   valor: number;
 }
 
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 export default function DashboardComercial() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [loading, setLoading] = useState(true);
-  const [periodo, setPeriodo] = useState("mes_atual");
+  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
     fetchData();
-  }, [periodo]);
+  }, [dateRangePreset, customDateRange, selectedCentroCusto]);
 
-  const getDateRange = () => {
-    const now = new Date();
-    switch (periodo) {
-      case "mes_atual":
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-      case "mes_anterior":
-        const lastMonth = subMonths(now, 1);
-        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-      case "ano_atual":
-        return { start: startOfYear(now), end: endOfYear(now) };
+  const getDateRange = (): { start: Date; end: Date } | null => {
+    const today = new Date();
+
+    if (dateRangePreset === 'periodo-personalizado' && customDateRange.from && customDateRange.to) {
+      return { start: customDateRange.from, end: customDateRange.to };
+    }
+
+    switch (dateRangePreset) {
+      case 'hoje':
+        return { start: today, end: today };
+      case 'esta-semana':
+        return { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
+      case 'este-mes':
+        return { start: startOfMonth(today), end: endOfMonth(today) };
+      case 'este-ano':
+        return { start: startOfYear(today), end: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { start: subDays(today, 30), end: today };
+      case 'ultimos-12-meses':
+        return { start: subMonths(today, 12), end: today };
+      case 'todo-periodo':
+        return null;
       default:
-        return { start: startOfMonth(now), end: endOfMonth(now) };
+        return { start: startOfMonth(today), end: endOfMonth(today) };
+    }
+  };
+
+  const handleDateRangeChange = (preset: DateRangePreset, range?: DateRange) => {
+    setDateRangePreset(preset);
+    if (range) {
+      setCustomDateRange(range);
     }
   };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { start, end } = getDateRange();
-      const startStr = format(start, "yyyy-MM-dd");
-      const endStr = format(end, "yyyy-MM-dd");
+      const dateRange = getDateRange();
 
-      const [vendedoresRes, contratosRes] = await Promise.all([
-        supabase.from("vendedores").select("*").eq("status", "ativo"),
-        supabase
-          .from("contratos")
-          .select("id, vendedor_responsavel, valor_total, cliente_id, created_at, clientes(razao_social, nome_fantasia)")
-          .gte("created_at", startStr)
-          .lte("created_at", endStr + "T23:59:59")
-          .eq("tipo_contrato", "venda"),
-      ]);
+      // Fetch vendedores
+      let vendedoresQuery = supabase.from("vendedores").select("*").eq("status", "ativo");
+      if (selectedCentroCusto) {
+        vendedoresQuery = vendedoresQuery.eq("centro_custo", selectedCentroCusto);
+      }
+      const vendedoresRes = await vendedoresQuery;
+
+      // Fetch contratos
+      let contratosQuery = supabase
+        .from("contratos")
+        .select("id, vendedor_responsavel, valor_total, cliente_id, created_at, centro_custo, clientes(razao_social, nome_fantasia)")
+        .eq("tipo_contrato", "venda");
+
+      if (dateRange) {
+        const startStr = format(dateRange.start, "yyyy-MM-dd");
+        const endStr = format(dateRange.end, "yyyy-MM-dd");
+        contratosQuery = contratosQuery.gte("created_at", startStr).lte("created_at", endStr + "T23:59:59");
+      }
+
+      if (selectedCentroCusto) {
+        contratosQuery = contratosQuery.eq("centro_custo", selectedCentroCusto);
+      }
+
+      const contratosRes = await contratosQuery;
 
       if (vendedoresRes.error) throw vendedoresRes.error;
       if (contratosRes.error) throw contratosRes.error;
@@ -189,18 +231,19 @@ export default function DashboardComercial() {
               Acompanhe o desempenho da equipe de vendas
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Label>Período:</Label>
-            <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mes_atual">Mês Atual</SelectItem>
-                <SelectItem value="mes_anterior">Mês Anterior</SelectItem>
-                <SelectItem value="ano_atual">Ano Atual</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-4">
+            <DateRangeFilter
+              value={dateRangePreset}
+              onChange={handleDateRangeChange}
+              customRange={customDateRange}
+            />
+            <div className="w-[250px]">
+              <CentroCustoSelect
+                value={selectedCentroCusto}
+                onValueChange={setSelectedCentroCusto}
+                placeholder="Todos os centros de custo"
+              />
+            </div>
           </div>
         </div>
 
