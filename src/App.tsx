@@ -27,6 +27,9 @@ import Perfil from "./pages/Perfil";
 import Configuracoes from "./pages/Configuracoes";
 import Solicitacoes from "./pages/Solicitacoes";
 import ControleFaturamento from "./pages/ControleFaturamento";
+import Vendedores from "./pages/Vendedores";
+import DashboardComercial from "./pages/DashboardComercial";
+import Comissionamento from "./pages/Comissionamento";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +64,9 @@ const App = () => (
               <Route path="/solicitacoes" element={<ProtectedRoute><Solicitacoes /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+              <Route path="/vendedores" element={<ProtectedRoute><Vendedores /></ProtectedRoute>} />
+              <Route path="/dashboard-comercial" element={<ProtectedRoute><DashboardComercial /></ProtectedRoute>} />
+              <Route path="/comissionamento" element={<ProtectedRoute><Comissionamento /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SessionTimeoutProvider>

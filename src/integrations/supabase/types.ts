@@ -972,6 +972,65 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes_comissao: {
+        Row: {
+          ano_referencia: number
+          aprovador_id: string | null
+          created_at: string
+          data_aprovacao: string | null
+          id: string
+          mes_referencia: number
+          motivo_rejeicao: string | null
+          percentual_comissao: number
+          solicitante_id: string
+          status: string
+          updated_at: string
+          valor_comissao: number
+          valor_total_vendas: number
+          vendedor_id: string
+        }
+        Insert: {
+          ano_referencia: number
+          aprovador_id?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          id?: string
+          mes_referencia: number
+          motivo_rejeicao?: string | null
+          percentual_comissao?: number
+          solicitante_id: string
+          status?: string
+          updated_at?: string
+          valor_comissao?: number
+          valor_total_vendas?: number
+          vendedor_id: string
+        }
+        Update: {
+          ano_referencia?: number
+          aprovador_id?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          id?: string
+          mes_referencia?: number
+          motivo_rejeicao?: string | null
+          percentual_comissao?: number
+          solicitante_id?: string
+          status?: string
+          updated_at?: string
+          valor_comissao?: number
+          valor_total_vendas?: number
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_comissao_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_favorites: {
         Row: {
           created_at: string
@@ -1011,6 +1070,39 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendedores: {
+        Row: {
+          centro_custo: string | null
+          created_at: string
+          id: string
+          meta: number
+          nome: string
+          percentual_comissao: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          centro_custo?: string | null
+          created_at?: string
+          id?: string
+          meta?: number
+          nome: string
+          percentual_comissao?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          centro_custo?: string | null
+          created_at?: string
+          id?: string
+          meta?: number
+          nome?: string
+          percentual_comissao?: number
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }

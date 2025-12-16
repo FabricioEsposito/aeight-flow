@@ -16,7 +16,10 @@ import {
   ClipboardList,
   Receipt,
   Star,
-  ChevronDown
+  ChevronDown,
+  ShoppingCart,
+  DollarSign,
+  UserCheck
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,6 +39,14 @@ const navigationGroups = [
       { title: "Fornecedores", url: "/fornecedores", icon: Truck },
       { title: "Contratos", url: "/contratos", icon: FileText },
       { title: "Serviços", url: "/servicos", icon: Settings },
+    ]
+  },
+  {
+    name: "Comercial",
+    items: [
+      { title: "Dashboard Comercial", url: "/dashboard-comercial", icon: ShoppingCart },
+      { title: "Vendedores", url: "/vendedores", icon: UserCheck },
+      { title: "Comissionamento", url: "/comissionamento", icon: DollarSign },
     ]
   },
   {
