@@ -14,13 +14,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, X, Send, Eye } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
+import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
 
 interface Vendedor {
   id: string;
   nome: string;
   percentual_comissao: number;
+  centro_custo: string | null;
 }
 
 interface SolicitacaoComissao {
@@ -46,6 +49,11 @@ interface ParcelaPaga {
   data_recebimento: string;
   cliente: string;
   contrato_numero: string;
+}
+
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
 }
 
 const meses = [
@@ -75,6 +83,11 @@ export default function Comissionamento() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   
+  // Filters for solicitações
+  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>("");
+  
   // Dialogs
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedSolicitacao, setSelectedSolicitacao] = useState<SolicitacaoComissao | null>(null);
@@ -93,7 +106,7 @@ export default function Comissionamento() {
   useEffect(() => {
     fetchVendedores();
     fetchSolicitacoes();
-  }, []);
+  }, [dateRangePreset, customDateRange, selectedCentroCusto]);
 
   useEffect(() => {
     if (selectedVendedor && selectedMes && selectedAno) {
@@ -101,13 +114,53 @@ export default function Comissionamento() {
     }
   }, [selectedVendedor, selectedMes, selectedAno]);
 
+  const getDateRange = (): { start: Date; end: Date } | null => {
+    const today = new Date();
+
+    if (dateRangePreset === 'periodo-personalizado' && customDateRange.from && customDateRange.to) {
+      return { start: customDateRange.from, end: customDateRange.to };
+    }
+
+    switch (dateRangePreset) {
+      case 'hoje':
+        return { start: today, end: today };
+      case 'esta-semana':
+        return { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
+      case 'este-mes':
+        return { start: startOfMonth(today), end: endOfMonth(today) };
+      case 'este-ano':
+        return { start: startOfYear(today), end: endOfYear(today) };
+      case 'ultimos-30-dias':
+        return { start: subDays(today, 30), end: today };
+      case 'ultimos-12-meses':
+        return { start: subMonths(today, 12), end: today };
+      case 'todo-periodo':
+        return null;
+      default:
+        return { start: startOfMonth(today), end: endOfMonth(today) };
+    }
+  };
+
+  const handleDateRangeChange = (preset: DateRangePreset, range?: DateRange) => {
+    setDateRangePreset(preset);
+    if (range) {
+      setCustomDateRange(range);
+    }
+  };
+
   const fetchVendedores = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vendedores")
-        .select("id, nome, percentual_comissao")
+        .select("id, nome, percentual_comissao, centro_custo")
         .eq("status", "ativo")
         .order("nome");
+
+      if (selectedCentroCusto) {
+        query = query.eq("centro_custo", selectedCentroCusto);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setVendedores(data || []);
@@ -118,28 +171,47 @@ export default function Comissionamento() {
 
   const fetchSolicitacoes = async () => {
     try {
-      const { data, error } = await supabase
+      const dateRange = getDateRange();
+      
+      let query = supabase
         .from("solicitacoes_comissao")
         .select("*")
         .order("created_at", { ascending: false });
+
+      if (dateRange) {
+        const startStr = format(dateRange.start, "yyyy-MM-dd");
+        const endStr = format(dateRange.end, "yyyy-MM-dd");
+        query = query.gte("created_at", startStr).lte("created_at", endStr + "T23:59:59");
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
       // Buscar nomes dos vendedores
       const vendedorIds = [...new Set(data?.map((s) => s.vendedor_id) || [])];
       if (vendedorIds.length > 0) {
-        const { data: vendedoresData } = await supabase
+        let vendedoresQuery = supabase
           .from("vendedores")
-          .select("id, nome, percentual_comissao")
+          .select("id, nome, percentual_comissao, centro_custo")
           .in("id", vendedorIds);
 
+        const { data: vendedoresData } = await vendedoresQuery;
+
         const vendedorMap = new Map(vendedoresData?.map((v) => [v.id, v]) || []);
-        const solicitacoesComVendedor = data?.map((s) => ({
+        let solicitacoesComVendedor = data?.map((s) => ({
           ...s,
           vendedor: vendedorMap.get(s.vendedor_id),
-        }));
+        })) || [];
 
-        setSolicitacoes(solicitacoesComVendedor || []);
+        // Filter by centro de custo if selected
+        if (selectedCentroCusto) {
+          solicitacoesComVendedor = solicitacoesComVendedor.filter(
+            (s) => s.vendedor?.centro_custo === selectedCentroCusto
+          );
+        }
+
+        setSolicitacoes(solicitacoesComVendedor);
       } else {
         setSolicitacoes(data || []);
       }
@@ -432,11 +504,27 @@ export default function Comissionamento() {
 
   return (
     <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Comissionamento</h1>
-          <p className="text-muted-foreground">
-            Gerencie as comissões da equipe de vendas
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Comissionamento</h1>
+            <p className="text-muted-foreground">
+              Gerencie as comissões da equipe de vendas
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <DateRangeFilter
+              value={dateRangePreset}
+              onChange={handleDateRangeChange}
+              customRange={customDateRange}
+            />
+            <div className="w-[250px]">
+              <CentroCustoSelect
+                value={selectedCentroCusto}
+                onValueChange={setSelectedCentroCusto}
+                placeholder="Todos os centros de custo"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Calculadora de Comissão */}

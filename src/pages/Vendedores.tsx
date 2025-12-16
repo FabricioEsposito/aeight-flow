@@ -24,8 +24,15 @@ interface Vendedor {
   created_at: string;
 }
 
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 export default function Vendedores() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,28 +49,37 @@ export default function Vendedores() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchVendedores();
+    fetchData();
   }, []);
 
-  const fetchVendedores = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("vendedores")
-        .select("*")
-        .order("nome");
+      const [vendedoresRes, centrosCustoRes] = await Promise.all([
+        supabase.from("vendedores").select("*").order("nome"),
+        supabase.from("centros_custo").select("id, codigo, descricao").eq("status", "ativo"),
+      ]);
 
-      if (error) throw error;
-      setVendedores(data || []);
+      if (vendedoresRes.error) throw vendedoresRes.error;
+      if (centrosCustoRes.error) throw centrosCustoRes.error;
+
+      setVendedores(vendedoresRes.data || []);
+      setCentrosCusto(centrosCustoRes.data || []);
     } catch (error) {
-      console.error("Erro ao carregar vendedores:", error);
+      console.error("Erro ao carregar dados:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os vendedores.",
+        description: "Não foi possível carregar os dados.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCentroCustoDisplay = (centroCustoId: string | null) => {
+    if (!centroCustoId) return "-";
+    const cc = centrosCusto.find((c) => c.id === centroCustoId);
+    return cc ? `${cc.codigo} - ${cc.descricao}` : centroCustoId;
   };
 
   const handleOpenDialog = (vendedor?: Vendedor) => {
@@ -130,7 +146,7 @@ export default function Vendedores() {
       }
 
       setDialogOpen(false);
-      fetchVendedores();
+      fetchData();
     } catch (error) {
       console.error("Erro ao salvar vendedor:", error);
       toast({
@@ -156,7 +172,7 @@ export default function Vendedores() {
         description: "Vendedor excluído com sucesso.",
       });
       setDeleteDialogOpen(false);
-      fetchVendedores();
+      fetchData();
     } catch (error) {
       console.error("Erro ao excluir vendedor:", error);
       toast({
@@ -238,7 +254,7 @@ export default function Vendedores() {
                 {paginatedVendedores.map((vendedor) => (
                   <TableRow key={vendedor.id}>
                     <TableCell className="font-medium">{vendedor.nome}</TableCell>
-                    <TableCell>{vendedor.centro_custo || "-"}</TableCell>
+                    <TableCell>{getCentroCustoDisplay(vendedor.centro_custo)}</TableCell>
                     <TableCell>{formatCurrency(vendedor.meta)}</TableCell>
                     <TableCell>{vendedor.percentual_comissao}%</TableCell>
                     <TableCell>
