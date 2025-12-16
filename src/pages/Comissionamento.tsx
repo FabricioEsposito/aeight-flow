@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -423,17 +422,16 @@ export default function Comissionamento() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Comissionamento</h1>
           <p className="text-muted-foreground">
@@ -799,6 +797,5 @@ export default function Comissionamento() {
           </DialogContent>
         </Dialog>
       </div>
-    </AppLayout>
   );
 }
