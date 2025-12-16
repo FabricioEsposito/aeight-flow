@@ -257,6 +257,7 @@ export default function DashboardComercial() {
                 value={selectedCentroCusto}
                 onValueChange={setSelectedCentroCusto}
                 placeholder="Todos os centros de custo"
+                showAllOption
               />
             </div>
           </div>
