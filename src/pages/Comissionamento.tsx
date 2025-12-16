@@ -76,8 +76,6 @@ export default function Comissionamento() {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoComissao[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVendedor, setSelectedVendedor] = useState<string>("");
-  const [selectedMes, setSelectedMes] = useState<number>(new Date().getMonth() + 1);
-  const [selectedAno, setSelectedAno] = useState<number>(new Date().getFullYear());
   const [parcelasPagas, setParcelasPagas] = useState<ParcelaPaga[]>([]);
   const [loadingParcelas, setLoadingParcelas] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -100,8 +98,18 @@ export default function Comissionamento() {
   const { isAdmin } = useUserRole();
   const { toast } = useToast();
 
-  const currentYear = new Date().getFullYear();
-  const anos = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+  // Derive month/year from date range for commission requests
+  const getReferencePeriod = () => {
+    const dateRange = getDateRange();
+    if (dateRange) {
+      return {
+        mes: dateRange.start.getMonth() + 1,
+        ano: dateRange.start.getFullYear(),
+      };
+    }
+    const today = new Date();
+    return { mes: today.getMonth() + 1, ano: today.getFullYear() };
+  };
 
   useEffect(() => {
     fetchVendedores();
@@ -109,10 +117,10 @@ export default function Comissionamento() {
   }, [dateRangePreset, customDateRange, selectedCentroCusto]);
 
   useEffect(() => {
-    if (selectedVendedor && selectedMes && selectedAno) {
+    if (selectedVendedor) {
       fetchParcelasPagas();
     }
-  }, [selectedVendedor, selectedMes, selectedAno]);
+  }, [selectedVendedor, dateRangePreset, customDateRange]);
 
   const getDateRange = (): { start: Date; end: Date } | null => {
     const today = new Date();
@@ -225,10 +233,16 @@ export default function Comissionamento() {
   const fetchParcelasPagas = async () => {
     if (!selectedVendedor) return;
 
+    const dateRange = getDateRange();
+    if (!dateRange) {
+      setParcelasPagas([]);
+      return;
+    }
+
     setLoadingParcelas(true);
     try {
-      const startDate = startOfMonth(new Date(selectedAno, selectedMes - 1));
-      const endDate = endOfMonth(new Date(selectedAno, selectedMes - 1));
+      const startDate = dateRange.start;
+      const endDate = dateRange.end;
 
       // Buscar contratos do vendedor
       const { data: contratos, error: contratosError } = await supabase
@@ -308,14 +322,16 @@ export default function Comissionamento() {
   const handleSolicitarAprovacao = async () => {
     if (!selectedVendedor || !user) return;
 
+    const { mes, ano } = getReferencePeriod();
+
     try {
       // Verificar se já existe solicitação para este período
       const { data: existing } = await supabase
         .from("solicitacoes_comissao")
         .select("id")
         .eq("vendedor_id", selectedVendedor)
-        .eq("mes_referencia", selectedMes)
-        .eq("ano_referencia", selectedAno)
+        .eq("mes_referencia", mes)
+        .eq("ano_referencia", ano)
         .single();
 
       if (existing) {
@@ -330,8 +346,8 @@ export default function Comissionamento() {
       const { error } = await supabase.from("solicitacoes_comissao").insert({
         vendedor_id: selectedVendedor,
         solicitante_id: user.id,
-        mes_referencia: selectedMes,
-        ano_referencia: selectedAno,
+        mes_referencia: mes,
+        ano_referencia: ano,
         valor_total_vendas: calcularComissao.total,
         valor_comissao: calcularComissao.comissao,
         percentual_comissao: calcularComissao.percentual,
@@ -350,7 +366,7 @@ export default function Comissionamento() {
         const notificacoes = admins.map((admin) => ({
           user_id: admin.user_id,
           titulo: "Nova solicitação de comissão",
-          mensagem: `${vendedor?.nome} solicitou aprovação de comissão de ${formatCurrency(calcularComissao.comissao)} referente a ${meses.find((m) => m.value === selectedMes)?.label}/${selectedAno}.`,
+          mensagem: `${vendedor?.nome} solicitou aprovação de comissão de ${formatCurrency(calcularComissao.comissao)} referente a ${meses.find((m) => m.value === mes)?.label}/${ano}.`,
           tipo: "info",
           referencia_tipo: "solicitacao_comissao",
         }));
@@ -517,6 +533,20 @@ export default function Comissionamento() {
               onChange={handleDateRangeChange}
               customRange={customDateRange}
             />
+            <div className="w-[200px]">
+              <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os vendedores" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendedores.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="w-[250px]">
               <CentroCustoSelect
                 value={selectedCentroCusto}
@@ -528,139 +558,83 @@ export default function Comissionamento() {
         </div>
 
         {/* Calculadora de Comissão */}
+        {selectedVendedor && (
         <Card>
           <CardHeader>
             <CardTitle>Calcular Comissão</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Vendedor</Label>
-                <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um vendedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendedores.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Mês</Label>
-                <Select
-                  value={selectedMes.toString()}
-                  onValueChange={(v) => setSelectedMes(parseInt(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {meses.map((m) => (
-                      <SelectItem key={m.value} value={m.value.toString()}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Ano</Label>
-                <Select
-                  value={selectedAno.toString()}
-                  onValueChange={(v) => setSelectedAno(parseInt(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {anos.map((ano) => (
-                      <SelectItem key={ano} value={ano.toString()}>
-                        {ano}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground">Total Recebido</div>
+                  <div className="text-2xl font-bold">{formatCurrency(calcularComissao.total)}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground">Percentual</div>
+                  <div className="text-2xl font-bold">{calcularComissao.percentual}%</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground">Valor da Comissão</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(calcularComissao.comissao)}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {selectedVendedor && (
-              <>
-                <div className="grid gap-4 md:grid-cols-3 pt-4 border-t">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground">Total Recebido</div>
-                      <div className="text-2xl font-bold">{formatCurrency(calcularComissao.total)}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground">Percentual</div>
-                      <div className="text-2xl font-bold">{calcularComissao.percentual}%</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground">Valor da Comissão</div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(calcularComissao.comissao)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+            {/* Lista de parcelas pagas */}
+            {loadingParcelas ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : parcelasPagas.length > 0 ? (
+              <div className="space-y-2">
+                <h4 className="font-medium">Parcelas Recebidas no Período</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Contrato</TableHead>
+                      <TableHead>Data Recebimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parcelasPagas.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>{p.cliente}</TableCell>
+                        <TableCell>{p.contrato_numero}</TableCell>
+                        <TableCell>
+                          {format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                Nenhuma parcela recebida neste período para o vendedor selecionado.
+              </p>
+            )}
 
-                {/* Lista de parcelas pagas */}
-                {loadingParcelas ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                  </div>
-                ) : parcelasPagas.length > 0 ? (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Parcelas Recebidas no Período</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Contrato</TableHead>
-                          <TableHead>Data Recebimento</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {parcelasPagas.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.cliente}</TableCell>
-                            <TableCell>{p.contrato_numero}</TableCell>
-                            <TableCell>
-                              {format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}
-                            </TableCell>
-                            <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    Nenhuma parcela recebida neste período para o vendedor selecionado.
-                  </p>
-                )}
-
-                {calcularComissao.total > 0 && (
-                  <div className="flex justify-end">
-                    <Button onClick={() => setSubmitDialogOpen(true)}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Solicitar Aprovação
-                    </Button>
-                  </div>
-                )}
-              </>
+            {calcularComissao.total > 0 && (
+              <div className="flex justify-end">
+                <Button onClick={() => setSubmitDialogOpen(true)}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Solicitar Aprovação
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Lista de Solicitações */}
         <Card>
@@ -814,7 +788,7 @@ export default function Comissionamento() {
               <AlertDialogDescription>
                 Deseja solicitar aprovação da comissão de{" "}
                 <strong>{formatCurrency(calcularComissao.comissao)}</strong> referente a{" "}
-                {meses.find((m) => m.value === selectedMes)?.label}/{selectedAno}?
+                {meses.find((m) => m.value === getReferencePeriod().mes)?.label}/{getReferencePeriod().ano}?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
