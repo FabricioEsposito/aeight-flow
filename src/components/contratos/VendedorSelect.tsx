@@ -1,4 +1,11 @@
+import { useState, useEffect } from 'react';
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Vendedor {
+  id: string;
+  nome: string;
+}
 
 interface VendedorSelectProps {
   value: string;
@@ -7,13 +14,29 @@ interface VendedorSelectProps {
 }
 
 export function VendedorSelect({ value, onChange, disabled }: VendedorSelectProps) {
-  // Lista hardcoded de vendedores - pode ser substituída por dados do banco futuramente
-  const vendedores = [
-    { id: 'vendedor1', nome: 'João Silva' },
-    { id: 'vendedor2', nome: 'Maria Santos' },
-    { id: 'vendedor3', nome: 'Pedro Oliveira' },
-    { id: 'vendedor4', nome: 'Ana Costa' },
-  ];
+  const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchVendedores();
+  }, []);
+
+  const fetchVendedores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vendedores')
+        .select('id, nome')
+        .eq('status', 'ativo')
+        .order('nome');
+
+      if (error) throw error;
+      setVendedores(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar vendedores:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const options: SearchableSelectOption[] = vendedores.map((vendedor) => ({
     value: vendedor.id,
@@ -25,10 +48,10 @@ export function VendedorSelect({ value, onChange, disabled }: VendedorSelectProp
       value={value}
       onValueChange={onChange}
       options={options}
-      placeholder="Selecione um vendedor"
+      placeholder={loading ? "Carregando..." : "Selecione um vendedor"}
       searchPlaceholder="Buscar vendedor..."
       emptyMessage="Nenhum vendedor encontrado."
-      disabled={disabled}
+      disabled={disabled || loading}
     />
   );
 }
