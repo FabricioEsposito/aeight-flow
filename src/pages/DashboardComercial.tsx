@@ -33,6 +33,12 @@ interface VendaVendedor {
   valor: number;
   meta: number;
   percentual: number;
+  centro_custo: string | null;
+}
+
+interface CentroCusto {
+  codigo: string;
+  descricao: string;
 }
 
 interface VendaCliente {
@@ -50,6 +56,7 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 export default function DashboardComercial() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
@@ -99,6 +106,11 @@ export default function DashboardComercial() {
     try {
       const dateRange = getDateRange();
 
+      // Fetch centros_custo
+      const centrosCustoRes = await supabase
+        .from("centros_custo")
+        .select("codigo, descricao");
+
       // Fetch vendedores
       let vendedoresQuery = supabase.from("vendedores").select("*").eq("status", "ativo");
       if (selectedCentroCusto) {
@@ -127,6 +139,7 @@ export default function DashboardComercial() {
       if (vendedoresRes.error) throw vendedoresRes.error;
       if (contratosRes.error) throw contratosRes.error;
 
+      setCentrosCusto(centrosCustoRes.data || []);
       setVendedores(vendedoresRes.data || []);
       setContratos(contratosRes.data || []);
     } catch (error) {
@@ -152,6 +165,7 @@ export default function DashboardComercial() {
         valor: 0,
         meta: v.meta,
         percentual: 0,
+        centro_custo: v.centro_custo,
       });
     });
 
@@ -391,6 +405,7 @@ export default function DashboardComercial() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-2 px-4">Vendedor</th>
+                      <th className="text-left py-2 px-4">Centro de Custo</th>
                       <th className="text-right py-2 px-4">Vendas</th>
                       <th className="text-right py-2 px-4">Meta</th>
                       <th className="text-right py-2 px-4">% da Meta</th>
@@ -400,9 +415,14 @@ export default function DashboardComercial() {
                   <tbody>
                     {vendasPorVendedor.map((v) => {
                       const percentMeta = v.meta > 0 ? (v.valor / v.meta) * 100 : 0;
+                      const centroCusto = centrosCusto.find((c) => c.codigo === v.centro_custo);
+                      const centroCustoLabel = centroCusto 
+                        ? `${centroCusto.codigo} - ${centroCusto.descricao}` 
+                        : v.centro_custo || "-";
                       return (
                         <tr key={v.nome} className="border-b">
                           <td className="py-2 px-4">{v.nome}</td>
+                          <td className="py-2 px-4 text-muted-foreground">{centroCustoLabel}</td>
                           <td className="text-right py-2 px-4">{formatCurrency(v.valor)}</td>
                           <td className="text-right py-2 px-4">{formatCurrency(v.meta)}</td>
                           <td className="text-right py-2 px-4">
