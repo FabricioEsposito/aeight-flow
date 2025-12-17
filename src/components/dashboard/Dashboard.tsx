@@ -921,14 +921,28 @@ export function Dashboard() {
                   <span>Resumo Diário</span>
                 </CardTitle>
                 {/* Legenda */}
-                <div className="flex flex-wrap gap-3 text-xs mt-2">
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(142, 76%, 36%)' }} />
-                    <span className="text-muted-foreground">Realizado</span>
+                <div className="flex flex-wrap gap-4 text-xs mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground font-medium">Receita:</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(142, 76%, 36%)' }} />
+                      <span className="text-muted-foreground">Realizado</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded opacity-70" style={{ backgroundColor: 'hsl(142, 76%, 60%)' }} />
+                      <span className="text-muted-foreground">Previsto</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded opacity-70" style={{ backgroundColor: 'hsl(142, 76%, 60%)' }} />
-                    <span className="text-muted-foreground">Previsto</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground font-medium">Despesa:</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(0, 84%, 60%)' }} />
+                      <span className="text-muted-foreground">Realizado</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded opacity-70" style={{ backgroundColor: 'hsl(0, 84%, 80%)' }} />
+                      <span className="text-muted-foreground">Previsto</span>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
