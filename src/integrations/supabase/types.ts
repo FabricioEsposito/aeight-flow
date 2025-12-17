@@ -976,6 +976,7 @@ export type Database = {
         Row: {
           ano_referencia: number
           aprovador_id: string | null
+          conta_pagar_gerada: boolean | null
           created_at: string
           data_aprovacao: string | null
           id: string
@@ -992,6 +993,7 @@ export type Database = {
         Insert: {
           ano_referencia: number
           aprovador_id?: string | null
+          conta_pagar_gerada?: boolean | null
           created_at?: string
           data_aprovacao?: string | null
           id?: string
@@ -1008,6 +1010,7 @@ export type Database = {
         Update: {
           ano_referencia?: number
           aprovador_id?: string | null
+          conta_pagar_gerada?: boolean | null
           created_at?: string
           data_aprovacao?: string | null
           id?: string
@@ -1111,6 +1114,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

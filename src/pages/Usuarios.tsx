@@ -50,20 +50,43 @@ import { MoreVertical, Edit, UserX, Trash2, UserCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { AppRole, useUserRole } from "@/hooks/useUserRole";
+
+const roleOptions: { value: AppRole; label: string; description: string }[] = [
+  { value: 'admin', label: 'Administrador', description: 'Acesso total ao sistema e todas as aprovações' },
+  { value: 'finance_manager', label: 'Gerente de Finanças', description: 'Acesso financeiro, comercial e cadastro, edições e aprovações' },
+  { value: 'finance_analyst', label: 'Analista Financeiro', description: 'Acesso financeiro e cadastro, solicita aprovação para edições' },
+  { value: 'commercial_manager', label: 'Gerente Comercial', description: 'Acesso comercial, edita vendedores e aprova comissões' },
+  { value: 'salesperson', label: 'Vendedor', description: 'Acesso ao dashboard comercial e comissionamento' },
+  { value: 'user', label: 'Usuário Básico', description: 'Acesso limitado, aguarda atribuição de nível' },
+];
+
+const getRoleBadgeVariant = (role: AppRole): "default" | "secondary" | "outline" | "destructive" => {
+  switch (role) {
+    case 'admin':
+      return 'default';
+    case 'finance_manager':
+    case 'commercial_manager':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
+};
 
 export default function Usuarios() {
   const [openEdit, setOpenEdit] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [toggleStatusUserId, setToggleStatusUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [editRole, setEditRole] = useState<"admin" | "user">("user");
+  const [editRole, setEditRole] = useState<AppRole>("user");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isAdmin, getRoleLabel } = useUserRole();
 
   // Verificar se o usuário é admin
-  const { data: isAdmin, isLoading: checkingAdmin } = useQuery({
+  const { data: isAdminCheck, isLoading: checkingAdmin } = useQuery({
     queryKey: ['is-admin', user?.id],
     queryFn: async () => {
       if (!user) return false;
@@ -80,7 +103,7 @@ export default function Usuarios() {
   });
 
   useEffect(() => {
-    if (!checkingAdmin && !isAdmin) {
+    if (!checkingAdmin && !isAdminCheck) {
       toast({
         title: "Acesso negado",
         description: "Você não tem permissão para acessar esta área.",
@@ -88,7 +111,7 @@ export default function Usuarios() {
       });
       navigate('/');
     }
-  }, [isAdmin, checkingAdmin, navigate, toast]);
+  }, [isAdminCheck, checkingAdmin, navigate, toast]);
 
   // Buscar todos os usuários com status
   const { data: usuarios, isLoading } = useQuery({
@@ -105,7 +128,7 @@ export default function Usuarios() {
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: 'admin' | 'user' }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -242,7 +265,7 @@ export default function Usuarios() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Nível</TableHead>
+                <TableHead>Nível Hierárquico</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -254,8 +277,8 @@ export default function Usuarios() {
                   <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
                   <TableCell>{usuario.email}</TableCell>
                   <TableCell>
-                    <Badge variant={usuario.role === 'admin' ? 'default' : 'secondary'}>
-                      {usuario.role === 'admin' ? 'Administrador' : 'Usuário'}
+                    <Badge variant={getRoleBadgeVariant(usuario.role || 'user')}>
+                      {getRoleLabel(usuario.role)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -315,27 +338,40 @@ export default function Usuarios() {
       </Card>
 
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Nível Hierárquico</DialogTitle>
             <DialogDescription>
-              Atualize o nível de acesso do usuário
+              Atualize o nível de acesso do usuário: {editingUser?.nome || editingUser?.email}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateUser} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-role">Nível de Acesso</Label>
-              <Select value={editRole} onValueChange={(value: "admin" | "user") => setEditRole(value)}>
+              <Select value={editRole} onValueChange={(value: AppRole) => setEditRole(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o nível" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">Usuário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
+                  {roleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{option.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {editRole && (
+                <p className="text-xs text-muted-foreground">
+                  {roleOptions.find(r => r.value === editRole)?.description}
+                </p>
+              )}
             </div>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
+                Cancelar
+              </Button>
               <Button type="submit" disabled={updateUserMutation.isPending}>
                 {updateUserMutation.isPending ? "Salvando..." : "Salvar Alterações"}
               </Button>
