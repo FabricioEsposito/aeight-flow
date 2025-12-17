@@ -429,6 +429,10 @@ export default function ControleFaturamento() {
               <TableHead>CNPJ</TableHead>
               <TableHead>NF</TableHead>
               <TableHead className="text-right">Valor Bruto</TableHead>
+              <TableHead className="text-right">IRRF</TableHead>
+              <TableHead className="text-right">CSLL</TableHead>
+              <TableHead className="text-right">COFINS</TableHead>
+              <TableHead className="text-right">PIS</TableHead>
               <TableHead className="text-right">Valor Líquido</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Link NF</TableHead>
@@ -438,12 +442,18 @@ export default function ControleFaturamento() {
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedFaturamentos.map((faturamento) => (
+              paginatedFaturamentos.map((faturamento) => {
+                const irrfValor = faturamento.valor_bruto * (faturamento.irrf_percentual / 100);
+                const csllValor = faturamento.valor_bruto * (faturamento.csll_percentual / 100);
+                const cofinsValor = faturamento.valor_bruto * (faturamento.cofins_percentual / 100);
+                const pisValor = faturamento.valor_bruto * (faturamento.pis_percentual / 100);
+                
+                return (
                 <TableRow key={faturamento.id}>
                   <TableCell>{formatDate(faturamento.data_competencia)}</TableCell>
                   <TableCell className="font-medium">{faturamento.cliente_razao_social}</TableCell>
@@ -469,6 +479,34 @@ export default function ControleFaturamento() {
                     />
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(faturamento.valor_bruto)}</TableCell>
+                  <TableCell className="text-right text-xs">
+                    {faturamento.irrf_percentual > 0 ? (
+                      <span title={`${faturamento.irrf_percentual}%`}>
+                        {formatCurrency(irrfValor)}
+                      </span>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell className="text-right text-xs">
+                    {faturamento.csll_percentual > 0 ? (
+                      <span title={`${faturamento.csll_percentual}%`}>
+                        {formatCurrency(csllValor)}
+                      </span>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell className="text-right text-xs">
+                    {faturamento.cofins_percentual > 0 ? (
+                      <span title={`${faturamento.cofins_percentual}%`}>
+                        {formatCurrency(cofinsValor)}
+                      </span>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell className="text-right text-xs">
+                    {faturamento.pis_percentual > 0 ? (
+                      <span title={`${faturamento.pis_percentual}%`}>
+                        {formatCurrency(pisValor)}
+                      </span>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell className="text-right">{formatCurrency(faturamento.valor_liquido)}</TableCell>
                   <TableCell>{getStatusBadge(faturamento.status, faturamento.data_vencimento)}</TableCell>
                   <TableCell>
@@ -507,7 +545,7 @@ export default function ControleFaturamento() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+              );})
             )}
           </TableBody>
         </Table>
