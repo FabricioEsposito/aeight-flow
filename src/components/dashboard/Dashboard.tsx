@@ -51,6 +51,7 @@ interface FaturamentoClienteData {
 
 interface FluxoCaixaData {
   date: string;
+  fullDate?: string;
   saldoConta: number;
   receitaRealizada: number;
   receitaPrevista: number;
@@ -78,6 +79,7 @@ export function Dashboard() {
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [faturamentoClienteData, setFaturamentoClienteData] = useState<FaturamentoClienteData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
+  const [fluxoCaixaTabelaData, setFluxoCaixaTabelaData] = useState<FluxoCaixaData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Filtros
@@ -384,9 +386,12 @@ export function Dashboard() {
       const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
 
       // Agregar dados de contas por data - separar realizados e previstos
-      const fluxoPorDia: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
+      // Dados para a TABELA (todos os dias do período)
+      const fluxoPorDiaTabela: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
+      // Dados para o GRÁFICO (apenas dias com movimentação)
+      const fluxoPorDiaGrafico: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
       
-      // Gerar todos os dias do período selecionado
+      // Gerar todos os dias do período selecionado para a tabela
       if (dateRange) {
         const startDate = new Date(dateRange.from + 'T00:00:00');
         const endDate = new Date(dateRange.to + 'T00:00:00');
@@ -394,7 +399,7 @@ export function Dashboard() {
         
         while (currentDate <= endDate) {
           const dateStr = formatDateLocal(currentDate);
-          fluxoPorDia[dateStr] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+          fluxoPorDiaTabela[dateStr] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
           currentDate.setDate(currentDate.getDate() + 1);
         }
       }
@@ -403,20 +408,30 @@ export function Dashboard() {
       contasReceberFluxo?.filter(c => c.status === 'pago' && c.data_recebimento).forEach(c => {
         const date = c.data_recebimento!;
         
-        if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        if (!fluxoPorDiaTabela[date]) {
+          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].receitaRealizada += Number(c.valor);
+        fluxoPorDiaTabela[date].receitaRealizada += Number(c.valor);
+        
+        if (!fluxoPorDiaGrafico[date]) {
+          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        }
+        fluxoPorDiaGrafico[date].receitaRealizada += Number(c.valor);
       });
 
       // Adicionar contas pagas (efetivamente pagas - realizado)
       contasPagarFluxo?.filter(c => c.status === 'pago' && c.data_pagamento).forEach(c => {
         const date = c.data_pagamento!;
         
-        if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        if (!fluxoPorDiaTabela[date]) {
+          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].despesaRealizada += Number(c.valor);
+        fluxoPorDiaTabela[date].despesaRealizada += Number(c.valor);
+        
+        if (!fluxoPorDiaGrafico[date]) {
+          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        }
+        fluxoPorDiaGrafico[date].despesaRealizada += Number(c.valor);
       });
       
       const hojeStr = formatDateLocal(new Date());
@@ -426,43 +441,77 @@ export function Dashboard() {
       contasReceberFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= hojeStr).forEach(c => {
         const date = c.data_vencimento!;
         
-        if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        if (!fluxoPorDiaTabela[date]) {
+          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].receitaPrevista += Number(c.valor);
+        fluxoPorDiaTabela[date].receitaPrevista += Number(c.valor);
+        
+        if (!fluxoPorDiaGrafico[date]) {
+          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        }
+        fluxoPorDiaGrafico[date].receitaPrevista += Number(c.valor);
       });
 
       contasPagarFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= hojeStr).forEach(c => {
         const date = c.data_vencimento!;
         
-        if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        if (!fluxoPorDiaTabela[date]) {
+          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].despesaPrevista += Number(c.valor);
+        fluxoPorDiaTabela[date].despesaPrevista += Number(c.valor);
+        
+        if (!fluxoPorDiaGrafico[date]) {
+          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+        }
+        fluxoPorDiaGrafico[date].despesaPrevista += Number(c.valor);
       });
 
-      // Ordenar por data e criar array de dados para o gráfico
-      const sortedDates = Object.keys(fluxoPorDia).sort();
-      let saldoAcumulado = saldoContas;
+      // Dados para o GRÁFICO (apenas dias com movimentação)
+      const sortedDatesGrafico = Object.keys(fluxoPorDiaGrafico).sort();
+      let saldoAcumuladoGrafico = saldoContas;
       
-      const fluxoChartData = sortedDates.map(date => {
-        const valores = fluxoPorDia[date];
+      const fluxoChartData = sortedDatesGrafico.map(date => {
+        const valores = fluxoPorDiaGrafico[date];
         const receitaTotal = valores.receitaRealizada + valores.receitaPrevista;
         const despesaTotal = valores.despesaRealizada + valores.despesaPrevista;
-        saldoAcumulado = saldoAcumulado + receitaTotal - despesaTotal;
+        saldoAcumuladoGrafico = saldoAcumuladoGrafico + receitaTotal - despesaTotal;
         
         return {
           date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          fullDate: date,
           saldoConta: saldoContas,
           receitaRealizada: valores.receitaRealizada,
           receitaPrevista: valores.receitaPrevista,
           despesaRealizada: valores.despesaRealizada,
           despesaPrevista: valores.despesaPrevista,
-          saldoFinal: saldoAcumulado,
+          saldoFinal: saldoAcumuladoGrafico,
+        };
+      });
+
+      // Dados para a TABELA (todos os dias do período)
+      const sortedDatesTabela = Object.keys(fluxoPorDiaTabela).sort();
+      let saldoAcumuladoTabela = saldoContas;
+      
+      const fluxoTabelaData = sortedDatesTabela.map(date => {
+        const valores = fluxoPorDiaTabela[date];
+        const receitaTotal = valores.receitaRealizada + valores.receitaPrevista;
+        const despesaTotal = valores.despesaRealizada + valores.despesaPrevista;
+        saldoAcumuladoTabela = saldoAcumuladoTabela + receitaTotal - despesaTotal;
+        
+        return {
+          date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          fullDate: date,
+          saldoConta: saldoContas,
+          receitaRealizada: valores.receitaRealizada,
+          receitaPrevista: valores.receitaPrevista,
+          despesaRealizada: valores.despesaRealizada,
+          despesaPrevista: valores.despesaPrevista,
+          saldoFinal: saldoAcumuladoTabela,
         };
       });
 
       setFluxoCaixaData(fluxoChartData);
+      setFluxoCaixaTabelaData(fluxoTabelaData);
 
       // Calcular saldos inicial e final (último dia útil do mês)
       const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
@@ -971,7 +1020,7 @@ export function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {fluxoCaixaData.map((item, index) => {
+                      {fluxoCaixaTabelaData.map((item, index) => {
                         const receitaTotal = item.receitaRealizada + item.receitaPrevista;
                         const despesaTotal = item.despesaRealizada + item.despesaPrevista;
                         const temReceitaPrevista = item.receitaPrevista > 0;
