@@ -52,8 +52,10 @@ interface FaturamentoClienteData {
 interface FluxoCaixaData {
   date: string;
   saldoConta: number;
-  receita: number;
-  despesa: number;
+  receitaRealizada: number;
+  receitaPrevista: number;
+  despesaRealizada: number;
+  despesaPrevista: number;
   saldoFinal: number;
 }
 
@@ -373,17 +375,17 @@ export function Dashboard() {
       const { data: contasBancarias } = await contasBancariasQuery;
       const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
 
-      // Agregar dados de contas por data - combinar realizados e previstos
-      const fluxoPorDia: Record<string, { receita: number; despesa: number }> = {};
+      // Agregar dados de contas por data - separar realizados e previstos
+      const fluxoPorDia: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
       
       // Adicionar contas recebidas (efetivamente pagas - realizado)
       contasReceberFluxo?.filter(c => c.status === 'pago' && c.data_recebimento).forEach(c => {
         const date = c.data_recebimento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receita: 0, despesa: 0 };
+          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].receita += Number(c.valor);
+        fluxoPorDia[date].receitaRealizada += Number(c.valor);
       });
 
       // Adicionar contas pagas (efetivamente pagas - realizado)
@@ -391,9 +393,9 @@ export function Dashboard() {
         const date = c.data_pagamento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receita: 0, despesa: 0 };
+          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].despesa += Number(c.valor);
+        fluxoPorDia[date].despesaRealizada += Number(c.valor);
       });
       
       // Adicionar previsões (APENAS contas pendentes - vencidos ficam só nos cards)
@@ -401,18 +403,18 @@ export function Dashboard() {
         const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receita: 0, despesa: 0 };
+          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].receita += Number(c.valor);
+        fluxoPorDia[date].receitaPrevista += Number(c.valor);
       });
 
       contasPagarFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento).forEach(c => {
         const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { receita: 0, despesa: 0 };
+          fluxoPorDia[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
         }
-        fluxoPorDia[date].despesa += Number(c.valor);
+        fluxoPorDia[date].despesaPrevista += Number(c.valor);
       });
 
       // Ordenar por data e criar array de dados para o gráfico
@@ -421,13 +423,17 @@ export function Dashboard() {
       
       const fluxoChartData = sortedDates.map(date => {
         const valores = fluxoPorDia[date];
-        saldoAcumulado = saldoAcumulado + valores.receita - valores.despesa;
+        const receitaTotal = valores.receitaRealizada + valores.receitaPrevista;
+        const despesaTotal = valores.despesaRealizada + valores.despesaPrevista;
+        saldoAcumulado = saldoAcumulado + receitaTotal - despesaTotal;
         
         return {
           date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
           saldoConta: saldoContas,
-          receita: valores.receita,
-          despesa: valores.despesa,
+          receitaRealizada: valores.receitaRealizada,
+          receitaPrevista: valores.receitaPrevista,
+          despesaRealizada: valores.despesaRealizada,
+          despesaPrevista: valores.despesaPrevista,
           saldoFinal: saldoAcumulado,
         };
       });
@@ -792,13 +798,21 @@ export function Dashboard() {
               <CardContent>
                 <ChartContainer
                   config={{
-                    receita: {
-                      label: "Receita",
+                    receitaRealizada: {
+                      label: "Receita Realizada",
                       color: "hsl(142, 76%, 36%)",
                     },
-                    despesa: {
-                      label: "Despesa",
+                    receitaPrevista: {
+                      label: "Receita Prevista",
+                      color: "hsl(142, 76%, 60%)",
+                    },
+                    despesaRealizada: {
+                      label: "Despesa Realizada",
                       color: "hsl(0, 84%, 60%)",
+                    },
+                    despesaPrevista: {
+                      label: "Despesa Prevista",
+                      color: "hsl(0, 84%, 80%)",
                     },
                     saldoFinal: {
                       label: "Saldo",
@@ -846,16 +860,34 @@ export function Dashboard() {
                       />
                       <Legend />
                       <Bar 
-                        dataKey="receita" 
+                        dataKey="receitaRealizada" 
                         fill="hsl(142, 76%, 36%)" 
                         radius={[4, 4, 0, 0]}
-                        name="Receita"
+                        name="Receita Realizada"
+                        stackId="receita"
                       />
                       <Bar 
-                        dataKey="despesa" 
+                        dataKey="receitaPrevista" 
+                        fill="hsl(142, 76%, 60%)" 
+                        radius={[4, 4, 0, 0]}
+                        name="Receita Prevista"
+                        stackId="receita"
+                        opacity={0.7}
+                      />
+                      <Bar 
+                        dataKey="despesaRealizada" 
                         fill="hsl(0, 84%, 60%)" 
                         radius={[4, 4, 0, 0]}
-                        name="Despesa"
+                        name="Despesa Realizada"
+                        stackId="despesa"
+                      />
+                      <Bar 
+                        dataKey="despesaPrevista" 
+                        fill="hsl(0, 84%, 80%)" 
+                        radius={[4, 4, 0, 0]}
+                        name="Despesa Prevista"
+                        stackId="despesa"
+                        opacity={0.7}
                       />
                       <Line 
                         type="monotone" 
@@ -874,7 +906,20 @@ export function Dashboard() {
             {/* Tabela de Fluxo Diário */}
             <Card>
               <CardHeader>
-                <CardTitle>Resumo Diário</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Resumo Diário</span>
+                </CardTitle>
+                {/* Legenda */}
+                <div className="flex flex-wrap gap-3 text-xs mt-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(142, 76%, 36%)' }} />
+                    <span className="text-muted-foreground">Realizado</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded opacity-70" style={{ backgroundColor: 'hsl(142, 76%, 60%)' }} />
+                    <span className="text-muted-foreground">Previsto</span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-auto max-h-80">
@@ -888,22 +933,57 @@ export function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {fluxoCaixaData.map((item, index) => (
-                        <tr key={index} className="border-b border-border hover:bg-muted/50">
-                          <td className="p-2 text-xs">{item.date}</td>
-                          <td className="p-2 text-xs text-right font-medium text-green-600">
-                            {formatCurrency(item.receita)}
-                          </td>
-                          <td className="p-2 text-xs text-right font-medium text-red-600">
-                            {formatCurrency(item.despesa)}
-                          </td>
-                          <td className={`p-2 text-xs text-right font-bold ${
-                            item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
-                          }`}>
-                            {formatCurrency(item.saldoFinal)}
-                          </td>
-                        </tr>
-                      ))}
+                      {fluxoCaixaData.map((item, index) => {
+                        const receitaTotal = item.receitaRealizada + item.receitaPrevista;
+                        const despesaTotal = item.despesaRealizada + item.despesaPrevista;
+                        const temReceitaPrevista = item.receitaPrevista > 0;
+                        const temDespesaPrevista = item.despesaPrevista > 0;
+                        
+                        return (
+                          <tr key={index} className="border-b border-border hover:bg-muted/50">
+                            <td className="p-2 text-xs">{item.date}</td>
+                            <td className="p-2 text-xs text-right">
+                              <div className="flex flex-col items-end gap-0.5">
+                                {item.receitaRealizada > 0 && (
+                                  <span className="font-medium" style={{ color: 'hsl(142, 76%, 36%)' }}>
+                                    {formatCurrency(item.receitaRealizada)}
+                                  </span>
+                                )}
+                                {temReceitaPrevista && (
+                                  <span className="font-medium opacity-70" style={{ color: 'hsl(142, 76%, 50%)' }}>
+                                    {formatCurrency(item.receitaPrevista)}
+                                  </span>
+                                )}
+                                {!item.receitaRealizada && !temReceitaPrevista && (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 text-xs text-right">
+                              <div className="flex flex-col items-end gap-0.5">
+                                {item.despesaRealizada > 0 && (
+                                  <span className="font-medium" style={{ color: 'hsl(0, 84%, 60%)' }}>
+                                    {formatCurrency(item.despesaRealizada)}
+                                  </span>
+                                )}
+                                {temDespesaPrevista && (
+                                  <span className="font-medium opacity-70" style={{ color: 'hsl(0, 84%, 70%)' }}>
+                                    {formatCurrency(item.despesaPrevista)}
+                                  </span>
+                                )}
+                                {!item.despesaRealizada && !temDespesaPrevista && (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className={`p-2 text-xs text-right font-bold ${
+                              item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
+                            }`}>
+                              {formatCurrency(item.saldoFinal)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
