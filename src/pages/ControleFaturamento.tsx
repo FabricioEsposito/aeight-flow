@@ -430,9 +430,9 @@ export default function ControleFaturamento() {
               <TableHead>NF</TableHead>
               <TableHead className="text-right">Valor Bruto</TableHead>
               <TableHead className="text-right">IRRF</TableHead>
-              <TableHead className="text-right">CSLL</TableHead>
-              <TableHead className="text-right">COFINS</TableHead>
               <TableHead className="text-right">PIS</TableHead>
+              <TableHead className="text-right">COFINS</TableHead>
+              <TableHead className="text-right">CSLL</TableHead>
               <TableHead className="text-right">Valor Líquido</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Link NF</TableHead>
@@ -487,9 +487,9 @@ export default function ControleFaturamento() {
                     ) : '-'}
                   </TableCell>
                   <TableCell className="text-right text-xs">
-                    {faturamento.csll_percentual > 0 ? (
-                      <span title={`${faturamento.csll_percentual}%`}>
-                        {formatCurrency(csllValor)}
+                    {faturamento.pis_percentual > 0 ? (
+                      <span title={`${faturamento.pis_percentual}%`}>
+                        {formatCurrency(pisValor)}
                       </span>
                     ) : '-'}
                   </TableCell>
@@ -501,9 +501,9 @@ export default function ControleFaturamento() {
                     ) : '-'}
                   </TableCell>
                   <TableCell className="text-right text-xs">
-                    {faturamento.pis_percentual > 0 ? (
-                      <span title={`${faturamento.pis_percentual}%`}>
-                        {formatCurrency(pisValor)}
+                    {faturamento.csll_percentual > 0 ? (
+                      <span title={`${faturamento.csll_percentual}%`}>
+                        {formatCurrency(csllValor)}
                       </span>
                     ) : '-'}
                   </TableCell>
