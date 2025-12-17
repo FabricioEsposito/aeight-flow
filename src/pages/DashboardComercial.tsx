@@ -52,7 +52,7 @@ interface DateRange {
   to: Date | undefined;
 }
 
-const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
 export default function DashboardComercial() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
@@ -265,52 +265,52 @@ export default function DashboardComercial() {
 
         {/* Cards de resumo */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border-l-4 border-l-emerald-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <DollarSign className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalVendas)}</div>
+              <div className="text-2xl font-bold text-emerald-600">{formatCurrency(totalVendas)}</div>
               <p className="text-xs text-muted-foreground">
                 {percentualMeta.toFixed(1)}% da meta geral
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Meta Geral</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+              <Target className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalMeta)}</div>
+              <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalMeta)}</div>
               <p className="text-xs text-muted-foreground">
                 Soma das metas dos vendedores
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-violet-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Vendedores Ativos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-violet-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{vendedores.length}</div>
+              <div className="text-2xl font-bold text-violet-600">{vendedores.length}</div>
               <p className="text-xs text-muted-foreground">
                 Equipe de vendas
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-amber-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Vendedor Destaque</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold truncate">
+              <div className="text-2xl font-bold text-amber-600 truncate">
                 {vendedorDestaque?.nome || "-"}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -338,8 +338,8 @@ export default function DashboardComercial() {
                     labelFormatter={(label) => label}
                   />
                   <Legend />
-                  <Bar dataKey="valor" name="Vendas" fill="hsl(var(--chart-1))" />
-                  <Bar dataKey="meta" name="Meta" fill="hsl(var(--chart-2))" />
+                  <Bar dataKey="valor" name="Vendas" fill="#10b981" />
+                  <Bar dataKey="meta" name="Meta" fill="#3b82f6" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -390,7 +390,7 @@ export default function DashboardComercial() {
                   <XAxis dataKey="nome" angle={-45} textAnchor="end" height={100} />
                   <YAxis tickFormatter={(v) => formatCurrency(v)} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="valor" name="Vendas" fill="hsl(var(--chart-3))" />
+                  <Bar dataKey="valor" name="Vendas" fill="#f59e0b" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
