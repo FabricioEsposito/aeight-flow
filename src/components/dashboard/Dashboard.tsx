@@ -52,12 +52,9 @@ interface FaturamentoClienteData {
 interface FluxoCaixaData {
   date: string;
   saldoConta: number;
-  recebido: number;
-  pago: number;
+  receita: number;
+  despesa: number;
   saldoFinal: number;
-  previsaoReceber: number;
-  previsaoPagar: number;
-  saldoPrevisto: number;
 }
 
 export function Dashboard() {
@@ -376,67 +373,62 @@ export function Dashboard() {
       const { data: contasBancarias } = await contasBancariasQuery;
       const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
 
-      // Agregar dados de contas recebidas e pagas por data efetiva (data de recebimento/pagamento)
-      const fluxoPorDia: Record<string, { recebido: number; pago: number; previsaoReceber: number; previsaoPagar: number }> = {};
+      // Agregar dados de contas por data - combinar realizados e previstos
+      const fluxoPorDia: Record<string, { receita: number; despesa: number }> = {};
       
-      // Adicionar contas recebidas (apenas as efetivamente pagas)
+      // Adicionar contas recebidas (efetivamente pagas - realizado)
       contasReceberFluxo?.filter(c => c.status === 'pago' && c.data_recebimento).forEach(c => {
         const date = c.data_recebimento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
+          fluxoPorDia[date] = { receita: 0, despesa: 0 };
         }
-        fluxoPorDia[date].recebido += Number(c.valor);
+        fluxoPorDia[date].receita += Number(c.valor);
       });
 
-      // Adicionar contas pagas (apenas as efetivamente pagas)
+      // Adicionar contas pagas (efetivamente pagas - realizado)
       contasPagarFluxo?.filter(c => c.status === 'pago' && c.data_pagamento).forEach(c => {
         const date = c.data_pagamento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
+          fluxoPorDia[date] = { receita: 0, despesa: 0 };
         }
-        fluxoPorDia[date].pago += Number(c.valor);
+        fluxoPorDia[date].despesa += Number(c.valor);
       });
       
-      // Adicionar previsões (contas pendentes e vencidas)
-      contasReceberFluxo?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento).forEach(c => {
+      // Adicionar previsões (APENAS contas pendentes - vencidos ficam só nos cards)
+      contasReceberFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento).forEach(c => {
         const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
+          fluxoPorDia[date] = { receita: 0, despesa: 0 };
         }
-        fluxoPorDia[date].previsaoReceber += Number(c.valor);
+        fluxoPorDia[date].receita += Number(c.valor);
       });
 
-      contasPagarFluxo?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento).forEach(c => {
+      contasPagarFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento).forEach(c => {
         const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
-          fluxoPorDia[date] = { recebido: 0, pago: 0, previsaoReceber: 0, previsaoPagar: 0 };
+          fluxoPorDia[date] = { receita: 0, despesa: 0 };
         }
-        fluxoPorDia[date].previsaoPagar += Number(c.valor);
+        fluxoPorDia[date].despesa += Number(c.valor);
       });
 
       // Ordenar por data e criar array de dados para o gráfico
       const sortedDates = Object.keys(fluxoPorDia).sort();
       let saldoAcumulado = saldoContas;
-      let saldoPrevisto = saldoContas;
       
       const fluxoChartData = sortedDates.map(date => {
         const valores = fluxoPorDia[date];
-        saldoAcumulado = saldoAcumulado + valores.recebido - valores.pago;
-        saldoPrevisto = saldoAcumulado + valores.previsaoReceber - valores.previsaoPagar;
+        saldoAcumulado = saldoAcumulado + valores.receita - valores.despesa;
         
         return {
           date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
           saldoConta: saldoContas,
-          recebido: valores.recebido,
-          pago: valores.pago,
-          previsaoReceber: valores.previsaoReceber,
-          previsaoPagar: valores.previsaoPagar,
+          receita: valores.receita,
+          despesa: valores.despesa,
           saldoFinal: saldoAcumulado,
-          saldoPrevisto: saldoPrevisto,
         };
       });
 
@@ -446,7 +438,7 @@ export function Dashboard() {
       const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
       const ultimoDia = fluxoChartData.length > 0 ? fluxoChartData[fluxoChartData.length - 1] : null;
       const saldoFinal = ultimoDia ? ultimoDia.saldoFinal : saldoInicial;
-      const saldoFinalPrevisto = ultimoDia ? ultimoDia.saldoPrevisto : saldoInicial;
+      const saldoFinalPrevisto = saldoFinal; // Agora saldoFinal já inclui previsões (pendentes)
 
       // Calcular valores efetivamente recebidos e pagos no período
       const valorRecebido = contasReceberFluxo
@@ -800,29 +792,17 @@ export function Dashboard() {
               <CardContent>
                 <ChartContainer
                   config={{
-                    recebido: {
-                      label: "Receitas",
+                    receita: {
+                      label: "Receita",
                       color: "hsl(142, 76%, 36%)",
                     },
-                    pago: {
-                      label: "Despesas",
+                    despesa: {
+                      label: "Despesa",
                       color: "hsl(0, 84%, 60%)",
-                    },
-                    previsaoReceber: {
-                      label: "Previsão Receber",
-                      color: "hsl(142, 76%, 60%)",
-                    },
-                    previsaoPagar: {
-                      label: "Previsão Pagar",
-                      color: "hsl(0, 84%, 80%)",
                     },
                     saldoFinal: {
                       label: "Saldo",
                       color: "hsl(47, 96%, 53%)",
-                    },
-                    saldoPrevisto: {
-                      label: "Saldo Previsto",
-                      color: "hsl(220, 90%, 56%)",
                     },
                   }}
                   className="h-80"
@@ -866,34 +846,16 @@ export function Dashboard() {
                       />
                       <Legend />
                       <Bar 
-                        dataKey="recebido" 
+                        dataKey="receita" 
                         fill="hsl(142, 76%, 36%)" 
                         radius={[4, 4, 0, 0]}
-                        name="Receitas"
-                        stackId="real"
+                        name="Receita"
                       />
                       <Bar 
-                        dataKey="pago" 
+                        dataKey="despesa" 
                         fill="hsl(0, 84%, 60%)" 
                         radius={[4, 4, 0, 0]}
-                        name="Despesas"
-                        stackId="real"
-                      />
-                      <Bar 
-                        dataKey="previsaoReceber" 
-                        fill="hsl(142, 76%, 60%)" 
-                        radius={[4, 4, 0, 0]}
-                        name="Previsão Receber"
-                        stackId="previsao"
-                        opacity={0.6}
-                      />
-                      <Bar 
-                        dataKey="previsaoPagar" 
-                        fill="hsl(0, 84%, 80%)" 
-                        radius={[4, 4, 0, 0]}
-                        name="Previsão Pagar"
-                        stackId="previsao"
-                        opacity={0.6}
+                        name="Despesa"
                       />
                       <Line 
                         type="monotone" 
@@ -902,15 +864,6 @@ export function Dashboard() {
                         strokeWidth={3}
                         name="Saldo"
                         dot={{ r: 4 }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="saldoPrevisto" 
-                        stroke="hsl(220, 90%, 56%)" 
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        name="Saldo Previsto"
-                        dot={{ r: 3 }}
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -932,9 +885,6 @@ export function Dashboard() {
                         <th className="text-right p-2 text-xs font-semibold">Receita</th>
                         <th className="text-right p-2 text-xs font-semibold">Despesa</th>
                         <th className="text-right p-2 text-xs font-semibold">Saldo</th>
-                        <th className="text-right p-2 text-xs font-semibold text-emerald-600">Prev. Receita</th>
-                        <th className="text-right p-2 text-xs font-semibold text-rose-400">Prev. Despesa</th>
-                        <th className="text-right p-2 text-xs font-semibold text-blue-600">Saldo Previsto</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -942,26 +892,15 @@ export function Dashboard() {
                         <tr key={index} className="border-b border-border hover:bg-muted/50">
                           <td className="p-2 text-xs">{item.date}</td>
                           <td className="p-2 text-xs text-right font-medium text-green-600">
-                            {formatCurrency(item.recebido)}
+                            {formatCurrency(item.receita)}
                           </td>
                           <td className="p-2 text-xs text-right font-medium text-red-600">
-                            {formatCurrency(item.pago)}
+                            {formatCurrency(item.despesa)}
                           </td>
                           <td className={`p-2 text-xs text-right font-bold ${
                             item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
                           }`}>
                             {formatCurrency(item.saldoFinal)}
-                          </td>
-                          <td className="p-2 text-xs text-right font-medium text-emerald-600 opacity-70">
-                            {formatCurrency(item.previsaoReceber)}
-                          </td>
-                          <td className="p-2 text-xs text-right font-medium text-rose-400 opacity-70">
-                            {formatCurrency(item.previsaoPagar)}
-                          </td>
-                          <td className={`p-2 text-xs text-right font-bold ${
-                            item.saldoPrevisto >= 0 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'
-                          }`}>
-                            {formatCurrency(item.saldoPrevisto)}
                           </td>
                         </tr>
                       ))}
