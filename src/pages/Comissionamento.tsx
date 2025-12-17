@@ -24,6 +24,7 @@ interface Vendedor {
   nome: string;
   percentual_comissao: number;
   centro_custo: string | null;
+  fornecedor_id: string | null;
 }
 
 interface SolicitacaoComissao {
@@ -185,7 +186,7 @@ export default function Comissionamento() {
     try {
       let query = supabase
         .from("vendedores")
-        .select("id, nome, percentual_comissao, centro_custo")
+        .select("id, nome, percentual_comissao, centro_custo, fornecedor_id")
         .eq("status", "ativo")
         .order("nome");
 
@@ -226,7 +227,7 @@ export default function Comissionamento() {
       if (vendedorIds.length > 0) {
         let vendedoresQuery = supabase
           .from("vendedores")
-          .select("id, nome, percentual_comissao, centro_custo")
+          .select("id, nome, percentual_comissao, centro_custo, fornecedor_id")
           .in("id", vendedorIds);
 
         const { data: vendedoresData } = await vendedoresQuery;
@@ -440,39 +441,17 @@ export default function Comissionamento() {
         .eq("codigo", "2.1.7")
         .maybeSingle();
 
-      // Find a fornecedor for the commission (create a generic one if needed or use vendedor name)
-      // For now, we'll need to find/create a fornecedor for the vendedor
+      // Use the fornecedor_id linked to the vendedor
       const vendedor = selectedSolicitacao.vendedor;
-      
-      // Try to find a fornecedor with the vendedor name
-      let fornecedorId: string | null = null;
-      const { data: existingFornecedor } = await supabase
-        .from("fornecedores")
-        .select("id")
-        .ilike("razao_social", vendedor?.nome || "")
-        .maybeSingle();
+      const fornecedorId = vendedor?.fornecedor_id;
 
-      if (existingFornecedor) {
-        fornecedorId = existingFornecedor.id;
-      } else {
-        // Create fornecedor for the vendedor
-        const { data: newFornecedor, error: fornecedorError } = await supabase
-          .from("fornecedores")
-          .insert({
-            razao_social: vendedor?.nome || "Comissão Vendedor",
-            nome_fantasia: vendedor?.nome || "Comissão Vendedor",
-            cnpj_cpf: "000.000.000-00", // Placeholder
-            tipo_pessoa: "fisica",
-            status: "ativo",
-          })
-          .select("id")
-          .single();
-
-        if (fornecedorError) {
-          console.error("Error creating fornecedor:", fornecedorError);
-        } else {
-          fornecedorId = newFornecedor.id;
-        }
+      if (!fornecedorId) {
+        toast({
+          title: "Erro",
+          description: "O vendedor não possui um fornecedor vinculado. Vincule um fornecedor no cadastro de vendedores.",
+          variant: "destructive",
+        });
+        return;
       }
 
       // Create conta_pagar entry
@@ -481,29 +460,27 @@ export default function Comissionamento() {
       const dataCompetencia = format(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1), "yyyy-MM-dd");
       const dataVencimento = format(lastDayOfMonth(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1)), "yyyy-MM-dd");
 
-      if (fornecedorId) {
-        const { error: contaPagarError } = await supabase
-          .from("contas_pagar")
-          .insert({
-            descricao,
-            valor: selectedSolicitacao.valor_comissao,
-            data_competencia: dataCompetencia,
-            data_vencimento: dataVencimento,
-            fornecedor_id: fornecedorId,
-            plano_conta_id: planoContas?.id || null,
-            centro_custo: vendedor?.centro_custo || null,
-            status: "pendente",
-            observacoes: `Comissão aprovada em ${format(new Date(), "dd/MM/yyyy")}. Solicitação ID: ${selectedSolicitacao.id}`,
-          });
+      const { error: contaPagarError } = await supabase
+        .from("contas_pagar")
+        .insert({
+          descricao,
+          valor: selectedSolicitacao.valor_comissao,
+          data_competencia: dataCompetencia,
+          data_vencimento: dataVencimento,
+          fornecedor_id: fornecedorId,
+          plano_conta_id: planoContas?.id || null,
+          centro_custo: vendedor?.centro_custo || null,
+          status: "pendente",
+          observacoes: `Comissão aprovada em ${format(new Date(), "dd/MM/yyyy")}. Solicitação ID: ${selectedSolicitacao.id}`,
+        });
 
-        if (contaPagarError) {
-          console.error("Error creating conta_pagar:", contaPagarError);
-          toast({
-            title: "Aviso",
-            description: "Comissão aprovada, mas houve erro ao criar lançamento em contas a pagar.",
-            variant: "destructive",
-          });
-        }
+      if (contaPagarError) {
+        console.error("Error creating conta_pagar:", contaPagarError);
+        toast({
+          title: "Aviso",
+          description: "Comissão aprovada, mas houve erro ao criar lançamento em contas a pagar.",
+          variant: "destructive",
+        });
       }
 
       // Notificar solicitante

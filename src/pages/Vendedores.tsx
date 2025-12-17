@@ -13,11 +13,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Badge } from "@/components/ui/badge";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface Vendedor {
   id: string;
   nome: string;
   centro_custo: string | null;
+  fornecedor_id: string | null;
   meta: number;
   percentual_comissao: number;
   status: string;
@@ -30,9 +32,16 @@ interface CentroCusto {
   descricao: string;
 }
 
+interface Fornecedor {
+  id: string;
+  razao_social: string;
+  nome_fantasia: string | null;
+}
+
 export default function Vendedores() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,6 +52,7 @@ export default function Vendedores() {
   const [formData, setFormData] = useState({
     nome: "",
     centro_custo: "",
+    fornecedor_id: "",
     meta: 0,
     percentual_comissao: 0,
   });
@@ -54,16 +64,19 @@ export default function Vendedores() {
 
   const fetchData = async () => {
     try {
-      const [vendedoresRes, centrosCustoRes] = await Promise.all([
+      const [vendedoresRes, centrosCustoRes, fornecedoresRes] = await Promise.all([
         supabase.from("vendedores").select("*").order("nome"),
         supabase.from("centros_custo").select("id, codigo, descricao").eq("status", "ativo"),
+        supabase.from("fornecedores").select("id, razao_social, nome_fantasia").eq("status", "ativo").order("razao_social"),
       ]);
 
       if (vendedoresRes.error) throw vendedoresRes.error;
       if (centrosCustoRes.error) throw centrosCustoRes.error;
+      if (fornecedoresRes.error) throw fornecedoresRes.error;
 
       setVendedores(vendedoresRes.data || []);
       setCentrosCusto(centrosCustoRes.data || []);
+      setFornecedores(fornecedoresRes.data || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
@@ -82,12 +95,19 @@ export default function Vendedores() {
     return cc ? `${cc.codigo} - ${cc.descricao}` : centroCustoId;
   };
 
+  const getFornecedorDisplay = (fornecedorId: string | null) => {
+    if (!fornecedorId) return "-";
+    const f = fornecedores.find((f) => f.id === fornecedorId);
+    return f ? (f.nome_fantasia || f.razao_social) : fornecedorId;
+  };
+
   const handleOpenDialog = (vendedor?: Vendedor) => {
     if (vendedor) {
       setSelectedVendedor(vendedor);
       setFormData({
         nome: vendedor.nome,
         centro_custo: vendedor.centro_custo || "",
+        fornecedor_id: vendedor.fornecedor_id || "",
         meta: vendedor.meta,
         percentual_comissao: vendedor.percentual_comissao,
       });
@@ -96,6 +116,7 @@ export default function Vendedores() {
       setFormData({
         nome: "",
         centro_custo: "",
+        fornecedor_id: "",
         meta: 0,
         percentual_comissao: 0,
       });
@@ -120,6 +141,7 @@ export default function Vendedores() {
           .update({
             nome: formData.nome,
             centro_custo: formData.centro_custo || null,
+            fornecedor_id: formData.fornecedor_id || null,
             meta: formData.meta,
             percentual_comissao: formData.percentual_comissao,
           })
@@ -134,6 +156,7 @@ export default function Vendedores() {
         const { error } = await supabase.from("vendedores").insert({
           nome: formData.nome,
           centro_custo: formData.centro_custo || null,
+          fornecedor_id: formData.fornecedor_id || null,
           meta: formData.meta,
           percentual_comissao: formData.percentual_comissao,
         });
@@ -244,6 +267,7 @@ export default function Vendedores() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Centro de Custo</TableHead>
+                  <TableHead>Fornecedor Vinculado</TableHead>
                   <TableHead>Meta</TableHead>
                   <TableHead>Comissão %</TableHead>
                   <TableHead>Status</TableHead>
@@ -255,6 +279,7 @@ export default function Vendedores() {
                   <TableRow key={vendedor.id}>
                     <TableCell className="font-medium">{vendedor.nome}</TableCell>
                     <TableCell>{getCentroCustoDisplay(vendedor.centro_custo)}</TableCell>
+                    <TableCell>{getFornecedorDisplay(vendedor.fornecedor_id)}</TableCell>
                     <TableCell>{formatCurrency(vendedor.meta)}</TableCell>
                     <TableCell>{vendedor.percentual_comissao}%</TableCell>
                     <TableCell>
@@ -289,7 +314,7 @@ export default function Vendedores() {
                 ))}
                 {paginatedVendedores.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Nenhum vendedor encontrado
                     </TableCell>
                   </TableRow>
@@ -338,6 +363,23 @@ export default function Vendedores() {
                     setFormData({ ...formData, centro_custo: value })
                   }
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fornecedor_id">Fornecedor Vinculado *</Label>
+                <SearchableSelect
+                  options={fornecedores.map((f) => ({
+                    value: f.id,
+                    label: f.nome_fantasia || f.razao_social,
+                  }))}
+                  value={formData.fornecedor_id}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, fornecedor_id: value })
+                  }
+                  placeholder="Selecione um fornecedor"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Vinculado ao lançamento da comissão no contas a pagar
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="meta">Meta Mensal (R$)</Label>
