@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { FaturamentoDetailsDialog } from '@/components/faturamento/FaturamentoDetailsDialog';
+import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { format } from 'date-fns';
 
 interface Faturamento {
@@ -42,6 +43,7 @@ interface Faturamento {
   desconto_valor: number;
   periodo_recorrencia: string | null;
   data_recebimento: string | null;
+  centro_custo: string | null;
 }
 
 export default function ControleFaturamento() {
@@ -58,6 +60,7 @@ export default function ControleFaturamento() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedFaturamento, setSelectedFaturamento] = useState<Faturamento | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('');
   const { toast } = useToast();
 
   const getDateRange = () => {
@@ -137,7 +140,8 @@ export default function ControleFaturamento() {
               desconto_percentual,
               desconto_valor,
               periodo_recorrencia,
-              valor_bruto
+              valor_bruto,
+              centro_custo
             )
           )
         `)
@@ -198,6 +202,7 @@ export default function ControleFaturamento() {
           desconto_valor: contrato?.desconto_valor || 0,
           periodo_recorrencia: contrato?.periodo_recorrencia || null,
           data_recebimento: item.data_recebimento,
+          centro_custo: contrato?.centro_custo || item.centro_custo || null,
         };
       }));
 
@@ -292,8 +297,10 @@ export default function ControleFaturamento() {
       if (statusFilter === 'em-dia') return f.status !== 'pago' && f.status !== 'recebido' && vencimento >= hoje;
       return true;
     })();
+
+    const matchesCentroCusto = !selectedCentroCusto || f.centro_custo === selectedCentroCusto;
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesCentroCusto;
   });
 
   const totalItems = filteredFaturamentos.length;
@@ -390,6 +397,15 @@ export default function ControleFaturamento() {
             }}
             customRange={customDateRange}
           />
+
+          <div className="w-[250px]">
+            <CentroCustoSelect
+              value={selectedCentroCusto}
+              onValueChange={setSelectedCentroCusto}
+              placeholder="Empresa / Centro de Custo"
+              showAllOption={true}
+            />
+          </div>
           
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
