@@ -1120,7 +1120,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role:
+        | "admin"
+        | "user"
+        | "finance_manager"
+        | "finance_analyst"
+        | "commercial_manager"
+        | "salesperson"
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica" | "internacional"
@@ -1255,7 +1261,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: [
+        "admin",
+        "user",
+        "finance_manager",
+        "finance_analyst",
+        "commercial_manager",
+        "salesperson",
+      ],
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],
       pessoa_tipo: ["fisica", "juridica", "internacional"],
