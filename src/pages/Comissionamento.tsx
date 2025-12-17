@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, X, Send, Eye } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
@@ -95,8 +95,11 @@ export default function Comissionamento() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
 
   const { user } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, permissions, role } = useUserRole();
   const { toast } = useToast();
+  
+  // Check if user can approve commissions
+  const canApproveCommissions = permissions.canApproveCommissions;
 
   // Derive month/year from date range for commission requests
   const getReferencePeriod = () => {
@@ -355,16 +358,16 @@ export default function Comissionamento() {
 
       if (error) throw error;
 
-      // Criar notificação para admins
-      const { data: admins } = await supabase
+      // Criar notificação para admins e gerentes comerciais
+      const { data: approvers } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin");
+        .in("role", ["admin", "finance_manager", "commercial_manager"]);
 
-      if (admins && admins.length > 0) {
+      if (approvers && approvers.length > 0) {
         const vendedor = vendedores.find((v) => v.id === selectedVendedor);
-        const notificacoes = admins.map((admin) => ({
-          user_id: admin.user_id,
+        const notificacoes = approvers.map((approver) => ({
+          user_id: approver.user_id,
           titulo: "Nova solicitação de comissão",
           mensagem: `${vendedor?.nome} solicitou aprovação de comissão de ${formatCurrency(calcularComissao.comissao)} referente a ${meses.find((m) => m.value === mes)?.label}/${ano}.`,
           tipo: "info",
@@ -395,22 +398,97 @@ export default function Comissionamento() {
     if (!selectedSolicitacao || !user) return;
 
     try {
+      // Update the commission request status
       const { error } = await supabase
         .from("solicitacoes_comissao")
         .update({
           status: "aprovado",
           aprovador_id: user.id,
           data_aprovacao: new Date().toISOString(),
+          conta_pagar_gerada: true,
         })
         .eq("id", selectedSolicitacao.id);
 
       if (error) throw error;
 
+      // Find plano_contas with code '2.1.7' (Comissões)
+      const { data: planoContas } = await supabase
+        .from("plano_contas")
+        .select("id")
+        .eq("codigo", "2.1.7")
+        .maybeSingle();
+
+      // Find a fornecedor for the commission (create a generic one if needed or use vendedor name)
+      // For now, we'll need to find/create a fornecedor for the vendedor
+      const vendedor = selectedSolicitacao.vendedor;
+      
+      // Try to find a fornecedor with the vendedor name
+      let fornecedorId: string | null = null;
+      const { data: existingFornecedor } = await supabase
+        .from("fornecedores")
+        .select("id")
+        .ilike("razao_social", vendedor?.nome || "")
+        .maybeSingle();
+
+      if (existingFornecedor) {
+        fornecedorId = existingFornecedor.id;
+      } else {
+        // Create fornecedor for the vendedor
+        const { data: newFornecedor, error: fornecedorError } = await supabase
+          .from("fornecedores")
+          .insert({
+            razao_social: vendedor?.nome || "Comissão Vendedor",
+            nome_fantasia: vendedor?.nome || "Comissão Vendedor",
+            cnpj_cpf: "000.000.000-00", // Placeholder
+            tipo_pessoa: "fisica",
+            status: "ativo",
+          })
+          .select("id")
+          .single();
+
+        if (fornecedorError) {
+          console.error("Error creating fornecedor:", fornecedorError);
+        } else {
+          fornecedorId = newFornecedor.id;
+        }
+      }
+
+      // Create conta_pagar entry
+      const mesLabel = meses.find((m) => m.value === selectedSolicitacao.mes_referencia)?.label;
+      const descricao = `Comissão ${vendedor?.nome} - ${mesLabel}/${selectedSolicitacao.ano_referencia}`;
+      const dataCompetencia = format(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1), "yyyy-MM-dd");
+      const dataVencimento = format(lastDayOfMonth(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1)), "yyyy-MM-dd");
+
+      if (fornecedorId) {
+        const { error: contaPagarError } = await supabase
+          .from("contas_pagar")
+          .insert({
+            descricao,
+            valor: selectedSolicitacao.valor_comissao,
+            data_competencia: dataCompetencia,
+            data_vencimento: dataVencimento,
+            fornecedor_id: fornecedorId,
+            plano_conta_id: planoContas?.id || null,
+            centro_custo: vendedor?.centro_custo || null,
+            status: "pendente",
+            observacoes: `Comissão aprovada em ${format(new Date(), "dd/MM/yyyy")}. Solicitação ID: ${selectedSolicitacao.id}`,
+          });
+
+        if (contaPagarError) {
+          console.error("Error creating conta_pagar:", contaPagarError);
+          toast({
+            title: "Aviso",
+            description: "Comissão aprovada, mas houve erro ao criar lançamento em contas a pagar.",
+            variant: "destructive",
+          });
+        }
+      }
+
       // Notificar solicitante
       await supabase.from("notificacoes").insert({
         user_id: selectedSolicitacao.solicitante_id,
         titulo: "Comissão aprovada",
-        mensagem: `Sua solicitação de comissão de ${formatCurrency(selectedSolicitacao.valor_comissao)} referente a ${meses.find((m) => m.value === selectedSolicitacao.mes_referencia)?.label}/${selectedSolicitacao.ano_referencia} foi aprovada.`,
+        mensagem: `Sua solicitação de comissão de ${formatCurrency(selectedSolicitacao.valor_comissao)} referente a ${mesLabel}/${selectedSolicitacao.ano_referencia} foi aprovada. Um lançamento foi criado em Contas a Pagar.`,
         tipo: "success",
         referencia_tipo: "solicitacao_comissao",
         referencia_id: selectedSolicitacao.id,
@@ -418,7 +496,7 @@ export default function Comissionamento() {
 
       toast({
         title: "Sucesso",
-        description: "Comissão aprovada com sucesso.",
+        description: "Comissão aprovada e lançamento criado em Contas a Pagar.",
       });
 
       setApprovalDialogOpen(false);
@@ -498,7 +576,7 @@ export default function Comissionamento() {
     }
   };
 
-  const filteredSolicitacoes = isAdmin
+  const filteredSolicitacoes = canApproveCommissions
     ? solicitacoes
     : solicitacoes.filter((s) => s.solicitante_id === user?.id);
 
@@ -641,7 +719,7 @@ export default function Comissionamento() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {isAdmin ? "Solicitações de Comissão" : "Minhas Solicitações"}
+              {canApproveCommissions ? "Solicitações de Comissão" : "Minhas Solicitações"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -680,7 +758,7 @@ export default function Comissionamento() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        {isAdmin && s.status === "pendente" && (
+                        {canApproveCommissions && s.status === "pendente" && (
                           <>
                             <Button
                               variant="ghost"
