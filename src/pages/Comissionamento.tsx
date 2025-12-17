@@ -80,6 +80,7 @@ export default function Comissionamento() {
   const [loadingParcelas, setLoadingParcelas] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [userVendedorId, setUserVendedorId] = useState<string | null>(null);
   
   // Filters for solicitações
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
@@ -101,6 +102,7 @@ export default function Comissionamento() {
   
   // Check if user can approve commissions
   const canApproveCommissions = permissions.canApproveCommissions;
+  const isSalesperson = role === 'salesperson';
 
   // Derive month/year from date range for commission requests
   const getReferencePeriod = () => {
@@ -115,10 +117,29 @@ export default function Comissionamento() {
     return { mes: today.getMonth() + 1, ano: today.getFullYear() };
   };
 
+  // Fetch user's linked vendedor_id for salesperson users
+  useEffect(() => {
+    const fetchUserVendedor = async () => {
+      if (user && isSalesperson) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('vendedor_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.vendedor_id) {
+          setUserVendedorId(profile.vendedor_id);
+          setSelectedVendedor(profile.vendedor_id);
+        }
+      }
+    };
+    fetchUserVendedor();
+  }, [user, isSalesperson]);
+
   useEffect(() => {
     fetchVendedores();
     fetchSolicitacoes();
-  }, [dateRangePreset, customDateRange, selectedCentroCusto]);
+  }, [dateRangePreset, customDateRange, selectedCentroCusto, userVendedorId]);
 
   useEffect(() => {
     if (selectedVendedor) {
@@ -637,9 +658,18 @@ export default function Comissionamento() {
     }
   };
 
-  const filteredSolicitacoes = canApproveCommissions
-    ? solicitacoes
-    : solicitacoes.filter((s) => s.solicitante_id === user?.id);
+  // Filter solicitações based on user role and linked vendedor
+  const filteredSolicitacoes = useMemo(() => {
+    if (canApproveCommissions) {
+      return solicitacoes;
+    }
+    // For salesperson with linked vendedor, show only their vendedor's requests
+    if (isSalesperson && userVendedorId) {
+      return solicitacoes.filter((s) => s.vendedor_id === userVendedorId);
+    }
+    // Fallback: show only requests they created
+    return solicitacoes.filter((s) => s.solicitante_id === user?.id);
+  }, [solicitacoes, canApproveCommissions, isSalesperson, userVendedorId, user?.id]);
 
   const totalPages = Math.ceil(filteredSolicitacoes.length / itemsPerPage);
   const paginatedSolicitacoes = filteredSolicitacoes.slice(
@@ -673,7 +703,11 @@ export default function Comissionamento() {
               customRange={customDateRange}
             />
             <div className="w-[200px]">
-              <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
+              <Select 
+                value={selectedVendedor} 
+                onValueChange={setSelectedVendedor}
+                disabled={isSalesperson && !!userVendedorId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os vendedores" />
                 </SelectTrigger>
@@ -696,6 +730,18 @@ export default function Comissionamento() {
             </div>
           </div>
         </div>
+
+        {/* Alert for salesperson without linked vendedor */}
+        {isSalesperson && !userVendedorId && (
+          <Card className="border-amber-500/50 bg-amber-500/10">
+            <CardContent className="pt-6">
+              <p className="text-amber-600 dark:text-amber-400">
+                <strong>Atenção:</strong> Sua conta de vendedor ainda não está vinculada a um cadastro de vendedor. 
+                Entre em contato com o administrador para vincular seu usuário a um vendedor cadastrado.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Calculadora de Comissão */}
         {selectedVendedor && (

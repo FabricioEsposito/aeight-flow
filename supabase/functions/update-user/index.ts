@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { userId, email, nome, role } = await req.json();
+    const { userId, email, nome, role, vendedor_id } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
     const profileUpdates: any = {};
     if (nome !== undefined) profileUpdates.nome = nome;
     if (email !== undefined) profileUpdates.email = email;
+    if (vendedor_id !== undefined) profileUpdates.vendedor_id = vendedor_id || null;
 
     if (Object.keys(profileUpdates).length > 0) {
       const { error: profileError } = await supabaseAdmin
