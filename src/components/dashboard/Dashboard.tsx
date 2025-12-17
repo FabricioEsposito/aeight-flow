@@ -386,6 +386,19 @@ export function Dashboard() {
       // Agregar dados de contas por data - separar realizados e previstos
       const fluxoPorDia: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
       
+      // Gerar todos os dias do período selecionado
+      if (dateRange) {
+        const startDate = new Date(dateRange.from + 'T00:00:00');
+        const endDate = new Date(dateRange.to + 'T00:00:00');
+        const currentDate = new Date(startDate);
+        
+        while (currentDate <= endDate) {
+          const dateStr = formatDateLocal(currentDate);
+          fluxoPorDia[dateStr] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+      
       // Adicionar contas recebidas (efetivamente pagas - realizado)
       contasReceberFluxo?.filter(c => c.status === 'pago' && c.data_recebimento).forEach(c => {
         const date = c.data_recebimento!;
