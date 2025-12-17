@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, Send, Eye } from "lucide-react";
+import { Check, X, Send, Eye, RotateCcw } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
@@ -93,6 +93,7 @@ export default function Comissionamento() {
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
 
   const { user } = useAuth();
   const { isAdmin, permissions, role } = useUserRole();
@@ -557,6 +558,66 @@ export default function Comissionamento() {
     }
   };
 
+  const handleReverter = async () => {
+    if (!selectedSolicitacao || !user) return;
+
+    try {
+      // Buscar e deletar a conta a pagar relacionada
+      const mesLabel = meses.find((m) => m.value === selectedSolicitacao.mes_referencia)?.label;
+      const vendedorNome = selectedSolicitacao.vendedor?.nome;
+      const descricaoComissao = `Comissão ${vendedorNome} - ${mesLabel}/${selectedSolicitacao.ano_referencia}`;
+
+      // Delete the conta_pagar entry that was created during approval
+      const { error: deleteError } = await supabase
+        .from("contas_pagar")
+        .delete()
+        .ilike("descricao", `%${descricaoComissao}%`);
+
+      if (deleteError) {
+        console.error("Erro ao deletar conta a pagar:", deleteError);
+      }
+
+      // Update the commission request status back to pendente
+      const { error } = await supabase
+        .from("solicitacoes_comissao")
+        .update({
+          status: "pendente",
+          aprovador_id: null,
+          data_aprovacao: null,
+          conta_pagar_gerada: false,
+        })
+        .eq("id", selectedSolicitacao.id);
+
+      if (error) throw error;
+
+      // Notificar solicitante
+      await supabase.from("notificacoes").insert({
+        user_id: selectedSolicitacao.solicitante_id,
+        titulo: "Aprovação de comissão revertida",
+        mensagem: `A aprovação da sua comissão de ${formatCurrency(selectedSolicitacao.valor_comissao)} referente a ${mesLabel}/${selectedSolicitacao.ano_referencia} foi revertida. O lançamento em contas a pagar foi removido.`,
+        tipo: "info",
+        referencia_tipo: "solicitacao_comissao",
+        referencia_id: selectedSolicitacao.id,
+      });
+
+      toast({
+        title: "Sucesso",
+        description: "Aprovação revertida. O lançamento em contas a pagar foi removido.",
+      });
+
+      setRevertDialogOpen(false);
+      setSelectedSolicitacao(null);
+      fetchSolicitacoes();
+    } catch (error) {
+      console.error("Erro ao reverter aprovação:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reverter a aprovação.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -782,6 +843,19 @@ export default function Comissionamento() {
                             </Button>
                           </>
                         )}
+                        {canApproveCommissions && s.status === "aprovado" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedSolicitacao(s);
+                              setRevertDialogOpen(true);
+                            }}
+                            title="Reverter aprovação"
+                          >
+                            <RotateCcw className="w-4 h-4 text-amber-600" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -937,6 +1011,28 @@ export default function Comissionamento() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog de Reversão */}
+        <AlertDialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reverter Aprovação</AlertDialogTitle>
+              <AlertDialogDescription>
+                Deseja reverter a aprovação da comissão de{" "}
+                <strong>{selectedSolicitacao && formatCurrency(selectedSolicitacao.valor_comissao)}</strong>{" "}
+                do vendedor <strong>{selectedSolicitacao?.vendedor?.nome}</strong>?
+                <br /><br />
+                O lançamento em Contas a Pagar será removido e o status voltará para pendente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReverter} className="bg-amber-600 hover:bg-amber-700">
+                Reverter
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
   );
 }
