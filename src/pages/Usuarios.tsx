@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -49,8 +49,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreVertical, Edit, UserX, Trash2, UserCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 import { AppRole, useUserRole } from "@/hooks/useUserRole";
+import { VendedorSelect } from "@/components/contratos/VendedorSelect";
+
+interface Vendedor {
+  id: string;
+  nome: string;
+}
 
 const roleOptions: { value: AppRole; label: string; description: string }[] = [
   { value: 'admin', label: 'Administrador', description: 'Acesso total ao sistema e todas as aprovações' },
@@ -79,6 +84,7 @@ export default function Usuarios() {
   const [toggleStatusUserId, setToggleStatusUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editRole, setEditRole] = useState<AppRole>("user");
+  const [editVendedorId, setEditVendedorId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -122,13 +128,40 @@ export default function Usuarios() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      return data.users;
+      // Fetch vendedor_id from profiles for each user
+      const userIds = data.users.map((u: any) => u.id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, vendedor_id')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map((p: any) => [p.id, p.vendedor_id]) || []);
+      
+      return data.users.map((u: any) => ({
+        ...u,
+        vendedor_id: profileMap.get(u.id) || null,
+      }));
+    },
+  });
+
+  // Buscar vendedores cadastrados
+  const { data: vendedores } = useQuery({
+    queryKey: ['vendedores-ativos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vendedores')
+        .select('id, nome')
+        .eq('status', 'ativo')
+        .order('nome');
+      
+      if (error) throw error;
+      return data as Vendedor[];
     },
   });
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -146,6 +179,7 @@ export default function Usuarios() {
       });
       setOpenEdit(false);
       setEditingUser(null);
+      setEditVendedorId("");
     },
     onError: (error: any) => {
       console.error('Update error:', error);
@@ -222,6 +256,7 @@ export default function Usuarios() {
   const handleEditUser = (usuario: any) => {
     setEditingUser(usuario);
     setEditRole(usuario.role || 'user');
+    setEditVendedorId(usuario.vendedor_id || "");
     setOpenEdit(true);
   };
 
@@ -231,6 +266,7 @@ export default function Usuarios() {
       updateUserMutation.mutate({
         userId: editingUser.id,
         role: editRole,
+        vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
       });
     }
   };
@@ -266,35 +302,49 @@ export default function Usuarios() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Nível Hierárquico</TableHead>
+                <TableHead>Vendedor Vinculado</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usuarios?.map((usuario: any) => (
-                <TableRow key={usuario.id}>
-                  <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
-                  <TableCell>{usuario.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(usuario.role || 'user')}>
-                      {getRoleLabel(usuario.role)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {usuario.banned ? (
-                      <Badge variant="destructive">Inativo</Badge>
-                    ) : usuario.status === 'pendente' ? (
-                      <Badge variant="outline">Pendente</Badge>
-                    ) : (
-                      <Badge variant="default">Ativo</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {usuario.created_at 
-                      ? new Date(usuario.created_at).toLocaleDateString('pt-BR')
-                      : 'N/A'}
-                  </TableCell>
+              {usuarios?.map((usuario: any) => {
+                const vendedorVinculado = vendedores?.find(v => v.id === usuario.vendedor_id);
+                return (
+                  <TableRow key={usuario.id}>
+                    <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
+                    <TableCell>{usuario.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={getRoleBadgeVariant(usuario.role || 'user')}>
+                        {getRoleLabel(usuario.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {usuario.role === 'salesperson' ? (
+                        vendedorVinculado ? (
+                          <Badge variant="outline">{vendedorVinculado.nome}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Não vinculado</span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {usuario.banned ? (
+                        <Badge variant="destructive">Inativo</Badge>
+                      ) : usuario.status === 'pendente' ? (
+                        <Badge variant="outline">Pendente</Badge>
+                      ) : (
+                        <Badge variant="default">Ativo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {usuario.created_at 
+                        ? new Date(usuario.created_at).toLocaleDateString('pt-BR')
+                        : 'N/A'}
+                    </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -330,8 +380,9 @@ export default function Usuarios() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
-                </TableRow>
-              ))}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -368,6 +419,27 @@ export default function Usuarios() {
                 </p>
               )}
             </div>
+
+            {editRole === 'salesperson' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-vendedor">Vincular Vendedor</Label>
+                <Select value={editVendedorId} onValueChange={setEditVendedorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores?.map((vendedor) => (
+                      <SelectItem key={vendedor.id} value={vendedor.id}>
+                        {vendedor.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Vincule este usuário a um vendedor cadastrado para que ele possa visualizar suas comissões e vendas.
+                </p>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
                 Cancelar

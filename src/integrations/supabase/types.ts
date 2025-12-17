@@ -840,6 +840,7 @@ export type Database = {
           id: string
           nome: string | null
           updated_at: string | null
+          vendedor_id: string | null
         }
         Insert: {
           cargo?: string | null
@@ -849,6 +850,7 @@ export type Database = {
           id: string
           nome?: string | null
           updated_at?: string | null
+          vendedor_id?: string | null
         }
         Update: {
           cargo?: string | null
@@ -858,8 +860,17 @@ export type Database = {
           id?: string
           nome?: string | null
           updated_at?: string | null
+          vendedor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       servicos: {
         Row: {
