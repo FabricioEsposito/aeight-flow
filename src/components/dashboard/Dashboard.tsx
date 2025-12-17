@@ -55,7 +55,9 @@ interface FluxoCaixaData {
   recebido: number;
   pago: number;
   saldoFinal: number;
-  saldoPrevisto?: number;
+  previsaoReceber: number;
+  previsaoPagar: number;
+  saldoPrevisto: number;
 }
 
 export function Dashboard() {
@@ -930,6 +932,9 @@ export function Dashboard() {
                         <th className="text-right p-2 text-xs font-semibold">Receita</th>
                         <th className="text-right p-2 text-xs font-semibold">Despesa</th>
                         <th className="text-right p-2 text-xs font-semibold">Saldo</th>
+                        <th className="text-right p-2 text-xs font-semibold text-emerald-600">Prev. Receita</th>
+                        <th className="text-right p-2 text-xs font-semibold text-rose-400">Prev. Despesa</th>
+                        <th className="text-right p-2 text-xs font-semibold text-blue-600">Saldo Previsto</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -946,6 +951,17 @@ export function Dashboard() {
                             item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
                           }`}>
                             {formatCurrency(item.saldoFinal)}
+                          </td>
+                          <td className="p-2 text-xs text-right font-medium text-emerald-600 opacity-70">
+                            {formatCurrency(item.previsaoReceber)}
+                          </td>
+                          <td className="p-2 text-xs text-right font-medium text-rose-400 opacity-70">
+                            {formatCurrency(item.previsaoPagar)}
+                          </td>
+                          <td className={`p-2 text-xs text-right font-bold ${
+                            item.saldoPrevisto >= 0 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'
+                          }`}>
+                            {formatCurrency(item.saldoPrevisto)}
                           </td>
                         </tr>
                       ))}
