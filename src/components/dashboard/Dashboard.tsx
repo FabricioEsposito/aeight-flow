@@ -283,9 +283,22 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
       
-      // Previsão de recebimento (contas pendentes)
+      // Previsão de recebimento (contas pendentes e em dia)
       const previsaoReceber = contasReceber
-        ?.filter(c => c.status === 'pendente')
+        ?.filter(c => {
+          const todayDate = new Date(today + 'T00:00:00');
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
+          return c.status === 'pendente' && !isOverdue;
+        })
+        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
+
+      // Previsão de pagamento (contas pendentes e em dia)
+      const previsaoPagar = contasPagar
+        ?.filter(c => {
+          const todayDate = new Date(today + 'T00:00:00');
+          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
+          return c.status === 'pendente' && !isOverdue;
+        })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const inadimplentes = contasReceber
@@ -302,11 +315,6 @@ export function Dashboard() {
           const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
           return c.status === 'pendente' && !isOverdue;
         })
-        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
-      
-      // Previsão de pagamento (contas pendentes)
-      const previsaoPagar = contasPagar
-        ?.filter(c => c.status === 'pendente')
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const pagarAtrasado = contasPagar
@@ -398,8 +406,11 @@ export function Dashboard() {
         fluxoPorDia[date].despesaRealizada += Number(c.valor);
       });
       
-      // Adicionar previsões (APENAS contas pendentes - vencidos ficam só nos cards)
-      contasReceberFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento).forEach(c => {
+      const hojeStr = formatDateLocal(new Date());
+
+      // Adicionar previsões (APENAS contas pendentes e NÃO vencidas - vencidos ficam só nos cards)
+      // Regra: previsão só considera vencimentos de hoje em diante
+      contasReceberFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= hojeStr).forEach(c => {
         const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
@@ -408,7 +419,7 @@ export function Dashboard() {
         fluxoPorDia[date].receitaPrevista += Number(c.valor);
       });
 
-      contasPagarFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento).forEach(c => {
+      contasPagarFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= hojeStr).forEach(c => {
         const date = c.data_vencimento!;
         
         if (!fluxoPorDia[date]) {
