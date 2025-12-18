@@ -590,26 +590,24 @@ export default function NovoContrato() {
                 </RadioGroup>
               </div>
 
-              {/* Tipo de Venda (apenas para contratos de venda) */}
-              {tipoContrato === 'venda' && (
-                <div className="space-y-2">
-                  <Label>Tipo da Venda *</Label>
-                  <RadioGroup 
-                    value={tipoVenda} 
-                    onValueChange={(value: string) => setTipoVenda(value as any)}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="avulsa" id="avulsa" />
-                      <Label htmlFor="avulsa">Venda avulsa</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="recorrente" id="recorrente" />
-                      <Label htmlFor="recorrente">Venda recorrente (contrato)</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
+              {/* Tipo de Venda/Compra */}
+              <div className="space-y-2">
+                <Label>Tipo {tipoContrato === 'venda' ? 'da Venda' : 'da Compra'} *</Label>
+                <RadioGroup 
+                  value={tipoVenda} 
+                  onValueChange={(value: string) => setTipoVenda(value as any)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="avulsa" id="avulsa" />
+                    <Label htmlFor="avulsa">{tipoContrato === 'venda' ? 'Venda avulsa' : 'Compra avulsa'}</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="recorrente" id="recorrente" />
+                    <Label htmlFor="recorrente">{tipoContrato === 'venda' ? 'Venda recorrente (contrato)' : 'Compra recorrente (contrato)'}</Label>
+                  </div>
+                </RadioGroup>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -649,7 +647,7 @@ export default function NovoContrato() {
 
                 {tipoVenda === 'recorrente' && (
                   <div className="space-y-2">
-                    <Label>Dia da geração das vendas *</Label>
+                    <Label>Dia da geração {tipoContrato === 'venda' ? 'das vendas' : 'das compras'} *</Label>
                     <Select value={diaGeracao} onValueChange={setDiaGeracao}>
                       <SelectTrigger>
                         <SelectValue />
@@ -669,7 +667,7 @@ export default function NovoContrato() {
               {tipoVenda === 'recorrente' && (
                 <>
                   <div className="space-y-2">
-                    <Label>Data da primeira venda *</Label>
+                    <Label>Data {tipoContrato === 'venda' ? 'da primeira venda' : 'da primeira compra'} *</Label>
                     <DateInput value={dataPrimeiraVenda} onChange={setDataPrimeiraVenda} />
                   </div>
 
@@ -679,7 +677,7 @@ export default function NovoContrato() {
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Repetir venda a cada *</Label>
+                        <Label>Repetir {tipoContrato === 'venda' ? 'venda' : 'compra'} a cada *</Label>
                         <Select value={periodoRecorrencia} onValueChange={setPeriodoRecorrencia}>
                           <SelectTrigger>
                             <SelectValue />
