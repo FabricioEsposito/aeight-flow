@@ -304,7 +304,7 @@ serve(async (req: Request): Promise<Response> => {
 
       try {
         const emailResponse = await resend.emails.send({
-          from: "Financeiro Aeight <cobranca@update.aeight.global>",
+          from: "Financeiro Aeight <cobranca@financeiro.aeight.global>",
           to: clienteData.emails,
           subject: `Aviso de Cobrança - ${formatCurrency(clienteData.total_vencido)} em aberto`,
           html: htmlContent,
