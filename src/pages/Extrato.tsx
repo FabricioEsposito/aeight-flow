@@ -306,7 +306,8 @@ export default function Extrato() {
       const { data: dataContas, error: errorContas } = await supabase
         .from('contas_bancarias')
         .select('id, descricao, banco, saldo_atual')
-        .eq('status', 'ativo');
+        .eq('status', 'ativo')
+        .order('descricao');
 
       if (errorContas) throw errorContas;
       setContasBancarias(dataContas || []);
