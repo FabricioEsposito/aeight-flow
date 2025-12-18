@@ -21,6 +21,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 interface Contrato {
   id: string;
   numero_contrato: string;
@@ -31,9 +37,11 @@ interface Contrato {
   quantidade?: number;
   valor_unitario?: number;
   status: string;
+  centro_custo?: string;
   clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
+  centro_custo_info?: CentroCusto;
 }
 
 interface ContratosTableProps {
@@ -76,6 +84,7 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
             <TableHead>Nome Fantasia</TableHead>
             <TableHead>Contrato</TableHead>
             <TableHead>Descrição</TableHead>
+            <TableHead>Centro de Custos</TableHead>
             <TableHead>Valor Bruto</TableHead>
             <TableHead>Valor Líquido</TableHead>
             <TableHead>Status</TableHead>
@@ -85,7 +94,7 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
         <TableBody>
           {contratos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                 Nenhum contrato encontrado
               </TableCell>
             </TableRow>
@@ -130,6 +139,11 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                     <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>
                       {contrato.tipo_contrato === 'venda' ? 'Venda' : 'Compra'}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {contrato.centro_custo_info 
+                      ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}`
+                      : contrato.centro_custo || '-'}
                   </TableCell>
                   <TableCell className="font-medium text-muted-foreground">
                     {formatCurrency(valorBruto)}

@@ -12,6 +12,12 @@ import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRa
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 interface Contrato {
   id: string;
   numero_contrato: string;
@@ -22,15 +28,18 @@ interface Contrato {
   quantidade?: number;
   valor_unitario?: number;
   status: string;
+  centro_custo?: string;
   clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
+  centro_custo_info?: CentroCusto;
 }
 
 export default function Contratos() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
@@ -39,6 +48,14 @@ export default function Contratos() {
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  const fetchCentrosCusto = async () => {
+    const { data } = await supabase
+      .from('centros_custo')
+      .select('id, codigo, descricao')
+      .eq('status', 'ativo');
+    setCentrosCusto(data || []);
+  };
 
   const fetchContratos = async () => {
     try {
@@ -57,15 +74,7 @@ export default function Contratos() {
 
       if (error) throw error;
       
-      // Adicionar flag tem_go_live para cada contrato
-      const contratosComGoLive = (data || []).map((contrato: any) => ({
-        ...contrato,
-        tem_go_live: contrato.parcelas_contrato?.some(
-          (parcela: any) => parcela.status === 'aguardando_conclusao'
-        ) || false
-      }));
-      
-      setContratos(contratosComGoLive);
+      setContratos((data || []) as Contrato[]);
     } catch (error) {
       console.error('Erro ao buscar contratos:', error);
       toast({
@@ -79,8 +88,22 @@ export default function Contratos() {
   };
 
   useEffect(() => {
+    fetchCentrosCusto();
     fetchContratos();
   }, []);
+
+  // Mapear centro de custo para cada contrato
+  const contratosComCentroCusto = contratos.map(contrato => {
+    const centroCustoInfo = centrosCusto.find(cc => cc.codigo === contrato.centro_custo);
+    const temGoLive = (contrato as any).parcelas_contrato?.some(
+      (parcela: any) => parcela.status === 'aguardando_conclusao'
+    ) || false;
+    return {
+      ...contrato,
+      centro_custo_info: centroCustoInfo,
+      tem_go_live: temGoLive
+    };
+  });
 
   const handleView = (id: string) => {
     navigate(`/contratos/${id}`);
@@ -163,7 +186,7 @@ export default function Contratos() {
     }
   };
 
-  const filteredContratos = contratos.filter(contrato => {
+  const filteredContratos = contratosComCentroCusto.filter(contrato => {
     const matchesSearch = 
       contrato.numero_contrato.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (contrato.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
