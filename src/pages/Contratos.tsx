@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
+import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 
 interface CentroCusto {
@@ -44,6 +45,7 @@ export default function Contratos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
   const [filterGoLive, setFilterGoLive] = useState<string>('todos');
+  const [filterCentroCusto, setFilterCentroCusto] = useState<string>('');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [currentPage, setCurrentPage] = useState(1);
@@ -199,6 +201,8 @@ export default function Contratos() {
       (filterGoLive === 'com-go-live' && contrato.tem_go_live) ||
       (filterGoLive === 'sem-go-live' && !contrato.tem_go_live);
 
+    const matchesCentroCusto = !filterCentroCusto || contrato.centro_custo === filterCentroCusto;
+
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange?.from && dateRange?.to) {
@@ -206,7 +210,7 @@ export default function Contratos() {
       matchesDate = dataInicio >= dateRange.from && dataInicio <= dateRange.to;
     }
 
-    return matchesSearch && matchesType && matchesGoLive && matchesDate;
+    return matchesSearch && matchesType && matchesGoLive && matchesCentroCusto && matchesDate;
   });
 
   // Paginação
@@ -252,7 +256,7 @@ export default function Contratos() {
       </div>
 
       <Card className="p-6">
-        <div className="flex gap-4 mb-6">
+        <div className="flex flex-wrap gap-4 mb-6">
           <DateRangeFilter
             value={datePreset}
             onChange={(preset, range) => {
@@ -262,7 +266,16 @@ export default function Contratos() {
             customRange={customDateRange}
           />
 
-          <div className="relative flex-1">
+          <div className="w-56">
+            <CentroCustoSelect
+              value={filterCentroCusto}
+              onValueChange={setFilterCentroCusto}
+              placeholder="Centro de Custos"
+              showAllOption
+            />
+          </div>
+
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Buscar por número do contrato ou cliente..."
