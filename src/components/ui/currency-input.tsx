@@ -10,21 +10,37 @@ interface CurrencyInputProps {
 }
 
 export function CurrencyInput({ value, onChange, placeholder = "0,00", className, disabled }: CurrencyInputProps) {
-  const formatCurrencyInput = (value: number) => {
-    if (!value) return '';
-    return value.toString().replace('.', ',');
-  };
+  const [displayValue, setDisplayValue] = React.useState('');
 
-  const parseCurrencyInput = (value: string) => {
-    const numericValue = value.replace(',', '.').replace(/[^\d.-]/g, '');
-    return parseFloat(numericValue) || 0;
+  React.useEffect(() => {
+    if (!value) {
+      setDisplayValue('');
+    } else if (document.activeElement?.getAttribute('data-currency-input') !== 'true') {
+      setDisplayValue(value.toString().replace('.', ','));
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    
+    // Remove tudo exceto números, vírgula e ponto
+    const filtered = inputValue.replace(/[^\d,.-]/g, '');
+    
+    setDisplayValue(filtered);
+    
+    // Converte para número
+    const numericValue = filtered.replace(',', '.').replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(numericValue);
+    
+    onChange(isNaN(parsed) ? 0 : parsed);
   };
 
   return (
     <Input
       type="text"
-      value={formatCurrencyInput(value)}
-      onChange={(e) => onChange(parseCurrencyInput(e.target.value))}
+      data-currency-input="true"
+      value={displayValue}
+      onChange={handleChange}
       placeholder={placeholder}
       className={className}
       disabled={disabled}
