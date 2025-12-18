@@ -211,6 +211,10 @@ export default function Contratos() {
     }
 
     return matchesSearch && matchesType && matchesGoLive && matchesCentroCusto && matchesDate;
+  }).sort((a, b) => {
+    const nomeA = (a.clientes?.nome_fantasia || a.clientes?.razao_social || a.fornecedores?.nome_fantasia || a.fornecedores?.razao_social || '').toLowerCase();
+    const nomeB = (b.clientes?.nome_fantasia || b.clientes?.razao_social || b.fornecedores?.nome_fantasia || b.fornecedores?.razao_social || '').toLowerCase();
+    return nomeA.localeCompare(nomeB, 'pt-BR');
   });
 
   // Paginação
