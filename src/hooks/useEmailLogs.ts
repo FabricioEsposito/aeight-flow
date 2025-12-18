@@ -79,11 +79,11 @@ export function useEmailLogs() {
     return (data?.length || 0) < maxEmails;
   };
 
-  const sendCollectionEmail = async (clienteId?: string): Promise<SendEmailResult> => {
+  const sendCollectionEmail = async (clienteId?: string, force: boolean = false): Promise<SendEmailResult> => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-collection-emails', {
-        body: clienteId ? { cliente_id: clienteId } : { all: true },
+        body: clienteId ? { cliente_id: clienteId, force } : { all: true, force },
       });
 
       if (error) throw error;

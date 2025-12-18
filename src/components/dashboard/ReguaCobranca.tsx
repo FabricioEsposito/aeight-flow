@@ -164,7 +164,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
 
   const handleSendEmail = async (clienteId: string) => {
     setSendingClientId(clienteId);
-    await sendCollectionEmail(clienteId);
+    await sendCollectionEmail(clienteId, true); // force: true for manual sends
     setSendingClientId(null);
     // Refresh last email dates
     const clienteIds = [...new Set(parcelas.map(p => p.cliente_id).filter(id => id))];
