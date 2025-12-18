@@ -191,7 +191,7 @@ export default function DashboardComercial() {
     }
   };
 
-  const { vendasPorVendedor, vendasPorCliente, totalVendas, totalMeta, vendedorDestaque } = useMemo(() => {
+  const { vendasPorVendedor, vendasPorCliente, totalVendas, totalMeta, vendedorDestaque, ticketMedio, quantidadeContratos } = useMemo(() => {
     const vendedorMap = new Map<string, VendaVendedor>();
     const clienteMap = new Map<string, VendaCliente>();
 
@@ -245,6 +245,8 @@ export default function DashboardComercial() {
 
     const totalMetaCalc = vendedores.reduce((acc, v) => acc + v.meta, 0);
     const destaque = vendasVendedor[0];
+    const qtdContratos = contratos.length;
+    const ticketMedioCalc = qtdContratos > 0 ? total / qtdContratos : 0;
 
     return {
       vendasPorVendedor: vendasVendedor,
@@ -252,6 +254,8 @@ export default function DashboardComercial() {
       totalVendas: total,
       totalMeta: totalMetaCalc,
       vendedorDestaque: destaque,
+      ticketMedio: ticketMedioCalc,
+      quantidadeContratos: qtdContratos,
     };
   }, [vendedores, contratos]);
 
@@ -333,28 +337,30 @@ export default function DashboardComercial() {
 
           <Card className="border-l-4 border-l-violet-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vendedores Ativos</CardTitle>
-              <Users className="h-4 w-4 text-violet-500" />
+              <CardTitle className="text-sm font-medium">% da Meta</CardTitle>
+              <Target className="h-4 w-4 text-violet-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-violet-600">{vendedores.length}</div>
+              <div className={`text-2xl font-bold ${percentualMeta >= 100 ? 'text-emerald-600' : percentualMeta >= 70 ? 'text-amber-600' : 'text-red-600'}`}>
+                {percentualMeta.toFixed(1)}%
+              </div>
               <p className="text-xs text-muted-foreground">
-                Equipe de vendas
+                {isSalesperson ? "Atingimento da sua meta" : "Atingimento da meta geral"}
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-l-4 border-l-amber-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vendedor Destaque</CardTitle>
+              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
               <TrendingUp className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-600 truncate">
-                {vendedorDestaque?.nome || "-"}
+              <div className="text-2xl font-bold text-amber-600">
+                {formatCurrency(ticketMedio)}
               </div>
               <p className="text-xs text-muted-foreground">
-                {vendedorDestaque ? formatCurrency(vendedorDestaque.valor) : "-"}
+                {quantidadeContratos} {quantidadeContratos === 1 ? "venda" : "vendas"} no período
               </p>
             </CardContent>
           </Card>
@@ -421,7 +427,7 @@ export default function DashboardComercial() {
           {/* Vendas por Cliente */}
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Top 10 Clientes por Vendas</CardTitle>
+              <CardTitle>{isSalesperson ? "Meus Top 10 Clientes" : "Top 10 Clientes por Vendas"}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
