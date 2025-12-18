@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Label } from "@/components/ui/label";
 import { TrendingUp, Users, Target, DollarSign } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Vendedor {
   id: string;
@@ -55,18 +55,48 @@ interface DateRange {
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
 export default function DashboardComercial() {
+  const { user } = useAuth();
+  const { isSalesperson, loading: roleLoading } = useUserRole();
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
+  const [userVendedorId, setUserVendedorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>("");
   const { toast } = useToast();
 
+  // Fetch user's vendedor_id from profile
   useEffect(() => {
+    const fetchUserVendedor = async () => {
+      if (!user || !isSalesperson) {
+        setUserVendedorId(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("vendedor_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!error && data?.vendedor_id) {
+        setUserVendedorId(data.vendedor_id);
+      }
+    };
+
+    if (!roleLoading) {
+      fetchUserVendedor();
+    }
+  }, [user, isSalesperson, roleLoading]);
+
+  useEffect(() => {
+    // Wait for role check to complete for salespeople
+    if (roleLoading) return;
+    if (isSalesperson && userVendedorId === null) return; // Still loading vendedor_id
     fetchData();
-  }, [dateRangePreset, customDateRange, selectedCentroCusto]);
+  }, [dateRangePreset, customDateRange, selectedCentroCusto, roleLoading, isSalesperson, userVendedorId]);
 
   const getDateRange = (): { start: Date; end: Date } | null => {
     const today = new Date();
@@ -112,18 +142,24 @@ export default function DashboardComercial() {
         .from("centros_custo")
         .select("id, codigo, descricao");
 
-      // Fetch vendedores
+      // Fetch vendedores - filter for salesperson role
       let vendedoresQuery = supabase.from("vendedores").select("*").eq("status", "ativo");
-      if (selectedCentroCusto) {
+      if (isSalesperson && userVendedorId) {
+        vendedoresQuery = vendedoresQuery.eq("id", userVendedorId);
+      } else if (selectedCentroCusto) {
         vendedoresQuery = vendedoresQuery.eq("centro_custo", selectedCentroCusto);
       }
       const vendedoresRes = await vendedoresQuery;
 
-      // Fetch contratos
+      // Fetch contratos - filter for salesperson role
       let contratosQuery = supabase
         .from("contratos")
         .select("id, vendedor_responsavel, valor_total, cliente_id, created_at, centro_custo, clientes(razao_social, nome_fantasia)")
         .eq("tipo_contrato", "venda");
+
+      if (isSalesperson && userVendedorId) {
+        contratosQuery = contratosQuery.eq("vendedor_responsavel", userVendedorId);
+      }
 
       if (dateRange) {
         const startStr = format(dateRange.start, "yyyy-MM-dd");
@@ -131,7 +167,7 @@ export default function DashboardComercial() {
         contratosQuery = contratosQuery.gte("created_at", startStr).lte("created_at", endStr + "T23:59:59");
       }
 
-      if (selectedCentroCusto) {
+      if (selectedCentroCusto && !isSalesperson) {
         contratosQuery = contratosQuery.eq("centro_custo", selectedCentroCusto);
       }
 
@@ -241,9 +277,11 @@ export default function DashboardComercial() {
     <div className="p-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboard Comercial</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {isSalesperson ? "Meu Dashboard Comercial" : "Dashboard Comercial"}
+            </h1>
             <p className="text-muted-foreground">
-              Acompanhe o desempenho da equipe de vendas
+              {isSalesperson ? "Acompanhe seu desempenho de vendas" : "Acompanhe o desempenho da equipe de vendas"}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -252,14 +290,16 @@ export default function DashboardComercial() {
               onChange={handleDateRangeChange}
               customRange={customDateRange}
             />
-            <div className="w-[250px]">
-              <CentroCustoSelect
-                value={selectedCentroCusto}
-                onValueChange={setSelectedCentroCusto}
-                placeholder="Todos os centros de custo"
-                showAllOption
-              />
-            </div>
+            {!isSalesperson && (
+              <div className="w-[250px]">
+                <CentroCustoSelect
+                  value={selectedCentroCusto}
+                  onValueChange={setSelectedCentroCusto}
+                  placeholder="Todos os centros de custo"
+                  showAllOption
+                />
+              </div>
+            )}
           </div>
         </div>
 
