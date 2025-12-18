@@ -16,6 +16,7 @@ import { ExtratoActionsDropdown } from '@/components/financeiro/ExtratoActionsDr
 import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
+import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
 import { useUserRole } from '@/hooks/useUserRole';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
@@ -72,8 +73,10 @@ export default function Extrato() {
   const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+  const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
   const [lancamentoToDelete, setLancamentoToDelete] = useState<LancamentoExtrato | null>(null);
   const [statusChangeData, setStatusChangeData] = useState<{ lancamento: LancamentoExtrato; newStatus: string } | null>(null);
+  const [partialPaymentLancamento, setPartialPaymentLancamento] = useState<LancamentoExtrato | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -334,8 +337,8 @@ export default function Extrato() {
   }, [datePreset, customDateRange]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
-    setStatusChangeData({ lancamento, newStatus: 'pago' });
-    setStatusChangeDialogOpen(true);
+    setPartialPaymentLancamento(lancamento);
+    setPartialPaymentDialogOpen(true);
   };
 
   const handleMarkAsOpenClick = (lancamento: LancamentoExtrato) => {
@@ -343,39 +346,101 @@ export default function Extrato() {
     setStatusChangeDialogOpen(true);
   };
 
-  const handleMarkAsPaid = async () => {
-    if (!statusChangeData) return;
+  const handlePartialPayment = async (data: {
+    isPartial: boolean;
+    paymentDate: string;
+    paidAmount?: number;
+    remainingDueDate?: string;
+  }) => {
+    if (!partialPaymentLancamento) return;
 
     try {
-      const { lancamento } = statusChangeData;
+      const lancamento = partialPaymentLancamento;
       const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
-      const { error } = await supabase
-        .from(table)
-        .update({ 
-          status: 'pago',
-          [dateField]: format(new Date(), 'yyyy-MM-dd')
-        })
-        .eq('id', lancamento.id);
+      if (data.isPartial && data.paidAmount && data.remainingDueDate) {
+        // Baixa parcial: atualizar o lançamento atual com valor parcial e criar novo para o residual
+        const remainingAmount = lancamento.valor - data.paidAmount;
+        
+        // Buscar dados completos do lançamento
+        const { data: fullData, error: fetchError } = await supabase
+          .from(table)
+          .select('*')
+          .eq('id', lancamento.id)
+          .single();
 
-      if (error) throw error;
+        if (fetchError) throw fetchError;
 
-      toast({
-        title: "Sucesso",
-        description: lancamento.tipo === 'entrada' ? "Marcado como recebido!" : "Marcado como pago!",
-      });
+        // Atualizar o lançamento atual com o valor pago
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({ 
+            status: 'pago',
+            valor: data.paidAmount,
+            [dateField]: data.paymentDate
+          })
+          .eq('id', lancamento.id);
+
+        if (updateError) throw updateError;
+
+        // Criar novo lançamento para o valor residual
+        const novoLancamento: any = { ...fullData };
+        delete novoLancamento.id;
+        delete novoLancamento.created_at;
+        delete novoLancamento.updated_at;
+        delete novoLancamento[dateField];
+        delete novoLancamento.parcela_id; // Remove vínculo para permitir exclusão
+        
+        novoLancamento.valor = remainingAmount;
+        novoLancamento.valor_original = remainingAmount;
+        novoLancamento.data_vencimento = data.remainingDueDate;
+        novoLancamento.data_vencimento_original = data.remainingDueDate;
+        novoLancamento.status = 'pendente';
+        novoLancamento.descricao = `${lancamento.descricao} (Residual)`;
+        novoLancamento.juros = 0;
+        novoLancamento.multa = 0;
+        novoLancamento.desconto = 0;
+
+        const { error: insertError } = await supabase
+          .from(table)
+          .insert(novoLancamento);
+
+        if (insertError) throw insertError;
+
+        toast({
+          title: "Sucesso",
+          description: `Baixa parcial realizada! Novo lançamento de valor residual criado.`,
+        });
+      } else {
+        // Baixa total: apenas marcar como pago
+        const { error } = await supabase
+          .from(table)
+          .update({ 
+            status: 'pago',
+            [dateField]: data.paymentDate
+          })
+          .eq('id', lancamento.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: lancamento.tipo === 'entrada' ? "Marcado como recebido!" : "Marcado como pago!",
+        });
+      }
+      
       fetchLancamentos();
     } catch (error) {
-      console.error('Erro ao marcar como pago:', error);
+      console.error('Erro ao processar baixa:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o status.",
+        description: "Não foi possível processar a baixa.",
         variant: "destructive",
       });
     } finally {
-      setStatusChangeDialogOpen(false);
-      setStatusChangeData(null);
+      setPartialPaymentDialogOpen(false);
+      setPartialPaymentLancamento(null);
     }
   };
 
@@ -1331,19 +1396,25 @@ export default function Extrato() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
             <AlertDialogDescription>
-              {statusChangeData?.newStatus === 'pago' 
-                ? `Tem certeza que deseja marcar este lançamento como ${statusChangeData.lancamento.tipo === 'entrada' ? 'recebido' : 'pago'}?`
-                : 'Tem certeza que deseja marcar este lançamento como pendente?'}
+              Tem certeza que deseja marcar este lançamento como pendente?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => statusChangeData?.newStatus === 'pago' ? handleMarkAsPaid() : handleMarkAsOpen()}>
+            <AlertDialogAction onClick={handleMarkAsOpen}>
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PartialPaymentDialog
+        open={partialPaymentDialogOpen}
+        onOpenChange={setPartialPaymentDialogOpen}
+        tipo={partialPaymentLancamento?.tipo || 'entrada'}
+        valorTotal={partialPaymentLancamento?.valor || 0}
+        onConfirm={handlePartialPayment}
+      />
     </div>
   );
 }
