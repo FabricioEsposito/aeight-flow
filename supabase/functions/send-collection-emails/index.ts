@@ -28,12 +28,62 @@ interface ClienteCobranca {
   max_dias_atraso: number;
 }
 
-// Frequency rules based on days overdue
+// Get allowed send times based on days overdue
+// Returns array of hours when emails can be sent
+function getAllowedSendTimes(diasAtraso: number): number[] {
+  if (diasAtraso <= 1) return [11]; // 1 email at 11h
+  if (diasAtraso <= 3) return [11, 15]; // 2 emails at 11h and 15h
+  return [11, 15, 17]; // 3 emails at 11h, 15h and 17h for 4+ days
+}
+
+// Get max emails per day based on days overdue
 function getMaxEmailsPerDay(diasAtraso: number): number {
   if (diasAtraso <= 1) return 1;
   if (diasAtraso <= 3) return 2;
-  if (diasAtraso <= 5) return 3;
-  return 999; // No limit for 6+ days
+  return 3; // 4+ days: 3 emails max
+}
+
+// Get CC recipients based on days overdue
+function getCcRecipients(diasAtraso: number): string[] {
+  const baseCc = ["financeiro@aeight.global"];
+  
+  if (diasAtraso >= 6 && diasAtraso <= 7) {
+    return [...baseCc, "renato@aeight.global", "hugo@lomadee.com"];
+  }
+  
+  return baseCc;
+}
+
+// Check if current time is within allowed send window
+function isWithinSendWindow(diasAtraso: number): boolean {
+  const now = new Date();
+  // Get current hour in Brazil timezone (UTC-3)
+  const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const currentHour = brasilTime.getHours();
+  
+  const allowedTimes = getAllowedSendTimes(diasAtraso);
+  
+  // Check if current hour matches any allowed time (with 30 min tolerance)
+  for (const allowedHour of allowedTimes) {
+    if (currentHour === allowedHour) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Get which send slot we're in (1, 2, or 3)
+function getCurrentSendSlot(): number {
+  const now = new Date();
+  const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const currentHour = brasilTime.getHours();
+  
+  if (currentHour >= 11 && currentHour < 15) return 1;
+  if (currentHour >= 15 && currentHour < 17) return 2;
+  if (currentHour >= 17) return 3;
+  
+  return 0; // Before 11h, no slot
 }
 
 function formatCurrency(value: number): string {
@@ -156,9 +206,24 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { cliente_id, all } = await req.json();
+    const { cliente_id, all, force } = await req.json();
     
-    console.log("Starting collection email process:", { cliente_id, all });
+    console.log("Starting collection email process:", { cliente_id, all, force });
+
+    const currentSlot = getCurrentSendSlot();
+    console.log("Current send slot:", currentSlot);
+
+    if (currentSlot === 0 && !force) {
+      console.log("Outside of send hours (before 11h), skipping");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Fora do horário de envio (antes das 11h)", 
+          sent: 0 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const hoje = new Date().toISOString().split("T")[0];
     const startOfDay = new Date();
@@ -277,9 +342,17 @@ serve(async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // Check frequency limit
-      const maxEmails = getMaxEmailsPerDay(clienteData.max_dias_atraso);
+      const diasAtraso = clienteData.max_dias_atraso;
+      const maxEmails = getMaxEmailsPerDay(diasAtraso);
       
+      // Check if within send window for this client's delay level
+      if (!force && !isWithinSendWindow(diasAtraso)) {
+        console.log(`Client ${clienteData.cliente_nome} (${diasAtraso} days overdue): not within send window, skipping`);
+        totalSkipped++;
+        continue;
+      }
+
+      // Check how many emails sent today
       const { data: todayLogs, error: logsError } = await supabase
         .from("email_logs")
         .select("id")
@@ -293,24 +366,35 @@ serve(async (req: Request): Promise<Response> => {
 
       const emailsSentToday = todayLogs?.length || 0;
 
-      if (emailsSentToday >= maxEmails) {
+      // Check if already sent in current slot
+      if (emailsSentToday >= currentSlot && !force) {
+        console.log(`Client ${clienteData.cliente_nome} already received email in slot ${currentSlot} (sent today: ${emailsSentToday}), skipping`);
+        totalSkipped++;
+        continue;
+      }
+
+      if (emailsSentToday >= maxEmails && !force) {
         console.log(`Client ${clienteData.cliente_nome} already received ${emailsSentToday} emails today (limit: ${maxEmails}), skipping`);
         totalSkipped++;
         continue;
       }
 
-      // Build and send email
+      // Build email content
       const htmlContent = buildEmailHtml(clienteData);
+      
+      // Get CC recipients based on days overdue
+      const ccRecipients = getCcRecipients(diasAtraso);
 
       try {
         const emailResponse = await resend.emails.send({
           from: "Financeiro Aeight <cobranca@financeiro.aeight.global>",
           to: clienteData.emails,
+          cc: ccRecipients,
           subject: `Aviso de Cobrança - ${formatCurrency(clienteData.total_vencido)} em aberto`,
           html: htmlContent,
         });
 
-        console.log(`Email sent to ${clienteData.cliente_nome}:`, emailResponse);
+        console.log(`Email sent to ${clienteData.cliente_nome} (CC: ${ccRecipients.join(", ")}):`, emailResponse);
 
         // Log each email sent
         for (const email of clienteData.emails) {
@@ -351,6 +435,7 @@ serve(async (req: Request): Promise<Response> => {
         success: true,
         sent: totalSent,
         skipped: totalSkipped,
+        currentSlot,
         errors: errors.length > 0 ? errors : undefined,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
