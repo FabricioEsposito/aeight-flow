@@ -74,11 +74,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   };
 
   const getRegraCobranca = (diasAtraso: number): string => {
-    if (diasAtraso <= 1) return 'Cobrar 1x no dia';
-    if (diasAtraso <= 3) return 'Cobrar 2x no dia';
-    if (diasAtraso <= 5) return 'Cobrar 3x no dia';
-    if (diasAtraso <= 7) return 'Acionar Sócios';
-    return 'Informar Negativação';
+    if (diasAtraso <= 1) return '1x às 11h';
+    if (diasAtraso <= 3) return '2x às 11h e 15h';
+    if (diasAtraso <= 5) return '3x às 11h, 15h e 17h';
+    if (diasAtraso <= 7) return '3x + CC Sócios';
+    return '3x às 11h, 15h e 17h';
   };
 
   const fetchParcelas = async () => {
