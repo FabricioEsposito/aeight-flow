@@ -94,7 +94,7 @@ export default function Contratos() {
 
   // Mapear centro de custo para cada contrato
   const contratosComCentroCusto = contratos.map(contrato => {
-    const centroCustoInfo = centrosCusto.find(cc => cc.codigo === contrato.centro_custo);
+    const centroCustoInfo = centrosCusto.find(cc => cc.id === contrato.centro_custo);
     const temGoLive = (contrato as any).parcelas_contrato?.some(
       (parcela: any) => parcela.status === 'aguardando_conclusao'
     ) || false;
