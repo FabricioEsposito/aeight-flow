@@ -119,7 +119,8 @@ export default function NovoContrato() {
     const { data } = await supabase
       .from('contas_bancarias')
       .select('*')
-      .eq('status', 'ativo');
+      .eq('status', 'ativo')
+      .order('descricao');
     setContasBancarias(data || []);
   };
 
@@ -1092,7 +1093,7 @@ export default function NovoContrato() {
                   <SelectContent>
                     {contasBancarias.map((conta) => (
                       <SelectItem key={conta.id} value={conta.id}>
-                        {conta.banco} - {conta.descricao}
+                        {conta.descricao}
                       </SelectItem>
                     ))}
                   </SelectContent>

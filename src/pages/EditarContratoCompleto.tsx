@@ -71,7 +71,8 @@ export default function EditarContratoCompleto() {
     const { data } = await supabase
       .from('contas_bancarias')
       .select('*')
-      .eq('status', 'ativo');
+      .eq('status', 'ativo')
+      .order('descricao');
     setContasBancarias(data || []);
   };
 
@@ -505,7 +506,7 @@ export default function EditarContratoCompleto() {
               <SelectContent className="bg-background z-50">
                 {contasBancarias.map((conta) => (
                   <SelectItem key={conta.id} value={conta.id}>
-                    {conta.banco} - {conta.descricao}
+                    {conta.descricao}
                   </SelectItem>
                 ))}
               </SelectContent>

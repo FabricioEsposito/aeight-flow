@@ -314,7 +314,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                     <SelectContent>
                       {contasBancarias.map((conta) => (
                         <SelectItem key={conta.id} value={conta.id}>
-                          {conta.descricao} - {conta.banco}
+                          {conta.descricao}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -525,7 +525,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                     <SelectContent>
                       {contasBancarias.map((conta) => (
                         <SelectItem key={conta.id} value={conta.id}>
-                          {conta.descricao} - {conta.banco}
+                          {conta.descricao}
                         </SelectItem>
                       ))}
                     </SelectContent>
