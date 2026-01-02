@@ -439,6 +439,7 @@ export default function ControleFaturamento() {
           <TableHeader>
             <TableRow>
               <TableHead>Data Competência</TableHead>
+              <TableHead>Vencimento</TableHead>
               <TableHead>Razão Social</TableHead>
               <TableHead>Nome Fantasia</TableHead>
               <TableHead>Serviço</TableHead>
@@ -458,7 +459,7 @@ export default function ControleFaturamento() {
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
@@ -472,6 +473,7 @@ export default function ControleFaturamento() {
                 return (
                 <TableRow key={faturamento.id}>
                   <TableCell>{formatDate(faturamento.data_competencia)}</TableCell>
+                  <TableCell>{formatDate(faturamento.data_vencimento)}</TableCell>
                   <TableCell className="font-medium">{faturamento.cliente_razao_social}</TableCell>
                   <TableCell>{faturamento.cliente_nome_fantasia || '-'}</TableCell>
                   <TableCell>
