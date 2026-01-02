@@ -1329,7 +1329,6 @@ export default function Extrato() {
         onSave={handleSaveEdit}
         tipo={selectedLancamento?.cliente_id ? 'entrada' : 'saida'}
         initialData={selectedLancamento}
-        contasBancarias={contasBancarias}
       />
 
       <SolicitarAjusteDialog 

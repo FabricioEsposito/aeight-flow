@@ -17,6 +17,7 @@ import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { supabase } from '@/integrations/supabase/client';
 
 interface NovoLancamentoDialogProps {
@@ -307,18 +308,11 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
 
                 <div className="space-y-2">
                   <Label>Conta de recebimento</Label>
-                  <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contasBancarias.map((conta) => (
-                        <SelectItem key={conta.id} value={conta.id}>
-                          {conta.descricao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ContaBancariaSelect
+                    value={contaBancariaId}
+                    onValueChange={setContaBancariaId}
+                    placeholder="Selecione"
+                  />
                 </div>
               </div>
 
@@ -518,18 +512,11 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
 
                 <div className="space-y-2">
                   <Label>Conta de pagamento</Label>
-                  <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contasBancarias.map((conta) => (
-                        <SelectItem key={conta.id} value={conta.id}>
-                          {conta.descricao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ContaBancariaSelect
+                    value={contaBancariaId}
+                    onValueChange={setContaBancariaId}
+                    placeholder="Selecione"
+                  />
                 </div>
               </div>
 
