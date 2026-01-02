@@ -436,21 +436,6 @@ export default function ControleFaturamento() {
 
       {/* Table */}
       <Card>
-        <div className="p-2 border-b">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowImpostosDetalhados(!showImpostosDetalhados)}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            {showImpostosDetalhados ? (
-              <ChevronDown className="h-4 w-4 mr-1" />
-            ) : (
-              <ChevronRight className="h-4 w-4 mr-1" />
-            )}
-            {showImpostosDetalhados ? 'Agrupar Impostos' : 'Detalhar Impostos'}
-          </Button>
-        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -464,13 +449,39 @@ export default function ControleFaturamento() {
               <TableHead className="text-right">Valor Bruto</TableHead>
               {showImpostosDetalhados ? (
                 <>
-                  <TableHead className="text-right">IRRF</TableHead>
+                  <TableHead className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      IRRF
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => setShowImpostosDetalhados(false)}
+                        title="Agrupar Impostos"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">PIS</TableHead>
                   <TableHead className="text-right">COFINS</TableHead>
                   <TableHead className="text-right">CSLL</TableHead>
                 </>
               ) : (
-                <TableHead className="text-right">Retenções</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    Retenções
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => setShowImpostosDetalhados(true)}
+                      title="Detalhar Impostos"
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableHead>
               )}
               <TableHead className="text-right">Valor Líquido</TableHead>
               <TableHead>Status</TableHead>
