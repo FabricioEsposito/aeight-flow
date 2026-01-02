@@ -16,6 +16,7 @@ import { VendedorSelect } from '@/components/contratos/VendedorSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
 import { ParcelamentoCustomizado, ParcelaCustomizada } from '@/components/contratos/ParcelamentoCustomizado';
+import { DiaVencimentoSelect } from '@/components/contratos/DiaVencimentoSelect';
 import { DateInput } from '@/components/ui/date-input';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 import { supabase } from '@/integrations/supabase/client';
@@ -1070,18 +1071,7 @@ export default function NovoContrato() {
 
               <div className="space-y-2">
                 <Label>Vencer sempre no *</Label>
-                <Select value={diaVencimento} onValueChange={setDiaVencimento}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
-                      <SelectItem key={dia} value={dia.toString()}>
-                        {dia}º dia após geração
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DiaVencimentoSelect value={diaVencimento} onChange={setDiaVencimento} />
               </div>
 
               <div className="space-y-2">
