@@ -162,7 +162,16 @@ export default function VisualizarContrato() {
             <div>
               <label className="text-sm font-medium text-muted-foreground">Recorrência</label>
               <p className="text-lg">
-                {contrato.recorrente ? `Sim (${contrato.periodo_recorrencia})` : 'Não'}
+                {contrato.recorrente ? (
+                  <Badge variant="default">
+                    {contrato.periodo_recorrencia === 'mensal' && 'Mensal'}
+                    {contrato.periodo_recorrencia === 'trimestral' && 'Trimestral'}
+                    {contrato.periodo_recorrencia === 'semestral' && 'Semestral'}
+                    {contrato.periodo_recorrencia === 'anual' && 'Anual'}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Avulso</Badge>
+                )}
               </p>
             </div>
             <Separator />

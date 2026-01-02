@@ -38,6 +38,8 @@ interface Contrato {
   valor_unitario?: number;
   status: string;
   centro_custo?: string;
+  recorrente?: boolean;
+  periodo_recorrencia?: string;
   clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
@@ -74,6 +76,28 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
     return value;
   };
 
+  const formatRecorrencia = (recorrente: boolean | undefined, periodo: string | undefined) => {
+    if (!recorrente) return 'Avulso';
+    switch (periodo) {
+      case 'mensal': return 'Mensal';
+      case 'trimestral': return 'Trimestral';
+      case 'semestral': return 'Semestral';
+      case 'anual': return 'Anual';
+      default: return 'Recorrente';
+    }
+  };
+
+  const getRecorrenciaBadgeVariant = (recorrente: boolean | undefined, periodo: string | undefined) => {
+    if (!recorrente) return 'outline';
+    switch (periodo) {
+      case 'mensal': return 'default';
+      case 'trimestral': return 'secondary';
+      case 'semestral': return 'secondary';
+      case 'anual': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -83,7 +107,8 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
             <TableHead>Razão Social</TableHead>
             <TableHead>Nome Fantasia</TableHead>
             <TableHead>Contrato</TableHead>
-            <TableHead>Descrição</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead>Recorrência</TableHead>
             <TableHead>Centro de Custos</TableHead>
             <TableHead>Valor Bruto</TableHead>
             <TableHead>Valor Líquido</TableHead>
@@ -138,6 +163,11 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                   <TableCell>
                     <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>
                       {contrato.tipo_contrato === 'venda' ? 'Venda' : 'Compra'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getRecorrenciaBadgeVariant(contrato.recorrente, contrato.periodo_recorrencia) as any}>
+                      {formatRecorrencia(contrato.recorrente, contrato.periodo_recorrencia)}
                     </Badge>
                   </TableCell>
                   <TableCell>

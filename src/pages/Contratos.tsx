@@ -30,6 +30,8 @@ interface Contrato {
   valor_unitario?: number;
   status: string;
   centro_custo?: string;
+  recorrente?: boolean;
+  periodo_recorrencia?: string;
   clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
