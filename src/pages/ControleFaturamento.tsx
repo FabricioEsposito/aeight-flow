@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ExternalLink, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Eye, ExternalLink, FileText, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { useExportReport } from '@/hooks/useExportReport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -63,6 +64,7 @@ export default function ControleFaturamento() {
   const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('');
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const { toast } = useToast();
+  const { exportToExcel } = useExportReport();
 
   const getDateRange = () => {
     const today = new Date();
@@ -302,6 +304,11 @@ export default function ControleFaturamento() {
     const matchesCentroCusto = !selectedCentroCusto || f.centro_custo === selectedCentroCusto;
     
     return matchesSearch && matchesStatus && matchesCentroCusto;
+  }).sort((a, b) => {
+    // Ordenar por numero_nf - menor para maior
+    const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
+    const nfB = b.numero_nf ? parseInt(b.numero_nf.replace(/\D/g, '')) || 0 : 0;
+    return nfA - nfB;
   });
 
   const totalItems = filteredFaturamentos.length;
@@ -312,6 +319,57 @@ export default function ControleFaturamento() {
   const handleViewDetails = (faturamento: Faturamento) => {
     setSelectedFaturamento(faturamento);
     setDetailsDialogOpen(true);
+  };
+
+  const getStatusText = (status: string, dataVencimento: string) => {
+    const hoje = new Date();
+    const vencimento = new Date(dataVencimento + 'T00:00:00');
+    if (status === 'pago' || status === 'recebido') return 'Recebido';
+    if (vencimento < hoje) return 'Vencido';
+    return 'Em dia';
+  };
+
+  const handleExportExcel = () => {
+    const dateRange = getDateRange();
+    const dateRangeText = dateRange 
+      ? `${format(new Date(dateRange.start), 'dd/MM/yyyy')} a ${format(new Date(dateRange.end), 'dd/MM/yyyy')}`
+      : 'Todo o período';
+
+    const columns = [
+      { header: 'Data Competência', accessor: (row: Faturamento) => row.data_competencia, type: 'date' as const },
+      { header: 'Vencimento', accessor: (row: Faturamento) => row.data_vencimento, type: 'date' as const },
+      { header: 'Razão Social', accessor: 'cliente_razao_social', type: 'text' as const },
+      { header: 'Nome Fantasia', accessor: (row: Faturamento) => row.cliente_nome_fantasia || '-', type: 'text' as const },
+      { header: 'Serviço', accessor: (row: Faturamento) => row.servicos_detalhes.length > 0 ? row.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ') : 'N/A', type: 'text' as const },
+      { header: 'CNPJ', accessor: (row: Faturamento) => formatCnpj(row.cliente_cnpj), type: 'text' as const },
+      { header: 'Nº NF', accessor: (row: Faturamento) => row.numero_nf || '-', type: 'text' as const },
+      { header: 'Valor Bruto', accessor: 'valor_bruto', type: 'currency' as const },
+      { header: 'IRRF', accessor: (row: Faturamento) => row.valor_bruto * (row.irrf_percentual / 100), type: 'currency' as const },
+      { header: 'PIS', accessor: (row: Faturamento) => row.valor_bruto * (row.pis_percentual / 100), type: 'currency' as const },
+      { header: 'COFINS', accessor: (row: Faturamento) => row.valor_bruto * (row.cofins_percentual / 100), type: 'currency' as const },
+      { header: 'CSLL', accessor: (row: Faturamento) => row.valor_bruto * (row.csll_percentual / 100), type: 'currency' as const },
+      { header: 'Total Retenções', accessor: (row: Faturamento) => {
+        const irrf = row.valor_bruto * (row.irrf_percentual / 100);
+        const pis = row.valor_bruto * (row.pis_percentual / 100);
+        const cofins = row.valor_bruto * (row.cofins_percentual / 100);
+        const csll = row.valor_bruto * (row.csll_percentual / 100);
+        return irrf + pis + cofins + csll;
+      }, type: 'currency' as const },
+      { header: 'Valor Líquido', accessor: 'valor_liquido', type: 'currency' as const },
+      { header: 'Status', accessor: (row: Faturamento) => getStatusText(row.status, row.data_vencimento), type: 'text' as const },
+      { header: 'Link NF', accessor: (row: Faturamento) => row.link_nf || '-', type: 'text' as const },
+      { header: 'Contrato', accessor: (row: Faturamento) => row.numero_contrato || '-', type: 'text' as const },
+      { header: 'Vendedor', accessor: (row: Faturamento) => row.vendedor || '-', type: 'text' as const },
+      { header: 'Centro de Custo', accessor: (row: Faturamento) => row.centro_custo || '-', type: 'text' as const },
+    ];
+
+    exportToExcel({
+      title: 'Controle de Faturamento',
+      filename: `faturamento_${format(new Date(), 'yyyy-MM-dd')}`,
+      columns,
+      data: filteredFaturamentos,
+      dateRange: dateRangeText,
+    });
   };
 
   if (loading) {
@@ -329,6 +387,10 @@ export default function ControleFaturamento() {
           <h1 className="text-3xl font-bold text-foreground">Controle de Faturamento</h1>
           <p className="text-muted-foreground">Gerencie as notas fiscais das parcelas de venda</p>
         </div>
+        <Button variant="outline" onClick={handleExportExcel}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar Excel
+        </Button>
       </div>
 
       {/* Summary Cards */}
