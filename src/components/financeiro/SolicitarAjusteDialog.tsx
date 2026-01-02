@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 
 interface ContaBancaria {
   id: string;
@@ -201,18 +201,11 @@ export function SolicitarAjusteDialog({
 
             <div className="space-y-2">
               <Label>Conta Bancária</Label>
-              <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a conta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contasBancarias.map((conta) => (
-                    <SelectItem key={conta.id} value={conta.id}>
-                      {conta.descricao} - {conta.banco}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ContaBancariaSelect
+                value={contaBancariaId}
+                onValueChange={setContaBancariaId}
+                placeholder="Selecione a conta"
+              />
             </div>
           </div>
 

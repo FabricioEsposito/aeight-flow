@@ -8,6 +8,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { VendedorFilterSelect } from "@/components/financeiro/VendedorFilterSelect";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -680,22 +681,13 @@ export default function Comissionamento() {
               customRange={customDateRange}
             />
             <div className="w-[200px]">
-              <Select 
+              <VendedorFilterSelect 
                 value={selectedVendedor} 
                 onValueChange={setSelectedVendedor}
+                vendedores={vendedores}
+                placeholder="Todos os vendedores"
                 disabled={isSalesperson && !!userVendedorId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os vendedores" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendedores.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
             <div className="w-[250px]">
               <CentroCustoSelect

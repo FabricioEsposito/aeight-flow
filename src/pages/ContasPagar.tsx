@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -585,17 +586,14 @@ export default function ContasPagar() {
             <Input placeholder="Buscar por descrição ou fornecedor..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 bg-background" />
           </div>
 
-          <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Conta bancária" />
-            </SelectTrigger>
-            <SelectContent className="bg-background z-50">
-              <SelectItem value="todas">Todas as contas</SelectItem>
-              {contasBancarias.map(conta => <SelectItem key={conta.id} value={conta.id}>
-                  {conta.descricao}
-                </SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="w-[200px]">
+            <ContaBancariaSelect
+              value={contaBancariaFilter}
+              onValueChange={setContaBancariaFilter}
+              placeholder="Conta bancária"
+              showAllOption
+            />
+          </div>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
@@ -719,8 +717,7 @@ export default function ContasPagar() {
           juros: selectedConta.juros,
           multa: selectedConta.multa,
           desconto: selectedConta.desconto
-        } : undefined} 
-        contasBancarias={contasBancarias} 
+        } : undefined}
       />
 
       <SolicitarAjusteDialog 

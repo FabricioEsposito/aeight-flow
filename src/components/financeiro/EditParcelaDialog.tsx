@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -12,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 
 interface EditParcelaDialogProps {
   open: boolean;
@@ -30,7 +30,6 @@ interface EditParcelaDialogProps {
     multa?: number;
     desconto?: number;
   };
-  contasBancarias: Array<{ id: string; descricao: string }>;
 }
 
 export interface EditParcelaData {
@@ -53,7 +52,6 @@ export function EditParcelaDialog({
   onSave,
   tipo,
   initialData,
-  contasBancarias,
 }: EditParcelaDialogProps) {
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [descricao, setDescricao] = useState('');
@@ -154,19 +152,12 @@ export function EditParcelaDialog({
 
             <div className="space-y-2">
               <Label>Conta Bancária</Label>
-              <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {contasBancarias.map((conta) => (
-                    <SelectItem key={conta.id} value={conta.id}>
-                      {conta.descricao}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ContaBancariaSelect
+                value={contaBancariaId}
+                onValueChange={setContaBancariaId}
+                placeholder="Selecione"
+                showNoneOption
+              />
             </div>
           </div>
 
