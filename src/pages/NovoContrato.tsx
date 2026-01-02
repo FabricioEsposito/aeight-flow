@@ -101,10 +101,14 @@ export default function NovoContrato() {
 
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
+  
+  // Centros de custo disponíveis
+  const [centrosCusto, setCentrosCusto] = useState<any[]>([]);
 
   useEffect(() => {
     fetchContasBancarias();
     fetchServicos();
+    fetchCentrosCusto();
     if (!id) {
       setNumeroContrato(gerarNumeroContrato());
     } else {
@@ -135,6 +139,15 @@ export default function NovoContrato() {
       .eq('status', 'ativo')
       .order('nome');
     setServicos(data || []);
+  };
+
+  const fetchCentrosCusto = async () => {
+    const { data } = await supabase
+      .from('centros_custo')
+      .select('id, codigo, descricao')
+      .eq('status', 'ativo')
+      .order('codigo');
+    setCentrosCusto(data || []);
   };
 
   const fetchContrato = async (contratoId: string) => {
@@ -902,11 +915,16 @@ export default function NovoContrato() {
             </CardContent>
           </Card>
 
-          {/* Investimento em Mídia - Apenas para centro de custo 003_Cryah e serviço MKTD004 */}
-          {centroCusto.includes('003') && itens.some(item => {
-            const servico = servicos.find(s => s.id === item.servicoId);
-            return servico?.codigo === 'MKTD004';
-          }) && (
+          {/* Investimento em Mídia - Apenas para centro de custo 003 (Cryah) e serviço MKTD004 */}
+          {(() => {
+            const ccSelecionado = centrosCusto.find(cc => cc.id === centroCusto);
+            const isCentroCusto003 = ccSelecionado?.codigo === '003';
+            const temServicoMKTD004 = itens.some(item => {
+              const servico = servicos.find(s => s.id === item.servicoId);
+              return servico?.codigo === 'MKTD004';
+            });
+            return isCentroCusto003 && temServicoMKTD004;
+          })() && (
             <Card className="border-2 border-primary bg-primary/5">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-primary">
