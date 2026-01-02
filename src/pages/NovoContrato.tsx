@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, X, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -96,6 +96,9 @@ export default function NovoContrato() {
   // Link do contrato
   const [linkContrato, setLinkContrato] = useState('');
 
+  // Percentual de investimento em mídia (para centro de custo 003_Cryah e serviço MKTD004)
+  const [percentualInvestimentoMidia, setPercentualInvestimentoMidia] = useState(0);
+
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
 
@@ -164,6 +167,7 @@ export default function NovoContrato() {
       setTipoPagamento(data.tipo_pagamento);
       setContaBancariaId(data.conta_bancaria_id);
       setLinkContrato(data.link_contrato || '');
+      setPercentualInvestimentoMidia(data.percentual_investimento_midia || 0);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -418,6 +422,7 @@ export default function NovoContrato() {
         conta_bancaria_id: contaBancariaId,
         valor_total: valorTotal,
         link_contrato: linkContrato,
+        percentual_investimento_midia: percentualInvestimentoMidia,
         status: 'ativo'
       };
 
@@ -896,6 +901,35 @@ export default function NovoContrato() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Investimento em Mídia - Apenas para centro de custo 003_Cryah e serviço MKTD004 */}
+          {centroCusto.includes('003') && itens.some(item => {
+            const servico = servicos.find(s => s.id === item.servicoId);
+            return servico?.codigo === 'MKTD004';
+          }) && (
+            <Card className="border-2 border-primary bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <TrendingUp className="w-5 h-5" />
+                  Investimento em Mídia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label className="text-primary font-semibold">
+                    Percentual de Investimento em Mídia (%) *
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Este percentual será aplicado em cada parcela do contrato para cálculo do investimento em mídia.
+                  </p>
+                  <PercentageInput 
+                    value={percentualInvestimentoMidia}
+                    onChange={setPercentualInvestimentoMidia}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Descontos e Impostos */}
           <Card>
