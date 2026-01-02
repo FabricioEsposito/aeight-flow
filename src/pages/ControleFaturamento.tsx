@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ExternalLink, FileText } from 'lucide-react';
+import { Search, Eye, ExternalLink, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -61,6 +61,7 @@ export default function ControleFaturamento() {
   const [selectedFaturamento, setSelectedFaturamento] = useState<Faturamento | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('');
+  const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const { toast } = useToast();
 
   const getDateRange = () => {
@@ -435,6 +436,21 @@ export default function ControleFaturamento() {
 
       {/* Table */}
       <Card>
+        <div className="p-2 border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowImpostosDetalhados(!showImpostosDetalhados)}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            {showImpostosDetalhados ? (
+              <ChevronDown className="h-4 w-4 mr-1" />
+            ) : (
+              <ChevronRight className="h-4 w-4 mr-1" />
+            )}
+            {showImpostosDetalhados ? 'Agrupar Impostos' : 'Detalhar Impostos'}
+          </Button>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -446,10 +462,16 @@ export default function ControleFaturamento() {
               <TableHead>CNPJ</TableHead>
               <TableHead>NF</TableHead>
               <TableHead className="text-right">Valor Bruto</TableHead>
-              <TableHead className="text-right">IRRF</TableHead>
-              <TableHead className="text-right">PIS</TableHead>
-              <TableHead className="text-right">COFINS</TableHead>
-              <TableHead className="text-right">CSLL</TableHead>
+              {showImpostosDetalhados ? (
+                <>
+                  <TableHead className="text-right">IRRF</TableHead>
+                  <TableHead className="text-right">PIS</TableHead>
+                  <TableHead className="text-right">COFINS</TableHead>
+                  <TableHead className="text-right">CSLL</TableHead>
+                </>
+              ) : (
+                <TableHead className="text-right">Retenções</TableHead>
+              )}
               <TableHead className="text-right">Valor Líquido</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Link NF</TableHead>
@@ -459,7 +481,7 @@ export default function ControleFaturamento() {
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={showImpostosDetalhados ? 17 : 14} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
@@ -469,6 +491,7 @@ export default function ControleFaturamento() {
                 const csllValor = faturamento.valor_bruto * (faturamento.csll_percentual / 100);
                 const cofinsValor = faturamento.valor_bruto * (faturamento.cofins_percentual / 100);
                 const pisValor = faturamento.valor_bruto * (faturamento.pis_percentual / 100);
+                const totalRetencoes = irrfValor + pisValor + cofinsValor + csllValor;
                 
                 return (
                 <TableRow key={faturamento.id}>
@@ -497,34 +520,47 @@ export default function ControleFaturamento() {
                     />
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(faturamento.valor_bruto)}</TableCell>
-                  <TableCell className="text-right text-xs">
-                    {faturamento.irrf_percentual > 0 ? (
-                      <span title={`${faturamento.irrf_percentual}%`}>
-                        {formatCurrency(irrfValor)}
+                  {showImpostosDetalhados ? (
+                    <>
+                      <TableCell className="text-right text-xs">
+                        {faturamento.irrf_percentual > 0 ? (
+                          <span title={`${faturamento.irrf_percentual}%`}>
+                            {formatCurrency(irrfValor)}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {faturamento.pis_percentual > 0 ? (
+                          <span title={`${faturamento.pis_percentual}%`}>
+                            {formatCurrency(pisValor)}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {faturamento.cofins_percentual > 0 ? (
+                          <span title={`${faturamento.cofins_percentual}%`}>
+                            {formatCurrency(cofinsValor)}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {faturamento.csll_percentual > 0 ? (
+                          <span title={`${faturamento.csll_percentual}%`}>
+                            {formatCurrency(csllValor)}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                    </>
+                  ) : (
+                    <TableCell className="text-right text-xs">
+                      <span 
+                        className="cursor-help"
+                        title={`IRRF: ${formatCurrency(irrfValor)}\nPIS: ${formatCurrency(pisValor)}\nCOFINS: ${formatCurrency(cofinsValor)}\nCSLL: ${formatCurrency(csllValor)}`}
+                      >
+                        {totalRetencoes > 0 ? formatCurrency(totalRetencoes) : '-'}
                       </span>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">
-                    {faturamento.pis_percentual > 0 ? (
-                      <span title={`${faturamento.pis_percentual}%`}>
-                        {formatCurrency(pisValor)}
-                      </span>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">
-                    {faturamento.cofins_percentual > 0 ? (
-                      <span title={`${faturamento.cofins_percentual}%`}>
-                        {formatCurrency(cofinsValor)}
-                      </span>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">
-                    {faturamento.csll_percentual > 0 ? (
-                      <span title={`${faturamento.csll_percentual}%`}>
-                        {formatCurrency(csllValor)}
-                      </span>
-                    ) : '-'}
-                  </TableCell>
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">{formatCurrency(faturamento.valor_liquido)}</TableCell>
                   <TableCell>{getStatusBadge(faturamento.status, faturamento.data_vencimento)}</TableCell>
                   <TableCell>

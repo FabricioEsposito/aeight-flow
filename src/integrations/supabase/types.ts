@@ -156,7 +156,7 @@ export type Database = {
           juros: number | null
           multa: number | null
           observacoes: string | null
-          parcela_id: string
+          parcela_id: string | null
           plano_conta_id: string | null
           status: string | null
           updated_at: string | null
@@ -178,7 +178,7 @@ export type Database = {
           juros?: number | null
           multa?: number | null
           observacoes?: string | null
-          parcela_id: string
+          parcela_id?: string | null
           plano_conta_id?: string | null
           status?: string | null
           updated_at?: string | null
@@ -200,7 +200,7 @@ export type Database = {
           juros?: number | null
           multa?: number | null
           observacoes?: string | null
-          parcela_id?: string
+          parcela_id?: string | null
           plano_conta_id?: string | null
           status?: string | null
           updated_at?: string | null
@@ -256,7 +256,7 @@ export type Database = {
           multa: number | null
           numero_nf: string | null
           observacoes: string | null
-          parcela_id: string
+          parcela_id: string | null
           plano_conta_id: string | null
           status: string | null
           updated_at: string | null
@@ -280,7 +280,7 @@ export type Database = {
           multa?: number | null
           numero_nf?: string | null
           observacoes?: string | null
-          parcela_id: string
+          parcela_id?: string | null
           plano_conta_id?: string | null
           status?: string | null
           updated_at?: string | null
@@ -304,7 +304,7 @@ export type Database = {
           multa?: number | null
           numero_nf?: string | null
           observacoes?: string | null
-          parcela_id?: string
+          parcela_id?: string | null
           plano_conta_id?: string | null
           status?: string | null
           updated_at?: string | null
