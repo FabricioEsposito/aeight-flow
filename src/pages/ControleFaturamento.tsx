@@ -451,7 +451,6 @@ export default function ControleFaturamento() {
                 <>
                   <TableHead className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      IRRF
                       <Button
                         variant="ghost"
                         size="icon"
@@ -461,6 +460,7 @@ export default function ControleFaturamento() {
                       >
                         <ChevronDown className="h-3 w-3" />
                       </Button>
+                      IRRF
                     </div>
                   </TableHead>
                   <TableHead className="text-right">PIS</TableHead>
@@ -470,16 +470,16 @@ export default function ControleFaturamento() {
               ) : (
                 <TableHead className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    Retenções
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5"
                       onClick={() => setShowImpostosDetalhados(true)}
-                      title="Detalhar Impostos"
+                      title="Detalhar Impostos (IRRF, PIS, COFINS, CSLL)"
                     >
                       <ChevronRight className="h-3 w-3" />
                     </Button>
+                    Retenções
                   </div>
                 </TableHead>
               )}
