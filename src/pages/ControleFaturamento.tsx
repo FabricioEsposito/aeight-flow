@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ExternalLink, FileText, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit } from 'lucide-react';
 import { useExportReport } from '@/hooks/useExportReport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { FaturamentoDetailsDialog } from '@/components/faturamento/FaturamentoDetailsDialog';
+import { EditFaturamentoDialog } from '@/components/faturamento/EditFaturamentoDialog';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { format } from 'date-fns';
 
@@ -61,6 +63,7 @@ export default function ControleFaturamento() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedFaturamento, setSelectedFaturamento] = useState<Faturamento | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('');
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const { toast } = useToast();
@@ -321,6 +324,11 @@ export default function ControleFaturamento() {
     setDetailsDialogOpen(true);
   };
 
+  const handleEditFaturamento = (faturamento: Faturamento) => {
+    setSelectedFaturamento(faturamento);
+    setEditDialogOpen(true);
+  };
+
   const getStatusText = (status: string, dataVencimento: string) => {
     const hoje = new Date();
     const vencimento = new Date(dataVencimento + 'T00:00:00');
@@ -547,14 +555,13 @@ export default function ControleFaturamento() {
               )}
               <TableHead className="text-right">Valor Líquido</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Link NF</TableHead>
               <TableHead className="text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showImpostosDetalhados ? 17 : 14} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={showImpostosDetalhados ? 14 : 11} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
@@ -636,40 +643,24 @@ export default function ControleFaturamento() {
                   )}
                   <TableCell className="text-right">{formatCurrency(faturamento.valor_liquido)}</TableCell>
                   <TableCell>{getStatusBadge(faturamento.status, faturamento.data_vencimento)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={faturamento.link_nf || ''}
-                        onChange={(e) => {
-                          const newFaturamentos = faturamentos.map(f => 
-                            f.id === faturamento.id ? { ...f, link_nf: e.target.value } : f
-                          );
-                          setFaturamentos(newFaturamentos);
-                        }}
-                        onBlur={() => handleUpdateNF(faturamento.id, faturamento.numero_nf || '', faturamento.link_nf || '')}
-                        placeholder="Link"
-                        className="w-20 h-8"
-                      />
-                      {faturamento.link_nf && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => window.open(faturamento.link_nf!, '_blank')}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
                   <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleViewDetails(faturamento)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-background">
+                        <DropdownMenuItem onClick={() => handleEditFaturamento(faturamento)} className="cursor-pointer">
+                          <Edit className="w-4 h-4 mr-2 text-blue-500" />
+                          Editar faturamento
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewDetails(faturamento)} className="cursor-pointer">
+                          <Eye className="w-4 h-4 mr-2 text-muted-foreground" />
+                          Visualizar detalhes
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );})
@@ -693,6 +684,13 @@ export default function ControleFaturamento() {
         open={detailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
         faturamento={selectedFaturamento}
+      />
+
+      <EditFaturamentoDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        faturamento={selectedFaturamento}
+        onSuccess={fetchFaturamentos}
       />
     </div>
   );
