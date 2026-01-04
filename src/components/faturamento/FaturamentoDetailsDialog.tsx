@@ -32,6 +32,7 @@ interface Faturamento {
   desconto_valor: number;
   periodo_recorrencia: string | null;
   data_recebimento: string | null;
+  observacoes_faturamento?: string | null;
 }
 
 interface FaturamentoDetailsDialogProps {
@@ -251,6 +252,19 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
               </div>
             </div>
           </div>
+
+          {/* Observações de Faturamento */}
+          {faturamento.observacoes_faturamento && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg border-b pb-2 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                Observações de Faturamento
+              </h3>
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm whitespace-pre-wrap">{faturamento.observacoes_faturamento}</p>
+              </div>
+            </div>
+          )}
 
           {/* Datas */}
           <div className="space-y-2">

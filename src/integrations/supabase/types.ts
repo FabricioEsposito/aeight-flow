@@ -364,6 +364,7 @@ export type Database = {
           irrf_percentual: number | null
           link_contrato: string | null
           numero_contrato: string
+          observacoes_faturamento: string | null
           percentual_investimento_midia: number | null
           periodo_recorrencia: string | null
           pis_cofins_percentual: number | null
@@ -402,6 +403,7 @@ export type Database = {
           irrf_percentual?: number | null
           link_contrato?: string | null
           numero_contrato: string
+          observacoes_faturamento?: string | null
           percentual_investimento_midia?: number | null
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null
@@ -440,6 +442,7 @@ export type Database = {
           irrf_percentual?: number | null
           link_contrato?: string | null
           numero_contrato?: string
+          observacoes_faturamento?: string | null
           percentual_investimento_midia?: number | null
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null

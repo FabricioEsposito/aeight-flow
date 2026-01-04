@@ -96,6 +96,9 @@ export default function NovoContrato() {
   // Link do contrato
   const [linkContrato, setLinkContrato] = useState('');
 
+  // Observações de faturamento
+  const [observacoesFaturamento, setObservacoesFaturamento] = useState('');
+
   // Percentual de investimento em mídia (para centro de custo 003_Cryah e serviço MKTD004)
   const [percentualInvestimentoMidia, setPercentualInvestimentoMidia] = useState(0);
 
@@ -181,6 +184,7 @@ export default function NovoContrato() {
       setContaBancariaId(data.conta_bancaria_id);
       setLinkContrato(data.link_contrato || '');
       setPercentualInvestimentoMidia(data.percentual_investimento_midia || 0);
+      setObservacoesFaturamento(data.observacoes_faturamento || '');
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -436,6 +440,7 @@ export default function NovoContrato() {
         valor_total: valorTotal,
         link_contrato: linkContrato,
         percentual_investimento_midia: percentualInvestimentoMidia,
+        observacoes_faturamento: observacoesFaturamento || null,
         status: 'ativo'
       };
 
@@ -1149,6 +1154,16 @@ export default function NovoContrato() {
                   value={linkContrato}
                   onChange={(e) => setLinkContrato(e.target.value)}
                   placeholder="https://..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observações de Faturamento</Label>
+                <Textarea 
+                  value={observacoesFaturamento}
+                  onChange={(e) => setObservacoesFaturamento(e.target.value)}
+                  placeholder="Observações que serão consideradas no faturamento..."
+                  rows={3}
                 />
               </div>
             </CardContent>
