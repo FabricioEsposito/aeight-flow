@@ -57,6 +57,7 @@ export default function EditarContratoCompleto() {
   const [tipoPagamento, setTipoPagamento] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [linkContrato, setLinkContrato] = useState('');
+  const [observacoesFaturamento, setObservacoesFaturamento] = useState('');
   const [importanciaClienteFornecedor, setImportanciaClienteFornecedor] = useState<'importante' | 'mediano' | 'nao_importante'>('mediano');
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
 
@@ -110,6 +111,7 @@ export default function EditarContratoCompleto() {
       setTipoPagamento(data.tipo_pagamento || '');
       setContaBancariaId(data.conta_bancaria_id || '');
       setLinkContrato(data.link_contrato || '');
+      setObservacoesFaturamento(data.observacoes_faturamento || '');
       setImportanciaClienteFornecedor(data.importancia_cliente_fornecedor || 'mediano');
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
@@ -169,6 +171,7 @@ export default function EditarContratoCompleto() {
           conta_bancaria_id: contaBancariaId,
           valor_total: valorTotal,
           link_contrato: linkContrato,
+          observacoes_faturamento: observacoesFaturamento || null,
           importancia_cliente_fornecedor: importanciaClienteFornecedor,
           updated_at: new Date().toISOString(),
         })
@@ -479,6 +482,16 @@ export default function EditarContratoCompleto() {
               onChange={(e) => setDescricaoServico(e.target.value)}
               rows={4}
               placeholder="Descreva o serviço..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Observações de Faturamento</Label>
+            <Textarea 
+              value={observacoesFaturamento}
+              onChange={(e) => setObservacoesFaturamento(e.target.value)}
+              rows={3}
+              placeholder="Observações que serão consideradas no faturamento..."
             />
           </div>
 

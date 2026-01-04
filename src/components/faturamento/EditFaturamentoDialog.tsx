@@ -38,6 +38,7 @@ interface Faturamento {
   periodo_recorrencia: string | null;
   data_recebimento: string | null;
   centro_custo: string | null;
+  observacoes_faturamento: string | null;
 }
 
 interface EditFaturamentoDialogProps {
@@ -255,6 +256,17 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
               <span className="text-lg font-bold text-primary">{formatCurrency(impostos.valorLiquido)}</span>
             </div>
           </div>
+
+          {/* Observações de Faturamento */}
+          {faturamento.observacoes_faturamento && (
+            <div className="space-y-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+              <Label className="text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                Observações de Faturamento
+              </Label>
+              <p className="text-sm whitespace-pre-wrap">{faturamento.observacoes_faturamento}</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Número da NF</Label>

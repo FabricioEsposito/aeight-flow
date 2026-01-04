@@ -47,6 +47,7 @@ interface Faturamento {
   periodo_recorrencia: string | null;
   data_recebimento: string | null;
   centro_custo: string | null;
+  observacoes_faturamento: string | null;
 }
 
 export default function ControleFaturamento() {
@@ -147,7 +148,8 @@ export default function ControleFaturamento() {
               desconto_valor,
               periodo_recorrencia,
               valor_bruto,
-              centro_custo
+              centro_custo,
+              observacoes_faturamento
             )
           )
         `)
@@ -209,6 +211,7 @@ export default function ControleFaturamento() {
           periodo_recorrencia: contrato?.periodo_recorrencia || null,
           data_recebimento: item.data_recebimento,
           centro_custo: contrato?.centro_custo || item.centro_custo || null,
+          observacoes_faturamento: contrato?.observacoes_faturamento || null,
         };
       }));
 
@@ -574,10 +577,19 @@ export default function ControleFaturamento() {
                 const totalRetencoes = irrfValor + pisValor + cofinsValor + csllValor;
                 
                 return (
-                <TableRow key={faturamento.id}>
+                <TableRow key={faturamento.id} className={faturamento.observacoes_faturamento ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
                   <TableCell>{formatDate(faturamento.data_competencia)}</TableCell>
                   <TableCell>{formatDate(faturamento.data_vencimento)}</TableCell>
-                  <TableCell className="font-medium">{faturamento.cliente_razao_social}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {faturamento.cliente_razao_social}
+                      {faturamento.observacoes_faturamento && (
+                        <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-xs">
+                          Obs
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{faturamento.cliente_nome_fantasia || '-'}</TableCell>
                   <TableCell>
                     {faturamento.servicos_detalhes.length > 0 
