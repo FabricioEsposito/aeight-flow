@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit } from 'lucide-react';
+import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit, ExternalLink } from 'lucide-react';
 import { useExportReport } from '@/hooks/useExportReport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -671,6 +671,15 @@ export default function ControleFaturamento() {
                           <Eye className="w-4 h-4 mr-2 text-muted-foreground" />
                           Visualizar detalhes
                         </DropdownMenuItem>
+                        {faturamento.link_nf && (
+                          <DropdownMenuItem 
+                            onClick={() => window.open(faturamento.link_nf!, '_blank')} 
+                            className="cursor-pointer"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2 text-green-500" />
+                            Visualizar NF
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
