@@ -50,7 +50,7 @@ interface EditFaturamentoDialogProps {
 export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSuccess }: EditFaturamentoDialogProps) {
   const [numeroNf, setNumeroNf] = useState('');
   const [linkNf, setLinkNf] = useState('');
-  const [valorLiquido, setValorLiquido] = useState(0);
+  const [valorBruto, setValorBruto] = useState(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -58,7 +58,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     if (faturamento) {
       setNumeroNf(faturamento.numero_nf || '');
       setLinkNf(faturamento.link_nf || '');
-      setValorLiquido(faturamento.valor_liquido);
+      setValorBruto(faturamento.valor_bruto);
     }
   }, [faturamento]);
 
@@ -66,26 +66,43 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  // Calcular valores de impostos baseados no valor bruto
+  const calcularImpostos = () => {
+    if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0, valorLiquido: valorBruto };
+    
+    const irrf = valorBruto * (faturamento.irrf_percentual / 100);
+    const pis = valorBruto * (faturamento.pis_percentual / 100);
+    const cofins = valorBruto * (faturamento.cofins_percentual / 100);
+    const csll = valorBruto * (faturamento.csll_percentual / 100);
+    const total = irrf + pis + cofins + csll;
+    const valorLiquido = valorBruto - total;
+    
+    return { irrf, pis, cofins, csll, total, valorLiquido };
+  };
+
+  const impostos = calcularImpostos();
+
   const handleSave = async () => {
     if (!faturamento) return;
 
     try {
       setLoading(true);
-      const valorAlterado = valorLiquido !== faturamento.valor_liquido;
+      const valorAlterado = valorBruto !== faturamento.valor_bruto;
+      const valorLiquidoCalculado = impostos.valorLiquido;
 
-      // 1. Atualizar contas_receber
+      // 1. Atualizar contas_receber com valor líquido calculado
       const { error: crError } = await supabase
         .from('contas_receber')
         .update({
           numero_nf: numeroNf || null,
           link_nf: linkNf || null,
-          valor: valorLiquido,
+          valor: valorLiquidoCalculado,
         })
         .eq('id', faturamento.id);
 
       if (crError) throw crError;
 
-      // 2. Se o valor foi alterado, atualizar a parcela do contrato e movimentações
+      // 2. Se o valor foi alterado, atualizar contrato, parcela e movimentações
       if (valorAlterado) {
         // Buscar a parcela_id da conta_receber
         const { data: contaReceber, error: fetchError } = await supabase
@@ -100,22 +117,43 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           // Atualizar a parcela do contrato
           const { error: parcelaError } = await supabase
             .from('parcelas_contrato')
-            .update({ valor: valorLiquido })
+            .update({ valor: valorLiquidoCalculado })
             .eq('id', contaReceber.parcela_id);
 
           if (parcelaError) throw parcelaError;
+
+          // Buscar contrato_id da parcela para atualizar o contrato
+          const { data: parcela, error: parcelaFetchError } = await supabase
+            .from('parcelas_contrato')
+            .select('contrato_id')
+            .eq('id', contaReceber.parcela_id)
+            .single();
+
+          if (!parcelaFetchError && parcela?.contrato_id) {
+            // Atualizar valor_bruto e valor_total no contrato
+            const { error: contratoError } = await supabase
+              .from('contratos')
+              .update({ 
+                valor_bruto: valorBruto,
+                valor_total: valorLiquidoCalculado
+              })
+              .eq('id', parcela.contrato_id);
+
+            if (contratoError) {
+              console.error('Erro ao atualizar contrato:', contratoError);
+            }
+          }
         }
 
         // Atualizar movimentação correspondente (se existir e o status for pago)
         if (faturamento.status === 'pago' || faturamento.status === 'recebido') {
           const { error: movError } = await supabase
             .from('movimentacoes')
-            .update({ valor: valorLiquido })
+            .update({ valor: valorLiquidoCalculado })
             .eq('conta_receber_id', faturamento.id);
 
           if (movError) {
             console.error('Erro ao atualizar movimentação:', movError);
-            // Não bloqueia a operação se não encontrar movimentação
           }
         }
       }
@@ -141,6 +179,9 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
   if (!faturamento) return null;
 
+  const temRetencoes = faturamento.irrf_percentual > 0 || faturamento.pis_percentual > 0 || 
+                       faturamento.cofins_percentual > 0 || faturamento.csll_percentual > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -160,25 +201,63 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Valor Bruto</Label>
-            <p className="font-medium">{formatCurrency(faturamento.valor_bruto)}</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="valor_liquido">Valor Líquido</Label>
+            <Label>Valor Bruto</Label>
             <CurrencyInput
-              value={valorLiquido}
-              onChange={setValorLiquido}
+              value={valorBruto}
+              onChange={setValorBruto}
             />
-            {valorLiquido !== faturamento.valor_liquido && (
+            {valorBruto !== faturamento.valor_bruto && (
               <p className="text-xs text-amber-600">
-                Alteração de valor será refletida na parcela do contrato e no extrato.
+                Alteração será refletida no contrato, parcela e extrato.
               </p>
             )}
           </div>
 
+          {temRetencoes && (
+            <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+              <Label className="text-muted-foreground text-sm">Retenções de Impostos</Label>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {faturamento.irrf_percentual > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">IRRF ({faturamento.irrf_percentual}%):</span>
+                    <span className="text-destructive">-{formatCurrency(impostos.irrf)}</span>
+                  </div>
+                )}
+                {faturamento.pis_percentual > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">PIS ({faturamento.pis_percentual}%):</span>
+                    <span className="text-destructive">-{formatCurrency(impostos.pis)}</span>
+                  </div>
+                )}
+                {faturamento.cofins_percentual > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">COFINS ({faturamento.cofins_percentual}%):</span>
+                    <span className="text-destructive">-{formatCurrency(impostos.cofins)}</span>
+                  </div>
+                )}
+                {faturamento.csll_percentual > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">CSLL ({faturamento.csll_percentual}%):</span>
+                    <span className="text-destructive">-{formatCurrency(impostos.csll)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="border-t pt-2 mt-2 flex justify-between font-medium">
+                <span>Total Retenções:</span>
+                <span className="text-destructive">-{formatCurrency(impostos.total)}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+            <div className="flex justify-between items-center">
+              <Label className="text-primary font-semibold">Valor Líquido:</Label>
+              <span className="text-lg font-bold text-primary">{formatCurrency(impostos.valorLiquido)}</span>
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="numero_nf">Número da NF</Label>
+            <Label>Número da NF</Label>
             <Input
               value={numeroNf}
               onChange={(e) => setNumeroNf(e.target.value)}
@@ -187,7 +266,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="link_nf">Link da NF</Label>
+            <Label>Link da NF</Label>
             <div className="flex gap-2">
               <Input
                 value={linkNf}
