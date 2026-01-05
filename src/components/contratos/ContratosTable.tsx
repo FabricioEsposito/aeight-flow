@@ -1,4 +1,4 @@
-import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket } from 'lucide-react';
+import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -52,9 +52,10 @@ interface ContratosTableProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onInactivate: (id: string) => void;
+  onReactivate: (id: string, numeroContrato: string) => void;
 }
 
-export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactivate }: ContratosTableProps) {
+export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactivate, onReactivate }: ContratosTableProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -203,13 +204,21 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                           Editar
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => onInactivate(contrato.id)}
-                          disabled={contrato.status === 'inativo'}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Inativar
-                        </DropdownMenuItem>
+                        {contrato.status === 'inativo' ? (
+                          <DropdownMenuItem 
+                            onClick={() => onReactivate(contrato.id, contrato.numero_contrato)}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2 text-green-600" />
+                            <span className="text-green-600">Reativar</span>
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem 
+                            onClick={() => onInactivate(contrato.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Inativar
+                          </DropdownMenuItem>
+                        )}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

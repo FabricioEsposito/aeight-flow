@@ -196,7 +196,7 @@ export default function Extrato() {
         .select(`
           *,
           clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
-          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor))
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
         `)
         .order('data_vencimento', { ascending: true });
 
@@ -213,7 +213,7 @@ export default function Extrato() {
         .select(`
           *,
           fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor))
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
         `)
         .order('data_vencimento', { ascending: true });
 
@@ -224,8 +224,21 @@ export default function Extrato() {
       const { data: dataPagar, error: errorPagar } = await queryPagar;
       if (errorPagar) throw errorPagar;
 
+      // Filtrar parcelas de contratos inativos - Contas a Receber
+      const dataReceberFiltrado = (dataReceber || []).filter((r: any) => {
+        const contrato = r.parcelas_contrato?.contratos;
+        if (!contrato) return true;
+        if (contrato.status === 'ativo') {
+          if (contrato.data_reativacao) {
+            return r.data_vencimento >= contrato.data_reativacao;
+          }
+          return true;
+        }
+        return false;
+      });
+
       // Buscar detalhes dos serviços para contas a receber
-      const receberComServicos = await Promise.all((dataReceber || []).map(async (r: any) => {
+      const receberComServicos = await Promise.all(dataReceberFiltrado.map(async (r: any) => {
         const lancamento: any = {
           id: r.id,
           tipo: 'entrada' as const,
@@ -265,8 +278,21 @@ export default function Extrato() {
         return lancamento;
       }));
 
+      // Filtrar parcelas de contratos inativos - Contas a Pagar
+      const dataPagarFiltrado = (dataPagar || []).filter((p: any) => {
+        const contrato = p.parcelas_contrato?.contratos;
+        if (!contrato) return true;
+        if (contrato.status === 'ativo') {
+          if (contrato.data_reativacao) {
+            return p.data_vencimento >= contrato.data_reativacao;
+          }
+          return true;
+        }
+        return false;
+      });
+
       // Buscar detalhes dos serviços para contas a pagar
-      const pagarComServicos = await Promise.all((dataPagar || []).map(async (p: any) => {
+      const pagarComServicos = await Promise.all(dataPagarFiltrado.map(async (p: any) => {
         const lancamento: any = {
           id: p.id,
           tipo: 'saida' as const,

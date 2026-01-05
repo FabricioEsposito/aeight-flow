@@ -158,7 +158,9 @@ export default function ControleFaturamento() {
               periodo_recorrencia,
               valor_bruto,
               centro_custo,
-              observacoes_faturamento
+              observacoes_faturamento,
+              status,
+              data_reativacao
             )
           )
         `)
@@ -172,8 +174,25 @@ export default function ControleFaturamento() {
 
       if (error) throw error;
 
+      // Filtrar parcelas de contratos inativos
+      const dataFiltrado = (data || []).filter((item: any) => {
+        const contrato = item.parcelas_contrato?.contratos;
+        // Se não tem contrato vinculado, mostrar
+        if (!contrato) return true;
+        // Se o contrato está ativo, mostrar
+        if (contrato.status === 'ativo') {
+          // Se foi reativado, verificar se a data de vencimento é >= data de reativação
+          if (contrato.data_reativacao) {
+            return item.data_vencimento >= contrato.data_reativacao;
+          }
+          return true;
+        }
+        // Se o contrato está inativo, não mostrar
+        return false;
+      });
+
       // Buscar detalhes dos serviços
-      const faturamentosFormatados = await Promise.all((data || []).map(async (item: any) => {
+      const faturamentosFormatados = await Promise.all(dataFiltrado.map(async (item: any) => {
         const contrato = item.parcelas_contrato?.contratos;
         
         let servicosDetalhes: Array<{ codigo: string; nome: string }> = [];
