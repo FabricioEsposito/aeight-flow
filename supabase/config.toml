@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.send-collection-emails]
 verify_jwt = false
+
+[functions.send-billing-emails]
+verify_jwt = false

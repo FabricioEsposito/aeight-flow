@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit, ExternalLink } from 'lucide-react';
+import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit, ExternalLink, Mail } from 'lucide-react';
 import { useExportReport } from '@/hooks/useExportReport';
+import { useBillingEmails } from '@/hooks/useBillingEmails';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,12 +9,15 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { FaturamentoDetailsDialog } from '@/components/faturamento/FaturamentoDetailsDialog';
 import { EditFaturamentoDialog } from '@/components/faturamento/EditFaturamentoDialog';
+import { EnviarEmailFaturamentoDialog } from '@/components/faturamento/EnviarEmailFaturamentoDialog';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { format } from 'date-fns';
 
@@ -25,6 +29,7 @@ interface Faturamento {
   cliente_razao_social: string;
   cliente_nome_fantasia: string | null;
   cliente_cnpj: string;
+  cliente_emails?: string[];
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
   link_nf: string | null;
@@ -67,8 +72,11 @@ export default function ControleFaturamento() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('');
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const { toast } = useToast();
   const { exportToExcel } = useExportReport();
+  const { sendBillingEmails, isLoading: isSendingEmails } = useBillingEmails();
 
   const getDateRange = () => {
     const today = new Date();
@@ -128,7 +136,7 @@ export default function ControleFaturamento() {
         .from('contas_receber')
         .select(`
           *,
-          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf, email),
           parcelas_contrato:parcela_id (
             contrato_id,
             contratos:contrato_id (
@@ -189,6 +197,7 @@ export default function ControleFaturamento() {
           cliente_razao_social: item.clientes?.razao_social || 'N/A',
           cliente_nome_fantasia: item.clientes?.nome_fantasia || null,
           cliente_cnpj: item.clientes?.cnpj_cpf || 'N/A',
+          cliente_emails: item.clientes?.email || [],
           servicos_detalhes: servicosDetalhes,
           numero_nf: item.numero_nf,
           link_nf: item.link_nf,
@@ -332,6 +341,46 @@ export default function ControleFaturamento() {
     setEditDialogOpen(true);
   };
 
+  // Selection handlers
+  const canSelectFaturamento = (f: Faturamento) => !!f.numero_nf && !!f.link_nf;
+  
+  const selectablePaginatedFaturamentos = paginatedFaturamentos.filter(canSelectFaturamento);
+  const allSelectableSelected = selectablePaginatedFaturamentos.length > 0 && 
+    selectablePaginatedFaturamentos.every(f => selectedIds.has(f.id));
+
+  const handleSelectAll = (checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    selectablePaginatedFaturamentos.forEach(f => {
+      if (checked) {
+        newSelected.add(f.id);
+      } else {
+        newSelected.delete(f.id);
+      }
+    });
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const selectedFaturamentos = faturamentos.filter(f => selectedIds.has(f.id));
+
+  const handleSendEmails = async () => {
+    const ids = Array.from(selectedIds);
+    const result = await sendBillingEmails(ids);
+    if (result.success && result.sent > 0) {
+      setSelectedIds(new Set());
+      setEmailDialogOpen(false);
+    }
+  };
+
   const getStatusText = (status: string, dataVencimento: string) => {
     const hoje = new Date();
     const vencimento = new Date(dataVencimento + 'T00:00:00');
@@ -398,10 +447,19 @@ export default function ControleFaturamento() {
           <h1 className="text-3xl font-bold text-foreground">Controle de Faturamento</h1>
           <p className="text-muted-foreground">Gerencie as notas fiscais das parcelas de venda</p>
         </div>
-        <Button variant="outline" onClick={handleExportExcel}>
-          <Download className="h-4 w-4 mr-2" />
-          Exportar Excel
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button onClick={() => setEmailDialogOpen(true)} className="gap-2">
+              <Mail className="h-4 w-4" />
+              Enviar E-mails
+              <Badge variant="secondary" className="ml-1">{selectedIds.size}</Badge>
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleExportExcel}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar Excel
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -512,6 +570,13 @@ export default function ControleFaturamento() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox 
+                  checked={allSelectableSelected && selectablePaginatedFaturamentos.length > 0}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead>Data Competência</TableHead>
               <TableHead>Vencimento</TableHead>
               <TableHead>Razão Social</TableHead>
@@ -564,7 +629,7 @@ export default function ControleFaturamento() {
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showImpostosDetalhados ? 14 : 11} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={showImpostosDetalhados ? 15 : 12} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
@@ -575,9 +640,31 @@ export default function ControleFaturamento() {
                 const cofinsValor = faturamento.valor_bruto * (faturamento.cofins_percentual / 100);
                 const pisValor = faturamento.valor_bruto * (faturamento.pis_percentual / 100);
                 const totalRetencoes = irrfValor + pisValor + cofinsValor + csllValor;
+                const isSelectable = canSelectFaturamento(faturamento);
                 
                 return (
                 <TableRow key={faturamento.id} className={faturamento.observacoes_faturamento ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                  <TableCell>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Checkbox
+                              checked={selectedIds.has(faturamento.id)}
+                              onCheckedChange={(checked) => handleSelectOne(faturamento.id, !!checked)}
+                              disabled={!isSelectable}
+                              aria-label={`Selecionar ${faturamento.cliente_razao_social}`}
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        {!isSelectable && (
+                          <TooltipContent>
+                            <p>NF ou link não cadastrado</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
                   <TableCell>{formatDate(faturamento.data_competencia)}</TableCell>
                   <TableCell>{formatDate(faturamento.data_vencimento)}</TableCell>
                   <TableCell className="font-medium">
@@ -712,6 +799,14 @@ export default function ControleFaturamento() {
         onOpenChange={setEditDialogOpen}
         faturamento={selectedFaturamento}
         onSuccess={fetchFaturamentos}
+      />
+
+      <EnviarEmailFaturamentoDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        faturamentos={selectedFaturamentos}
+        onConfirm={handleSendEmails}
+        isLoading={isSendingEmails}
       />
     </div>
   );
