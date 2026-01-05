@@ -71,7 +71,8 @@ export function EditParcelaDialog({
 
   useEffect(() => {
     if (initialData && open) {
-      setDataVencimento(new Date(initialData.data_vencimento));
+      // Usar T00:00:00 para evitar problemas de timezone que alteram a data
+      setDataVencimento(new Date(initialData.data_vencimento + 'T00:00:00'));
       setDescricao(initialData.descricao);
       setPlanoContaId(initialData.plano_conta_id || 'none');
       setCentroCusto(initialData.centro_custo || '');
