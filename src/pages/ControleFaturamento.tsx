@@ -33,6 +33,7 @@ interface Faturamento {
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
   link_nf: string | null;
+  link_boleto: string | null;
   valor_bruto: number;
   valor_liquido: number;
   status: string;
@@ -201,6 +202,7 @@ export default function ControleFaturamento() {
           servicos_detalhes: servicosDetalhes,
           numero_nf: item.numero_nf,
           link_nf: item.link_nf,
+          link_boleto: item.link_boleto,
           valor_bruto: valorBruto,
           valor_liquido: item.valor,
           status: item.status,

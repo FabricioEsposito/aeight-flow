@@ -252,6 +252,7 @@ export type Database = {
           descricao: string
           id: string
           juros: number | null
+          link_boleto: string | null
           link_nf: string | null
           multa: number | null
           numero_nf: string | null
@@ -276,6 +277,7 @@ export type Database = {
           descricao: string
           id?: string
           juros?: number | null
+          link_boleto?: string | null
           link_nf?: string | null
           multa?: number | null
           numero_nf?: string | null
@@ -300,6 +302,7 @@ export type Database = {
           descricao?: string
           id?: string
           juros?: number | null
+          link_boleto?: string | null
           link_nf?: string | null
           multa?: number | null
           numero_nf?: string | null
