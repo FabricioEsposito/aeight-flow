@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -50,6 +50,8 @@ interface LancamentoExtrato {
   data_recebimento?: string;
   data_pagamento?: string;
   numero_nf?: string | null;
+  link_nf?: string | null;
+  link_boleto?: string | null;
 }
 
 export default function Extrato() {
@@ -262,6 +264,8 @@ export default function Extrato() {
           desconto: r.desconto,
           data_recebimento: r.data_recebimento,
           numero_nf: r.numero_nf,
+          link_nf: r.link_nf,
+          link_boleto: r.link_boleto,
         };
 
         if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
@@ -315,6 +319,8 @@ export default function Extrato() {
           multa: p.multa,
           desconto: p.desconto,
           data_pagamento: p.data_pagamento,
+          link_nf: p.link_nf,
+          link_boleto: p.link_boleto,
         };
 
         if (p.parcelas_contrato?.contratos?.servicos && Array.isArray(p.parcelas_contrato.contratos.servicos) && p.parcelas_contrato.contratos.servicos.length > 0) {
@@ -587,19 +593,27 @@ export default function Extrato() {
     try {
       const table = selectedLancamento.cliente_id ? 'contas_receber' : 'contas_pagar';
       
+      const updateData: any = {
+        data_vencimento: data.data_vencimento,
+        descricao: data.descricao,
+        plano_conta_id: data.plano_conta_id,
+        centro_custo: data.centro_custo,
+        conta_bancaria_id: data.conta_bancaria_id,
+        juros: data.juros,
+        multa: data.multa,
+        desconto: data.desconto,
+        valor: data.valor_total,
+      };
+      
+      // Adicionar link_nf e link_boleto apenas para contas a pagar
+      if (!selectedLancamento.cliente_id) {
+        updateData.link_nf = data.link_nf;
+        updateData.link_boleto = data.link_boleto;
+      }
+      
       const { error } = await supabase
         .from(table)
-        .update({
-          data_vencimento: data.data_vencimento,
-          descricao: data.descricao,
-          plano_conta_id: data.plano_conta_id,
-          centro_custo: data.centro_custo,
-          conta_bancaria_id: data.conta_bancaria_id,
-          juros: data.juros,
-          multa: data.multa,
-          desconto: data.desconto,
-          valor: data.valor_total,
-        })
+        .update(updateData)
         .eq('id', data.id);
 
       if (error) throw error;
@@ -1192,6 +1206,7 @@ export default function Extrato() {
                 <TableHead>Cliente/Fornecedor</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>NF</TableHead>
+                <TableHead>Anexos</TableHead>
                 <TableHead>Serviço / Importância</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor (R$)</TableHead>
@@ -1252,6 +1267,44 @@ export default function Extrato() {
                     </TableCell>
                     <TableCell>
                       {lanc.origem === 'receber' && lanc.numero_nf ? lanc.numero_nf : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {lanc.link_nf ? (
+                          <a 
+                            href={lanc.link_nf} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700"
+                            title="Ver NF"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span className="text-xs">NF</span>
+                          </a>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground" title="NF não anexada">
+                            <FileX className="w-4 h-4" />
+                            <span className="text-xs">NF</span>
+                          </span>
+                        )}
+                        {lanc.link_boleto ? (
+                          <a 
+                            href={lanc.link_boleto} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700"
+                            title="Ver Boleto"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span className="text-xs">Bol</span>
+                          </a>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground" title="Boleto não anexado">
+                            <FileX className="w-4 h-4" />
+                            <span className="text-xs">Bol</span>
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">

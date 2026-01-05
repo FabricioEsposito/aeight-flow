@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
+import { FileUpload } from '@/components/ui/file-upload';
 
 interface EditParcelaDialogProps {
   open: boolean;
@@ -29,6 +30,8 @@ interface EditParcelaDialogProps {
     juros?: number;
     multa?: number;
     desconto?: number;
+    link_nf?: string | null;
+    link_boleto?: string | null;
   };
 }
 
@@ -44,6 +47,8 @@ export interface EditParcelaData {
   desconto: number;
   valor_total: number;
   valor_original: number;
+  link_nf?: string | null;
+  link_boleto?: string | null;
 }
 
 export function EditParcelaDialog({
@@ -61,6 +66,8 @@ export function EditParcelaDialog({
   const [juros, setJuros] = useState('0');
   const [multa, setMulta] = useState('0');
   const [desconto, setDesconto] = useState('0');
+  const [linkNf, setLinkNf] = useState<string | null>(null);
+  const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialData && open) {
@@ -72,6 +79,8 @@ export function EditParcelaDialog({
       setJuros(initialData.juros?.toString() || '0');
       setMulta(initialData.multa?.toString() || '0');
       setDesconto(initialData.desconto?.toString() || '0');
+      setLinkNf(initialData.link_nf || null);
+      setLinkBoleto(initialData.link_boleto || null);
     }
   }, [initialData, open]);
 
@@ -101,6 +110,8 @@ export function EditParcelaDialog({
       desconto: valorDesconto,
       valor_total: valorTotal,
       valor_original: valorOriginal,
+      link_nf: linkNf,
+      link_boleto: linkBoleto,
     };
 
     onSave(data);
@@ -253,6 +264,35 @@ export function EditParcelaDialog({
               </div>
             </div>
           </div>
+
+          {/* Anexos - Apenas para contas a pagar (saida) */}
+          {tipo === 'saida' && (
+            <div className="border-t pt-4 space-y-4">
+              <h4 className="font-medium">Anexos</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FileUpload
+                  bucket="faturamento-docs"
+                  path="contas-pagar/nf"
+                  value={linkNf}
+                  onChange={setLinkNf}
+                  accept=".pdf"
+                  maxSizeMB={10}
+                  label="Nota Fiscal (PDF)"
+                />
+                
+                <FileUpload
+                  bucket="faturamento-docs"
+                  path="contas-pagar/boleto"
+                  value={linkBoleto}
+                  onChange={setLinkBoleto}
+                  accept=".pdf"
+                  maxSizeMB={10}
+                  label="Boleto (PDF)"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
