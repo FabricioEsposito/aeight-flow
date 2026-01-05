@@ -355,6 +355,7 @@ export type Database = {
           csll_percentual: number | null
           data_fim: string | null
           data_inicio: string
+          data_reativacao: string | null
           desconto_percentual: number | null
           desconto_tipo: string | null
           desconto_valor: number | null
@@ -394,6 +395,7 @@ export type Database = {
           csll_percentual?: number | null
           data_fim?: string | null
           data_inicio: string
+          data_reativacao?: string | null
           desconto_percentual?: number | null
           desconto_tipo?: string | null
           desconto_valor?: number | null
@@ -433,6 +435,7 @@ export type Database = {
           csll_percentual?: number | null
           data_fim?: string | null
           data_inicio?: string
+          data_reativacao?: string | null
           desconto_percentual?: number | null
           desconto_tipo?: string | null
           desconto_valor?: number | null

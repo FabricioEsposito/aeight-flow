@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContratosTable } from '@/components/contratos/ContratosTable';
+import { ReativarContratoDialog } from '@/components/contratos/ReativarContratoDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
@@ -145,7 +146,7 @@ export default function Contratos() {
     try {
       const { error } = await supabase
         .from('contratos')
-        .update({ status: 'inativo' })
+        .update({ status: 'inativo', data_reativacao: null })
         .eq('id', id);
 
       if (error) throw error;
@@ -160,6 +161,41 @@ export default function Contratos() {
       toast({
         title: "Erro",
         description: "Não foi possível inativar o contrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const [reativarDialogOpen, setReativarDialogOpen] = useState(false);
+  const [contratoParaReativar, setContratoParaReativar] = useState<{ id: string; numero: string } | null>(null);
+
+  const handleReactivateClick = (id: string, numeroContrato: string) => {
+    setContratoParaReativar({ id, numero: numeroContrato });
+    setReativarDialogOpen(true);
+  };
+
+  const handleReactivate = async (dataReativacao: string) => {
+    if (!contratoParaReativar) return;
+
+    try {
+      const { error } = await supabase
+        .from('contratos')
+        .update({ status: 'ativo', data_reativacao: dataReativacao })
+        .eq('id', contratoParaReativar.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Contrato reativado com sucesso!",
+      });
+      fetchContratos();
+      setContratoParaReativar(null);
+    } catch (error) {
+      console.error('Erro ao reativar contrato:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reativar o contrato.",
         variant: "destructive",
       });
     }
@@ -320,6 +356,7 @@ export default function Contratos() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onInactivate={handleInactivate}
+          onReactivate={handleReactivateClick}
         />
 
         {filteredContratos.length > 0 && (
@@ -332,6 +369,13 @@ export default function Contratos() {
           />
         )}
       </Card>
+
+      <ReativarContratoDialog
+        open={reativarDialogOpen}
+        onOpenChange={setReativarDialogOpen}
+        onConfirm={handleReactivate}
+        contratoNumero={contratoParaReativar?.numero}
+      />
     </div>
   );
 }

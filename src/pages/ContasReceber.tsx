@@ -155,7 +155,9 @@ export default function ContasReceber() {
             contratos:contrato_id (
               numero_contrato,
               servicos,
-              importancia_cliente_fornecedor
+              importancia_cliente_fornecedor,
+              status,
+              data_reativacao
             )
           )
         `)
@@ -163,8 +165,25 @@ export default function ContasReceber() {
 
       if (error) throw error;
       
+      // Filtrar parcelas de contratos inativos
+      const contasFiltradasPorContrato = (data || []).filter((conta: any) => {
+        const contrato = conta.parcelas_contrato?.contratos;
+        // Se não tem contrato vinculado, mostrar
+        if (!contrato) return true;
+        // Se o contrato está ativo, mostrar
+        if (contrato.status === 'ativo') {
+          // Se foi reativado, verificar se a data de vencimento é >= data de reativação
+          if (contrato.data_reativacao) {
+            return conta.data_vencimento >= contrato.data_reativacao;
+          }
+          return true;
+        }
+        // Se o contrato está inativo, não mostrar
+        return false;
+      });
+      
       // Buscar detalhes dos serviços
-      const contasComServicos = await Promise.all((data || []).map(async (conta: any) => {
+      const contasComServicos = await Promise.all(contasFiltradasPorContrato.map(async (conta: any) => {
         const contratos = conta.parcelas_contrato?.contratos ? {
           numero: conta.parcelas_contrato.contratos.numero_contrato,
           servicos: conta.parcelas_contrato.contratos.servicos,
