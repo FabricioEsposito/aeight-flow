@@ -76,7 +76,7 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right; font-weight: 600;">${formatCurrency(p.valor)}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: center;">
           ${p.link_nf && p.link_nf.trim() !== '' 
-            ? `<a href="${p.link_nf}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500;">NF ${p.numero_nf}</a>`
+            ? `<a href="${p.link_nf}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 600;">📄 Visualizar NF ${p.numero_nf}</a>`
             : `<span style="display: inline-block; padding: 6px 12px; background-color: #9ca3af; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">NF ${p.numero_nf}</span>`
           }
         </td>
