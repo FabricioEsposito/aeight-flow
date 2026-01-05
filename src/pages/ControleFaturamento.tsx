@@ -769,6 +769,15 @@ export default function ControleFaturamento() {
                             Visualizar NF
                           </DropdownMenuItem>
                         )}
+                        {faturamento.link_boleto && (
+                          <DropdownMenuItem 
+                            onClick={() => window.open(faturamento.link_boleto!, '_blank')} 
+                            className="cursor-pointer"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2 text-orange-500" />
+                            Visualizar Boleto
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
