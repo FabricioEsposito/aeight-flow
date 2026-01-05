@@ -5,9 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ExternalLink } from 'lucide-react';
 import { CurrencyInput } from '@/components/ui/currency-input';
-
+import { FileUpload } from '@/components/ui/file-upload';
 interface Faturamento {
   id: string;
   data_competencia: string;
@@ -281,49 +280,21 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Link da NF</Label>
-            <div className="flex gap-2">
-              <Input
-                value={linkNf}
-                onChange={(e) => setLinkNf(e.target.value)}
-                placeholder="Cole o link da NF"
-                className="flex-1"
-              />
-              {linkNf && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => window.open(linkNf, '_blank')}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
+          <FileUpload
+            bucket="faturamento-docs"
+            path={`nf/${faturamento.id}.pdf`}
+            value={linkNf || null}
+            onChange={(url) => setLinkNf(url || '')}
+            label="Nota Fiscal (PDF)"
+          />
 
-          <div className="space-y-2">
-            <Label>Link do Boleto</Label>
-            <div className="flex gap-2">
-              <Input
-                value={linkBoleto}
-                onChange={(e) => setLinkBoleto(e.target.value)}
-                placeholder="Cole o link do boleto"
-                className="flex-1"
-              />
-              {linkBoleto && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => window.open(linkBoleto, '_blank')}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
+          <FileUpload
+            bucket="faturamento-docs"
+            path={`boleto/${faturamento.id}.pdf`}
+            value={linkBoleto || null}
+            onChange={(url) => setLinkBoleto(url || '')}
+            label="Boleto (PDF)"
+          />
         </div>
 
         <DialogFooter>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit, ExternalLink, Mail } from 'lucide-react';
+import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit, ExternalLink, Mail, FileCheck, FileX } from 'lucide-react';
 import { useExportReport } from '@/hooks/useExportReport';
 import { useBillingEmails } from '@/hooks/useBillingEmails';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { EditFaturamentoDialog } from '@/components/faturamento/EditFaturamentoD
 import { EnviarEmailFaturamentoDialog } from '@/components/faturamento/EnviarEmailFaturamentoDialog';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Faturamento {
   id: string;
@@ -605,6 +606,7 @@ export default function ControleFaturamento() {
               <TableHead>Serviço</TableHead>
               <TableHead>CNPJ</TableHead>
               <TableHead>NF</TableHead>
+              <TableHead className="text-center">Anexos</TableHead>
               <TableHead className="text-right">Valor Bruto</TableHead>
               {showImpostosDetalhados ? (
                 <>
@@ -650,7 +652,7 @@ export default function ControleFaturamento() {
           <TableBody>
             {paginatedFaturamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showImpostosDetalhados ? 15 : 12} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={showImpostosDetalhados ? 16 : 13} className="text-center text-muted-foreground py-8">
                   Nenhum faturamento encontrado no período selecionado.
                 </TableCell>
               </TableRow>
@@ -718,6 +720,48 @@ export default function ControleFaturamento() {
                       placeholder="Nº NF"
                       className="w-24 h-8"
                     />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className={cn(
+                              "p-1 rounded",
+                              faturamento.link_nf ? "text-green-600" : "text-muted-foreground/40"
+                            )}>
+                              {faturamento.link_nf ? (
+                                <FileCheck className="h-4 w-4" />
+                              ) : (
+                                <FileX className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{faturamento.link_nf ? 'NF anexada' : 'NF não anexada'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className={cn(
+                              "p-1 rounded",
+                              faturamento.link_boleto ? "text-orange-600" : "text-muted-foreground/40"
+                            )}>
+                              {faturamento.link_boleto ? (
+                                <FileCheck className="h-4 w-4" />
+                              ) : (
+                                <FileX className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{faturamento.link_boleto ? 'Boleto anexado' : 'Boleto não anexado'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(faturamento.valor_bruto)}</TableCell>
                   {showImpostosDetalhados ? (
