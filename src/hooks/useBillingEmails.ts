@@ -31,19 +31,23 @@ export function useBillingEmails(): UseBillingEmailsReturn {
       if (error) throw error;
 
       if (data.success) {
+        const hasErrors = data.errors && data.errors.length > 0;
         const message = data.sent > 0 
-          ? `${data.sent} e-mail(s) enviado(s) com sucesso!`
+          ? `${data.sent} e-mail(s) enviado(s) com sucesso!${hasErrors ? ` (${data.skipped} falhou)` : ''}`
           : "Nenhum e-mail foi enviado";
         
         toast({
-          title: data.sent > 0 ? "Sucesso" : "Aviso",
-          description: message,
+          title: data.sent > 0 ? (hasErrors ? "Envio Parcial" : "Sucesso") : "Aviso",
+          description: hasErrors 
+            ? `${message}\nErros: ${data.errors.join(', ')}`
+            : message,
           variant: data.sent > 0 ? "default" : "destructive",
         });
 
         return {
           success: true,
           sent: data.sent,
+          skipped: data.skipped,
           errors: data.errors,
         };
       } else {
