@@ -339,10 +339,19 @@ serve(async (req: Request): Promise<Response> => {
     const errors: string[] = [];
     const clientesEnviados: string[] = [];
 
+    // Helper function to delay between requests to avoid rate limiting
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     // Send one email per client
+    let isFirstEmail = true;
     for (const [clienteId, parcelas] of parcelasPorCliente) {
       if (parcelas.length === 0) continue;
 
+      // Add delay between emails to avoid Resend rate limit (2 requests/second)
+      if (!isFirstEmail) {
+        await delay(600); // 600ms delay ensures we stay under 2 req/sec
+      }
+      isFirstEmail = false;
       const primeiraParcelaCliente = parcelas[0];
       
       if (primeiraParcelaCliente.cliente_emails.length === 0) {
@@ -382,7 +391,29 @@ serve(async (req: Request): Promise<Response> => {
 
         console.log(`Email sent to ${primeiraParcelaCliente.cliente_nome}:`, emailResponse);
 
-        // Log each email sent
+        // Check if email was actually sent (no error in response)
+        if (emailResponse.error) {
+          console.error(`Error sending to ${primeiraParcelaCliente.cliente_nome}:`, emailResponse.error);
+          errors.push(`${primeiraParcelaCliente.cliente_nome}: ${emailResponse.error.message}`);
+          totalSkipped++;
+
+          // Log failed email
+          for (const parcelaEnviada of parcelas) {
+            for (const email of primeiraParcelaCliente.cliente_emails) {
+              await supabase.from("email_logs").insert({
+                cliente_id: clienteId,
+                conta_receber_id: parcelaEnviada.id,
+                email_destino: email,
+                tipo: "faturamento",
+                status: "erro",
+                erro: emailResponse.error.message,
+              });
+            }
+          }
+          continue;
+        }
+
+        // Log each email sent successfully
         for (const parcelaEnviada of parcelas) {
           for (const email of primeiraParcelaCliente.cliente_emails) {
             const { error: logError } = await supabase.from("email_logs").insert({
