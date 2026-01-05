@@ -96,18 +96,7 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
   const totalLiquido = parcelas.reduce((sum, p) => sum + p.valor, 0);
   const totalRetencoes = totalBruto - totalLiquido;
 
-  // Check if any parcela has observations
-  const observacoes = parcelas
-    .filter(p => p.observacoes_faturamento)
-    .map(p => p.observacoes_faturamento)
-    .filter((v, i, a) => a.indexOf(v) === i); // unique values
-
-  const observacoesHtml = observacoes.length > 0 ? `
-    <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin: 24px 0;">
-      <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #92400e;">⚠️ Observações de Faturamento:</p>
-      ${observacoes.map(obs => `<p style="margin: 0; font-size: 14px; color: #78350f;">${obs}</p>`).join('')}
-    </div>
-  ` : '';
+  // Observations removed - internal use only
 
   return `
 <!DOCTYPE html>
@@ -158,7 +147,7 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
           </table>
         </div>
 
-        ${observacoesHtml}
+        
         
         <!-- Total -->
         <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
