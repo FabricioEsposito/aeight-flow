@@ -154,6 +154,8 @@ export type Database = {
           fornecedor_id: string
           id: string
           juros: number | null
+          link_boleto: string | null
+          link_nf: string | null
           multa: number | null
           observacoes: string | null
           parcela_id: string | null
@@ -176,6 +178,8 @@ export type Database = {
           fornecedor_id: string
           id?: string
           juros?: number | null
+          link_boleto?: string | null
+          link_nf?: string | null
           multa?: number | null
           observacoes?: string | null
           parcela_id?: string | null
@@ -198,6 +202,8 @@ export type Database = {
           fornecedor_id?: string
           id?: string
           juros?: number | null
+          link_boleto?: string | null
+          link_nf?: string | null
           multa?: number | null
           observacoes?: string | null
           parcela_id?: string | null

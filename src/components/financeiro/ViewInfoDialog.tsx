@@ -6,6 +6,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ExternalLink, FileCheck, FileX } from 'lucide-react';
 
 interface ViewInfoDialogProps {
   open: boolean;
@@ -101,6 +103,45 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
               </div>
             </div>
           )}
+
+          {/* Anexos */}
+          <div className="border-t pt-4">
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">Anexos</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                {data.link_nf ? (
+                  <Button variant="outline" size="sm" asChild className="w-full justify-start">
+                    <a href={data.link_nf} target="_blank" rel="noopener noreferrer">
+                      <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                      Ver Nota Fiscal
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </a>
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <FileX className="w-4 h-4" />
+                    <span>NF não anexada</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {data.link_boleto ? (
+                  <Button variant="outline" size="sm" asChild className="w-full justify-start">
+                    <a href={data.link_boleto} target="_blank" rel="noopener noreferrer">
+                      <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                      Ver Boleto
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </a>
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <FileX className="w-4 h-4" />
+                    <span>Boleto não anexado</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           <div>
             <label className="text-sm font-medium text-muted-foreground">Status</label>
