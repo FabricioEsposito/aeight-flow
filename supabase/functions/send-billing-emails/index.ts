@@ -13,6 +13,7 @@ interface ParcelaFaturamento {
   id: string;
   numero_nf: string;
   link_nf: string;
+  link_boleto: string;
   data_competencia: string;
   data_vencimento: string;
   valor: number;
@@ -80,6 +81,12 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
             : `<span style="display: inline-block; padding: 6px 12px; background-color: #9ca3af; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">NF ${p.numero_nf}</span>`
           }
         </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: center;">
+          ${p.link_boleto && p.link_boleto.trim() !== '' 
+            ? `<a href="${p.link_boleto}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 600;">🧾 Visualizar Boleto</a>`
+            : `<span style="display: inline-block; padding: 6px 12px; background-color: #d1d5db; color: #6b7280; border-radius: 4px; font-size: 12px; font-weight: 500;">-</span>`
+          }
+        </td>
       </tr>
     `;
     })
@@ -142,6 +149,7 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
                 <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Retenções</th>
                 <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Valor Líquido</th>
                 <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Nota Fiscal</th>
+                <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Boleto</th>
               </tr>
             </thead>
             <tbody>
@@ -226,6 +234,7 @@ serve(async (req: Request): Promise<Response> => {
         id,
         numero_nf,
         link_nf,
+        link_boleto,
         data_competencia,
         data_vencimento,
         valor,
@@ -301,6 +310,7 @@ serve(async (req: Request): Promise<Response> => {
         id: conta.id,
         numero_nf: conta.numero_nf,
         link_nf: conta.link_nf,
+        link_boleto: conta.link_boleto || "",
         data_competencia: conta.data_competencia,
         data_vencimento: conta.data_vencimento,
         valor: conta.valor,

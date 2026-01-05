@@ -19,6 +19,7 @@ interface Faturamento {
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
   link_nf: string | null;
+  link_boleto: string | null;
   valor_bruto: number;
   valor_liquido: number;
   status: string;
@@ -51,6 +52,7 @@ interface EditFaturamentoDialogProps {
 export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSuccess }: EditFaturamentoDialogProps) {
   const [numeroNf, setNumeroNf] = useState('');
   const [linkNf, setLinkNf] = useState('');
+  const [linkBoleto, setLinkBoleto] = useState('');
   const [valorBruto, setValorBruto] = useState(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -59,6 +61,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     if (faturamento) {
       setNumeroNf(faturamento.numero_nf || '');
       setLinkNf(faturamento.link_nf || '');
+      setLinkBoleto(faturamento.link_boleto || '');
       setValorBruto(faturamento.valor_bruto);
     }
   }, [faturamento]);
@@ -97,6 +100,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
         .update({
           numero_nf: numeroNf || null,
           link_nf: linkNf || null,
+          link_boleto: linkBoleto || null,
           valor: valorLiquidoCalculado,
         })
         .eq('id', faturamento.id);
@@ -292,6 +296,28 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
                   variant="outline"
                   size="icon"
                   onClick={() => window.open(linkNf, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Link do Boleto</Label>
+            <div className="flex gap-2">
+              <Input
+                value={linkBoleto}
+                onChange={(e) => setLinkBoleto(e.target.value)}
+                placeholder="Cole o link do boleto"
+                className="flex-1"
+              />
+              {linkBoleto && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => window.open(linkBoleto, '_blank')}
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
