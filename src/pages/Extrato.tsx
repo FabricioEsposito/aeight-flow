@@ -21,6 +21,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
+import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { format } from 'date-fns';
@@ -61,7 +62,7 @@ export default function Extrato() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
+  const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
   const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
@@ -903,8 +904,8 @@ export default function Extrato() {
                          (statusFilter === 'vencido' && displayStatus === 'vencido') ||
                          (statusFilter === 'em dia' && displayStatus === 'em dia');
     
-    const matchesConta = contaBancariaFilter === 'todas' || 
-                        lanc.conta_bancaria_id === contaBancariaFilter;
+    const matchesConta = contaBancariaFilter.length === 0 || 
+                        (lanc.conta_bancaria_id && contaBancariaFilter.includes(lanc.conta_bancaria_id));
 
     let matchesDate = true;
     const dateRange = getDateRange();
@@ -951,16 +952,16 @@ export default function Extrato() {
   
   // Saldo inicial: saldo da conta (ou todas) no início do período
   // Para calcular o saldo inicial, usamos o saldo atual menos todas as movimentações do período
-  const contasFiltradas = contaBancariaFilter === 'todas' 
+  const contasFiltradas = contaBancariaFilter.length === 0 
     ? contasBancarias 
-    : contasBancarias.filter(c => c.id === contaBancariaFilter);
+    : contasBancarias.filter(c => contaBancariaFilter.includes(c.id));
   
   // Saldo atual das contas filtradas
   const saldoAtualContas = contasFiltradas.reduce((acc, conta) => acc + conta.saldo_atual, 0);
   
   // Filtrar lançamentos por conta bancária para os cálculos
   const lancamentosContaFiltrada = lancamentos.filter(l => 
-    contaBancariaFilter === 'todas' || l.conta_bancaria_id === contaBancariaFilter
+    contaBancariaFilter.length === 0 || (l.conta_bancaria_id && contaBancariaFilter.includes(l.conta_bancaria_id))
   );
   
   // Calcular movimentações realizadas dentro do período (status pago)
@@ -1154,19 +1155,11 @@ export default function Extrato() {
             />
           </div>
 
-          <Select value={contaBancariaFilter} onValueChange={setContaBancariaFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Conta bancária" />
-            </SelectTrigger>
-            <SelectContent className="bg-background z-50">
-              <SelectItem value="todas">Todas as contas</SelectItem>
-              {contasBancarias.map((conta) => (
-                <SelectItem key={conta.id} value={conta.id}>
-                  {conta.descricao}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <ContaBancariaMultiSelect
+            contas={contasBancarias}
+            selectedIds={contaBancariaFilter}
+            onChange={setContaBancariaFilter}
+          />
 
           <Select value={tipoFilter} onValueChange={setTipoFilter}>
             <SelectTrigger className="w-[150px]">
