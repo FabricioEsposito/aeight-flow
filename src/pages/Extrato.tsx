@@ -57,7 +57,7 @@ interface LancamentoExtrato {
 
 export default function Extrato() {
   const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
-  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number }>>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number; saldo_inicial: number; data_inicio: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
@@ -341,7 +341,7 @@ export default function Extrato() {
       // Buscar contas bancárias
       const { data: dataContas, error: errorContas } = await supabase
         .from('contas_bancarias')
-        .select('id, descricao, banco, saldo_atual')
+        .select('id, descricao, banco, saldo_atual, saldo_inicial, data_inicio')
         .eq('status', 'ativo')
         .order('descricao');
 
@@ -950,59 +950,58 @@ export default function Extrato() {
   // Cálculos para resumo - específicos por conta bancária e período
   const dateRange = getDateRange();
   
-  // Saldo inicial: saldo da conta (ou todas) no início do período
-  // Para calcular o saldo inicial, usamos o saldo atual menos todas as movimentações do período
+  // Contas filtradas pelo filtro de conta bancária
   const contasFiltradas = contaBancariaFilter.length === 0 
     ? contasBancarias 
     : contasBancarias.filter(c => contaBancariaFilter.includes(c.id));
   
-  // Saldo atual das contas filtradas
-  const saldoAtualContas = contasFiltradas.reduce((acc, conta) => acc + conta.saldo_atual, 0);
+  // Saldo inicial das contas filtradas (data_inicio)
+  const saldoInicialContas = contasFiltradas.reduce((acc, conta) => acc + conta.saldo_inicial, 0);
   
   // Filtrar lançamentos por conta bancária para os cálculos
   const lancamentosContaFiltrada = lancamentos.filter(l => 
     contaBancariaFilter.length === 0 || (l.conta_bancaria_id && contaBancariaFilter.includes(l.conta_bancaria_id))
   );
   
-  // Calcular movimentações realizadas dentro do período (status pago)
+  // Movimentações realizadas (pagas) ANTES do início do período
+  // Isso inclui todas as movimentações que já impactaram o saldo até o dia anterior ao período
+  const movimentacoesAntesDoInicio = lancamentosContaFiltrada.filter(l => {
+    if (!dateRange) return false;
+    const dataMovimento = l.data_recebimento || l.data_pagamento;
+    if (!dataMovimento || l.status !== 'pago') return false;
+    return dataMovimento < dateRange.start;
+  });
+  
+  const entradasAntesDoInicio = movimentacoesAntesDoInicio
+    .filter(l => l.tipo === 'entrada')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  const saidasAntesDoInicio = movimentacoesAntesDoInicio
+    .filter(l => l.tipo === 'saida')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  // Saldo inicial do período = saldo inicial da conta + entradas antes do período - saídas antes do período
+  const saldoInicial = saldoInicialContas + entradasAntesDoInicio - saidasAntesDoInicio;
+  
+  // Movimentações realizadas DENTRO do período (entradas e saídas pagas)
   const movimentacoesNoPeriodo = lancamentosContaFiltrada.filter(l => {
     if (!dateRange) return l.status === 'pago';
     const dataMovimento = l.data_recebimento || l.data_pagamento;
-    if (!dataMovimento) return false;
+    if (!dataMovimento || l.status !== 'pago') return false;
     return dataMovimento >= dateRange.start && dataMovimento <= dateRange.end;
   });
   
   // Entradas realizadas no período
-  const entradasRealizadasNoPeriodo = movimentacoesNoPeriodo
-    .filter(l => l.tipo === 'entrada' && l.status === 'pago')
-    .reduce((acc, l) => acc + l.valor, 0);
-  
-  // Saídas realizadas no período
-  const saidasRealizadasNoPeriodo = movimentacoesNoPeriodo
-    .filter(l => l.tipo === 'saida' && l.status === 'pago')
-    .reduce((acc, l) => acc + l.valor, 0);
-  
-  // Saldo inicial do período = saldo atual - movimentações que ocorreram no período ou depois
-  // Para simplificar, vamos calcular baseado nos lançamentos pagos após o início do período
-  const movimentacoesAposInicio = lancamentosContaFiltrada.filter(l => {
-    if (!dateRange) return false;
-    const dataMovimento = l.data_recebimento || l.data_pagamento;
-    if (!dataMovimento || l.status !== 'pago') return false;
-    return dataMovimento >= dateRange.start;
-  });
-  
-  const entradasAposInicio = movimentacoesAposInicio
+  const entradasNoPeriodo = movimentacoesNoPeriodo
     .filter(l => l.tipo === 'entrada')
     .reduce((acc, l) => acc + l.valor, 0);
   
-  const saidasAposInicio = movimentacoesAposInicio
+  // Saídas realizadas no período
+  const saidasNoPeriodo = movimentacoesNoPeriodo
     .filter(l => l.tipo === 'saida')
     .reduce((acc, l) => acc + l.valor, 0);
   
-  // Saldo inicial = saldo atual - entradas depois do início + saídas depois do início
-  const saldoInicial = saldoAtualContas - entradasAposInicio + saidasAposInicio;
-  
-  // A receber e a pagar pendentes no período (filtrados)
+  // A receber e a pagar pendentes no período
   const lancamentosNoPeriodoFiltrado = lancamentosContaFiltrada.filter(l => {
     if (!dateRange) return true;
     return l.data_vencimento >= dateRange.start && l.data_vencimento <= dateRange.end;
@@ -1016,8 +1015,9 @@ export default function Extrato() {
     .filter(l => l.tipo === 'saida' && l.status === 'pendente')
     .reduce((acc, l) => acc + l.valor, 0);
 
-  // Saldo final previsto = saldo inicial + recebido + a receber - pago - a pagar
-  const saldoFinal = saldoInicial + entradasRealizadasNoPeriodo + totalReceber - saidasRealizadasNoPeriodo - totalPagar;
+  // Saldo final = saldo inicial + entradas no período - saídas no período
+  // Para previsão incluindo pendentes: + a receber - a pagar
+  const saldoFinal = saldoInicial + entradasNoPeriodo + totalReceber - saidasNoPeriodo - totalPagar;
 
   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
