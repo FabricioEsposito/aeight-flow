@@ -933,6 +933,14 @@ export default function Extrato() {
     }
 
     return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesDate;
+  }).sort((a, b) => {
+    // Ordenar por data de movimento em ordem crescente (menor para maior)
+    const getMovementDate = (lanc: LancamentoExtrato) => {
+      return lanc.data_recebimento || lanc.data_pagamento || lanc.data_vencimento;
+    };
+    const dateA = new Date(getMovementDate(a)).getTime();
+    const dateB = new Date(getMovementDate(b)).getTime();
+    return dateA - dateB;
   });
 
   const formatCurrency = (value: number) => {
