@@ -10,7 +10,7 @@ interface ContaBancaria {
   id: string;
   descricao: string;
   banco: string;
-  saldo_atual: number;
+  saldo_atual?: number;
 }
 
 interface ContaBancariaMultiSelectProps {
