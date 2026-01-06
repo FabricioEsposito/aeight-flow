@@ -1220,9 +1220,39 @@ export default function Extrato() {
         {selectedIds.size > 0 && (
           <div className="mb-6 p-4 bg-muted rounded-lg">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {selectedIds.size} lançamento(s) selecionado(s)
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">
+                  {selectedIds.size} lançamento(s) selecionado(s)
+                </span>
+                {(() => {
+                  const lancamentosSelecionados = lancamentos.filter(l => selectedIds.has(l.id));
+                  const totalEntradas = lancamentosSelecionados
+                    .filter(l => l.tipo === 'entrada')
+                    .reduce((acc, l) => acc + l.valor, 0);
+                  const totalSaidas = lancamentosSelecionados
+                    .filter(l => l.tipo === 'saida')
+                    .reduce((acc, l) => acc + l.valor, 0);
+                  const saldo = totalEntradas - totalSaidas;
+                  
+                  return (
+                    <div className="flex gap-4 text-sm">
+                      {totalEntradas > 0 && (
+                        <span className="text-emerald-600 font-medium">
+                          Entradas: {formatCurrency(totalEntradas)}
+                        </span>
+                      )}
+                      {totalSaidas > 0 && (
+                        <span className="text-destructive font-medium">
+                          Saídas: {formatCurrency(totalSaidas)}
+                        </span>
+                      )}
+                      <span className={`font-semibold ${saldo >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                        Saldo: {saldo >= 0 ? '+' : ''}{formatCurrency(saldo)}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
               <div className="flex gap-2">
                 <Button
                   size="sm"
