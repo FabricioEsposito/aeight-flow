@@ -58,6 +58,7 @@ interface LancamentoExtrato {
 export default function Extrato() {
   const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number; saldo_inicial: number; data_inicio: string }>>([]);
+  const [movimentacoesAnteriores, setMovimentacoesAnteriores] = useState<Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
@@ -347,6 +348,32 @@ export default function Extrato() {
 
       if (errorContas) throw errorContas;
       setContasBancarias(dataContas || []);
+
+      // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
+      if (dateRange) {
+        // Buscar entradas pagas antes do período
+        const { data: entradasAnteriores } = await supabase
+          .from('contas_receber')
+          .select('valor, conta_bancaria_id')
+          .eq('status', 'pago')
+          .lt('data_recebimento', dateRange.start);
+        
+        // Buscar saídas pagas antes do período
+        const { data: saidasAnteriores } = await supabase
+          .from('contas_pagar')
+          .select('valor, conta_bancaria_id')
+          .eq('status', 'pago')
+          .lt('data_pagamento', dateRange.start);
+        
+        const movimentacoesAnt: Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }> = [
+          ...(entradasAnteriores || []).map(e => ({ valor: e.valor, conta_bancaria_id: e.conta_bancaria_id, tipo: 'entrada' as const })),
+          ...(saidasAnteriores || []).map(s => ({ valor: s.valor, conta_bancaria_id: s.conta_bancaria_id, tipo: 'saida' as const }))
+        ];
+        
+        setMovimentacoesAnteriores(movimentacoesAnt);
+      } else {
+        setMovimentacoesAnteriores([]);
+      }
 
       const todosLancamentos = [...receberComServicos, ...pagarComServicos].sort(
         (a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
@@ -971,24 +998,21 @@ export default function Extrato() {
     contaBancariaFilter.length === 0 || (l.conta_bancaria_id && contaBancariaFilter.includes(l.conta_bancaria_id))
   );
   
-  // Movimentações realizadas (pagas) ANTES do início do período
-  // Isso inclui todas as movimentações que já impactaram o saldo até o dia anterior ao período
-  const movimentacoesAntesDoInicio = lancamentosContaFiltrada.filter(l => {
-    if (!dateRange) return false;
-    const dataMovimento = l.data_recebimento || l.data_pagamento;
-    if (!dataMovimento || l.status !== 'pago') return false;
-    return dataMovimento < dateRange.start;
-  });
+  // Filtrar movimentações anteriores pela conta bancária selecionada
+  const movimentacoesAnterioresFiltradas = movimentacoesAnteriores.filter(m => 
+    contaBancariaFilter.length === 0 || (m.conta_bancaria_id && contaBancariaFilter.includes(m.conta_bancaria_id))
+  );
   
-  const entradasAntesDoInicio = movimentacoesAntesDoInicio
-    .filter(l => l.tipo === 'entrada')
-    .reduce((acc, l) => acc + l.valor, 0);
+  const entradasAntesDoInicio = movimentacoesAnterioresFiltradas
+    .filter(m => m.tipo === 'entrada')
+    .reduce((acc, m) => acc + m.valor, 0);
   
-  const saidasAntesDoInicio = movimentacoesAntesDoInicio
-    .filter(l => l.tipo === 'saida')
-    .reduce((acc, l) => acc + l.valor, 0);
+  const saidasAntesDoInicio = movimentacoesAnterioresFiltradas
+    .filter(m => m.tipo === 'saida')
+    .reduce((acc, m) => acc + m.valor, 0);
   
   // Saldo inicial do período = saldo inicial da conta + entradas antes do período - saídas antes do período
+  // Usa os dados buscados diretamente do banco de dados para garantir que TODAS as movimentações anteriores sejam consideradas
   const saldoInicial = saldoInicialContas + entradasAntesDoInicio - saidasAntesDoInicio;
   
   // Movimentações realizadas DENTRO do período (entradas e saídas pagas)
