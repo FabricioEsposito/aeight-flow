@@ -946,22 +946,77 @@ export default function Extrato() {
     return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
-  // Cálculos para resumo - baseado em filteredLancamentos para respeitar o período selecionado
-  const saldoContas = contasBancarias.reduce((acc, conta) => acc + conta.saldo_atual, 0);
+  // Cálculos para resumo - específicos por conta bancária e período
+  const dateRange = getDateRange();
   
-  // Considerar todos os lançamentos pendentes dentro do período filtrado
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  // Saldo inicial: saldo da conta (ou todas) no início do período
+  // Para calcular o saldo inicial, usamos o saldo atual menos todas as movimentações do período
+  const contasFiltradas = contaBancariaFilter === 'todas' 
+    ? contasBancarias 
+    : contasBancarias.filter(c => c.id === contaBancariaFilter);
   
-  const totalReceber = filteredLancamentos
+  // Saldo atual das contas filtradas
+  const saldoAtualContas = contasFiltradas.reduce((acc, conta) => acc + conta.saldo_atual, 0);
+  
+  // Filtrar lançamentos por conta bancária para os cálculos
+  const lancamentosContaFiltrada = lancamentos.filter(l => 
+    contaBancariaFilter === 'todas' || l.conta_bancaria_id === contaBancariaFilter
+  );
+  
+  // Calcular movimentações realizadas dentro do período (status pago)
+  const movimentacoesNoPeriodo = lancamentosContaFiltrada.filter(l => {
+    if (!dateRange) return l.status === 'pago';
+    const dataMovimento = l.data_recebimento || l.data_pagamento;
+    if (!dataMovimento) return false;
+    return dataMovimento >= dateRange.start && dataMovimento <= dateRange.end;
+  });
+  
+  // Entradas realizadas no período
+  const entradasRealizadasNoPeriodo = movimentacoesNoPeriodo
+    .filter(l => l.tipo === 'entrada' && l.status === 'pago')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  // Saídas realizadas no período
+  const saidasRealizadasNoPeriodo = movimentacoesNoPeriodo
+    .filter(l => l.tipo === 'saida' && l.status === 'pago')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  // Saldo inicial do período = saldo atual - movimentações que ocorreram no período ou depois
+  // Para simplificar, vamos calcular baseado nos lançamentos pagos após o início do período
+  const movimentacoesAposInicio = lancamentosContaFiltrada.filter(l => {
+    if (!dateRange) return false;
+    const dataMovimento = l.data_recebimento || l.data_pagamento;
+    if (!dataMovimento || l.status !== 'pago') return false;
+    return dataMovimento >= dateRange.start;
+  });
+  
+  const entradasAposInicio = movimentacoesAposInicio
+    .filter(l => l.tipo === 'entrada')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  const saidasAposInicio = movimentacoesAposInicio
+    .filter(l => l.tipo === 'saida')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  // Saldo inicial = saldo atual - entradas depois do início + saídas depois do início
+  const saldoInicial = saldoAtualContas - entradasAposInicio + saidasAposInicio;
+  
+  // A receber e a pagar pendentes no período (filtrados)
+  const lancamentosNoPeriodoFiltrado = lancamentosContaFiltrada.filter(l => {
+    if (!dateRange) return true;
+    return l.data_vencimento >= dateRange.start && l.data_vencimento <= dateRange.end;
+  });
+  
+  const totalReceber = lancamentosNoPeriodoFiltrado
     .filter(l => l.tipo === 'entrada' && l.status === 'pendente')
     .reduce((acc, l) => acc + l.valor, 0);
 
-  const totalPagar = filteredLancamentos
+  const totalPagar = lancamentosNoPeriodoFiltrado
     .filter(l => l.tipo === 'saida' && l.status === 'pendente')
     .reduce((acc, l) => acc + l.valor, 0);
 
-  const saldoFinal = saldoContas + totalReceber - totalPagar;
+  // Saldo final previsto = saldo inicial + recebido + a receber - pago - a pagar
+  const saldoFinal = saldoInicial + entradasRealizadasNoPeriodo + totalReceber - saidasRealizadasNoPeriodo - totalPagar;
 
   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
@@ -1033,8 +1088,8 @@ export default function Extrato() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Saldo em Contas</p>
-              <p className="text-2xl font-bold text-foreground">{formatCurrency(saldoContas)}</p>
+              <p className="text-sm text-muted-foreground">Saldo Inicial</p>
+              <p className="text-2xl font-bold text-foreground">{formatCurrency(saldoInicial)}</p>
             </div>
             <BarChart3 className="w-8 h-8 text-primary" />
           </div>
@@ -1063,7 +1118,7 @@ export default function Extrato() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Saldo Previsto</p>
+              <p className="text-sm text-muted-foreground">Saldo Final Previsto</p>
               <p className={`text-2xl font-bold ${saldoFinal >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
                 {formatCurrency(saldoFinal)}
               </p>
@@ -1224,7 +1279,7 @@ export default function Extrato() {
                 
                 // Calcular saldo acumulado considerando APENAS lançamentos pagos/recebidos
                 const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
-                const saldoRealizado = saldoContas + 
+                const saldoRealizado = saldoInicial + 
                   lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0) -
                   lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0);
 
