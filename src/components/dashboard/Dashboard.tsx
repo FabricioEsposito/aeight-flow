@@ -22,6 +22,7 @@ import { DREAnalysis } from "./DREAnalysis";
 import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
 import { ReguaCobranca } from "./ReguaCobranca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ContaBancariaMultiSelect } from "@/components/financeiro/ContaBancariaMultiSelect";
 
 interface DashboardStats {
   faturamento: number;
@@ -86,9 +87,9 @@ export function Dashboard() {
   const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('todos');
-  const [selectedContaBancaria, setSelectedContaBancaria] = useState<string>('todas');
+  const [selectedContaBancaria, setSelectedContaBancaria] = useState<string[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
-  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string }>>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
   
   // Controle de visualização
   const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca'>('faturamento');
@@ -164,7 +165,7 @@ export function Dashboard() {
       // Fetch contas bancárias
       const { data: contas } = await supabase
         .from('contas_bancarias')
-        .select('id, descricao')
+        .select('id, descricao, banco')
         .eq('status', 'ativo')
         .order('descricao');
       
@@ -216,8 +217,8 @@ export function Dashboard() {
         contasReceberFluxoQuery = contasReceberFluxoQuery.eq('centro_custo', selectedCentroCusto);
       }
 
-      if (selectedContaBancaria !== 'todas') {
-        contasReceberFluxoQuery = contasReceberFluxoQuery.eq('conta_bancaria_id', selectedContaBancaria);
+      if (selectedContaBancaria.length > 0) {
+        contasReceberFluxoQuery = contasReceberFluxoQuery.in('conta_bancaria_id', selectedContaBancaria);
       }
 
       const { data: contasReceberFluxo } = await contasReceberFluxoQuery;
@@ -258,8 +259,8 @@ export function Dashboard() {
         contasPagarFluxoQuery = contasPagarFluxoQuery.eq('centro_custo', selectedCentroCusto);
       }
 
-      if (selectedContaBancaria !== 'todas') {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.eq('conta_bancaria_id', selectedContaBancaria);
+      if (selectedContaBancaria.length > 0) {
+        contasPagarFluxoQuery = contasPagarFluxoQuery.in('conta_bancaria_id', selectedContaBancaria);
       }
 
       const { data: contasPagarFluxo } = await contasPagarFluxoQuery;
@@ -378,8 +379,8 @@ export function Dashboard() {
         .select('saldo_atual')
         .eq('status', 'ativo');
       
-      if (selectedContaBancaria !== 'todas') {
-        contasBancariasQuery = contasBancariasQuery.eq('id', selectedContaBancaria);
+      if (selectedContaBancaria.length > 0) {
+        contasBancariasQuery = contasBancariasQuery.in('id', selectedContaBancaria);
       }
 
       const { data: contasBancarias } = await contasBancariasQuery;
@@ -684,19 +685,11 @@ export function Dashboard() {
           </Select>
 
           {analiseAtiva === 'caixa' && (
-            <Select value={selectedContaBancaria} onValueChange={setSelectedContaBancaria}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Conta Bancária" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as contas</SelectItem>
-                {contasBancarias.map((cb) => (
-                  <SelectItem key={cb.id} value={cb.id}>
-                    {cb.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ContaBancariaMultiSelect
+              contas={contasBancarias}
+              selectedIds={selectedContaBancaria}
+              onChange={setSelectedContaBancaria}
+            />
           )}
         </div>
       </div>
