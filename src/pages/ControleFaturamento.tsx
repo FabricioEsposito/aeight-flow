@@ -175,11 +175,14 @@ export default function ControleFaturamento() {
 
       if (error) throw error;
 
-      // Filtrar parcelas de contratos inativos
+      // Filtrar apenas parcelas de contratos (com parcela_id) e contratos ativos
       const dataFiltrado = (data || []).filter((item: any) => {
+        // Só mostrar se tem parcela_id (veio de contrato, não de lançamento manual)
+        if (!item.parcela_id) return false;
+        
         const contrato = item.parcelas_contrato?.contratos;
-        // Se não tem contrato vinculado, mostrar
-        if (!contrato) return true;
+        // Se não tem contrato vinculado, não mostrar
+        if (!contrato) return false;
         // Se o contrato está ativo, mostrar
         if (contrato.status === 'ativo') {
           // Se foi reativado, verificar se a data de vencimento é >= data de reativação
