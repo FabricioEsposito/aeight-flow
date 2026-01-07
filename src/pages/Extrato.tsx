@@ -198,7 +198,7 @@ export default function Extrato() {
       const dateFieldReceber = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
       const dateFieldPagar = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
       
-      // Buscar contas a receber
+      // Buscar contas a receber - query principal pelo campo selecionado
       let queryReceber = supabase
         .from('contas_receber')
         .select(`
@@ -215,7 +215,26 @@ export default function Extrato() {
       const { data: dataReceber, error: errorReceber } = await queryReceber;
       if (errorReceber) throw errorReceber;
 
-      // Buscar contas a pagar
+      // Buscar também contas a receber pela data de recebimento (para itens baixados no período)
+      let dataReceberPorMovimento: any[] = [];
+      if (dateRange) {
+        const { data: receberMovimento, error: errorReceberMov } = await supabase
+          .from('contas_receber')
+          .select(`
+            *,
+            clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
+            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+          `)
+          .eq('status', 'pago')
+          .gte('data_recebimento', dateRange.start)
+          .lte('data_recebimento', dateRange.end);
+        
+        if (!errorReceberMov && receberMovimento) {
+          dataReceberPorMovimento = receberMovimento;
+        }
+      }
+
+      // Buscar contas a pagar - query principal pelo campo selecionado
       let queryPagar = supabase
         .from('contas_pagar')
         .select(`
@@ -232,8 +251,40 @@ export default function Extrato() {
       const { data: dataPagar, error: errorPagar } = await queryPagar;
       if (errorPagar) throw errorPagar;
 
+      // Buscar também contas a pagar pela data de pagamento (para itens baixados no período)
+      let dataPagarPorMovimento: any[] = [];
+      if (dateRange) {
+        const { data: pagarMovimento, error: errorPagarMov } = await supabase
+          .from('contas_pagar')
+          .select(`
+            *,
+            fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
+            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+          `)
+          .eq('status', 'pago')
+          .gte('data_pagamento', dateRange.start)
+          .lte('data_pagamento', dateRange.end);
+        
+        if (!errorPagarMov && pagarMovimento) {
+          dataPagarPorMovimento = pagarMovimento;
+        }
+      }
+
+      // Combinar resultados removendo duplicatas
+      const receberIds = new Set((dataReceber || []).map((r: any) => r.id));
+      const receberCombinado = [
+        ...(dataReceber || []),
+        ...dataReceberPorMovimento.filter(r => !receberIds.has(r.id))
+      ];
+
+      const pagarIds = new Set((dataPagar || []).map((p: any) => p.id));
+      const pagarCombinado = [
+        ...(dataPagar || []),
+        ...dataPagarPorMovimento.filter(p => !pagarIds.has(p.id))
+      ];
+
       // Filtrar parcelas de contratos inativos - Contas a Receber
-      const dataReceberFiltrado = (dataReceber || []).filter((r: any) => {
+      const dataReceberFiltrado = receberCombinado.filter((r: any) => {
         const contrato = r.parcelas_contrato?.contratos;
         if (!contrato) return true;
         if (contrato.status === 'ativo') {
@@ -289,7 +340,7 @@ export default function Extrato() {
       }));
 
       // Filtrar parcelas de contratos inativos - Contas a Pagar
-      const dataPagarFiltrado = (dataPagar || []).filter((p: any) => {
+      const dataPagarFiltrado = pagarCombinado.filter((p: any) => {
         const contrato = p.parcelas_contrato?.contratos;
         if (!contrato) return true;
         if (contrato.status === 'ativo') {
