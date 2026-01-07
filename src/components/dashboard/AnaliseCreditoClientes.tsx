@@ -67,11 +67,12 @@ export function AnaliseCreditoClientes() {
   const fetchAnalise = async () => {
     setLoading(true);
     try {
-      // Buscar todas as contas a receber (todo o período)
+      // Buscar apenas contas a receber vinculadas a contratos (com parcela_id)
       let query = supabase
         .from('contas_receber')
         .select('*, clientes(id, razao_social, nome_fantasia)')
-        .eq('status', 'pendente');
+        .eq('status', 'pendente')
+        .not('parcela_id', 'is', null);
 
       if (selectedCentroCusto && selectedCentroCusto !== 'todos') {
         query = query.eq('centro_custo', selectedCentroCusto);
