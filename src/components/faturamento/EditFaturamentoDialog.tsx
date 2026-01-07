@@ -78,7 +78,9 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     const cofins = valorBruto * (faturamento.cofins_percentual / 100);
     const csll = valorBruto * (faturamento.csll_percentual / 100);
     const total = irrf + pis + cofins + csll;
-    const valorLiquido = valorBruto - total;
+    
+    // Se não há retenções, valor líquido = valor bruto
+    const valorLiquido = total > 0 ? valorBruto - total : valorBruto;
     
     return { irrf, pis, cofins, csll, total, valorLiquido };
   };

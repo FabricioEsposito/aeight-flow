@@ -213,18 +213,21 @@ export default function ControleFaturamento() {
           }
         }
 
-        // Calcular valor bruto baseado no valor líquido e impostos do contrato
-        // Se tem retenções, recalcular o bruto a partir do líquido
+        // Usar o valor_bruto do contrato quando disponível
+        // Se não tiver, usar o valor líquido da parcela
         const valorLiquido = item.valor;
         const totalImpostosPct = (contrato?.irrf_percentual || 0) + (contrato?.pis_percentual || 0) + 
                                   (contrato?.cofins_percentual || 0) + (contrato?.csll_percentual || 0);
         
-        // valor_liquido = valor_bruto - (valor_bruto * totalImpostosPct / 100)
-        // valor_liquido = valor_bruto * (1 - totalImpostosPct / 100)
-        // valor_bruto = valor_liquido / (1 - totalImpostosPct / 100)
-        const valorBruto = totalImpostosPct > 0 
-          ? valorLiquido / (1 - totalImpostosPct / 100)
-          : valorLiquido;
+        // Valor bruto: usar do contrato se disponível, senão calcular ou usar o líquido
+        let valorBruto: number;
+        if (contrato?.valor_bruto) {
+          valorBruto = contrato.valor_bruto;
+        } else if (totalImpostosPct > 0) {
+          valorBruto = valorLiquido / (1 - totalImpostosPct / 100);
+        } else {
+          valorBruto = valorLiquido;
+        }
         
         return {
           id: item.id,
