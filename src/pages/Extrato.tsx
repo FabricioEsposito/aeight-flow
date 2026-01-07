@@ -992,26 +992,23 @@ export default function Extrato() {
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange) {
-      const startDate = new Date(dateRange.start);
-      const endDate = new Date(dateRange.end);
-      let dateToCheck: Date | null = null;
+      // Range inclusivo (dia inteiro), para não "sumir" lançamentos por causa de horário/fuso
+      const startDate = new Date(`${dateRange.start}T00:00:00`);
+      const endDate = new Date(`${dateRange.end}T23:59:59.999`);
 
-      if (dateFilterType === 'vencimento') {
-        dateToCheck = new Date(lanc.data_vencimento);
-      } else if (dateFilterType === 'competencia') {
-        dateToCheck = new Date(lanc.data_competencia);
-      } else if (dateFilterType === 'movimento') {
-        const movDate = lanc.data_recebimento || lanc.data_pagamento;
-        if (movDate) {
-          dateToCheck = new Date(movDate);
-        } else {
-          return false;
-        }
-      }
+      const primaryDateStr = dateFilterType === 'competencia' ? lanc.data_competencia : lanc.data_vencimento;
+      const primaryDate = primaryDateStr ? new Date(`${primaryDateStr}T00:00:00`) : null;
 
-      if (dateToCheck) {
-        matchesDate = dateToCheck >= startDate && dateToCheck <= endDate;
-      }
+      const movStr = lanc.data_recebimento || lanc.data_pagamento;
+      const movementDate = movStr
+        ? new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr)
+        : null;
+
+      const inPrimaryRange = primaryDate ? primaryDate >= startDate && primaryDate <= endDate : false;
+      const inMovementRange = movementDate ? movementDate >= startDate && movementDate <= endDate : false;
+
+      // Extrato: mostrar também por data de movimento (baixa), mesmo com vencimento/competência fora do período
+      matchesDate = inPrimaryRange || inMovementRange;
     }
 
     return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesDate;
