@@ -199,6 +199,7 @@ export default function ControleFaturamento() {
       // Buscar detalhes dos serviços
       const faturamentosFormatados = await Promise.all(dataFiltrado.map(async (item: any) => {
         const contrato = item.parcelas_contrato?.contratos;
+        const parcela = item.parcelas_contrato;
         
         let servicosDetalhes: Array<{ codigo: string; nome: string }> = [];
         if (contrato?.servicos && Array.isArray(contrato.servicos) && contrato.servicos.length > 0) {
@@ -212,7 +213,18 @@ export default function ControleFaturamento() {
           }
         }
 
-        const valorBruto = contrato?.valor_bruto || item.valor;
+        // Calcular valor bruto baseado no valor líquido e impostos do contrato
+        // Se tem retenções, recalcular o bruto a partir do líquido
+        const valorLiquido = item.valor;
+        const totalImpostosPct = (contrato?.irrf_percentual || 0) + (contrato?.pis_percentual || 0) + 
+                                  (contrato?.cofins_percentual || 0) + (contrato?.csll_percentual || 0);
+        
+        // valor_liquido = valor_bruto - (valor_bruto * totalImpostosPct / 100)
+        // valor_liquido = valor_bruto * (1 - totalImpostosPct / 100)
+        // valor_bruto = valor_liquido / (1 - totalImpostosPct / 100)
+        const valorBruto = totalImpostosPct > 0 
+          ? valorLiquido / (1 - totalImpostosPct / 100)
+          : valorLiquido;
         
         return {
           id: item.id,
