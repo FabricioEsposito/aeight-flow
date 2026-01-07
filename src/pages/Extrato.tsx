@@ -194,6 +194,10 @@ export default function Extrato() {
     try {
       const dateRange = getDateRange();
       
+      // Determinar qual campo de data usar baseado no filtro selecionado
+      const dateFieldReceber = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
+      const dateFieldPagar = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
+      
       // Buscar contas a receber
       let queryReceber = supabase
         .from('contas_receber')
@@ -205,7 +209,7 @@ export default function Extrato() {
         .order('data_vencimento', { ascending: true });
 
       if (dateRange) {
-        queryReceber = queryReceber.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
+        queryReceber = queryReceber.gte(dateFieldReceber, dateRange.start).lte(dateFieldReceber, dateRange.end);
       }
 
       const { data: dataReceber, error: errorReceber } = await queryReceber;
@@ -222,7 +226,7 @@ export default function Extrato() {
         .order('data_vencimento', { ascending: true });
 
       if (dateRange) {
-        queryPagar = queryPagar.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
+        queryPagar = queryPagar.gte(dateFieldPagar, dateRange.start).lte(dateFieldPagar, dateRange.end);
       }
 
       const { data: dataPagar, error: errorPagar } = await queryPagar;
@@ -394,7 +398,7 @@ export default function Extrato() {
 
   useEffect(() => {
     fetchLancamentos();
-  }, [datePreset, customDateRange]);
+  }, [datePreset, customDateRange, dateFilterType]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
     setPartialPaymentLancamento(lancamento);
