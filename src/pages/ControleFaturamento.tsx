@@ -165,6 +165,7 @@ export default function ControleFaturamento() {
             )
           )
         `)
+        .not('parcela_id', 'is', null) // Somente parcelas de contratos
         .order('data_competencia', { ascending: true });
 
       if (dateRange) {
