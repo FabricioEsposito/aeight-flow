@@ -44,6 +44,7 @@ interface Contrato {
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
   centro_custo_info?: CentroCusto;
+  importancia_cliente_fornecedor?: 'importante' | 'mediano' | 'nao_importante';
 }
 
 interface ContratosTableProps {
@@ -99,6 +100,24 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
     }
   };
 
+  const formatImportancia = (importancia: string | undefined) => {
+    switch (importancia) {
+      case 'importante': return 'Importante';
+      case 'mediano': return 'Mediano';
+      case 'nao_importante': return 'Não Importante';
+      default: return 'Mediano';
+    }
+  };
+
+  const getImportanciaBadgeVariant = (importancia: string | undefined): 'default' | 'secondary' | 'outline' => {
+    switch (importancia) {
+      case 'importante': return 'default';
+      case 'mediano': return 'secondary';
+      case 'nao_importante': return 'outline';
+      default: return 'secondary';
+    }
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -111,6 +130,7 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
             <TableHead>Tipo</TableHead>
             <TableHead>Recorrência</TableHead>
             <TableHead>Centro de Custos</TableHead>
+            <TableHead>Importância</TableHead>
             <TableHead>Valor Bruto</TableHead>
             <TableHead>Valor Líquido</TableHead>
             <TableHead>Status</TableHead>
@@ -120,7 +140,7 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
         <TableBody>
           {contratos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                 Nenhum contrato encontrado
               </TableCell>
             </TableRow>
@@ -175,6 +195,11 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
                     {contrato.centro_custo_info 
                       ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}`
                       : contrato.centro_custo || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getImportanciaBadgeVariant(contrato.importancia_cliente_fornecedor)}>
+                      {formatImportancia(contrato.importancia_cliente_fornecedor)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="font-medium text-muted-foreground">
                     {formatCurrency(valorBruto)}
