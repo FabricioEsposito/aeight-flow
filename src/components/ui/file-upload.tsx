@@ -35,10 +35,28 @@ export function FileUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (accept && !file.type.match(accept.replace('*', '.*'))) {
-      setError('Tipo de arquivo não permitido. Selecione um PDF.');
-      return;
+    // Validate file type (suporta accept="application/pdf" e accept=".pdf")
+    if (accept) {
+      const acceptTokens = accept
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      const fileName = file.name.toLowerCase();
+      const fileType = (file.type || '').toLowerCase();
+
+      const matches = acceptTokens.some((token) => {
+        const t = token.toLowerCase();
+        if (t === '*/*') return true;
+        if (t.startsWith('.')) return fileName.endsWith(t);
+        if (t.endsWith('/*')) return fileType.startsWith(t.replace('/*', '/'));
+        return fileType === t;
+      });
+
+      if (!matches) {
+        setError('Tipo de arquivo não permitido. Selecione um PDF.');
+        return;
+      }
     }
 
     // Validate file size
@@ -75,13 +93,13 @@ export function FileUpload({
 
       setProgress(80);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
+      // Get public URL (+ cache bust para evitar abrir arquivo antigo em cache)
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+      const url = new URL(urlData.publicUrl);
+      url.searchParams.set('v', String(Date.now()));
 
       setProgress(100);
-      onChange(urlData.publicUrl);
+      onChange(url.toString());
     } catch (err: any) {
       console.error('Upload error:', err);
       setError(err.message || 'Erro ao fazer upload do arquivo');
