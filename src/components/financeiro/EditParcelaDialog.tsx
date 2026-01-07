@@ -267,14 +267,14 @@ export function EditParcelaDialog({
           </div>
 
           {/* Anexos - Apenas para contas a pagar (saida) */}
-          {tipo === 'saida' && (
+          {tipo === 'saida' && initialData?.id && (
             <div className="border-t pt-4 space-y-4">
               <h4 className="font-medium">Anexos</h4>
               
               <div className="grid grid-cols-2 gap-4">
                 <FileUpload
                   bucket="faturamento-docs"
-                  path="contas-pagar/nf"
+                  path={`contas-pagar/${initialData.id}/nf`}
                   value={linkNf}
                   onChange={setLinkNf}
                   accept=".pdf"
@@ -284,7 +284,7 @@ export function EditParcelaDialog({
                 
                 <FileUpload
                   bucket="faturamento-docs"
-                  path="contas-pagar/boleto"
+                  path={`contas-pagar/${initialData.id}/boleto`}
                   value={linkBoleto}
                   onChange={setLinkBoleto}
                   accept=".pdf"
