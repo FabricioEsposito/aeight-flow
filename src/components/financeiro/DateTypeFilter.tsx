@@ -2,7 +2,7 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from 'lucide-react';
 
-export type DateFilterType = 'vencimento' | 'competencia' | 'movimento';
+export type DateFilterType = 'vencimento' | 'competencia';
 
 interface DateTypeFilterProps {
   value: DateFilterType;
@@ -19,7 +19,6 @@ export function DateTypeFilter({ value, onChange }: DateTypeFilterProps) {
       <SelectContent className="bg-background z-50">
         <SelectItem value="vencimento">Data de Vencimento</SelectItem>
         <SelectItem value="competencia">Data de Competência</SelectItem>
-        <SelectItem value="movimento">Data de Movimento</SelectItem>
       </SelectContent>
     </Select>
   );
