@@ -274,7 +274,7 @@ export function EditParcelaDialog({
               <div className="grid grid-cols-2 gap-4">
                 <FileUpload
                   bucket="faturamento-docs"
-                  path={`contas-pagar/${initialData.id}/nf`}
+                  path={`contas-pagar/${initialData.id}/nf.pdf`}
                   value={linkNf}
                   onChange={setLinkNf}
                   accept=".pdf"
@@ -284,7 +284,7 @@ export function EditParcelaDialog({
                 
                 <FileUpload
                   bucket="faturamento-docs"
-                  path={`contas-pagar/${initialData.id}/boleto`}
+                  path={`contas-pagar/${initialData.id}/boleto.pdf`}
                   value={linkBoleto}
                   onChange={setLinkBoleto}
                   accept=".pdf"
