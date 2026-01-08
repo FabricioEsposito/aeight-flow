@@ -890,21 +890,26 @@ export default function ControleFaturamento() {
                 </TableRow>
               );})
             )}
-          {selectedIds.size > 1 && (
-            <TableRow className="bg-muted/50 font-medium">
-              <TableCell colSpan={showImpostosDetalhados ? 11 : 7} className="text-right">
-                Subtotal ({selectedIds.size} selecionados):
-              </TableCell>
-              <TableCell className="text-right font-bold">
-                {formatCurrency(
-                  faturamentos
-                    .filter(f => selectedIds.has(f.id))
-                    .reduce((sum, f) => sum + f.valor_liquido, 0)
-                )}
-              </TableCell>
-              <TableCell colSpan={2}></TableCell>
-            </TableRow>
-          )}
+          {selectedIds.size > 1 && (() => {
+            const selectedItems = faturamentos.filter(f => selectedIds.has(f.id));
+            const subtotalBruto = selectedItems.reduce((sum, f) => sum + f.valor_bruto, 0);
+            const subtotalLiquido = selectedItems.reduce((sum, f) => sum + f.valor_liquido, 0);
+            return (
+              <TableRow className="bg-muted/50 font-medium">
+                <TableCell colSpan={showImpostosDetalhados ? 10 : 6} className="text-right">
+                  Subtotal ({selectedIds.size} selecionados):
+                </TableCell>
+                <TableCell className="text-right font-bold">
+                  {formatCurrency(subtotalBruto)}
+                </TableCell>
+                {showImpostosDetalhados && <TableCell />}
+                <TableCell className="text-right font-bold">
+                  {formatCurrency(subtotalLiquido)}
+                </TableCell>
+                <TableCell colSpan={2}></TableCell>
+              </TableRow>
+            );
+          })()}
         </TableBody>
         </Table>
         
