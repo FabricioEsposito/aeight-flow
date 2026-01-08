@@ -890,7 +890,22 @@ export default function ControleFaturamento() {
                 </TableRow>
               );})
             )}
-          </TableBody>
+          {selectedIds.size > 1 && (
+            <TableRow className="bg-muted/50 font-medium">
+              <TableCell colSpan={showImpostosDetalhados ? 11 : 7} className="text-right">
+                Subtotal ({selectedIds.size} selecionados):
+              </TableCell>
+              <TableCell className="text-right font-bold">
+                {formatCurrency(
+                  faturamentos
+                    .filter(f => selectedIds.has(f.id))
+                    .reduce((sum, f) => sum + f.valor_liquido, 0)
+                )}
+              </TableCell>
+              <TableCell colSpan={2}></TableCell>
+            </TableRow>
+          )}
+        </TableBody>
         </Table>
         
         <TablePagination
