@@ -86,10 +86,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
     try {
       const hoje = new Date().toISOString().split('T')[0];
 
-      // Buscar todas contas a receber para calcular total de receita
+      // Buscar todas contas a receber para calcular total de receita (apenas de contratos)
       let queryReceita = supabase
         .from('contas_receber')
         .select('valor')
+        .not('parcela_id', 'is', null) // Somente parcelas de contratos
         .gte('data_vencimento', dataInicio)
         .lte('data_vencimento', dataFim);
 
@@ -101,10 +102,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       const receita = receitaData?.reduce((sum, conta) => sum + (conta.valor || 0), 0) || 0;
       setTotalReceita(receita);
 
-      // Buscar parcelas vencidas
+      // Buscar parcelas vencidas (apenas de contratos)
       let query = supabase
         .from('contas_receber')
         .select('*, clientes(id, razao_social, nome_fantasia, email)')
+        .not('parcela_id', 'is', null) // Somente parcelas de contratos
         .eq('status', 'pendente')
         .lt('data_vencimento', hoje)
         .gte('data_vencimento', dataInicio)
