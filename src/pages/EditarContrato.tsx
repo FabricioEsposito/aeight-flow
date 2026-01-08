@@ -40,6 +40,7 @@ export default function EditarContrato() {
   const [selectedParcelaId, setSelectedParcelaId] = useState<string | null>(null);
   const [diaVencimento, setDiaVencimento] = useState(5);
   const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>('venda');
+  const [recorrente, setRecorrente] = useState(false);
   
   // Dados do contrato
   const [quantidade, setQuantidade] = useState(1);
@@ -89,6 +90,7 @@ export default function EditarContrato() {
       setCsllPercentual(data.csll_percentual || 0);
       setDescricaoServico(data.descricao_servico || '');
       setTipoContrato(data.tipo_contrato as 'venda' | 'compra');
+      setRecorrente(data.recorrente || false);
       
       // Buscar dia de vencimento do contrato (calcular baseado na primeira parcela)
       const { data: primeiraParcelaData } = await supabase
@@ -314,12 +316,28 @@ export default function EditarContrato() {
   };
 
   const recalcularParcelas = () => {
-    const novoValorTotal = calcularValorTotal();
     const numeroParcelas = parcelas.length;
     
     if (numeroParcelas === 0) return;
 
-    const valorPorParcela = novoValorTotal / numeroParcelas;
+    // Para contratos recorrentes, cada parcela tem o valor unitário (líquido de impostos)
+    // Para vendas avulsas/parceladas, o valor total é dividido pelo número de parcelas
+    let valorPorParcela: number;
+    
+    if (recorrente) {
+      // Contratos recorrentes: cada parcela = valor unitário - impostos
+      const valorBase = quantidade * valorUnitario;
+      const desconto = descontoTipo === 'percentual' 
+        ? valorBase * (descontoPercentual / 100)
+        : descontoValor;
+      const valorComDesconto = valorBase - desconto;
+      const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
+      valorPorParcela = valorComDesconto - (valorComDesconto * totalImpostos);
+    } else {
+      // Vendas avulsas/parceladas: valor total dividido pelo número de parcelas
+      const novoValorTotal = calcularValorTotal();
+      valorPorParcela = novoValorTotal / numeroParcelas;
+    }
 
     const parcelasAtualizadas = parcelas.map((parcela) => ({
       ...parcela,
