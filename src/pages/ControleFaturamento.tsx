@@ -214,16 +214,45 @@ export default function ControleFaturamento() {
         }
 
         // Calcular valores de impostos baseados nos percentuais do contrato
-        const totalImpostosPct = (contrato?.irrf_percentual || 0) + (contrato?.pis_percentual || 0) + 
+        const totalImpostosPct = (contrato?.irrf_percentual || 0) + (contrato?.pis_percentual || 0) +
                                   (contrato?.cofins_percentual || 0) + (contrato?.csll_percentual || 0);
-        
-        // Usar o valor da parcela como valor bruto (valor antes das retenções)
-        // O valor na contas_receber representa o valor bruto da parcela
-        const valorBruto = item.valor;
-        
-        // Calcular o valor líquido deduzindo as retenções do valor bruto
-        const valorLiquido = valorBruto - (valorBruto * (totalImpostosPct / 100));
-        
+
+        const taxaImpostos = totalImpostosPct / 100;
+        const valorLancado = Number(item.valor || 0);
+        const valorOriginal = item.valor_original !== null && item.valor_original !== undefined
+          ? Number(item.valor_original)
+          : null;
+
+        const round2 = (v: number) => Math.round(v * 100) / 100;
+        const within = (a: number, b: number, rel = 0.01, abs = 0.5) =>
+          Math.abs(a - b) <= Math.max(abs, Math.abs(b) * rel);
+
+        const contratoValorBruto = contrato?.valor_bruto ? Number(contrato.valor_bruto) : 0;
+        const hasContratoBruto = contratoValorBruto > 0;
+
+        // Heurística:
+        // - Se o valor lançado já é líquido (ex.: 18.770,00) e o contrato tem valor_bruto (ex.: 20.000,00),
+        //   mostramos bruto do contrato e líquido do lançamento.
+        // - Se o valor lançado já é bruto, calculamos o líquido.
+        let valorBruto = valorLancado;
+        let valorLiquido = valorLancado;
+
+        if (taxaImpostos > 0 && taxaImpostos < 1) {
+          const brutoEstimadoAPartirDoLiquido = valorLancado / (1 - taxaImpostos);
+          const contratoBateComBrutoEstimado = hasContratoBruto && within(contratoValorBruto, brutoEstimadoAPartirDoLiquido);
+          const originalBateComBrutoEstimado = valorOriginal !== null && within(valorOriginal, brutoEstimadoAPartirDoLiquido);
+
+          // Se o valor lançado “parece” líquido, usamos bruto (contrato/original/estimado) e líquido = lançado
+          if (contratoBateComBrutoEstimado || originalBateComBrutoEstimado) {
+            valorBruto = contratoBateComBrutoEstimado ? contratoValorBruto : (valorOriginal ?? brutoEstimadoAPartirDoLiquido);
+            valorLiquido = valorLancado;
+          } else {
+            // Caso padrão: valor lançado é bruto
+            valorBruto = valorLancado;
+            valorLiquido = round2(valorBruto * (1 - taxaImpostos));
+          }
+        }
+
         return {
           id: item.id,
           data_competencia: item.data_competencia,
@@ -237,8 +266,8 @@ export default function ControleFaturamento() {
           numero_nf: item.numero_nf,
           link_nf: item.link_nf,
           link_boleto: item.link_boleto,
-          valor_bruto: valorBruto,
-          valor_liquido: valorLiquido,
+          valor_bruto: round2(valorBruto),
+          valor_liquido: round2(valorLiquido),
           status: item.status,
           contrato_id: contrato?.id || null,
           numero_contrato: contrato?.numero_contrato || null,
