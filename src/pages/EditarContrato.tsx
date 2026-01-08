@@ -59,12 +59,12 @@ export default function EditarContrato() {
     }
   }, [id]);
 
-  // Não recalcular automaticamente - manter valores específicos das parcelas
-  // useEffect(() => {
-  //   if (parcelas.length > 0 && valorUnitario > 0) {
-  //     recalcularParcelas();
-  //   }
-  // }, [quantidade, valorUnitario, descontoPercentual, descontoValor, descontoTipo, irrfPercentual, pisPercentual, cofinsPercentual, csllPercentual]);
+  // Recalcular parcelas automaticamente quando os impostos ou valores forem alterados
+  useEffect(() => {
+    if (parcelas.length > 0 && valorUnitario > 0) {
+      recalcularParcelas();
+    }
+  }, [quantidade, valorUnitario, descontoPercentual, descontoValor, descontoTipo, irrfPercentual, pisPercentual, cofinsPercentual, csllPercentual]);
 
   const fetchContrato = async () => {
     try {
