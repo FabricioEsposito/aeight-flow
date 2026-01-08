@@ -739,10 +739,6 @@ export default function EditarContrato() {
               Editar contrato completo
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleReprocessarParcelas} disabled={reprocessing}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${reprocessing ? 'animate-spin' : ''}`} />
-              {reprocessing ? 'Reprocessando...' : 'Reprocessar parcelas'}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Salvando...' : 'Salvar alterações'}
