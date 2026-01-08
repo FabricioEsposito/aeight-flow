@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle, Undo2, Edit, MoreVertical, X } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, Undo2, Edit, MoreVertical, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,9 +35,11 @@ export default function EditarContrato() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const [goLiveDialogOpen, setGoLiveDialogOpen] = useState(false);
   const [selectedParcelaId, setSelectedParcelaId] = useState<string | null>(null);
   const [diaVencimento, setDiaVencimento] = useState(5);
+  const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>('venda');
   
   // Dados do contrato
   const [quantidade, setQuantidade] = useState(1);
@@ -86,6 +88,7 @@ export default function EditarContrato() {
       setCofinsPercentual(data.cofins_percentual || 0);
       setCsllPercentual(data.csll_percentual || 0);
       setDescricaoServico(data.descricao_servico || '');
+      setTipoContrato(data.tipo_contrato as 'venda' | 'compra');
       
       // Buscar dia de vencimento do contrato (calcular baseado na primeira parcela)
       const { data: primeiraParcelaData } = await supabase
@@ -419,6 +422,103 @@ export default function EditarContrato() {
     }
   };
 
+  const handleReprocessarParcelas = async () => {
+    setReprocessing(true);
+    try {
+      // Buscar dados atuais do contrato
+      const { data: contrato, error: contratoError } = await supabase
+        .from('contratos')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (contratoError) throw contratoError;
+
+      // Calcular valor bruto e líquido
+      const valorBase = contrato.quantidade * contrato.valor_unitario;
+      const desconto = contrato.desconto_tipo === 'percentual'
+        ? valorBase * ((contrato.desconto_percentual || 0) / 100)
+        : (contrato.desconto_valor || 0);
+      const valorBruto = valorBase - desconto;
+      
+      const totalImpostosPct = (contrato.irrf_percentual || 0) + (contrato.pis_percentual || 0) +
+                               (contrato.cofins_percentual || 0) + (contrato.csll_percentual || 0);
+      const valorLiquido = valorBruto * (1 - totalImpostosPct / 100);
+
+      // Buscar parcelas do contrato
+      const { data: parcelasData, error: parcelasError } = await supabase
+        .from('parcelas_contrato')
+        .select('*')
+        .eq('contrato_id', id)
+        .order('numero_parcela');
+
+      if (parcelasError) throw parcelasError;
+
+      const numeroParcelas = parcelasData?.length || 1;
+      const valorPorParcela = Math.round((valorLiquido / numeroParcelas) * 100) / 100;
+
+      // Atualizar cada parcela e sua conta correspondente
+      for (const parcela of (parcelasData || [])) {
+        // Atualizar parcela_contrato
+        const { error: updateParcelaError } = await supabase
+          .from('parcelas_contrato')
+          .update({ valor: valorPorParcela })
+          .eq('id', parcela.id);
+
+        if (updateParcelaError) throw updateParcelaError;
+
+        // Atualizar contas_receber ou contas_pagar (se existir)
+        if (contrato.tipo_contrato === 'venda') {
+          await supabase
+            .from('contas_receber')
+            .update({ 
+              valor: valorPorParcela,
+              valor_original: valorPorParcela 
+            })
+            .eq('parcela_id', parcela.id);
+        } else {
+          await supabase
+            .from('contas_pagar')
+            .update({ 
+              valor: valorPorParcela,
+              valor_original: valorPorParcela 
+            })
+            .eq('parcela_id', parcela.id);
+        }
+      }
+
+      // Atualizar valor_total e valor_bruto do contrato
+      const { error: updateContratoError } = await supabase
+        .from('contratos')
+        .update({
+          valor_bruto: valorBruto,
+          valor_total: valorLiquido,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (updateContratoError) throw updateContratoError;
+
+      toast({
+        title: "Sucesso",
+        description: `${parcelasData?.length || 0} parcelas reprocessadas com os novos valores de impostos!`,
+      });
+
+      // Recarregar dados
+      await fetchContrato();
+      await fetchParcelas();
+    } catch (error) {
+      console.error('Erro ao reprocessar parcelas:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reprocessar as parcelas.",
+        variant: "destructive",
+      });
+    } finally {
+      setReprocessing(false);
+    }
+  };
+
   const handleParcelaChange = (index: number, field: string, value: any) => {
     const newParcelas = [...parcelas];
     newParcelas[index] = { ...newParcelas[index], [field]: value };
@@ -611,7 +711,7 @@ export default function EditarContrato() {
               <MoreVertical className="h-4 w-4 ml-2" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+          <DropdownMenuContent align="end" className="w-64 bg-background z-50">
             <DropdownMenuItem onClick={() => navigate(`/contratos/${id}`)}>
               <X className="h-4 w-4 mr-2" />
               Cancelar
@@ -621,6 +721,10 @@ export default function EditarContrato() {
               Editar contrato completo
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleReprocessarParcelas} disabled={reprocessing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${reprocessing ? 'animate-spin' : ''}`} />
+              {reprocessing ? 'Reprocessando...' : 'Reprocessar parcelas'}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Salvando...' : 'Salvar alterações'}
