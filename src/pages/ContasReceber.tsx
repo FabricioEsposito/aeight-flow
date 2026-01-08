@@ -18,6 +18,8 @@ import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissionCheck } from '@/hooks/usePermissionCheck';
+import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 import {
@@ -94,7 +96,8 @@ export default function ContasReceber() {
   const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, permissions, loading: roleLoading } = useUserRole();
+  const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
   const { exportToPDF, exportToExcel } = useExportReport();
 
@@ -307,6 +310,9 @@ export default function ContasReceber() {
   };
 
   const handleDeleteConfirm = (id: string) => {
+    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para excluir parcelas. Entre em contato com o administrador.')) {
+      return;
+    }
     setContaToDelete(id);
     setDeleteDialogOpen(true);
   };
@@ -341,6 +347,9 @@ export default function ContasReceber() {
   };
 
   const handleToggleStatusClick = (id: string, currentStatus: string) => {
+    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de parcelas. Entre em contato com o administrador.')) {
+      return;
+    }
     setStatusChangeData({ id, currentStatus });
     setStatusChangeDialogOpen(true);
   };
@@ -848,6 +857,12 @@ export default function ContasReceber() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PermissionDeniedDialog
+        open={showPermissionDenied}
+        onOpenChange={setShowPermissionDenied}
+        description={permissionDeniedMessage}
+      />
     </div>
   );
 }

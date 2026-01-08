@@ -18,6 +18,8 @@ import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/Edit
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
 import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissionCheck } from '@/hooks/usePermissionCheck';
+import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
@@ -83,7 +85,8 @@ export default function Extrato() {
   const [partialPaymentLancamento, setPartialPaymentLancamento] = useState<LancamentoExtrato | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, permissions, loading: roleLoading } = useUserRole();
+  const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
   const { exportToPDF, exportToExcel } = useExportReport();
 
@@ -452,11 +455,17 @@ export default function Extrato() {
   }, [datePreset, customDateRange, dateFilterType]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
+    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para marcar lançamentos como pagos/recebidos. Entre em contato com o administrador.')) {
+      return;
+    }
     setPartialPaymentLancamento(lancamento);
     setPartialPaymentDialogOpen(true);
   };
 
   const handleMarkAsOpenClick = (lancamento: LancamentoExtrato) => {
+    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de lançamentos. Entre em contato com o administrador.')) {
+      return;
+    }
     setStatusChangeData({ lancamento, newStatus: 'pendente' });
     setStatusChangeDialogOpen(true);
   };
@@ -923,6 +932,9 @@ export default function Extrato() {
   };
 
   const handleDeleteConfirm = (lancamento: LancamentoExtrato) => {
+    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para excluir lançamentos. Entre em contato com o administrador.')) {
+      return;
+    }
     setLancamentoToDelete(lancamento);
     setDeleteDialogOpen(true);
   };
@@ -1654,6 +1666,12 @@ export default function Extrato() {
         tipo={partialPaymentLancamento?.tipo || 'entrada'}
         valorTotal={partialPaymentLancamento?.valor || 0}
         onConfirm={handlePartialPayment}
+      />
+
+      <PermissionDeniedDialog
+        open={showPermissionDenied}
+        onOpenChange={setShowPermissionDenied}
+        description={permissionDeniedMessage}
       />
     </div>
   );
