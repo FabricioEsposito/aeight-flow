@@ -899,12 +899,14 @@ export default function ControleFaturamento() {
                 <TableCell colSpan={showImpostosDetalhados ? 10 : 6} className="text-right">
                   Subtotal ({selectedIds.size} selecionados):
                 </TableCell>
-                <TableCell className="text-right font-bold">
-                  {formatCurrency(subtotalBruto)}
+                <TableCell className="text-right">
+                  <div className="text-xs text-muted-foreground">Bruto</div>
+                  <div className="font-bold">{formatCurrency(subtotalBruto)}</div>
                 </TableCell>
                 {showImpostosDetalhados && <TableCell />}
-                <TableCell className="text-right font-bold">
-                  {formatCurrency(subtotalLiquido)}
+                <TableCell className="text-right">
+                  <div className="text-xs text-muted-foreground">Líquido</div>
+                  <div className="font-bold">{formatCurrency(subtotalLiquido)}</div>
                 </TableCell>
                 <TableCell colSpan={2}></TableCell>
               </TableRow>
