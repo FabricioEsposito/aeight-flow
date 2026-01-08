@@ -181,10 +181,11 @@ export function Dashboard() {
       const today = new Date().toISOString().split('T')[0];
       const dateRange = getDateRange();
 
-      // Fetch Contas a Receber para Faturamento (pela data de competência)
+      // Fetch Contas a Receber para Faturamento (pela data de competência) - APENAS parcelas de contratos
       let contasReceberQuery = supabase
         .from('contas_receber')
-        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo, cliente_id, clientes(razao_social, nome_fantasia)');
+        .select('valor, data_vencimento, data_competencia, data_recebimento, status, plano_conta_id, centro_custo, cliente_id, parcela_id, clientes(razao_social, nome_fantasia)')
+        .not('parcela_id', 'is', null); // Somente parcelas de contratos
       
       if (dateRange) {
         contasReceberQuery = contasReceberQuery
