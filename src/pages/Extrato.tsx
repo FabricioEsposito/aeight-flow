@@ -1397,7 +1397,9 @@ export default function Extrato() {
                 const isVencido = displayStatus === 'vencido';
                 
                 // Calcular saldo acumulado considerando APENAS lançamentos pagos/recebidos
-                const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
+                // O índice real na lista completa é startIndex (offset da paginação) + index (posição na página atual)
+                const realIndex = startIndex + index;
+                const lancamentosAteAqui = filteredLancamentos.slice(0, realIndex + 1);
                 const saldoRealizado = saldoInicial + 
                   lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0) -
                   lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0);
