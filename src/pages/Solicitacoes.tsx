@@ -6,13 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, X, Clock, FileText } from 'lucide-react';
+import { Check, X, Clock, FileText, CheckSquare } from 'lucide-react';
 
 interface SolicitacaoAjuste {
   id: string;
@@ -63,6 +64,12 @@ export default function Solicitacoes() {
     action: null,
   });
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchDialog, setBatchDialog] = useState<{
+    open: boolean;
+    action: 'aprovar' | 'rejeitar' | null;
+  }>({ open: false, action: null });
+  const [batchMotivoRejeicao, setBatchMotivoRejeicao] = useState('');
 
   useEffect(() => {
     loadSolicitacoes();
@@ -347,6 +354,158 @@ export default function Solicitacoes() {
     }
   };
 
+  const handleSelectSolicitacao = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(solicitacoesPendentes.map((s) => s.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleBatchAprovar = async () => {
+    if (selectedIds.length === 0) return;
+    setLoading(true);
+    
+    try {
+      for (const id of selectedIds) {
+        const solicitacao = solicitacoes.find((s) => s.id === id);
+        if (!solicitacao || solicitacao.status !== 'pendente') continue;
+        
+        const tabela = solicitacao.tipo_lancamento === 'receber' ? 'contas_receber' : 'contas_pagar';
+        const updateData: any = {};
+        
+        if (solicitacao.data_vencimento_atual !== solicitacao.data_vencimento_solicitada) {
+          updateData.data_vencimento = solicitacao.data_vencimento_solicitada;
+        }
+        if ((solicitacao.juros_atual || 0) !== (solicitacao.juros_solicitado || 0)) {
+          updateData.juros = solicitacao.juros_solicitado || 0;
+        }
+        if ((solicitacao.multa_atual || 0) !== (solicitacao.multa_solicitada || 0)) {
+          updateData.multa = solicitacao.multa_solicitada || 0;
+        }
+        if ((solicitacao.desconto_atual || 0) !== (solicitacao.desconto_solicitado || 0)) {
+          updateData.desconto = solicitacao.desconto_solicitado || 0;
+        }
+        
+        // Buscar valores atuais do lançamento
+        const { data: lancamentoAtual } = await supabase
+          .from(tabela)
+          .select('plano_conta_id, centro_custo, conta_bancaria_id')
+          .eq('id', solicitacao.lancamento_id)
+          .single();
+        
+        if (lancamentoAtual && solicitacao.plano_conta_id && lancamentoAtual.plano_conta_id !== solicitacao.plano_conta_id) {
+          updateData.plano_conta_id = solicitacao.plano_conta_id;
+        }
+        if (lancamentoAtual && solicitacao.centro_custo && lancamentoAtual.centro_custo !== solicitacao.centro_custo) {
+          updateData.centro_custo = solicitacao.centro_custo;
+        }
+        if (lancamentoAtual && solicitacao.conta_bancaria_id && lancamentoAtual.conta_bancaria_id !== solicitacao.conta_bancaria_id) {
+          updateData.conta_bancaria_id = solicitacao.conta_bancaria_id;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          await supabase.from(tabela).update(updateData).eq('id', solicitacao.lancamento_id);
+        }
+        
+        await supabase
+          .from('solicitacoes_ajuste_financeiro')
+          .update({
+            status: 'aprovada',
+            aprovador_id: user?.id,
+            data_resposta: new Date().toISOString(),
+          })
+          .eq('id', solicitacao.id);
+        
+        await createNotification(
+          solicitacao.solicitante_id,
+          'Solicitação Aprovada',
+          `Sua solicitação de ajuste de ${solicitacao.tipo_lancamento === 'receber' ? 'conta a receber' : 'conta a pagar'} foi aprovada.`,
+          'aprovado',
+          solicitacao.id
+        );
+      }
+      
+      toast({
+        title: 'Solicitações aprovadas',
+        description: `${selectedIds.length} solicitação(ões) aprovada(s) com sucesso.`,
+      });
+      
+      setSelectedIds([]);
+      setBatchDialog({ open: false, action: null });
+      loadSolicitacoes();
+    } catch (error) {
+      console.error('Erro ao aprovar em lote:', error);
+      toast({
+        title: 'Erro ao aprovar',
+        description: 'Não foi possível aprovar algumas solicitações.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBatchRejeitar = async () => {
+    if (selectedIds.length === 0 || !batchMotivoRejeicao.trim()) return;
+    setLoading(true);
+    
+    try {
+      for (const id of selectedIds) {
+        const solicitacao = solicitacoes.find((s) => s.id === id);
+        if (!solicitacao || solicitacao.status !== 'pendente') continue;
+        
+        await supabase
+          .from('solicitacoes_ajuste_financeiro')
+          .update({
+            status: 'rejeitada',
+            aprovador_id: user?.id,
+            data_resposta: new Date().toISOString(),
+            motivo_rejeicao: batchMotivoRejeicao.trim(),
+          })
+          .eq('id', solicitacao.id);
+        
+        await createNotification(
+          solicitacao.solicitante_id,
+          'Solicitação Rejeitada',
+          `Sua solicitação de ajuste de ${solicitacao.tipo_lancamento === 'receber' ? 'conta a receber' : 'conta a pagar'} foi rejeitada. Motivo: ${batchMotivoRejeicao.trim()}`,
+          'rejeitado',
+          solicitacao.id
+        );
+      }
+      
+      toast({
+        title: 'Solicitações rejeitadas',
+        description: `${selectedIds.length} solicitação(ões) rejeitada(s).`,
+      });
+      
+      setSelectedIds([]);
+      setBatchDialog({ open: false, action: null });
+      setBatchMotivoRejeicao('');
+      loadSolicitacoes();
+    } catch (error) {
+      console.error('Erro ao rejeitar em lote:', error);
+      toast({
+        title: 'Erro ao rejeitar',
+        description: 'Não foi possível rejeitar algumas solicitações.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const solicitacoesPendentes = solicitacoes.filter((s) => s.status === 'pendente');
+  const solicitacoesHistorico = solicitacoes.filter((s) => s.status !== 'pendente');
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pendente':
@@ -360,7 +519,7 @@ export default function Solicitacoes() {
     }
   };
 
-  const renderSolicitacaoCard = (solicitacao: SolicitacaoAjuste) => {
+  const renderSolicitacaoCard = (solicitacao: SolicitacaoAjuste, showCheckbox = false) => {
     const hasChangedDate = solicitacao.data_vencimento_atual !== solicitacao.data_vencimento_solicitada;
     const hasChangedJuros = solicitacao.juros_atual !== solicitacao.juros_solicitado;
     const hasChangedMulta = solicitacao.multa_atual !== solicitacao.multa_solicitada;
@@ -370,6 +529,15 @@ export default function Solicitacoes() {
       <Card key={solicitacao.id}>
         <CardContent className="pt-6">
           <div className="flex items-start justify-between gap-4">
+            {/* Checkbox for batch selection */}
+            {showCheckbox && isAdmin && solicitacao.status === 'pendente' && (
+              <div className="pt-1">
+                <Checkbox
+                  checked={selectedIds.includes(solicitacao.id)}
+                  onCheckedChange={(checked) => handleSelectSolicitacao(solicitacao.id, !!checked)}
+                />
+              </div>
+            )}
             {/* Left Section - Info */}
             <div className="flex-1 space-y-4">
               {/* Header */}
@@ -507,8 +675,6 @@ export default function Solicitacoes() {
     );
   };
 
-  const solicitacoesPendentes = solicitacoes.filter(s => s.status === 'pendente');
-  const solicitacoesHistorico = solicitacoes.filter(s => s.status !== 'pendente');
 
   if (loading) {
     return (
@@ -546,6 +712,44 @@ export default function Solicitacoes() {
             </TabsList>
 
             <TabsContent value="pendentes" className="space-y-4 mt-6">
+              {/* Batch Actions Bar */}
+              {solicitacoesPendentes.length > 0 && (
+                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedIds.length === solicitacoesPendentes.length && solicitacoesPendentes.length > 0}
+                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {selectedIds.length > 0 
+                        ? `${selectedIds.length} selecionada(s)` 
+                        : 'Selecionar todas'}
+                    </span>
+                  </div>
+                  {selectedIds.length > 0 && (
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => setBatchDialog({ open: true, action: 'aprovar' })}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Aprovar ({selectedIds.length})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:bg-red-50 border-red-300"
+                        onClick={() => setBatchDialog({ open: true, action: 'rejeitar' })}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Rejeitar ({selectedIds.length})
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {solicitacoesPendentes.length === 0 ? (
                 <Card>
                   <CardContent className="py-12 text-center">
@@ -554,7 +758,7 @@ export default function Solicitacoes() {
                   </CardContent>
                 </Card>
               ) : (
-                solicitacoesPendentes.map(renderSolicitacaoCard)
+                solicitacoesPendentes.map((sol) => renderSolicitacaoCard(sol, true))
               )}
             </TabsContent>
 
@@ -567,7 +771,7 @@ export default function Solicitacoes() {
                   </CardContent>
                 </Card>
               ) : (
-                solicitacoesHistorico.map(renderSolicitacaoCard)
+                solicitacoesHistorico.map((sol) => renderSolicitacaoCard(sol, false))
               )}
             </TabsContent>
           </Tabs>
@@ -581,7 +785,7 @@ export default function Solicitacoes() {
                 </CardContent>
               </Card>
             ) : (
-              solicitacoes.map(renderSolicitacaoCard)
+              solicitacoes.map((sol) => renderSolicitacaoCard(sol, false))
             )}
           </div>
         )}
@@ -655,6 +859,65 @@ export default function Solicitacoes() {
               className={confirmDialog.action === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
             >
               {loading ? 'Processando...' : confirmDialog.action === 'aprovar' ? 'Confirmar Aprovação' : 'Confirmar Rejeição'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de Confirmação para Ações em Lote */}
+      <AlertDialog open={batchDialog.open} onOpenChange={(open) => {
+        setBatchDialog({ open, action: null });
+        if (!open) setBatchMotivoRejeicao('');
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {batchDialog.action === 'aprovar' 
+                ? `Aprovar ${selectedIds.length} Solicitação(ões)?` 
+                : `Rejeitar ${selectedIds.length} Solicitação(ões)?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {batchDialog.action === 'aprovar' ? (
+                  <p>
+                    Você está prestes a aprovar <strong>{selectedIds.length}</strong> solicitação(ões). 
+                    Todas as alterações solicitadas serão aplicadas aos lançamentos correspondentes.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <p>
+                      Você está prestes a rejeitar <strong>{selectedIds.length}</strong> solicitação(ões). 
+                      Esta ação não poderá ser desfeita.
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="batch-motivo-rejeicao" className="text-foreground">
+                        Motivo da Rejeição <span className="text-red-500">*</span>
+                      </Label>
+                      <Textarea
+                        id="batch-motivo-rejeicao"
+                        placeholder="Informe o motivo da rejeição (aplicado a todas as solicitações selecionadas)..."
+                        value={batchMotivoRejeicao}
+                        onChange={(e) => setBatchMotivoRejeicao(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={batchDialog.action === 'aprovar' ? handleBatchAprovar : handleBatchRejeitar}
+              disabled={loading || (batchDialog.action === 'rejeitar' && !batchMotivoRejeicao.trim())}
+              className={batchDialog.action === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+            >
+              {loading 
+                ? 'Processando...' 
+                : batchDialog.action === 'aprovar' 
+                  ? `Aprovar (${selectedIds.length})` 
+                  : `Rejeitar (${selectedIds.length})`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
