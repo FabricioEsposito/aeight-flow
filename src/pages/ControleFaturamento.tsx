@@ -238,7 +238,7 @@ export default function ControleFaturamento() {
           link_nf: item.link_nf,
           link_boleto: item.link_boleto,
           valor_bruto: valorBruto,
-          valor_liquido: item.valor,
+          valor_liquido: valorLiquido,
           status: item.status,
           contrato_id: contrato?.id || null,
           numero_contrato: contrato?.numero_contrato || null,
