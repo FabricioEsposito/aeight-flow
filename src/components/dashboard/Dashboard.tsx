@@ -200,9 +200,10 @@ export function Dashboard() {
       const { data: contasReceber } = await contasReceberQuery;
 
       // Fetch Contas a Receber para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
+      // Igual ao Extrato: NÃO filtra por centro de custo, apenas por conta bancária
       let contasReceberFluxoQuery = supabase
         .from('contas_receber')
-        .select('valor, data_recebimento, data_vencimento, status, centro_custo, conta_bancaria_id');
+        .select('valor, data_recebimento, data_vencimento, status, conta_bancaria_id');
       
       if (dateRange) {
         // Para contas pagas, filtrar pela data de recebimento
@@ -212,10 +213,6 @@ export function Dashboard() {
         );
       } else {
         contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['pago', 'pendente', 'vencido']);
-      }
-      
-      if (selectedCentroCusto !== 'todos') {
-        contasReceberFluxoQuery = contasReceberFluxoQuery.eq('centro_custo', selectedCentroCusto);
       }
 
       if (selectedContaBancaria.length > 0) {
@@ -242,9 +239,10 @@ export function Dashboard() {
       const { data: contasPagar } = await contasPagarQuery;
 
       // Fetch Contas a Pagar para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
+      // Igual ao Extrato: NÃO filtra por centro de custo, apenas por conta bancária
       let contasPagarFluxoQuery = supabase
         .from('contas_pagar')
-        .select('valor, data_pagamento, data_vencimento, status, centro_custo, conta_bancaria_id');
+        .select('valor, data_pagamento, data_vencimento, status, conta_bancaria_id');
       
       if (dateRange) {
         // Para contas pagas, filtrar pela data de pagamento
@@ -254,10 +252,6 @@ export function Dashboard() {
         );
       } else {
         contasPagarFluxoQuery = contasPagarFluxoQuery.in('status', ['pago', 'pendente', 'vencido']);
-      }
-      
-      if (selectedCentroCusto !== 'todos') {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.eq('centro_custo', selectedCentroCusto);
       }
 
       if (selectedContaBancaria.length > 0) {
@@ -389,6 +383,7 @@ export function Dashboard() {
 
       // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
       // Igual ao Extrato: considera apenas movimentações REALIZADAS (pagas) antes do período
+      // NÃO filtra por centro de custo, apenas por conta bancária (igual Extrato)
       let entradasPagasAnteriores: Array<{ valor: number }> = [];
       let saidasPagasAnteriores: Array<{ valor: number }> = [];
 
@@ -404,10 +399,6 @@ export function Dashboard() {
           entradasPagasQuery = entradasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
         }
         
-        if (selectedCentroCusto !== 'todos') {
-          entradasPagasQuery = entradasPagasQuery.eq('centro_custo', selectedCentroCusto);
-        }
-        
         const { data: entradasPagasData } = await entradasPagasQuery;
         entradasPagasAnteriores = entradasPagasData || [];
         
@@ -420,10 +411,6 @@ export function Dashboard() {
         
         if (selectedContaBancaria.length > 0) {
           saidasPagasQuery = saidasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
-        }
-        
-        if (selectedCentroCusto !== 'todos') {
-          saidasPagasQuery = saidasPagasQuery.eq('centro_custo', selectedCentroCusto);
         }
         
         const { data: saidasPagasData } = await saidasPagasQuery;
@@ -725,19 +712,21 @@ export function Dashboard() {
             customRange={customRange}
           />
 
-          <Select value={selectedCentroCusto} onValueChange={setSelectedCentroCusto}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Centro de Custo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os centros de custo</SelectItem>
-              {centrosCusto.map((cc) => (
-                <SelectItem key={cc.id} value={cc.id}>
-                  {cc.codigo} - {cc.descricao}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {analiseAtiva !== 'caixa' && (
+            <Select value={selectedCentroCusto} onValueChange={setSelectedCentroCusto}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Centro de Custo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os centros de custo</SelectItem>
+                {centrosCusto.map((cc) => (
+                  <SelectItem key={cc.id} value={cc.id}>
+                    {cc.codigo} - {cc.descricao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {analiseAtiva === 'caixa' && (
             <ContaBancariaMultiSelect
