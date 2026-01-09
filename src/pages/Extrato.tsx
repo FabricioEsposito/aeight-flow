@@ -24,6 +24,7 @@ import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRa
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
+import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { format } from 'date-fns';
@@ -1155,6 +1156,11 @@ export default function Extrato() {
         </div>
         
         <div className="flex gap-2">
+          <AuditoriaSaldoDialog
+            contaBancariaFilter={contaBancariaFilter}
+            dateRange={getDateRange()}
+            contasBancarias={contasBancarias}
+          />
           <Button onClick={() => setNovoLancamentoOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Lançamento
