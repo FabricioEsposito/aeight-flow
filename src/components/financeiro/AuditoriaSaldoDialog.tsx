@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertCircle, CheckCircle, ClipboardCheck, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertCircle, CheckCircle, ClipboardCheck, RefreshCw, TrendingDown, TrendingUp, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface AuditoriaSaldoDialogProps {
@@ -67,12 +67,8 @@ export function AuditoriaSaldoDialog({
       
       const contaIds = contasFiltradas.map(c => c.id);
       
-      // Saldo inicial das contas
       const saldoInicialConta = contasFiltradas.reduce((sum, c) => sum + Number(c.saldo_inicial), 0);
       
-      // === BUSCAR DADOS DO EXTRATO (Lógica atual) ===
-      
-      // Entradas PAGAS antes do período (pela data de recebimento)
       let entradasAntesPagasQuery = supabase
         .from('contas_receber')
         .select('valor, conta_bancaria_id')
@@ -85,7 +81,6 @@ export function AuditoriaSaldoDialog({
       
       const { data: entradasAntesPagas } = await entradasAntesPagasQuery;
       
-      // Saídas PAGAS antes do período (pela data de pagamento)
       let saidasAntesPagasQuery = supabase
         .from('contas_pagar')
         .select('valor, conta_bancaria_id')
@@ -98,7 +93,6 @@ export function AuditoriaSaldoDialog({
       
       const { data: saidasAntesPagas } = await saidasAntesPagasQuery;
       
-      // Entradas PAGAS no período
       let entradasPeriodoPagasQuery = supabase
         .from('contas_receber')
         .select('valor, conta_bancaria_id')
@@ -112,7 +106,6 @@ export function AuditoriaSaldoDialog({
       
       const { data: entradasPeriodoPagas } = await entradasPeriodoPagasQuery;
       
-      // Saídas PAGAS no período
       let saidasPeriodoPagasQuery = supabase
         .from('contas_pagar')
         .select('valor, conta_bancaria_id')
@@ -126,8 +119,6 @@ export function AuditoriaSaldoDialog({
       
       const { data: saidasPeriodoPagas } = await saidasPeriodoPagasQuery;
       
-      // Entradas PENDENTES EM DIA no período (por data de vencimento >= hoje)
-      // Regra: vencidos NÃO contam no saldo previsto
       const todayStr = new Date().toISOString().split('T')[0];
       
       let entradasPendentesQuery = supabase
@@ -143,10 +134,8 @@ export function AuditoriaSaldoDialog({
       
       const { data: entradasPendentesData } = await entradasPendentesQuery;
       
-      // Filtrar apenas pendentes EM DIA (vencimento >= hoje)
       const entradasPendentes = (entradasPendentesData || []).filter(e => e.data_vencimento >= todayStr);
       
-      // Saídas PENDENTES EM DIA no período
       let saidasPendentesQuery = supabase
         .from('contas_pagar')
         .select('valor, conta_bancaria_id, data_vencimento')
@@ -160,10 +149,8 @@ export function AuditoriaSaldoDialog({
       
       const { data: saidasPendentesData } = await saidasPendentesQuery;
       
-      // Filtrar apenas pendentes EM DIA (vencimento >= hoje)
       const saidasPendentes = (saidasPendentesData || []).filter(e => e.data_vencimento >= todayStr);
       
-      // Calcular totais para Extrato
       const entradasPagasAntes = (entradasAntesPagas || []).reduce((sum, e) => sum + Number(e.valor), 0);
       const saidasPagasAntes = (saidasAntesPagas || []).reduce((sum, e) => sum + Number(e.valor), 0);
       const saldoInicialCalculado = saldoInicialConta + entradasPagasAntes - saidasPagasAntes;
@@ -172,12 +159,11 @@ export function AuditoriaSaldoDialog({
       const saidasPagasNoPeriodo = (saidasPeriodoPagas || []).reduce((sum, e) => sum + Number(e.valor), 0);
       
       const totalEntradasPendentes = (entradasPendentes || []).reduce((sum, e) => sum + Number(e.valor), 0);
-      const totalEntradasVencidas = 0; // Vencidos NÃO contam no saldo previsto
+      const totalEntradasVencidas = 0;
       const totalSaidasPendentes = (saidasPendentes || []).reduce((sum, e) => sum + Number(e.valor), 0);
-      const totalSaidasVencidas = 0; // Vencidos NÃO contam no saldo previsto
+      const totalSaidasVencidas = 0;
       
       const saldoFinalRealizado = saldoInicialCalculado + entradasPagasNoPeriodo - saidasPagasNoPeriodo;
-      // Saldo previsto = realizado + pendentes em dia (vencidos NÃO afetam)
       const saldoFinalPrevisto = saldoFinalRealizado + totalEntradasPendentes - totalSaidasPendentes;
       
       const extratoData: BreakdownData = {
@@ -196,11 +182,8 @@ export function AuditoriaSaldoDialog({
       };
       
       setExtratoBreakdown(extratoData);
-      
-      // Dashboard usa a mesma lógica após as correções
       setDashboardBreakdown(extratoData);
       
-      // Breakdown por conta bancária
       const breakdownPorConta: ContaBreakdown[] = contasFiltradas.map(conta => {
         const saldoInicialContaIndividual = Number(conta.saldo_inicial);
         
@@ -226,18 +209,15 @@ export function AuditoriaSaldoDialog({
           .filter(e => e.conta_bancaria_id === conta.id)
           .reduce((sum, e) => sum + Number(e.valor), 0);
         
-        // Vencidos NÃO contam no saldo previsto
         const entradasVencidasIndividual = 0;
         
         const saidasPendentesIndividual = (saidasPendentes || [])
           .filter(e => e.conta_bancaria_id === conta.id)
           .reduce((sum, e) => sum + Number(e.valor), 0);
         
-        // Vencidos NÃO contam no saldo previsto
         const saidasVencidasIndividual = 0;
         
         const saldoFinalRealizadoIndividual = saldoInicialCalcIndividual + entradasPagasNoPeriodoIndividual - saidasPagasNoPeriodoIndividual;
-        // Saldo previsto = realizado + pendentes em dia (vencidos NÃO afetam)
         const saldoFinalPrevistoIndividual = saldoFinalRealizadoIndividual + entradasPendentesIndividual - saidasPendentesIndividual;
         
         return {
@@ -279,93 +259,16 @@ export function AuditoriaSaldoDialog({
     return 'mismatch';
   };
 
-  const BreakdownTable = ({ data, title }: { data: BreakdownData; title: string }) => (
-    <Card className="p-4">
-      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-        <ClipboardCheck className="w-5 h-5 text-primary" />
-        {title}
-      </h3>
-      <div className="space-y-3">
-        <div className="bg-muted/50 p-3 rounded-lg">
-          <p className="text-sm text-muted-foreground mb-1">Cálculo do Saldo Inicial</p>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Saldo Inicial das Contas</span>
-              <span className="font-mono">{formatCurrency(data.saldoInicialConta)}</span>
-            </div>
-            <div className="flex justify-between text-emerald-600">
-              <span>+ Entradas pagas antes do período</span>
-              <span className="font-mono">{formatCurrency(data.entradasPagasAntes)}</span>
-            </div>
-            <div className="flex justify-between text-rose-600">
-              <span>- Saídas pagas antes do período</span>
-              <span className="font-mono">{formatCurrency(data.saidasPagasAntes)}</span>
-            </div>
-            <Separator className="my-2" />
-            <div className="flex justify-between font-semibold">
-              <span>= Saldo Inicial do Período</span>
-              <span className="font-mono">{formatCurrency(data.saldoInicialCalculado)}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-muted/50 p-3 rounded-lg">
-          <p className="text-sm text-muted-foreground mb-1">Movimentações Realizadas (Pagas)</p>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between text-emerald-600">
-              <span className="flex items-center gap-1">
-                <TrendingUp className="w-4 h-4" />
-                Entradas recebidas no período
-              </span>
-              <span className="font-mono">{formatCurrency(data.entradasPagasNoPeriodo)}</span>
-            </div>
-            <div className="flex justify-between text-rose-600">
-              <span className="flex items-center gap-1">
-                <TrendingDown className="w-4 h-4" />
-                Saídas pagas no período
-              </span>
-              <span className="font-mono">{formatCurrency(data.saidasPagasNoPeriodo)}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-muted/50 p-3 rounded-lg">
-          <p className="text-sm text-muted-foreground mb-1">Previsões (Pendentes/Vencidas)</p>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between text-emerald-600/80">
-              <span>+ A receber pendentes</span>
-              <span className="font-mono">{formatCurrency(data.entradasPendentes)}</span>
-            </div>
-            <div className="flex justify-between text-amber-600">
-              <span>+ A receber vencidas</span>
-              <span className="font-mono">{formatCurrency(data.entradasVencidas)}</span>
-            </div>
-            <div className="flex justify-between text-rose-600/80">
-              <span>- A pagar pendentes</span>
-              <span className="font-mono">{formatCurrency(data.saidasPendentes)}</span>
-            </div>
-            <div className="flex justify-between text-amber-600">
-              <span>- A pagar vencidas</span>
-              <span className="font-mono">{formatCurrency(data.saidasVencidas)}</span>
-            </div>
-          </div>
-        </div>
-        
-        <Separator />
-        
-        <div className="space-y-2">
-          <div className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
-            <span className="font-medium">Saldo Final Realizado</span>
-            <span className="font-mono font-bold text-lg">{formatCurrency(data.saldoFinalRealizado)}</span>
-          </div>
-          <div className="flex justify-between items-center p-2 bg-purple-50 dark:bg-purple-950/30 rounded">
-            <span className="font-medium">Saldo Final Previsto</span>
-            <span className="font-mono font-bold text-lg">{formatCurrency(data.saldoFinalPrevisto)}</span>
-          </div>
-        </div>
+  // Compact summary card
+  const SummaryCard = ({ label, value, variant }: { label: string; value: number; variant?: 'success' | 'danger' | 'neutral' }) => {
+    const colorClass = variant === 'success' ? 'text-emerald-600' : variant === 'danger' ? 'text-rose-600' : 'text-foreground';
+    return (
+      <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+        <span className="text-xs text-muted-foreground text-center">{label}</span>
+        <span className={`font-mono text-sm font-semibold ${colorClass}`}>{formatCurrency(value)}</span>
       </div>
-    </Card>
-  );
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -375,177 +278,256 @@ export function AuditoriaSaldoDialog({
           Modo Auditoria
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base">
             <ClipboardCheck className="w-5 h-5" />
-            Auditoria de Saldo - Breakdown Completo
+            Auditoria de Saldo
           </DialogTitle>
           {dateRange && (
-            <p className="text-sm text-muted-foreground">
-              Período: {format(new Date(dateRange.start + 'T00:00:00'), 'dd/MM/yyyy')} a {format(new Date(dateRange.end + 'T00:00:00'), 'dd/MM/yyyy')}
+            <p className="text-xs text-muted-foreground">
+              {format(new Date(dateRange.start + 'T00:00:00'), 'dd/MM/yyyy')} - {format(new Date(dateRange.end + 'T00:00:00'), 'dd/MM/yyyy')}
             </p>
           )}
         </DialogHeader>
         
-        <div className="space-y-6">
+        <div className="flex-1 overflow-hidden px-6 pb-6">
           {loading ? (
-            <div className="flex items-center justify-center p-12">
-              <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center h-full">
+              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
-          ) : (
-            <>
-              {!dateRange && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg text-amber-800 dark:text-amber-200">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    <span>Selecione um período de datas para visualizar a auditoria.</span>
-                  </div>
-                </div>
-              )}
+          ) : !dateRange ? (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg text-amber-800 dark:text-amber-200">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                <span className="text-sm">Selecione um período de datas.</span>
+              </div>
+            </div>
+          ) : extratoBreakdown && dashboardBreakdown ? (
+            <Tabs defaultValue="resumo" className="h-full flex flex-col">
+              <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+                <TabsTrigger value="resumo" className="text-xs">Resumo</TabsTrigger>
+                <TabsTrigger value="detalhes" className="text-xs">Detalhes</TabsTrigger>
+                <TabsTrigger value="contas" className="text-xs">Por Conta</TabsTrigger>
+              </TabsList>
               
-              {extratoBreakdown && dashboardBreakdown && (
-                <>
-                  {/* Comparação lado a lado */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <BreakdownTable data={extratoBreakdown} title="Extrato" />
-                    <BreakdownTable data={dashboardBreakdown} title="Dashboard Fluxo de Caixa" />
+              {/* Tab Resumo */}
+              <TabsContent value="resumo" className="flex-1 overflow-auto mt-4">
+                <div className="space-y-4">
+                  {/* Cards de resumo compactos */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="p-3">
+                      <div className="text-xs text-muted-foreground mb-1">Saldo Inicial</div>
+                      <div className="font-mono text-lg font-bold">{formatCurrency(extratoBreakdown.saldoInicialCalculado)}</div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-xs text-muted-foreground mb-1">Saldo Realizado</div>
+                      <div className={`font-mono text-lg font-bold ${extratoBreakdown.saldoFinalRealizado < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {formatCurrency(extratoBreakdown.saldoFinalRealizado)}
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-xs text-muted-foreground mb-1">Saldo Previsto</div>
+                      <div className={`font-mono text-lg font-bold ${extratoBreakdown.saldoFinalPrevisto < 0 ? 'text-rose-600' : 'text-primary'}`}>
+                        {formatCurrency(extratoBreakdown.saldoFinalPrevisto)}
+                      </div>
+                    </Card>
                   </div>
-                  
-                  {/* Status de Comparação */}
-                  <Card className="p-4">
-                    <h3 className="font-semibold mb-4">Status da Comparação</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="flex items-center gap-2">
-                        {compareValues(extratoBreakdown.saldoInicialCalculado, dashboardBreakdown.saldoInicialCalculado) === 'match' ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-rose-600" />
-                        )}
-                        <span className="text-sm">Saldo Inicial</span>
+
+                  {/* Movimentações compactas */}
+                  <Card className="p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Movimentações</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="flex items-center gap-1 text-emerald-600">
+                            <TrendingUp className="w-3 h-3" />
+                            Recebido
+                          </span>
+                          <span className="font-mono">{formatCurrency(extratoBreakdown.entradasPagasNoPeriodo)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-emerald-600/70">+ A Receber</span>
+                          <span className="font-mono">{formatCurrency(extratoBreakdown.entradasPendentes)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {compareValues(extratoBreakdown.saldoFinalRealizado, dashboardBreakdown.saldoFinalRealizado) === 'match' ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-rose-600" />
-                        )}
-                        <span className="text-sm">Saldo Final Realizado</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {compareValues(extratoBreakdown.saldoFinalPrevisto, dashboardBreakdown.saldoFinalPrevisto) === 'match' ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-rose-600" />
-                        )}
-                        <span className="text-sm">Saldo Final Previsto</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {compareValues(
-                          extratoBreakdown.entradasPagasNoPeriodo + extratoBreakdown.entradasPendentes + extratoBreakdown.entradasVencidas,
-                          dashboardBreakdown.entradasPagasNoPeriodo + dashboardBreakdown.entradasPendentes + dashboardBreakdown.entradasVencidas
-                        ) === 'match' ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-rose-600" />
-                        )}
-                        <span className="text-sm">Total Entradas</span>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="flex items-center gap-1 text-rose-600">
+                            <TrendingDown className="w-3 h-3" />
+                            Pago
+                          </span>
+                          <span className="font-mono">{formatCurrency(extratoBreakdown.saidasPagasNoPeriodo)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-rose-600/70">+ A Pagar</span>
+                          <span className="font-mono">{formatCurrency(extratoBreakdown.saidasPendentes)}</span>
+                        </div>
                       </div>
                     </div>
                   </Card>
-                  
-                  {/* Breakdown por Conta Bancária */}
-                  {contasBreakdown.length > 0 && (
-                    <Card className="p-4">
-                      <h3 className="font-semibold mb-4">Breakdown por Conta Bancária</h3>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Conta</TableHead>
-                              <TableHead className="text-right">Saldo Inicial</TableHead>
-                              <TableHead className="text-right">+ Antes</TableHead>
-                              <TableHead className="text-right">- Antes</TableHead>
-                              <TableHead className="text-right">= Início Período</TableHead>
-                              <TableHead className="text-right">+ Recebido</TableHead>
-                              <TableHead className="text-right">- Pago</TableHead>
-                              <TableHead className="text-right">+ Pendente</TableHead>
-                              <TableHead className="text-right">- Pendente</TableHead>
-                              <TableHead className="text-right">Saldo Previsto</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {contasBreakdown.map((conta) => (
-                              <TableRow key={conta.contaId}>
-                                <TableCell className="font-medium">{conta.contaNome}</TableCell>
-                                <TableCell className="text-right font-mono text-sm">
-                                  {formatCurrency(conta.saldoInicialConta)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-emerald-600">
-                                  {formatCurrency(conta.entradasPagasAntes)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-rose-600">
-                                  {formatCurrency(conta.saidasPagasAntes)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm font-semibold">
-                                  {formatCurrency(conta.saldoInicialCalculado)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-emerald-600">
-                                  {formatCurrency(conta.entradasPagasNoPeriodo)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-rose-600">
-                                  {formatCurrency(conta.saidasPagasNoPeriodo)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-emerald-600/70">
-                                  {formatCurrency(conta.entradasPendentes + conta.entradasVencidas)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-rose-600/70">
-                                  {formatCurrency(conta.saidasPendentes + conta.saidasVencidas)}
-                                </TableCell>
-                                <TableCell className={`text-right font-mono font-bold ${conta.saldoFinalPrevisto < 0 ? 'text-rose-600' : 'text-foreground'}`}>
-                                  {formatCurrency(conta.saldoFinalPrevisto)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                            <TableRow className="bg-muted/50 font-semibold">
-                              <TableCell>TOTAL</TableCell>
-                              <TableCell className="text-right font-mono">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.saldoInicialConta, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-emerald-600">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.entradasPagasAntes, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-rose-600">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.saidasPagasAntes, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.saldoInicialCalculado, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-emerald-600">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.entradasPagasNoPeriodo, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-rose-600">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.saidasPagasNoPeriodo, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-emerald-600/70">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.entradasPendentes + c.entradasVencidas, 0))}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-rose-600/70">
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.saidasPendentes + c.saidasVencidas, 0))}
-                              </TableCell>
-                              <TableCell className={`text-right font-mono ${contasBreakdown.reduce((s, c) => s + c.saldoFinalPrevisto, 0) < 0 ? 'text-rose-600' : ''}`}>
-                                {formatCurrency(contasBreakdown.reduce((s, c) => s + c.saldoFinalPrevisto, 0))}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
+
+                  {/* Status de comparação */}
+                  <Card className="p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Validação</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: 'Saldo Inicial', val1: extratoBreakdown.saldoInicialCalculado, val2: dashboardBreakdown.saldoInicialCalculado },
+                        { label: 'Realizado', val1: extratoBreakdown.saldoFinalRealizado, val2: dashboardBreakdown.saldoFinalRealizado },
+                        { label: 'Previsto', val1: extratoBreakdown.saldoFinalPrevisto, val2: dashboardBreakdown.saldoFinalPrevisto },
+                        { label: 'Entradas', val1: extratoBreakdown.entradasPagasNoPeriodo + extratoBreakdown.entradasPendentes, val2: dashboardBreakdown.entradasPagasNoPeriodo + dashboardBreakdown.entradasPendentes },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-1 text-xs">
+                          {compareValues(item.val1, item.val2) === 'match' ? (
+                            <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                          ) : (
+                            <AlertCircle className="w-3 h-3 text-rose-600 flex-shrink-0" />
+                          )}
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* Tab Detalhes */}
+              <TabsContent value="detalhes" className="flex-1 overflow-auto mt-4">
+                <div className="space-y-4">
+                  {/* Cálculo do Saldo Inicial */}
+                  <Card className="p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Cálculo do Saldo Inicial</div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span>Saldo Inicial das Contas</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saldoInicialConta)}</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-600">
+                        <span>+ Entradas pagas antes do período</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.entradasPagasAntes)}</span>
+                      </div>
+                      <div className="flex justify-between text-rose-600">
+                        <span>- Saídas pagas antes do período</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saidasPagasAntes)}</span>
+                      </div>
+                      <div className="border-t pt-1 flex justify-between font-semibold">
+                        <span>= Saldo Inicial do Período</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saldoInicialCalculado)}</span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Movimentações Realizadas */}
+                  <Card className="p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Movimentações Realizadas</div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between text-emerald-600">
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          Entradas recebidas no período
+                        </span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.entradasPagasNoPeriodo)}</span>
+                      </div>
+                      <div className="flex justify-between text-rose-600">
+                        <span className="flex items-center gap-1">
+                          <TrendingDown className="w-3 h-3" />
+                          Saídas pagas no período
+                        </span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saidasPagasNoPeriodo)}</span>
+                      </div>
+                      <div className="border-t pt-1 flex justify-between font-semibold">
+                        <span>= Saldo Realizado</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saldoFinalRealizado)}</span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Previsões */}
+                  <Card className="p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Previsões (Pendentes em Dia)</div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between text-emerald-600/80">
+                        <span>+ A receber pendentes</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.entradasPendentes)}</span>
+                      </div>
+                      <div className="flex justify-between text-rose-600/80">
+                        <span>- A pagar pendentes</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saidasPendentes)}</span>
+                      </div>
+                      <div className="border-t pt-1 flex justify-between font-semibold">
+                        <span>= Saldo Previsto</span>
+                        <span className="font-mono">{formatCurrency(extratoBreakdown.saldoFinalPrevisto)}</span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    Nota: Vencidos (status = vencido) NÃO afetam o saldo previsto.
+                  </p>
+                </div>
+              </TabsContent>
+
+              {/* Tab Por Conta */}
+              <TabsContent value="contas" className="flex-1 overflow-auto mt-4">
+                {contasBreakdown.length > 0 ? (
+                  <div className="space-y-3">
+                    {contasBreakdown.map((conta) => (
+                      <Card key={conta.contaId} className="p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm font-medium truncate">{conta.contaNome}</span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-2">
+                          <SummaryCard label="Início" value={conta.saldoInicialCalculado} />
+                          <SummaryCard label="+ Recebido" value={conta.entradasPagasNoPeriodo} variant="success" />
+                          <SummaryCard label="- Pago" value={conta.saidasPagasNoPeriodo} variant="danger" />
+                          <SummaryCard label="Realizado" value={conta.saldoFinalRealizado} variant={conta.saldoFinalRealizado < 0 ? 'danger' : 'neutral'} />
+                          <SummaryCard label="Previsto" value={conta.saldoFinalPrevisto} variant={conta.saldoFinalPrevisto < 0 ? 'danger' : 'neutral'} />
+                        </div>
+                      </Card>
+                    ))}
+                    
+                    {/* Total */}
+                    <Card className="p-3 bg-muted/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold">TOTAL</span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        <SummaryCard 
+                          label="Início" 
+                          value={contasBreakdown.reduce((s, c) => s + c.saldoInicialCalculado, 0)} 
+                        />
+                        <SummaryCard 
+                          label="+ Recebido" 
+                          value={contasBreakdown.reduce((s, c) => s + c.entradasPagasNoPeriodo, 0)} 
+                          variant="success" 
+                        />
+                        <SummaryCard 
+                          label="- Pago" 
+                          value={contasBreakdown.reduce((s, c) => s + c.saidasPagasNoPeriodo, 0)} 
+                          variant="danger" 
+                        />
+                        <SummaryCard 
+                          label="Realizado" 
+                          value={contasBreakdown.reduce((s, c) => s + c.saldoFinalRealizado, 0)} 
+                          variant={contasBreakdown.reduce((s, c) => s + c.saldoFinalRealizado, 0) < 0 ? 'danger' : 'neutral'}
+                        />
+                        <SummaryCard 
+                          label="Previsto" 
+                          value={contasBreakdown.reduce((s, c) => s + c.saldoFinalPrevisto, 0)} 
+                          variant={contasBreakdown.reduce((s, c) => s + c.saldoFinalPrevisto, 0) < 0 ? 'danger' : 'neutral'}
+                        />
                       </div>
                     </Card>
-                  )}
-                </>
-              )}
-            </>
-          )}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground text-sm py-8">
+                    Nenhuma conta bancária disponível.
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
