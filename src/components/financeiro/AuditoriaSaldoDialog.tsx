@@ -126,10 +126,13 @@ export function AuditoriaSaldoDialog({
       
       const { data: saidasPeriodoPagas } = await saidasPeriodoPagasQuery;
       
-      // Entradas PENDENTES no período (por data de vencimento)
+      // Entradas PENDENTES EM DIA no período (por data de vencimento >= hoje)
+      // Regra: vencidos NÃO contam no saldo previsto
+      const todayStr = new Date().toISOString().split('T')[0];
+      
       let entradasPendentesQuery = supabase
         .from('contas_receber')
-        .select('valor, conta_bancaria_id')
+        .select('valor, conta_bancaria_id, data_vencimento')
         .eq('status', 'pendente')
         .gte('data_vencimento', dateRange.start)
         .lte('data_vencimento', dateRange.end);
@@ -138,26 +141,15 @@ export function AuditoriaSaldoDialog({
         entradasPendentesQuery = entradasPendentesQuery.in('conta_bancaria_id', contaIds);
       }
       
-      const { data: entradasPendentes } = await entradasPendentesQuery;
+      const { data: entradasPendentesData } = await entradasPendentesQuery;
       
-      // Entradas VENCIDAS no período (por data de vencimento)
-      let entradasVencidasQuery = supabase
-        .from('contas_receber')
-        .select('valor, conta_bancaria_id')
-        .eq('status', 'vencido')
-        .gte('data_vencimento', dateRange.start)
-        .lte('data_vencimento', dateRange.end);
+      // Filtrar apenas pendentes EM DIA (vencimento >= hoje)
+      const entradasPendentes = (entradasPendentesData || []).filter(e => e.data_vencimento >= todayStr);
       
-      if (contaIds.length > 0) {
-        entradasVencidasQuery = entradasVencidasQuery.in('conta_bancaria_id', contaIds);
-      }
-      
-      const { data: entradasVencidas } = await entradasVencidasQuery;
-      
-      // Saídas PENDENTES no período
+      // Saídas PENDENTES EM DIA no período
       let saidasPendentesQuery = supabase
         .from('contas_pagar')
-        .select('valor, conta_bancaria_id')
+        .select('valor, conta_bancaria_id, data_vencimento')
         .eq('status', 'pendente')
         .gte('data_vencimento', dateRange.start)
         .lte('data_vencimento', dateRange.end);
@@ -166,21 +158,10 @@ export function AuditoriaSaldoDialog({
         saidasPendentesQuery = saidasPendentesQuery.in('conta_bancaria_id', contaIds);
       }
       
-      const { data: saidasPendentes } = await saidasPendentesQuery;
+      const { data: saidasPendentesData } = await saidasPendentesQuery;
       
-      // Saídas VENCIDAS no período
-      let saidasVencidasQuery = supabase
-        .from('contas_pagar')
-        .select('valor, conta_bancaria_id')
-        .eq('status', 'vencido')
-        .gte('data_vencimento', dateRange.start)
-        .lte('data_vencimento', dateRange.end);
-      
-      if (contaIds.length > 0) {
-        saidasVencidasQuery = saidasVencidasQuery.in('conta_bancaria_id', contaIds);
-      }
-      
-      const { data: saidasVencidas } = await saidasVencidasQuery;
+      // Filtrar apenas pendentes EM DIA (vencimento >= hoje)
+      const saidasPendentes = (saidasPendentesData || []).filter(e => e.data_vencimento >= todayStr);
       
       // Calcular totais para Extrato
       const entradasPagasAntes = (entradasAntesPagas || []).reduce((sum, e) => sum + Number(e.valor), 0);
@@ -191,12 +172,13 @@ export function AuditoriaSaldoDialog({
       const saidasPagasNoPeriodo = (saidasPeriodoPagas || []).reduce((sum, e) => sum + Number(e.valor), 0);
       
       const totalEntradasPendentes = (entradasPendentes || []).reduce((sum, e) => sum + Number(e.valor), 0);
-      const totalEntradasVencidas = (entradasVencidas || []).reduce((sum, e) => sum + Number(e.valor), 0);
+      const totalEntradasVencidas = 0; // Vencidos NÃO contam no saldo previsto
       const totalSaidasPendentes = (saidasPendentes || []).reduce((sum, e) => sum + Number(e.valor), 0);
-      const totalSaidasVencidas = (saidasVencidas || []).reduce((sum, e) => sum + Number(e.valor), 0);
+      const totalSaidasVencidas = 0; // Vencidos NÃO contam no saldo previsto
       
       const saldoFinalRealizado = saldoInicialCalculado + entradasPagasNoPeriodo - saidasPagasNoPeriodo;
-      const saldoFinalPrevisto = saldoFinalRealizado + totalEntradasPendentes + totalEntradasVencidas - totalSaidasPendentes - totalSaidasVencidas;
+      // Saldo previsto = realizado + pendentes em dia (vencidos NÃO afetam)
+      const saldoFinalPrevisto = saldoFinalRealizado + totalEntradasPendentes - totalSaidasPendentes;
       
       const extratoData: BreakdownData = {
         saldoInicialConta,
@@ -244,20 +226,19 @@ export function AuditoriaSaldoDialog({
           .filter(e => e.conta_bancaria_id === conta.id)
           .reduce((sum, e) => sum + Number(e.valor), 0);
         
-        const entradasVencidasIndividual = (entradasVencidas || [])
-          .filter(e => e.conta_bancaria_id === conta.id)
-          .reduce((sum, e) => sum + Number(e.valor), 0);
+        // Vencidos NÃO contam no saldo previsto
+        const entradasVencidasIndividual = 0;
         
         const saidasPendentesIndividual = (saidasPendentes || [])
           .filter(e => e.conta_bancaria_id === conta.id)
           .reduce((sum, e) => sum + Number(e.valor), 0);
         
-        const saidasVencidasIndividual = (saidasVencidas || [])
-          .filter(e => e.conta_bancaria_id === conta.id)
-          .reduce((sum, e) => sum + Number(e.valor), 0);
+        // Vencidos NÃO contam no saldo previsto
+        const saidasVencidasIndividual = 0;
         
         const saldoFinalRealizadoIndividual = saldoInicialCalcIndividual + entradasPagasNoPeriodoIndividual - saidasPagasNoPeriodoIndividual;
-        const saldoFinalPrevistoIndividual = saldoFinalRealizadoIndividual + entradasPendentesIndividual + entradasVencidasIndividual - saidasPendentesIndividual - saidasVencidasIndividual;
+        // Saldo previsto = realizado + pendentes em dia (vencidos NÃO afetam)
+        const saldoFinalPrevistoIndividual = saldoFinalRealizadoIndividual + entradasPendentesIndividual - saidasPendentesIndividual;
         
         return {
           contaId: conta.id,

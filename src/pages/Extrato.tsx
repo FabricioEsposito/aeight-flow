@@ -1104,35 +1104,40 @@ export default function Extrato() {
     return l.data_vencimento >= dateRange.start && l.data_vencimento <= dateRange.end;
   });
   
-  const totalReceber = lancamentosNoPeriodoFiltrado
-    .filter(l => l.tipo === 'entrada' && (l.status === 'pendente' || l.status === 'vencido'))
-    .reduce((acc, l) => acc + l.valor, 0);
-
-  const totalPagar = lancamentosNoPeriodoFiltrado
-    .filter(l => l.tipo === 'saida' && (l.status === 'pendente' || l.status === 'vencido'))
-    .reduce((acc, l) => acc + l.valor, 0);
-
-  // Pendentes atrasados: ainda com status "pendente", mas vencimento < hoje.
-  // (Isso antes gerava divergência entre "Previsto" da tabela vs card/dashboard.)
+  // Só conta no saldo previsto: pendentes EM DIA (vencimento >= hoje)
+  // Vencidos NÃO contam no saldo (regra do usuário)
   const todayLocal = new Date();
   todayLocal.setHours(0, 0, 0, 0);
 
-  const pendentesAtrasadosNoPeriodo = lancamentosNoPeriodoFiltrado.filter(l => {
-    if (l.status !== 'pendente') return false;
-    const venc = new Date(l.data_vencimento + 'T00:00:00');
-    return venc < todayLocal;
-  });
-
-  const pendentesAtrasadosReceber = pendentesAtrasadosNoPeriodo
-    .filter(l => l.tipo === 'entrada')
+  const totalReceber = lancamentosNoPeriodoFiltrado
+    .filter(l => {
+      if (l.tipo !== 'entrada') return false;
+      if (l.status === 'pago') return false; // já está no entradasNoPeriodo
+      if (l.status === 'vencido') return false; // não conta
+      if (l.status === 'pendente') {
+        const venc = new Date(l.data_vencimento + 'T00:00:00');
+        return venc >= todayLocal; // só em dia
+      }
+      return false;
+    })
     .reduce((acc, l) => acc + l.valor, 0);
 
-  const pendentesAtrasadosPagar = pendentesAtrasadosNoPeriodo
-    .filter(l => l.tipo === 'saida')
+  const totalPagar = lancamentosNoPeriodoFiltrado
+    .filter(l => {
+      if (l.tipo !== 'saida') return false;
+      if (l.status === 'pago') return false;
+      if (l.status === 'vencido') return false;
+      if (l.status === 'pendente') {
+        const venc = new Date(l.data_vencimento + 'T00:00:00');
+        return venc >= todayLocal;
+      }
+      return false;
+    })
     .reduce((acc, l) => acc + l.valor, 0);
 
-  // Saldo final = saldo inicial + entradas no período - saídas no período
-  // Para previsão incluindo pendentes/vencidos (inclusive pendentes atrasados): + a receber - a pagar
+  // Saldo final = saldo inicial + entradas pagas no período - saídas pagas no período
+  // + pendentes em dia a receber - pendentes em dia a pagar
+  // Vencidos NÃO afetam o saldo previsto
   const saldoFinal = saldoInicial + entradasNoPeriodo + totalReceber - saidasNoPeriodo - totalPagar;
 
   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
@@ -1244,12 +1249,9 @@ export default function Extrato() {
               <p className={`text-2xl font-bold ${saldoFinal >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
                 {formatCurrency(saldoFinal)}
               </p>
-
-              {(pendentesAtrasadosReceber !== 0 || pendentesAtrasadosPagar !== 0) && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Inclui pendentes atrasados (status pendente com vencimento &lt; hoje): +{formatCurrency(pendentesAtrasadosReceber)} / -{formatCurrency(pendentesAtrasadosPagar)}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Apenas pagos/recebidos + pendentes em dia
+              </p>
             </div>
             <BarChart3 className="w-8 h-8 text-primary shrink-0" />
           </div>
@@ -1441,15 +1443,23 @@ export default function Extrato() {
                     .filter(l => l.status === 'pago' && l.tipo === 'saida')
                     .reduce((acc, l) => acc + l.valor, 0);
 
-                // Calcular saldo previsto (realizado + pendentes/vencidos até aqui)
-                // Regra alinhada com card do Extrato e Dashboard: inclui pendentes atrasados também.
+                // Calcular saldo previsto (realizado + pendentes EM DIA até aqui)
+                // Regra: vencidos NÃO contam no saldo. Só pendentes com vencimento >= hoje.
                 const saldoPrevisto =
                   saldoRealizado +
                   lancamentosAteAqui
-                    .filter(l => (l.status === 'pendente' || l.status === 'vencido') && l.tipo === 'entrada')
+                    .filter(l => {
+                      if (l.status !== 'pendente' || l.tipo !== 'entrada') return false;
+                      const venc = new Date(l.data_vencimento + 'T00:00:00');
+                      return venc >= hoje;
+                    })
                     .reduce((acc, l) => acc + l.valor, 0) -
                   lancamentosAteAqui
-                    .filter(l => (l.status === 'pendente' || l.status === 'vencido') && l.tipo === 'saida')
+                    .filter(l => {
+                      if (l.status !== 'pendente' || l.tipo !== 'saida') return false;
+                      const venc = new Date(l.data_vencimento + 'T00:00:00');
+                      return venc >= hoje;
+                    })
                     .reduce((acc, l) => acc + l.valor, 0);
 
                 return (

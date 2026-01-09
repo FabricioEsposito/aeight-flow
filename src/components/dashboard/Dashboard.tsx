@@ -207,12 +207,12 @@ export function Dashboard() {
       
       if (dateRange) {
         // Para contas pagas, filtrar pela data de recebimento
-        // Para contas pendentes/vencidas, filtrar pela data de vencimento
+        // Para contas pendentes EM DIA, filtrar pela data de vencimento (vencidos NÃO contam no saldo)
         contasReceberFluxoQuery = contasReceberFluxoQuery.or(
-          `and(status.eq.pago,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.in.(pendente,vencido),data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+          `and(status.eq.pago,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
         );
       } else {
-        contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['pago', 'pendente', 'vencido']);
+        contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['pago', 'pendente']);
       }
 
       if (selectedContaBancaria.length > 0) {
@@ -246,12 +246,12 @@ export function Dashboard() {
       
       if (dateRange) {
         // Para contas pagas, filtrar pela data de pagamento
-        // Para contas pendentes/vencidas, filtrar pela data de vencimento
+        // Para contas pendentes EM DIA, filtrar pela data de vencimento (vencidos NÃO contam no saldo)
         contasPagarFluxoQuery = contasPagarFluxoQuery.or(
-          `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.in.(pendente,vencido),data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+          `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
         );
       } else {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.in('status', ['pago', 'pendente', 'vencido']);
+        contasPagarFluxoQuery = contasPagarFluxoQuery.in('status', ['pago', 'pendente']);
       }
 
       if (selectedContaBancaria.length > 0) {
@@ -474,10 +474,12 @@ export function Dashboard() {
         fluxoPorDiaGrafico[date].despesaRealizada += Number(c.valor);
       });
       
-      // Adicionar previsões (contas pendentes/vencidas dentro do período)
-      // Regra (igual Extrato): inclui pendentes/vencidas do período, independente de serem anteriores ou posteriores a "hoje"
+      // Adicionar previsões (contas pendentes EM DIA dentro do período)
+      // Regra: vencidos NÃO contam no saldo previsto. Apenas pendentes com vencimento >= hoje.
+      const todayStr = today;
+      
       contasReceberFluxo
-        ?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento)
+        ?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= todayStr)
         .forEach(c => {
           const date = c.data_vencimento!;
 
@@ -493,7 +495,7 @@ export function Dashboard() {
         });
 
       contasPagarFluxo
-        ?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento)
+        ?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= todayStr)
         .forEach(c => {
           const date = c.data_vencimento!;
 
