@@ -369,6 +369,23 @@ serve(async (req: Request): Promise<Response> => {
 
       const htmlContent = buildEmailHtml(parcelas);
 
+      // Build attachments from all parcelas (NF and Boleto)
+      const attachments: Array<{ filename: string; path: string }> = [];
+      for (const parcela of parcelas) {
+        if (parcela.link_nf && parcela.link_nf.trim() !== '') {
+          attachments.push({
+            filename: `NF_${parcela.numero_nf}.pdf`,
+            path: parcela.link_nf
+          });
+        }
+        if (parcela.link_boleto && parcela.link_boleto.trim() !== '') {
+          attachments.push({
+            filename: `Boleto_${parcela.numero_nf}_${formatDate(parcela.data_vencimento).replace(/\//g, '-')}.pdf`,
+            path: parcela.link_boleto
+          });
+        }
+      }
+
       try {
         const emailResponse = await resend.emails.send({
           from: "Financeiro Aeight <faturamento@financeiro.aeight.global>",
@@ -376,6 +393,7 @@ serve(async (req: Request): Promise<Response> => {
           cc: ["financeiro@aeight.global"],
           subject: subject,
           html: htmlContent,
+          ...(attachments.length > 0 && { attachments }),
         });
 
         console.log(`Email sent to ${primeiraParcelaCliente.cliente_nome}:`, emailResponse);
