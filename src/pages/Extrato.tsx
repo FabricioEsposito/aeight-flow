@@ -1104,11 +1104,11 @@ export default function Extrato() {
   });
   
   const totalReceber = lancamentosNoPeriodoFiltrado
-    .filter(l => l.tipo === 'entrada' && l.status === 'pendente')
+    .filter(l => l.tipo === 'entrada' && (l.status === 'pendente' || l.status === 'vencido'))
     .reduce((acc, l) => acc + l.valor, 0);
 
   const totalPagar = lancamentosNoPeriodoFiltrado
-    .filter(l => l.tipo === 'saida' && l.status === 'pendente')
+    .filter(l => l.tipo === 'saida' && (l.status === 'pendente' || l.status === 'vencido'))
     .reduce((acc, l) => acc + l.valor, 0);
 
   // Saldo final = saldo inicial + entradas no período - saídas no período
