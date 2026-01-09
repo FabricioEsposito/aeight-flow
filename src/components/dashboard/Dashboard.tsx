@@ -377,15 +377,58 @@ export function Dashboard() {
 
       let contasBancariasQuery = supabase
         .from('contas_bancarias')
-        .select('saldo_atual')
+        .select('id, saldo_atual, saldo_inicial')
         .eq('status', 'ativo');
       
       if (selectedContaBancaria.length > 0) {
         contasBancariasQuery = contasBancariasQuery.in('id', selectedContaBancaria);
       }
 
-      const { data: contasBancarias } = await contasBancariasQuery;
-      const saldoContas = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
+      const { data: contasBancariasData } = await contasBancariasQuery;
+      const contasBancariasIds = contasBancariasData?.map(c => c.id) || [];
+      const saldoInicialContas = contasBancariasData?.reduce((sum, c) => sum + Number(c.saldo_inicial), 0) || 0;
+
+      // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
+      // (mesma lógica usada no Extrato)
+      let entradasAnteriores: Array<{ valor: number; conta_bancaria_id: string | null }> = [];
+      let saidasAnteriores: Array<{ valor: number; conta_bancaria_id: string | null }> = [];
+
+      if (dateRange) {
+        // Buscar entradas pagas antes do período
+        let entradasQuery = supabase
+          .from('contas_receber')
+          .select('valor, conta_bancaria_id')
+          .eq('status', 'pago')
+          .lt('data_recebimento', dateRange.from);
+        
+        if (contasBancariasIds.length > 0) {
+          entradasQuery = entradasQuery.in('conta_bancaria_id', contasBancariasIds);
+        }
+        
+        const { data: entradasData } = await entradasQuery;
+        entradasAnteriores = entradasData || [];
+        
+        // Buscar saídas pagas antes do período
+        let saidasQuery = supabase
+          .from('contas_pagar')
+          .select('valor, conta_bancaria_id')
+          .eq('status', 'pago')
+          .lt('data_pagamento', dateRange.from);
+        
+        if (contasBancariasIds.length > 0) {
+          saidasQuery = saidasQuery.in('conta_bancaria_id', contasBancariasIds);
+        }
+        
+        const { data: saidasData } = await saidasQuery;
+        saidasAnteriores = saidasData || [];
+      }
+
+      // Calcular entradas e saídas anteriores ao período
+      const entradasAntesDoInicio = entradasAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
+      const saidasAntesDoInicio = saidasAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
+
+      // Saldo inicial do período = saldo inicial da conta + entradas antes do período - saídas antes do período
+      const saldoContas = saldoInicialContas + entradasAntesDoInicio - saidasAntesDoInicio;
 
       // Agregar dados de contas por data - separar realizados e previstos
       // Dados para a TABELA (todos os dias do período)
@@ -516,7 +559,8 @@ export function Dashboard() {
       setFluxoCaixaTabelaData(fluxoTabelaData);
 
       // Calcular saldos inicial e final (último dia útil do mês)
-      const saldoInicial = contasBancarias?.reduce((sum, c) => sum + Number(c.saldo_atual), 0) || 0;
+      // O saldo inicial já foi calculado corretamente com saldoContas (saldo_inicial + movimentações anteriores)
+      const saldoInicial = saldoContas;
       const ultimoDia = fluxoChartData.length > 0 ? fluxoChartData[fluxoChartData.length - 1] : null;
       const saldoFinal = ultimoDia ? ultimoDia.saldoFinal : saldoInicial;
       const saldoFinalPrevisto = saldoFinal; // Agora saldoFinal já inclui previsões (pendentes)
