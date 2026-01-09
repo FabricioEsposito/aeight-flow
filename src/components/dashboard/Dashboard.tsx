@@ -387,12 +387,10 @@ export function Dashboard() {
       const { data: contasBancariasData } = await contasBancariasQuery;
       const saldoInicialContas = contasBancariasData?.reduce((sum, c) => sum + Number(c.saldo_inicial), 0) || 0;
 
-      // Buscar movimentações anteriores ao período para calcular o saldo inicial corretamente
-      // Inclui: PAGAS (realizadas) + PENDENTES/VENCIDAS (previsões que afetam o saldo)
+      // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
+      // Igual ao Extrato: considera apenas movimentações REALIZADAS (pagas) antes do período
       let entradasPagasAnteriores: Array<{ valor: number }> = [];
       let saidasPagasAnteriores: Array<{ valor: number }> = [];
-      let entradasPendentesAnteriores: Array<{ valor: number }> = [];
-      let saidasPendentesAnteriores: Array<{ valor: number }> = [];
 
       if (dateRange) {
         // Buscar entradas PAGAS antes do período (pela data de recebimento)
@@ -430,53 +428,15 @@ export function Dashboard() {
         
         const { data: saidasPagasData } = await saidasPagasQuery;
         saidasPagasAnteriores = saidasPagasData || [];
-
-        // Buscar entradas PENDENTES/VENCIDAS antes do período (pela data de vencimento)
-        let entradasPendentesQuery = supabase
-          .from('contas_receber')
-          .select('valor, conta_bancaria_id')
-          .in('status', ['pendente', 'vencido'])
-          .lt('data_vencimento', dateRange.from);
-        
-        if (selectedContaBancaria.length > 0) {
-          entradasPendentesQuery = entradasPendentesQuery.in('conta_bancaria_id', selectedContaBancaria);
-        }
-        
-        if (selectedCentroCusto !== 'todos') {
-          entradasPendentesQuery = entradasPendentesQuery.eq('centro_custo', selectedCentroCusto);
-        }
-        
-        const { data: entradasPendentesData } = await entradasPendentesQuery;
-        entradasPendentesAnteriores = entradasPendentesData || [];
-        
-        // Buscar saídas PENDENTES/VENCIDAS antes do período (pela data de vencimento)
-        let saidasPendentesQuery = supabase
-          .from('contas_pagar')
-          .select('valor, conta_bancaria_id')
-          .in('status', ['pendente', 'vencido'])
-          .lt('data_vencimento', dateRange.from);
-        
-        if (selectedContaBancaria.length > 0) {
-          saidasPendentesQuery = saidasPendentesQuery.in('conta_bancaria_id', selectedContaBancaria);
-        }
-        
-        if (selectedCentroCusto !== 'todos') {
-          saidasPendentesQuery = saidasPendentesQuery.eq('centro_custo', selectedCentroCusto);
-        }
-        
-        const { data: saidasPendentesData } = await saidasPendentesQuery;
-        saidasPendentesAnteriores = saidasPendentesData || [];
       }
 
-      // Calcular entradas e saídas anteriores ao período (realizadas + previsões)
+      // Calcular entradas e saídas PAGAS anteriores ao período (igual Extrato)
       const entradasPagasAntes = entradasPagasAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
       const saidasPagasAntes = saidasPagasAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
-      const entradasPendentesAntes = entradasPendentesAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
-      const saidasPendentesAntes = saidasPendentesAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
 
-      // Saldo inicial do período = saldo inicial da conta + (entradas - saídas) anteriores ao período
-      // Inclui tanto realizadas (pagas) quanto previsões (pendentes/vencidas)
-      const saldoContas = saldoInicialContas + entradasPagasAntes + entradasPendentesAntes - saidasPagasAntes - saidasPendentesAntes;
+      // Saldo inicial do período = saldo inicial da conta + entradas pagas antes - saídas pagas antes
+      // Mesma lógica do Extrato: só considera movimentações REALIZADAS (pagas) antes do período
+      const saldoContas = saldoInicialContas + entradasPagasAntes - saidasPagasAntes;
 
       // Agregar dados de contas por data - separar realizados e previstos
       // Dados para a TABELA (todos os dias do período)
