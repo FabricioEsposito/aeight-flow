@@ -511,37 +511,39 @@ export function Dashboard() {
         fluxoPorDiaGrafico[date].despesaRealizada += Number(c.valor);
       });
       
-      const hojeStr = formatDateLocal(new Date());
+      // Adicionar previsões (contas pendentes/vencidas dentro do período)
+      // Regra (igual Extrato): inclui pendentes/vencidas do período, independente de serem anteriores ou posteriores a "hoje"
+      contasReceberFluxo
+        ?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento)
+        .forEach(c => {
+          const date = c.data_vencimento!;
 
-      // Adicionar previsões (APENAS contas pendentes e NÃO vencidas - vencidos ficam só nos cards)
-      // Regra: previsão só considera vencimentos de hoje em diante
-      contasReceberFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= hojeStr).forEach(c => {
-        const date = c.data_vencimento!;
-        
-        if (!fluxoPorDiaTabela[date]) {
-          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaTabela[date].receitaPrevista += Number(c.valor);
-        
-        if (!fluxoPorDiaGrafico[date]) {
-          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaGrafico[date].receitaPrevista += Number(c.valor);
-      });
+          if (!fluxoPorDiaTabela[date]) {
+            fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+          }
+          fluxoPorDiaTabela[date].receitaPrevista += Number(c.valor);
 
-      contasPagarFluxo?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= hojeStr).forEach(c => {
-        const date = c.data_vencimento!;
-        
-        if (!fluxoPorDiaTabela[date]) {
-          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaTabela[date].despesaPrevista += Number(c.valor);
-        
-        if (!fluxoPorDiaGrafico[date]) {
-          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaGrafico[date].despesaPrevista += Number(c.valor);
-      });
+          if (!fluxoPorDiaGrafico[date]) {
+            fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+          }
+          fluxoPorDiaGrafico[date].receitaPrevista += Number(c.valor);
+        });
+
+      contasPagarFluxo
+        ?.filter(c => (c.status === 'pendente' || c.status === 'vencido') && c.data_vencimento)
+        .forEach(c => {
+          const date = c.data_vencimento!;
+
+          if (!fluxoPorDiaTabela[date]) {
+            fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+          }
+          fluxoPorDiaTabela[date].despesaPrevista += Number(c.valor);
+
+          if (!fluxoPorDiaGrafico[date]) {
+            fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
+          }
+          fluxoPorDiaGrafico[date].despesaPrevista += Number(c.valor);
+        });
 
       // Dados para o GRÁFICO (apenas dias com movimentação)
       const sortedDatesGrafico = Object.keys(fluxoPorDiaGrafico).sort();
