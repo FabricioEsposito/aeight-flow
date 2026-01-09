@@ -347,9 +347,87 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { cliente_id, all, force } = await req.json();
+    const { cliente_id, all, force, test_mode, test_email } = await req.json();
     
-    console.log("Starting collection email process:", { cliente_id, all, force });
+    console.log("Starting collection email process:", { cliente_id, all, force, test_mode, test_email });
+
+    // TEST MODE: Send sample emails with all 3 templates to test email
+    if (test_mode && test_email) {
+      console.log(`TEST MODE: Sending all 3 templates to ${test_email}`);
+      
+      const testResults = [];
+      const testLevels = [
+        { diasAtraso: 3, label: "Nível 1 (1-5 dias) - Tranquilo" },
+        { diasAtraso: 6, label: "Nível 2 (6-7 dias) - Arrojado" },
+        { diasAtraso: 10, label: "Nível 3 (8+ dias) - Urgente" },
+      ];
+
+      for (const level of testLevels) {
+        const template = getEmailTemplate(level.diasAtraso);
+        const ccRecipients = getCcRecipients(level.diasAtraso);
+        
+        const mockCliente: ClienteCobranca = {
+          cliente_id: "test-id",
+          cliente_nome: "Empresa Exemplo LTDA",
+          emails: [test_email],
+          parcelas: [
+            {
+              id: "parcela-1",
+              descricao: "Serviço de Marketing Digital - Janeiro/2025",
+              data_vencimento: new Date(Date.now() - level.diasAtraso * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              valor: 5000.00,
+              dias_atraso: level.diasAtraso,
+              contrato_numero: "CTR-2025-001",
+              servico_nome: "MKT001 - Marketing Digital",
+              numero_nf: "12345",
+              centro_custo: "CC001 - Operações",
+            },
+            {
+              id: "parcela-2",
+              descricao: "Gestão de Redes Sociais - Janeiro/2025",
+              data_vencimento: new Date(Date.now() - (level.diasAtraso + 5) * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              valor: 2500.00,
+              dias_atraso: level.diasAtraso + 5,
+              contrato_numero: "CTR-2025-002",
+              servico_nome: "SOC001 - Social Media",
+              numero_nf: "12346",
+              centro_custo: "CC001 - Operações",
+            },
+          ],
+          total_vencido: 7500.00,
+          max_dias_atraso: level.diasAtraso + 5,
+        };
+
+        const htmlContent = buildEmailHtml(mockCliente, template);
+        const subject = buildEmailSubject(mockCliente, template, "12345", "CC001 - Operações");
+
+        try {
+          const emailResponse = await resend.emails.send({
+            from: "Financeiro Aeight <cobranca@financeiro.aeight.global>",
+            to: [test_email],
+            cc: ccRecipients,
+            subject: `[TESTE] ${subject}`,
+            html: htmlContent,
+          });
+
+          console.log(`Test email sent for ${level.label}:`, emailResponse);
+          testResults.push({ level: level.label, success: true, id: emailResponse.id });
+        } catch (error: any) {
+          console.error(`Error sending test email for ${level.label}:`, error);
+          testResults.push({ level: level.label, success: false, error: error.message });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          test_mode: true,
+          test_email,
+          results: testResults,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const currentSlot = getCurrentSendSlot();
     console.log("Current send slot:", currentSlot);
