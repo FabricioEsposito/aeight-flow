@@ -362,7 +362,14 @@ serve(async (req: Request): Promise<Response> => {
         { diasAtraso: 10, label: "Nível 3 (8+ dias) - Urgente" },
       ];
 
-      for (const level of testLevels) {
+      for (let i = 0; i < testLevels.length; i++) {
+        const level = testLevels[i];
+        
+        // Add delay between emails to respect Resend rate limit (2 req/sec)
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
         const template = getEmailTemplate(level.diasAtraso);
         const ccRecipients = getCcRecipients(level.diasAtraso);
         
@@ -411,7 +418,7 @@ serve(async (req: Request): Promise<Response> => {
           });
 
           console.log(`Test email sent for ${level.label}:`, emailResponse);
-          testResults.push({ level: level.label, success: true, id: emailResponse.id });
+          testResults.push({ level: level.label, success: true, id: emailResponse.data?.id });
         } catch (error: any) {
           console.error(`Error sending test email for ${level.label}:`, error);
           testResults.push({ level: level.label, success: false, error: error.message });
