@@ -385,50 +385,82 @@ export function Dashboard() {
       }
 
       const { data: contasBancariasData } = await contasBancariasQuery;
-      const contasBancariasIds = contasBancariasData?.map(c => c.id) || [];
       const saldoInicialContas = contasBancariasData?.reduce((sum, c) => sum + Number(c.saldo_inicial), 0) || 0;
 
-      // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
-      // (mesma lógica usada no Extrato)
-      let entradasAnteriores: Array<{ valor: number; conta_bancaria_id: string | null }> = [];
-      let saidasAnteriores: Array<{ valor: number; conta_bancaria_id: string | null }> = [];
+      // Buscar movimentações anteriores ao período para calcular o saldo inicial corretamente
+      // Inclui: PAGAS (realizadas) + PENDENTES/VENCIDAS (previsões que afetam o saldo)
+      let entradasPagasAnteriores: Array<{ valor: number }> = [];
+      let saidasPagasAnteriores: Array<{ valor: number }> = [];
+      let entradasPendentesAnteriores: Array<{ valor: number }> = [];
+      let saidasPendentesAnteriores: Array<{ valor: number }> = [];
 
       if (dateRange) {
-        // Buscar entradas pagas antes do período
-        let entradasQuery = supabase
+        // Buscar entradas PAGAS antes do período (pela data de recebimento)
+        let entradasPagasQuery = supabase
           .from('contas_receber')
           .select('valor, conta_bancaria_id')
           .eq('status', 'pago')
           .lt('data_recebimento', dateRange.from);
         
-        if (contasBancariasIds.length > 0) {
-          entradasQuery = entradasQuery.in('conta_bancaria_id', contasBancariasIds);
+        if (selectedContaBancaria.length > 0) {
+          entradasPagasQuery = entradasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
         }
         
-        const { data: entradasData } = await entradasQuery;
-        entradasAnteriores = entradasData || [];
+        const { data: entradasPagasData } = await entradasPagasQuery;
+        entradasPagasAnteriores = entradasPagasData || [];
         
-        // Buscar saídas pagas antes do período
-        let saidasQuery = supabase
+        // Buscar saídas PAGAS antes do período (pela data de pagamento)
+        let saidasPagasQuery = supabase
           .from('contas_pagar')
           .select('valor, conta_bancaria_id')
           .eq('status', 'pago')
           .lt('data_pagamento', dateRange.from);
         
-        if (contasBancariasIds.length > 0) {
-          saidasQuery = saidasQuery.in('conta_bancaria_id', contasBancariasIds);
+        if (selectedContaBancaria.length > 0) {
+          saidasPagasQuery = saidasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
         }
         
-        const { data: saidasData } = await saidasQuery;
-        saidasAnteriores = saidasData || [];
+        const { data: saidasPagasData } = await saidasPagasQuery;
+        saidasPagasAnteriores = saidasPagasData || [];
+
+        // Buscar entradas PENDENTES/VENCIDAS antes do período (pela data de vencimento)
+        let entradasPendentesQuery = supabase
+          .from('contas_receber')
+          .select('valor, conta_bancaria_id')
+          .in('status', ['pendente', 'vencido'])
+          .lt('data_vencimento', dateRange.from);
+        
+        if (selectedContaBancaria.length > 0) {
+          entradasPendentesQuery = entradasPendentesQuery.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        
+        const { data: entradasPendentesData } = await entradasPendentesQuery;
+        entradasPendentesAnteriores = entradasPendentesData || [];
+        
+        // Buscar saídas PENDENTES/VENCIDAS antes do período (pela data de vencimento)
+        let saidasPendentesQuery = supabase
+          .from('contas_pagar')
+          .select('valor, conta_bancaria_id')
+          .in('status', ['pendente', 'vencido'])
+          .lt('data_vencimento', dateRange.from);
+        
+        if (selectedContaBancaria.length > 0) {
+          saidasPendentesQuery = saidasPendentesQuery.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        
+        const { data: saidasPendentesData } = await saidasPendentesQuery;
+        saidasPendentesAnteriores = saidasPendentesData || [];
       }
 
-      // Calcular entradas e saídas anteriores ao período
-      const entradasAntesDoInicio = entradasAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
-      const saidasAntesDoInicio = saidasAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
+      // Calcular entradas e saídas anteriores ao período (realizadas + previsões)
+      const entradasPagasAntes = entradasPagasAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
+      const saidasPagasAntes = saidasPagasAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
+      const entradasPendentesAntes = entradasPendentesAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
+      const saidasPendentesAntes = saidasPendentesAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
 
-      // Saldo inicial do período = saldo inicial da conta + entradas antes do período - saídas antes do período
-      const saldoContas = saldoInicialContas + entradasAntesDoInicio - saidasAntesDoInicio;
+      // Saldo inicial do período = saldo inicial da conta + (entradas - saídas) anteriores ao período
+      // Inclui tanto realizadas (pagas) quanto previsões (pendentes/vencidas)
+      const saldoContas = saldoInicialContas + entradasPagasAntes + entradasPendentesAntes - saidasPagasAntes - saidasPendentesAntes;
 
       // Agregar dados de contas por data - separar realizados e previstos
       // Dados para a TABELA (todos os dias do período)
