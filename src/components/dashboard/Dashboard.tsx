@@ -406,6 +406,10 @@ export function Dashboard() {
           entradasPagasQuery = entradasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
         }
         
+        if (selectedCentroCusto !== 'todos') {
+          entradasPagasQuery = entradasPagasQuery.eq('centro_custo', selectedCentroCusto);
+        }
+        
         const { data: entradasPagasData } = await entradasPagasQuery;
         entradasPagasAnteriores = entradasPagasData || [];
         
@@ -418,6 +422,10 @@ export function Dashboard() {
         
         if (selectedContaBancaria.length > 0) {
           saidasPagasQuery = saidasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        
+        if (selectedCentroCusto !== 'todos') {
+          saidasPagasQuery = saidasPagasQuery.eq('centro_custo', selectedCentroCusto);
         }
         
         const { data: saidasPagasData } = await saidasPagasQuery;
@@ -434,6 +442,10 @@ export function Dashboard() {
           entradasPendentesQuery = entradasPendentesQuery.in('conta_bancaria_id', selectedContaBancaria);
         }
         
+        if (selectedCentroCusto !== 'todos') {
+          entradasPendentesQuery = entradasPendentesQuery.eq('centro_custo', selectedCentroCusto);
+        }
+        
         const { data: entradasPendentesData } = await entradasPendentesQuery;
         entradasPendentesAnteriores = entradasPendentesData || [];
         
@@ -446,6 +458,10 @@ export function Dashboard() {
         
         if (selectedContaBancaria.length > 0) {
           saidasPendentesQuery = saidasPendentesQuery.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        
+        if (selectedCentroCusto !== 'todos') {
+          saidasPendentesQuery = saidasPendentesQuery.eq('centro_custo', selectedCentroCusto);
         }
         
         const { data: saidasPendentesData } = await saidasPendentesQuery;
