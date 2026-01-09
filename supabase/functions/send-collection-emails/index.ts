@@ -17,6 +17,10 @@ interface ParcelaVencida {
   dias_atraso: number;
   contrato_numero?: string;
   servico_nome?: string;
+  numero_nf?: string;
+  link_nf?: string;
+  link_boleto?: string;
+  centro_custo?: string;
 }
 
 interface ClienteCobranca {
@@ -28,26 +32,86 @@ interface ClienteCobranca {
   max_dias_atraso: number;
 }
 
+interface EmailTemplate {
+  headerColor: string;
+  headerGradient: string;
+  title: string;
+  subtitle: string;
+  urgencyTag: string;
+  mainMessage: string;
+  warningMessage: string;
+  footerMessage: string;
+  showFreezeWarning: boolean;
+  freezeWarningColor: string;
+}
+
+// Get email template based on days overdue
+function getEmailTemplate(diasAtraso: number): EmailTemplate {
+  if (diasAtraso <= 5) {
+    // Nível 1: Tom Tranquilo (1-5 dias)
+    return {
+      headerColor: "#3b82f6",
+      headerGradient: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+      title: "Aviso de Cobrança",
+      subtitle: "Lembrete Financeiro",
+      urgencyTag: "[Importante]",
+      mainMessage: "Gostaríamos de lembrar que existem parcelas em aberto em sua conta. Entendemos que imprevistos acontecem, e estamos aqui para ajudá-lo(a) a regularizar sua situação.",
+      warningMessage: "Solicitamos gentilmente a regularização do pagamento para evitar a incidência de encargos adicionais.",
+      footerMessage: "Caso já tenha efetuado o pagamento, por favor desconsidere este aviso. Agradecemos sua atenção e parceria.",
+      showFreezeWarning: false,
+      freezeWarningColor: "",
+    };
+  } else if (diasAtraso <= 7) {
+    // Nível 2: Tom Arrojado (6-7 dias)
+    return {
+      headerColor: "#f97316",
+      headerGradient: "linear-gradient(135deg, #c2410c 0%, #f97316 100%)",
+      title: "Notificação de Cobrança",
+      subtitle: "Atenção Requerida",
+      urgencyTag: "[Notificação de Cobrança]",
+      mainMessage: "Verificamos que as parcelas abaixo permanecem em aberto em sua conta, mesmo após nossas tentativas anteriores de contato. Esta situação requer sua atenção imediata.",
+      warningMessage: "Solicitamos a regularização do pagamento o mais breve possível. O não pagamento poderá resultar em medidas adicionais e interrupção dos serviços.",
+      footerMessage: "Por favor, entre em contato conosco caso haja algum impedimento para o pagamento. Estamos disponíveis para negociar.",
+      showFreezeWarning: false,
+      freezeWarningColor: "",
+    };
+  } else {
+    // Nível 3: Tom Urgente (8+ dias)
+    return {
+      headerColor: "#dc2626",
+      headerGradient: "linear-gradient(135deg, #991b1b 0%, #dc2626 100%)",
+      title: "Notificação de Congelamento de Projeto",
+      subtitle: "URGENTE - Ação Imediata Necessária",
+      urgencyTag: "[Notificação de Congelamento de Projeto]",
+      mainMessage: "Esta é uma notificação urgente referente aos débitos em atraso crítico em sua conta. Apesar das tentativas anteriores de contato, não identificamos a regularização dos pagamentos pendentes.",
+      warningMessage: "O não pagamento em até 48 horas resultará no CONGELAMENTO IMEDIATO do projeto e suspensão de todos os serviços relacionados.",
+      footerMessage: "Entre em contato IMEDIATAMENTE para evitar a interrupção dos serviços. Esta é nossa última tentativa de resolução amigável.",
+      showFreezeWarning: true,
+      freezeWarningColor: "#dc2626",
+    };
+  }
+}
+
 // Get allowed send times based on days overdue
-// Returns array of hours when emails can be sent
 function getAllowedSendTimes(diasAtraso: number): number[] {
-  if (diasAtraso <= 1) return [11]; // 1 email at 11h
-  if (diasAtraso <= 3) return [11, 15]; // 2 emails at 11h and 15h
-  return [11, 15, 17]; // 3 emails at 11h, 15h and 17h for 4+ days
+  if (diasAtraso <= 1) return [11];
+  if (diasAtraso <= 3) return [11, 15];
+  return [11, 15, 17];
 }
 
 // Get max emails per day based on days overdue
 function getMaxEmailsPerDay(diasAtraso: number): number {
   if (diasAtraso <= 1) return 1;
   if (diasAtraso <= 3) return 2;
-  return 3; // 4+ days: 3 emails max
+  return 3;
 }
 
 // Get CC recipients based on days overdue
 function getCcRecipients(diasAtraso: number): string[] {
   const baseCc = ["financeiro@aeight.global"];
   
-  if (diasAtraso >= 6 && diasAtraso <= 7) {
+  // 6+ dias: adicionar stakeholders
+  if (diasAtraso >= 6) {
     return [...baseCc, "renato@aeight.global", "hugo@lomadee.com"];
   }
   
@@ -57,13 +121,11 @@ function getCcRecipients(diasAtraso: number): string[] {
 // Check if current time is within allowed send window
 function isWithinSendWindow(diasAtraso: number): boolean {
   const now = new Date();
-  // Get current hour in Brazil timezone (UTC-3)
   const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const currentHour = brasilTime.getHours();
   
   const allowedTimes = getAllowedSendTimes(diasAtraso);
   
-  // Check if current hour matches any allowed time (with 30 min tolerance)
   for (const allowedHour of allowedTimes) {
     if (currentHour === allowedHour) {
       return true;
@@ -83,7 +145,7 @@ function getCurrentSendSlot(): number {
   if (currentHour >= 15 && currentHour < 17) return 2;
   if (currentHour >= 17) return 3;
   
-  return 0; // Before 11h, no slot
+  return 0;
 }
 
 function formatCurrency(value: number): string {
@@ -98,20 +160,94 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString("pt-BR");
 }
 
-function buildEmailHtml(cliente: ClienteCobranca): string {
+// Build dynamic email subject
+function buildEmailSubject(
+  cliente: ClienteCobranca,
+  template: EmailTemplate,
+  numeroNf: string | null,
+  centroCusto: string | null
+): string {
+  const nfDisplay = numeroNf || "N/A";
+  const ccDisplay = centroCusto || "N/A";
+  
+  return `${template.urgencyTag} ${cliente.cliente_nome} - NF ${nfDisplay} - Aviso de Cobrança - ${formatCurrency(cliente.total_vencido)} - ${ccDisplay}`;
+}
+
+// Build attachments from parcela links
+function buildAttachments(parcelas: ParcelaVencida[]): Array<{ path: string; filename: string }> {
+  const attachments: Array<{ path: string; filename: string }> = [];
+  const addedUrls = new Set<string>();
+  
+  for (const parcela of parcelas) {
+    // Add NF if available and not already added
+    if (parcela.link_nf && !addedUrls.has(parcela.link_nf)) {
+      const nfFilename = parcela.numero_nf 
+        ? `NF_${parcela.numero_nf}.pdf`
+        : `NF_${formatDate(parcela.data_vencimento).replace(/\//g, '-')}.pdf`;
+      
+      attachments.push({
+        path: parcela.link_nf,
+        filename: nfFilename,
+      });
+      addedUrls.add(parcela.link_nf);
+    }
+    
+    // Add Boleto if available and not already added
+    if (parcela.link_boleto && !addedUrls.has(parcela.link_boleto)) {
+      const boletoFilename = `Boleto_${formatDate(parcela.data_vencimento).replace(/\//g, '-')}.pdf`;
+      
+      attachments.push({
+        path: parcela.link_boleto,
+        filename: boletoFilename,
+      });
+      addedUrls.add(parcela.link_boleto);
+    }
+  }
+  
+  return attachments;
+}
+
+function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): string {
   const parcelasRows = cliente.parcelas
     .map(
       (p) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.contrato_numero || "-"}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.servico_nome || "-"}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.numero_nf || "-"}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${formatDate(p.data_vencimento)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #dc2626; font-weight: 600;">${p.dias_atraso} dias</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: ${template.headerColor}; font-weight: 600;">${p.dias_atraso} dias</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right; font-weight: 600;">${formatCurrency(p.valor)}</td>
       </tr>
     `
     )
     .join("");
+
+  const freezeWarningHtml = template.showFreezeWarning ? `
+    <div style="background-color: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin: 0 0 24px 0; text-align: center;">
+      <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: #dc2626;">⚠️ AVISO DE CONGELAMENTO ⚠️</p>
+      <p style="margin: 0; font-size: 14px; color: #991b1b;">
+        O projeto será <strong>CONGELADO</strong> em até <strong>48 horas</strong> caso o pagamento não seja regularizado.
+        Todos os serviços serão suspensos até a quitação do débito.
+      </p>
+    </div>
+  ` : "";
+
+  const attachmentNotice = `
+    <div style="background-color: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; margin: 0 0 24px 0;">
+      <p style="margin: 0; font-size: 14px; color: #166534;">
+        📎 <strong>Anexos:</strong> Este e-mail inclui a Nota Fiscal e o Boleto para pagamento em anexo (quando disponíveis).
+      </p>
+    </div>
+  `;
+
+  const totalBoxGradient = template.showFreezeWarning 
+    ? "linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)"
+    : template.headerColor === "#f97316"
+      ? "linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)"
+      : "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)";
+
+  const totalTextColor = template.showFreezeWarning ? "#991b1b" : template.headerColor === "#f97316" ? "#9a3412" : "#78350f";
 
   return `
 <!DOCTYPE html>
@@ -121,13 +257,13 @@ function buildEmailHtml(cliente: ClienteCobranca): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="max-width: 650px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
       
       <!-- Header -->
-      <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 32px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Aviso de Cobrança</h1>
-        <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px;">Financeiro Aeight</p>
+      <div style="background: ${template.headerGradient}; padding: 32px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">${template.title}</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">${template.subtitle}</p>
       </div>
       
       <!-- Content -->
@@ -137,8 +273,10 @@ function buildEmailHtml(cliente: ClienteCobranca): string {
         </p>
         
         <p style="font-size: 15px; margin: 0 0 24px 0; color: #4b5563;">
-          Identificamos que existem parcelas em aberto em sua conta. Segue abaixo o detalhamento:
+          ${template.mainMessage}
         </p>
+
+        ${freezeWarningHtml}
         
         <!-- Table -->
         <div style="overflow-x: auto; margin: 0 0 24px 0;">
@@ -147,6 +285,7 @@ function buildEmailHtml(cliente: ClienteCobranca): string {
               <tr style="background-color: #f9fafb;">
                 <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Contrato</th>
                 <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Serviço</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">NF</th>
                 <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Vencimento</th>
                 <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Atraso</th>
                 <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Valor</th>
@@ -159,17 +298,19 @@ function buildEmailHtml(cliente: ClienteCobranca): string {
         </div>
         
         <!-- Total -->
-        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 8px; padding: 20px; text-align: center; margin: 0 0 24px 0;">
-          <p style="margin: 0; font-size: 14px; color: #92400e; font-weight: 500;">Total em Aberto</p>
-          <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: #78350f;">${formatCurrency(cliente.total_vencido)}</p>
+        <div style="background: ${totalBoxGradient}; border-radius: 8px; padding: 20px; text-align: center; margin: 0 0 24px 0;">
+          <p style="margin: 0; font-size: 14px; color: ${totalTextColor}; font-weight: 500;">Total em Aberto</p>
+          <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: ${totalTextColor};">${formatCurrency(cliente.total_vencido)}</p>
         </div>
+
+        ${attachmentNotice}
         
-        <p style="font-size: 15px; margin: 0 0 16px 0; color: #4b5563;">
-          Solicitamos a regularização do pagamento o mais breve possível para evitar a incidência de encargos adicionais.
+        <p style="font-size: 15px; margin: 0 0 16px 0; color: #4b5563; ${template.showFreezeWarning ? 'font-weight: 600;' : ''}">
+          ${template.warningMessage}
         </p>
         
         <p style="font-size: 15px; margin: 0 0 24px 0; color: #4b5563;">
-          Caso já tenha efetuado o pagamento, por favor desconsidere este aviso.
+          ${template.footerMessage}
         </p>
         
         <!-- Contact -->
@@ -229,7 +370,7 @@ serve(async (req: Request): Promise<Response> => {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    // Fetch overdue receivables
+    // Fetch overdue receivables with NF and Boleto links
     let query = supabase
       .from("contas_receber")
       .select(`
@@ -239,12 +380,17 @@ serve(async (req: Request): Promise<Response> => {
         valor,
         cliente_id,
         parcela_id,
+        numero_nf,
+        link_nf,
+        link_boleto,
+        centro_custo,
         clientes(id, razao_social, email),
         parcelas_contrato(
           contrato_id,
           contratos(
             numero_contrato,
-            servicos
+            servicos,
+            centro_custo
           )
         )
       `)
@@ -274,6 +420,10 @@ serve(async (req: Request): Promise<Response> => {
     const { data: servicos } = await supabase.from("servicos").select("id, codigo, nome");
     const servicosMap = new Map(servicos?.map((s: any) => [s.id, `${s.codigo} - ${s.nome}`]) || []);
 
+    // Fetch centros de custo for mapping
+    const { data: centrosCusto } = await supabase.from("centros_custo").select("id, codigo, descricao");
+    const centrosCustoMap = new Map(centrosCusto?.map((cc: any) => [cc.id, `${cc.codigo} - ${cc.descricao}`]) || []);
+
     // Group by client
     const clientesMap = new Map<string, ClienteCobranca>();
 
@@ -290,6 +440,10 @@ serve(async (req: Request): Promise<Response> => {
       // Get contract and service info
       let contratoNumero = "";
       let servicoNome = "";
+      let centroCustoNome = "";
+      
+      // Try to get centro_custo from conta first, then from contract
+      let centroCustoId = conta.centro_custo;
       
       if (conta.parcelas_contrato) {
         const parcela = conta.parcelas_contrato as any;
@@ -300,7 +454,16 @@ serve(async (req: Request): Promise<Response> => {
             const primeiroServico = servicosJson[0];
             servicoNome = servicosMap.get(primeiroServico) || "";
           }
+          // Use contract's centro_custo if conta doesn't have one
+          if (!centroCustoId && parcela.contratos.centro_custo) {
+            centroCustoId = parcela.contratos.centro_custo;
+          }
         }
+      }
+
+      // Get centro de custo name
+      if (centroCustoId) {
+        centroCustoNome = centrosCustoMap.get(centroCustoId) || centroCustoId;
       }
 
       const parcela: ParcelaVencida = {
@@ -311,6 +474,10 @@ serve(async (req: Request): Promise<Response> => {
         dias_atraso: diasAtraso,
         contrato_numero: contratoNumero,
         servico_nome: servicoNome,
+        numero_nf: conta.numero_nf,
+        link_nf: conta.link_nf,
+        link_boleto: conta.link_boleto,
+        centro_custo: centroCustoNome,
       };
 
       if (!clientesMap.has(cliente.id)) {
@@ -379,20 +546,47 @@ serve(async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // Build email content
-      const htmlContent = buildEmailHtml(clienteData);
+      // Get email template based on days overdue
+      const template = getEmailTemplate(diasAtraso);
+      
+      // Build email content with template
+      const htmlContent = buildEmailHtml(clienteData, template);
+      
+      // Build dynamic subject
+      const primeiroNumeroNf = clienteData.parcelas.find(p => p.numero_nf)?.numero_nf || null;
+      const primeiroCentroCusto = clienteData.parcelas.find(p => p.centro_custo)?.centro_custo || null;
+      const subject = buildEmailSubject(clienteData, template, primeiroNumeroNf, primeiroCentroCusto);
       
       // Get CC recipients based on days overdue
       const ccRecipients = getCcRecipients(diasAtraso);
+      
+      // Build attachments from parcelas
+      const attachments = buildAttachments(clienteData.parcelas);
 
       try {
-        const emailResponse = await resend.emails.send({
+        console.log(`Sending email to ${clienteData.cliente_nome}:`, {
+          template: template.urgencyTag,
+          diasAtraso,
+          ccRecipients,
+          attachmentsCount: attachments.length,
+          subject,
+        });
+
+        const emailPayload: any = {
           from: "Financeiro Aeight <cobranca@financeiro.aeight.global>",
           to: clienteData.emails,
           cc: ccRecipients,
-          subject: `Aviso de Cobrança - ${formatCurrency(clienteData.total_vencido)} em aberto`,
+          subject,
           html: htmlContent,
-        });
+        };
+
+        // Only add attachments if there are any
+        if (attachments.length > 0) {
+          emailPayload.attachments = attachments;
+          console.log(`Including ${attachments.length} attachments:`, attachments.map(a => a.filename));
+        }
+
+        const emailResponse = await resend.emails.send(emailPayload);
 
         console.log(`Email sent to ${clienteData.cliente_nome} (CC: ${ccRecipients.join(", ")}):`, emailResponse);
 
