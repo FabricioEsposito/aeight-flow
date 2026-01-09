@@ -1112,8 +1112,27 @@ export default function Extrato() {
     .filter(l => l.tipo === 'saida' && (l.status === 'pendente' || l.status === 'vencido'))
     .reduce((acc, l) => acc + l.valor, 0);
 
+  // Pendentes atrasados: ainda com status "pendente", mas vencimento < hoje.
+  // (Isso antes gerava divergência entre "Previsto" da tabela vs card/dashboard.)
+  const todayLocal = new Date();
+  todayLocal.setHours(0, 0, 0, 0);
+
+  const pendentesAtrasadosNoPeriodo = lancamentosNoPeriodoFiltrado.filter(l => {
+    if (l.status !== 'pendente') return false;
+    const venc = new Date(l.data_vencimento + 'T00:00:00');
+    return venc < todayLocal;
+  });
+
+  const pendentesAtrasadosReceber = pendentesAtrasadosNoPeriodo
+    .filter(l => l.tipo === 'entrada')
+    .reduce((acc, l) => acc + l.valor, 0);
+
+  const pendentesAtrasadosPagar = pendentesAtrasadosNoPeriodo
+    .filter(l => l.tipo === 'saida')
+    .reduce((acc, l) => acc + l.valor, 0);
+
   // Saldo final = saldo inicial + entradas no período - saídas no período
-  // Para previsão incluindo pendentes: + a receber - a pagar
+  // Para previsão incluindo pendentes/vencidos (inclusive pendentes atrasados): + a receber - a pagar
   const saldoFinal = saldoInicial + entradasNoPeriodo + totalReceber - saidasNoPeriodo - totalPagar;
 
   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
@@ -1219,14 +1238,20 @@ export default function Extrato() {
         </Card>
 
         <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
               <p className="text-sm text-muted-foreground">Saldo Final Previsto</p>
               <p className={`text-2xl font-bold ${saldoFinal >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
                 {formatCurrency(saldoFinal)}
               </p>
+
+              {(pendentesAtrasadosReceber !== 0 || pendentesAtrasadosPagar !== 0) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Inclui pendentes atrasados (status pendente com vencimento &lt; hoje): +{formatCurrency(pendentesAtrasadosReceber)} / -{formatCurrency(pendentesAtrasadosPagar)}
+                </p>
+              )}
             </div>
-            <BarChart3 className="w-8 h-8 text-primary" />
+            <BarChart3 className="w-8 h-8 text-primary shrink-0" />
           </div>
         </Card>
       </div>
@@ -1406,20 +1431,26 @@ export default function Extrato() {
                 // O índice real na lista completa é startIndex (offset da paginação) + index (posição na página atual)
                 const realIndex = startIndex + index;
                 const lancamentosAteAqui = filteredLancamentos.slice(0, realIndex + 1);
-                const saldoRealizado = saldoInicial + 
-                  lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0) -
-                  lancamentosAteAqui.filter(l => l.status === 'pago' && l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0);
 
-                // Calcular saldo previsto (realizado + em dia)
-                const saldoPrevisto = saldoRealizado +
-                  lancamentosAteAqui.filter(l => {
-                    const dataV = new Date(l.data_vencimento + 'T00:00:00');
-                    return l.status === 'pendente' && dataV >= hoje && l.tipo === 'entrada';
-                  }).reduce((acc, l) => acc + l.valor, 0) -
-                  lancamentosAteAqui.filter(l => {
-                    const dataV = new Date(l.data_vencimento + 'T00:00:00');
-                    return l.status === 'pendente' && dataV >= hoje && l.tipo === 'saida';
-                  }).reduce((acc, l) => acc + l.valor, 0);
+                const saldoRealizado =
+                  saldoInicial +
+                  lancamentosAteAqui
+                    .filter(l => l.status === 'pago' && l.tipo === 'entrada')
+                    .reduce((acc, l) => acc + l.valor, 0) -
+                  lancamentosAteAqui
+                    .filter(l => l.status === 'pago' && l.tipo === 'saida')
+                    .reduce((acc, l) => acc + l.valor, 0);
+
+                // Calcular saldo previsto (realizado + pendentes/vencidos até aqui)
+                // Regra alinhada com card do Extrato e Dashboard: inclui pendentes atrasados também.
+                const saldoPrevisto =
+                  saldoRealizado +
+                  lancamentosAteAqui
+                    .filter(l => (l.status === 'pendente' || l.status === 'vencido') && l.tipo === 'entrada')
+                    .reduce((acc, l) => acc + l.valor, 0) -
+                  lancamentosAteAqui
+                    .filter(l => (l.status === 'pendente' || l.status === 'vencido') && l.tipo === 'saida')
+                    .reduce((acc, l) => acc + l.valor, 0);
 
                 return (
                   <TableRow key={lanc.id}>
@@ -1523,12 +1554,16 @@ export default function Extrato() {
                       <div className="flex flex-col items-end">
                         {lanc.status === 'pago' ? (
                           <span>{formatCurrency(saldoRealizado)}</span>
-                        ) : isVencido ? (
-                          <span className="text-muted-foreground">{formatCurrency(saldoRealizado)}</span>
                         ) : (
                           <>
                             <span className="text-xs text-muted-foreground">Previsto:</span>
                             <span>{formatCurrency(saldoPrevisto)}</span>
+
+                            {isVencido && (
+                              <span className="text-xs text-muted-foreground">
+                                Realizado: {formatCurrency(saldoRealizado)}
+                              </span>
+                            )}
                           </>
                         )}
                       </div>
