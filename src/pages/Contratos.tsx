@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContratosTable } from '@/components/contratos/ContratosTable';
 import { ReativarContratoDialog } from '@/components/contratos/ReativarContratoDialog';
+import { BatchEditContratosDialog } from '@/components/contratos/BatchEditContratosDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
@@ -53,6 +54,8 @@ export default function Contratos() {
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchEditOpen, setBatchEditOpen] = useState(false);
 
   const fetchCentrosCusto = async () => {
     const { data } = await supabase
@@ -291,10 +294,18 @@ export default function Contratos() {
           <p className="text-muted-foreground">Gerencie seus contratos de venda e compra</p>
         </div>
         
-        <Button onClick={() => navigate('/contratos/novo')}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Contrato
-        </Button>
+        <div className="flex gap-2">
+          {selectedIds.length > 0 && (
+            <Button variant="outline" onClick={() => setBatchEditOpen(true)}>
+              <Edit2 className="w-4 h-4 mr-2" />
+              Editar em Lote ({selectedIds.length})
+            </Button>
+          )}
+          <Button onClick={() => navigate('/contratos/novo')}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Contrato
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
@@ -357,6 +368,8 @@ export default function Contratos() {
           onDelete={handleDelete}
           onInactivate={handleInactivate}
           onReactivate={handleReactivateClick}
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
         />
 
         {filteredContratos.length > 0 && (
@@ -375,6 +388,16 @@ export default function Contratos() {
         onOpenChange={setReativarDialogOpen}
         onConfirm={handleReactivate}
         contratoNumero={contratoParaReativar?.numero}
+      />
+
+      <BatchEditContratosDialog
+        open={batchEditOpen}
+        onOpenChange={setBatchEditOpen}
+        selectedIds={selectedIds}
+        onSuccess={() => {
+          setSelectedIds([]);
+          fetchContratos();
+        }}
       />
     </div>
   );

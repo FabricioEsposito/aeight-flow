@@ -2,6 +2,7 @@ import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket, RefreshCw } from 'luc
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,9 +55,40 @@ interface ContratosTableProps {
   onDelete: (id: string) => void;
   onInactivate: (id: string) => void;
   onReactivate: (id: string, numeroContrato: string) => void;
+  selectedIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
 }
 
-export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactivate, onReactivate }: ContratosTableProps) {
+export function ContratosTable({ 
+  contratos, 
+  onView, 
+  onEdit, 
+  onDelete, 
+  onInactivate, 
+  onReactivate,
+  selectedIds = [],
+  onSelectionChange,
+}: ContratosTableProps) {
+  const isSelectable = !!onSelectionChange;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (onSelectionChange) {
+      onSelectionChange(checked ? contratos.map(c => c.id) : []);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (onSelectionChange) {
+      if (checked) {
+        onSelectionChange([...selectedIds, id]);
+      } else {
+        onSelectionChange(selectedIds.filter(sid => sid !== id));
+      }
+    }
+  };
+
+  const allSelected = contratos.length > 0 && selectedIds.length === contratos.length;
+  const someSelected = selectedIds.length > 0 && selectedIds.length < contratos.length;
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -123,6 +155,19 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
       <Table>
         <TableHeader>
           <TableRow>
+            {isSelectable && (
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) {
+                      (el as any).indeterminate = someSelected;
+                    }
+                  }}
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
+            )}
             <TableHead>Data</TableHead>
             <TableHead>Razão Social</TableHead>
             <TableHead>Nome Fantasia</TableHead>
@@ -140,16 +185,25 @@ export function ContratosTable({ contratos, onView, onEdit, onDelete, onInactiva
         <TableBody>
           {contratos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={isSelectable ? 13 : 12} className="text-center text-muted-foreground py-8">
                 Nenhum contrato encontrado
               </TableCell>
             </TableRow>
           ) : (
             contratos.map((contrato) => {
               const valorBruto = contrato.valor_bruto || (contrato.quantidade && contrato.valor_unitario ? contrato.quantidade * contrato.valor_unitario : contrato.valor_total);
+              const isSelected = selectedIds.includes(contrato.id);
               
               return (
-                <TableRow key={contrato.id}>
+                <TableRow key={contrato.id} className={isSelected ? 'bg-muted/50' : ''}>
+                  {isSelectable && (
+                    <TableCell>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => handleSelectOne(contrato.id, checked === true)}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>{formatDate(contrato.data_inicio)}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
