@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus, Pencil, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -15,6 +16,12 @@ interface ImportarLancamentosDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+}
+
+interface NovosCadastrosContato {
+  email?: string;
+  telefone?: string;
+  nomeFantasia?: string;
 }
 
 interface PreviewRow {
@@ -42,11 +49,13 @@ interface PreviewRow {
 }
 
 export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: ImportarLancamentosDialogProps) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'importing'>('upload');
+  const [step, setStep] = useState<'upload' | 'preview' | 'edit-novos' | 'importing'>('upload');
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, success: 0, errors: 0, created: 0 });
   const [autoCriarClienteFornecedor, setAutoCriarClienteFornecedor] = useState(true);
+  // Map de CNPJ para dados de contato dos novos cadastros
+  const [novosCadastrosContato, setNovosCadastrosContato] = useState<Map<string, NovosCadastrosContato>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -371,6 +380,52 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return digits.length === 11 ? 'fisica' : 'juridica';
   };
 
+  // Obter lista única de novos cadastros a serem criados
+  const getNovosCadastrosUnicos = () => {
+    const novos = new Map<string, { cnpj: string; nome: string; tipo: 'cliente' | 'fornecedor' }>();
+    previewData.forEach(row => {
+      if (row.willCreateClienteFornecedor && row.cnpjCpfParaCriar) {
+        const cnpjKey = row.cnpjCpfParaCriar.replace(/[^\d]/g, '');
+        if (!novos.has(cnpjKey)) {
+          novos.set(cnpjKey, {
+            cnpj: row.cnpjCpfParaCriar,
+            nome: row.nomeParaCriar || (row.tipo === 'entrada' ? `Cliente ${row.cnpjCpfParaCriar}` : `Fornecedor ${row.cnpjCpfParaCriar}`),
+            tipo: row.tipo === 'entrada' ? 'cliente' : 'fornecedor',
+          });
+        }
+      }
+    });
+    return novos;
+  };
+
+  const updateNovoContato = (cnpjKey: string, field: keyof NovosCadastrosContato, value: string) => {
+    setNovosCadastrosContato(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(cnpjKey) || {};
+      newMap.set(cnpjKey, { ...current, [field]: value });
+      return newMap;
+    });
+  };
+
+  const handleProceedToEditNovos = () => {
+    const novos = getNovosCadastrosUnicos();
+    if (novos.size > 0) {
+      // Inicializar o map de contatos para os novos cadastros
+      const initialContatos = new Map<string, NovosCadastrosContato>();
+      novos.forEach((data, cnpjKey) => {
+        initialContatos.set(cnpjKey, {
+          nomeFantasia: '',
+          email: '',
+          telefone: '',
+        });
+      });
+      setNovosCadastrosContato(initialContatos);
+      setStep('edit-novos');
+    } else {
+      handleImport();
+    }
+  };
+
   const handleImport = async () => {
     const validRows = previewData.filter(row => row.valid);
     if (validRows.length === 0) {
@@ -410,11 +465,15 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             if (createdClientes.has(cnpjKey)) {
               clienteId = createdClientes.get(cnpjKey);
             } else {
+              const contato = novosCadastrosContato.get(cnpjKey) || {};
               const { data: novoCliente, error } = await supabase
                 .from('clientes')
                 .insert({
                   cnpj_cpf: formatCnpjCpf(row.cnpjCpfParaCriar),
                   razao_social: row.nomeParaCriar || `Cliente ${row.cnpjCpfParaCriar}`,
+                  nome_fantasia: contato.nomeFantasia || null,
+                  email: contato.email ? [contato.email] : null,
+                  telefone: contato.telefone || null,
                   tipo_pessoa: determineTipoPessoa(row.cnpjCpfParaCriar),
                   status: 'ativo',
                 })
@@ -431,11 +490,15 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             if (createdFornecedores.has(cnpjKey)) {
               fornecedorId = createdFornecedores.get(cnpjKey);
             } else {
+              const contato = novosCadastrosContato.get(cnpjKey) || {};
               const { data: novoFornecedor, error } = await supabase
                 .from('fornecedores')
                 .insert({
                   cnpj_cpf: formatCnpjCpf(row.cnpjCpfParaCriar),
                   razao_social: row.nomeParaCriar || `Fornecedor ${row.cnpjCpfParaCriar}`,
+                  nome_fantasia: contato.nomeFantasia || null,
+                  email: contato.email ? [contato.email] : null,
+                  telefone: contato.telefone || null,
                   tipo_pessoa: determineTipoPessoa(row.cnpjCpfParaCriar),
                   status: 'ativo',
                 })
@@ -514,6 +577,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       onOpenChange(false);
       setStep('upload');
       setPreviewData([]);
+      setNovosCadastrosContato(new Map());
     }
   };
 
@@ -681,10 +745,17 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
               <Button variant="outline" onClick={() => setStep('upload')}>
                 Voltar
               </Button>
-              <Button onClick={handleImport} disabled={validCount === 0}>
-                <Upload className="w-4 h-4 mr-2" />
-                Importar {validCount} Lançamento(s)
-              </Button>
+              {previewData.some(r => r.willCreateClienteFornecedor) ? (
+                <Button onClick={handleProceedToEditNovos} disabled={validCount === 0}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Revisar Novos Cadastros ({getNovosCadastrosUnicos().size})
+                </Button>
+              ) : (
+                <Button onClick={handleImport} disabled={validCount === 0}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importar {validCount} Lançamento(s)
+                </Button>
+              )}
             </DialogFooter>
           </div>
         )}
@@ -713,6 +784,91 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                 <span className="text-destructive">{progress.errors} erros</span>
               )}
             </div>
+          </div>
+        )}
+
+        {step === 'edit-novos' && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <UserPlus className="w-5 h-5 text-primary" />
+              <div>
+                <p className="font-medium text-sm">Novos Cadastros</p>
+                <p className="text-xs text-muted-foreground">
+                  Adicione informações de contato para os novos clientes/fornecedores antes de importar
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 max-h-[400px] overflow-auto">
+              {Array.from(getNovosCadastrosUnicos()).map(([cnpjKey, data]) => {
+                const contato = novosCadastrosContato.get(cnpjKey) || {};
+                return (
+                  <div key={cnpjKey} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Badge variant={data.tipo === 'cliente' ? 'default' : 'secondary'} className="mb-1">
+                          {data.tipo === 'cliente' ? 'Novo Cliente' : 'Novo Fornecedor'}
+                        </Badge>
+                        <p className="font-medium">{data.nome}</p>
+                        <p className="text-sm text-muted-foreground">CNPJ/CPF: {formatCnpjCpf(data.cnpj)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`nome-fantasia-${cnpjKey}`} className="text-xs">
+                          Nome Fantasia
+                        </Label>
+                        <Input
+                          id={`nome-fantasia-${cnpjKey}`}
+                          placeholder="Nome fantasia (opcional)"
+                          value={contato.nomeFantasia || ''}
+                          onChange={(e) => updateNovoContato(cnpjKey, 'nomeFantasia', e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`email-${cnpjKey}`} className="text-xs flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          E-mail
+                        </Label>
+                        <Input
+                          id={`email-${cnpjKey}`}
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          value={contato.email || ''}
+                          onChange={(e) => updateNovoContato(cnpjKey, 'email', e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`telefone-${cnpjKey}`} className="text-xs flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          Telefone
+                        </Label>
+                        <Input
+                          id={`telefone-${cnpjKey}`}
+                          placeholder="(00) 00000-0000"
+                          value={contato.telefone || ''}
+                          onChange={(e) => updateNovoContato(cnpjKey, 'telefone', e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep('preview')}>
+                Voltar
+              </Button>
+              <Button onClick={handleImport}>
+                <Upload className="w-4 h-4 mr-2" />
+                Importar {validCount} Lançamento(s)
+              </Button>
+            </DialogFooter>
           </div>
         )}
       </DialogContent>
