@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateType
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDialog';
+import { ImportarLancamentosDialog } from '@/components/financeiro/ImportarLancamentosDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { format } from 'date-fns';
@@ -46,6 +47,7 @@ interface LancamentoExtrato {
   importancia_contrato?: string;
   centro_custo?: string;
   plano_conta_id?: string;
+  plano_conta_descricao?: string;
   conta_bancaria_id?: string;
   valor_original?: number;
   juros?: number;
@@ -86,6 +88,8 @@ export default function Extrato() {
   const [partialPaymentLancamento, setPartialPaymentLancamento] = useState<LancamentoExtrato | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
@@ -202,6 +206,14 @@ export default function Extrato() {
       const dateFieldReceber = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
       const dateFieldPagar = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
       
+      // Buscar plano de contas para lookup
+      const { data: planoContasData } = await supabase
+        .from('plano_contas')
+        .select('id, codigo, descricao');
+      
+      const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
+      setPlanoContas(planoContasData || []);
+      
       // Buscar contas a receber - query principal pelo campo selecionado
       let queryReceber = supabase
         .from('contas_receber')
@@ -302,6 +314,8 @@ export default function Extrato() {
 
       // Buscar detalhes dos serviços para contas a receber
       const receberComServicos = await Promise.all(dataReceberFiltrado.map(async (r: any) => {
+        const planoContaInfo = r.plano_conta_id ? planoContasMap.get(r.plano_conta_id) : null;
+        
         const lancamento: any = {
           id: r.id,
           tipo: 'entrada' as const,
@@ -318,6 +332,7 @@ export default function Extrato() {
           importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
           centro_custo: r.centro_custo,
           plano_conta_id: r.plano_conta_id,
+          plano_conta_descricao: planoContaInfo ? `${planoContaInfo.codigo} - ${planoContaInfo.descricao}` : undefined,
           conta_bancaria_id: r.conta_bancaria_id,
           valor_original: r.valor_original,
           juros: r.juros,
@@ -358,6 +373,8 @@ export default function Extrato() {
 
       // Buscar detalhes dos serviços para contas a pagar
       const pagarComServicos = await Promise.all(dataPagarFiltrado.map(async (p: any) => {
+        const planoContaInfo = p.plano_conta_id ? planoContasMap.get(p.plano_conta_id) : null;
+        
         const lancamento: any = {
           id: p.id,
           tipo: 'saida' as const,
@@ -374,6 +391,7 @@ export default function Extrato() {
           importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
           centro_custo: p.centro_custo,
           plano_conta_id: p.plano_conta_id,
+          plano_conta_descricao: planoContaInfo ? `${planoContaInfo.codigo} - ${planoContaInfo.descricao}` : undefined,
           conta_bancaria_id: p.conta_bancaria_id,
           valor_original: p.valor_original,
           juros: p.juros,
@@ -989,8 +1007,11 @@ export default function Extrato() {
   };
 
   const filteredLancamentos = lancamentos.filter(lanc => {
-    const matchesSearch = lanc.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (lanc.cliente_fornecedor || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      lanc.descricao.toLowerCase().includes(searchLower) ||
+      (lanc.cliente_fornecedor || '').toLowerCase().includes(searchLower) ||
+      (lanc.plano_conta_descricao || '').toLowerCase().includes(searchLower);
     const matchesTipo = tipoFilter === 'todos' || lanc.tipo === tipoFilter;
     
     const displayStatus = getDisplayStatus(lanc);
@@ -1185,6 +1206,10 @@ export default function Extrato() {
             dateRange={getDateRange()}
             contasBancarias={contasBancarias}
           />
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Importar Excel
+          </Button>
           <Button onClick={() => setNovoLancamentoOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Lançamento
@@ -1277,7 +1302,7 @@ export default function Extrato() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Buscar movimentações..."
+              placeholder="Buscar por descrição, cliente/fornecedor ou categoria..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-background"
@@ -1620,6 +1645,12 @@ export default function Extrato() {
         open={novoLancamentoOpen}
         onOpenChange={setNovoLancamentoOpen}
         onSave={fetchLancamentos}
+      />
+
+      <ImportarLancamentosDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={fetchLancamentos}
       />
 
       <ViewInfoDialog
