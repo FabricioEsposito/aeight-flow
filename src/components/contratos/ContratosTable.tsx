@@ -53,7 +53,7 @@ interface ContratosTableProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  onInactivate: (id: string) => void;
+  onInactivate: (id: string, numeroContrato: string) => void;
   onReactivate: (id: string, numeroContrato: string) => void;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
@@ -292,7 +292,7 @@ export function ContratosTable({
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem 
-                            onClick={() => onInactivate(contrato.id)}
+                            onClick={() => onInactivate(contrato.id, contrato.numero_contrato)}
                           >
                             <XCircle className="h-4 w-4 mr-2" />
                             Inativar
