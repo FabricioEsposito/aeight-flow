@@ -54,7 +54,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Valor': 1500.50,
         'Data Vencimento (DD/MM/AAAA)': format(new Date(), 'dd/MM/yyyy'),
         'Data Competência (DD/MM/AAAA)': format(new Date(), 'dd/MM/yyyy'),
-        'Cliente/Fornecedor (Nome Fantasia ou Razão Social)': 'Nome do Cliente ou Fornecedor',
+        'CNPJ/CPF': '00.000.000/0001-00',
+        'Cliente/Fornecedor (Nome Fantasia ou Razão Social)': '',
         'Plano de Contas (Código)': '1.1.01',
         'Centro de Custo (Código)': 'CC001',
         'Conta Bancária (Descrição)': 'Conta Principal',
@@ -65,6 +66,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Valor': 500.00,
         'Data Vencimento (DD/MM/AAAA)': format(new Date(), 'dd/MM/yyyy'),
         'Data Competência (DD/MM/AAAA)': format(new Date(), 'dd/MM/yyyy'),
+        'CNPJ/CPF': '',
         'Cliente/Fornecedor (Nome Fantasia ou Razão Social)': 'Nome do Fornecedor',
         'Plano de Contas (Código)': '2.1.01',
         'Centro de Custo (Código)': '',
@@ -83,6 +85,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       { wch: 15 }, // Valor
       { wch: 25 }, // Data Vencimento
       { wch: 25 }, // Data Competência
+      { wch: 22 }, // CNPJ/CPF
       { wch: 45 }, // Cliente/Fornecedor
       { wch: 25 }, // Plano de Contas
       { wch: 25 }, // Centro de Custo
@@ -148,8 +151,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
       // Buscar dados para validação
       const [clientesRes, fornecedoresRes, planoContasRes, centrosCustoRes, contasBancariasRes] = await Promise.all([
-        supabase.from('clientes').select('id, razao_social, nome_fantasia'),
-        supabase.from('fornecedores').select('id, razao_social, nome_fantasia'),
+        supabase.from('clientes').select('id, razao_social, nome_fantasia, cnpj_cpf'),
+        supabase.from('fornecedores').select('id, razao_social, nome_fantasia, cnpj_cpf'),
         supabase.from('plano_contas').select('id, codigo, descricao').eq('status', 'ativo'),
         supabase.from('centros_custo').select('id, codigo, descricao').eq('status', 'ativo'),
         supabase.from('contas_bancarias').select('id, descricao, banco').eq('status', 'ativo'),
@@ -190,35 +193,55 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         if (!dataVencimento) errors.push('Data de vencimento inválida');
         if (!dataCompetencia) errors.push('Data de competência inválida');
 
+        // CNPJ/CPF - prioridade para busca
+        const cnpjCpf = (row['CNPJ/CPF'] || row['CNPJ'] || row['CPF'] || '').toString().trim().replace(/[^\d]/g, '');
+        
         // Cliente/Fornecedor
         const clienteFornecedorNome = (row['Cliente/Fornecedor (Nome Fantasia ou Razão Social)'] || row['Cliente/Fornecedor'] || '').toString().trim();
         let cliente_id: string | undefined;
         let fornecedor_id: string | undefined;
+        let nomeEncontrado = '';
 
-        if (clienteFornecedorNome) {
-          if (tipo === 'entrada') {
-            const cliente = clientes.find(c => 
+        if (tipo === 'entrada') {
+          // Buscar cliente: primeiro por CNPJ, depois por nome
+          let cliente;
+          if (cnpjCpf) {
+            cliente = clientes.find(c => c.cnpj_cpf?.replace(/[^\d]/g, '') === cnpjCpf);
+          }
+          if (!cliente && clienteFornecedorNome) {
+            cliente = clientes.find(c => 
               c.nome_fantasia?.toLowerCase() === clienteFornecedorNome.toLowerCase() ||
               c.razao_social?.toLowerCase() === clienteFornecedorNome.toLowerCase()
             );
-            if (cliente) {
-              cliente_id = cliente.id;
-            } else {
-              errors.push(`Cliente "${clienteFornecedorNome}" não encontrado`);
-            }
-          } else if (tipo === 'saida') {
-            const fornecedor = fornecedores.find(f => 
+          }
+          if (cliente) {
+            cliente_id = cliente.id;
+            nomeEncontrado = cliente.nome_fantasia || cliente.razao_social;
+          } else if (cnpjCpf || clienteFornecedorNome) {
+            errors.push(`Cliente não encontrado (CNPJ: ${cnpjCpf || 'N/A'}, Nome: ${clienteFornecedorNome || 'N/A'})`);
+          } else {
+            errors.push('CNPJ ou Nome do Cliente é obrigatório');
+          }
+        } else if (tipo === 'saida') {
+          // Buscar fornecedor: primeiro por CNPJ, depois por nome
+          let fornecedor;
+          if (cnpjCpf) {
+            fornecedor = fornecedores.find(f => f.cnpj_cpf?.replace(/[^\d]/g, '') === cnpjCpf);
+          }
+          if (!fornecedor && clienteFornecedorNome) {
+            fornecedor = fornecedores.find(f => 
               f.nome_fantasia?.toLowerCase() === clienteFornecedorNome.toLowerCase() ||
               f.razao_social?.toLowerCase() === clienteFornecedorNome.toLowerCase()
             );
-            if (fornecedor) {
-              fornecedor_id = fornecedor.id;
-            } else {
-              errors.push(`Fornecedor "${clienteFornecedorNome}" não encontrado`);
-            }
           }
-        } else {
-          errors.push('Cliente/Fornecedor obrigatório');
+          if (fornecedor) {
+            fornecedor_id = fornecedor.id;
+            nomeEncontrado = fornecedor.nome_fantasia || fornecedor.razao_social;
+          } else if (cnpjCpf || clienteFornecedorNome) {
+            errors.push(`Fornecedor não encontrado (CNPJ: ${cnpjCpf || 'N/A'}, Nome: ${clienteFornecedorNome || 'N/A'})`);
+          } else {
+            errors.push('CNPJ ou Nome do Fornecedor é obrigatório');
+          }
         }
 
         // Plano de Contas (opcional)
@@ -265,7 +288,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           valor,
           data_vencimento: dataVencimento || '',
           data_competencia: dataCompetencia || '',
-          cliente_fornecedor_nome: clienteFornecedorNome,
+          cliente_fornecedor_nome: nomeEncontrado || clienteFornecedorNome || cnpjCpf,
           plano_conta_codigo: planoContaCodigo,
           centro_custo_codigo: centroCustoCodigo,
           conta_bancaria_nome: contaBancariaNome,
@@ -423,9 +446,11 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
               <h4 className="font-medium mb-2">Instruções:</h4>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                 <li>Baixe o modelo de planilha clicando no botão acima</li>
-                <li>Preencha os dados conforme o modelo (campos obrigatórios: Tipo, Descrição, Valor, Datas e Cliente/Fornecedor)</li>
-                <li>Para <strong>entradas</strong>, o Cliente/Fornecedor deve corresponder a um <strong>cliente</strong> cadastrado</li>
-                <li>Para <strong>saídas</strong>, o Cliente/Fornecedor deve corresponder a um <strong>fornecedor</strong> cadastrado</li>
+                <li>Preencha os dados conforme o modelo (campos obrigatórios: Tipo, Descrição, Valor, Datas)</li>
+                <li>Use <strong>CNPJ/CPF</strong> para identificar o cliente/fornecedor automaticamente (prioridade sobre o nome)</li>
+                <li>Se não tiver o CNPJ, use o <strong>Nome Fantasia ou Razão Social</strong> para identificar</li>
+                <li>Para <strong>entradas</strong>, o CNPJ/Nome deve corresponder a um <strong>cliente</strong> cadastrado</li>
+                <li>Para <strong>saídas</strong>, o CNPJ/Nome deve corresponder a um <strong>fornecedor</strong> cadastrado</li>
                 <li>Plano de Contas, Centro de Custo e Conta Bancária são opcionais</li>
                 <li>Faça upload do arquivo preenchido para visualizar e importar</li>
               </ul>
