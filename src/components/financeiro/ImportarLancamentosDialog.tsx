@@ -1,12 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -30,6 +29,10 @@ interface PreviewRow {
   conta_bancaria_nome?: string;
   valid: boolean;
   errors: string[];
+  warnings: string[];
+  willCreateClienteFornecedor: boolean;
+  cnpjCpfParaCriar?: string;
+  nomeParaCriar?: string;
   // Resolved IDs
   cliente_id?: string;
   fornecedor_id?: string;
@@ -42,7 +45,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
   const [step, setStep] = useState<'upload' | 'preview' | 'importing'>('upload');
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importing, setImporting] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0, success: 0, errors: 0 });
+  const [progress, setProgress] = useState({ current: 0, total: 0, success: 0, errors: 0, created: 0 });
+  const [autoCriarClienteFornecedor, setAutoCriarClienteFornecedor] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -195,12 +199,17 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
         // CNPJ/CPF - prioridade para busca
         const cnpjCpf = (row['CNPJ/CPF'] || row['CNPJ'] || row['CPF'] || '').toString().trim().replace(/[^\d]/g, '');
+        const cnpjCpfOriginal = (row['CNPJ/CPF'] || row['CNPJ'] || row['CPF'] || '').toString().trim();
         
         // Cliente/Fornecedor
         const clienteFornecedorNome = (row['Cliente/Fornecedor (Nome Fantasia ou Razão Social)'] || row['Cliente/Fornecedor'] || '').toString().trim();
         let cliente_id: string | undefined;
         let fornecedor_id: string | undefined;
         let nomeEncontrado = '';
+        let willCreateClienteFornecedor = false;
+        let cnpjCpfParaCriar: string | undefined;
+        let nomeParaCriar: string | undefined;
+        const warnings: string[] = [];
 
         if (tipo === 'entrada') {
           // Buscar cliente: primeiro por CNPJ, depois por nome
@@ -217,8 +226,15 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           if (cliente) {
             cliente_id = cliente.id;
             nomeEncontrado = cliente.nome_fantasia || cliente.razao_social;
-          } else if (cnpjCpf || clienteFornecedorNome) {
-            errors.push(`Cliente não encontrado (CNPJ: ${cnpjCpf || 'N/A'}, Nome: ${clienteFornecedorNome || 'N/A'})`);
+          } else if (cnpjCpf) {
+            // CNPJ informado mas não encontrado - pode criar automaticamente
+            willCreateClienteFornecedor = true;
+            cnpjCpfParaCriar = cnpjCpfOriginal;
+            nomeParaCriar = clienteFornecedorNome || `Cliente ${cnpjCpfOriginal}`;
+            nomeEncontrado = nomeParaCriar;
+            warnings.push(`Cliente será criado: ${nomeParaCriar}`);
+          } else if (clienteFornecedorNome) {
+            errors.push(`Cliente "${clienteFornecedorNome}" não encontrado. Informe o CNPJ para criar automaticamente.`);
           } else {
             errors.push('CNPJ ou Nome do Cliente é obrigatório');
           }
@@ -237,8 +253,15 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           if (fornecedor) {
             fornecedor_id = fornecedor.id;
             nomeEncontrado = fornecedor.nome_fantasia || fornecedor.razao_social;
-          } else if (cnpjCpf || clienteFornecedorNome) {
-            errors.push(`Fornecedor não encontrado (CNPJ: ${cnpjCpf || 'N/A'}, Nome: ${clienteFornecedorNome || 'N/A'})`);
+          } else if (cnpjCpf) {
+            // CNPJ informado mas não encontrado - pode criar automaticamente
+            willCreateClienteFornecedor = true;
+            cnpjCpfParaCriar = cnpjCpfOriginal;
+            nomeParaCriar = clienteFornecedorNome || `Fornecedor ${cnpjCpfOriginal}`;
+            nomeEncontrado = nomeParaCriar;
+            warnings.push(`Fornecedor será criado: ${nomeParaCriar}`);
+          } else if (clienteFornecedorNome) {
+            errors.push(`Fornecedor "${clienteFornecedorNome}" não encontrado. Informe o CNPJ para criar automaticamente.`);
           } else {
             errors.push('CNPJ ou Nome do Fornecedor é obrigatório');
           }
@@ -282,6 +305,16 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           }
         }
 
+        // Se vai criar cliente/fornecedor mas auto-criar está desabilitado, é erro
+        const finalErrors = [...errors];
+        if (willCreateClienteFornecedor && !autoCriarClienteFornecedor) {
+          finalErrors.push(tipo === 'entrada' 
+            ? `Cliente não encontrado (CNPJ: ${cnpjCpfOriginal}). Habilite "Criar automaticamente" ou cadastre manualmente.`
+            : `Fornecedor não encontrado (CNPJ: ${cnpjCpfOriginal}). Habilite "Criar automaticamente" ou cadastre manualmente.`
+          );
+          willCreateClienteFornecedor = false;
+        }
+
         return {
           tipo: tipo as 'entrada' | 'saida',
           descricao,
@@ -292,8 +325,12 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           plano_conta_codigo: planoContaCodigo,
           centro_custo_codigo: centroCustoCodigo,
           conta_bancaria_nome: contaBancariaNome,
-          valid: errors.length === 0,
-          errors,
+          valid: finalErrors.length === 0,
+          errors: finalErrors,
+          warnings,
+          willCreateClienteFornecedor: autoCriarClienteFornecedor && willCreateClienteFornecedor,
+          cnpjCpfParaCriar,
+          nomeParaCriar,
           cliente_id,
           fornecedor_id,
           plano_conta_id,
@@ -319,6 +356,21 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     }
   };
 
+  const formatCnpjCpf = (value: string): string => {
+    const digits = value.replace(/[^\d]/g, '');
+    if (digits.length === 11) {
+      return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else if (digits.length === 14) {
+      return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    return value;
+  };
+
+  const determineTipoPessoa = (cnpjCpf: string): 'fisica' | 'juridica' => {
+    const digits = cnpjCpf.replace(/[^\d]/g, '');
+    return digits.length === 11 ? 'fisica' : 'juridica';
+  };
+
   const handleImport = async () => {
     const validRows = previewData.filter(row => row.valid);
     if (validRows.length === 0) {
@@ -332,18 +384,75 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
     setImporting(true);
     setStep('importing');
-    setProgress({ current: 0, total: validRows.length, success: 0, errors: 0 });
+    setProgress({ current: 0, total: validRows.length, success: 0, errors: 0, created: 0 });
 
     let successCount = 0;
     let errorCount = 0;
+    let createdCount = 0;
+
+    // Cache para clientes/fornecedores criados nesta importação
+    const createdClientes: Map<string, string> = new Map();
+    const createdFornecedores: Map<string, string> = new Map();
 
     for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i];
       
       try {
+        let clienteId = row.cliente_id;
+        let fornecedorId = row.fornecedor_id;
+
+        // Criar cliente/fornecedor se necessário
+        if (row.willCreateClienteFornecedor && row.cnpjCpfParaCriar) {
+          const cnpjKey = row.cnpjCpfParaCriar.replace(/[^\d]/g, '');
+          
+          if (row.tipo === 'entrada') {
+            // Verificar se já criamos este cliente nesta importação
+            if (createdClientes.has(cnpjKey)) {
+              clienteId = createdClientes.get(cnpjKey);
+            } else {
+              const { data: novoCliente, error } = await supabase
+                .from('clientes')
+                .insert({
+                  cnpj_cpf: formatCnpjCpf(row.cnpjCpfParaCriar),
+                  razao_social: row.nomeParaCriar || `Cliente ${row.cnpjCpfParaCriar}`,
+                  tipo_pessoa: determineTipoPessoa(row.cnpjCpfParaCriar),
+                  status: 'ativo',
+                })
+                .select('id')
+                .single();
+              
+              if (error) throw error;
+              clienteId = novoCliente.id;
+              createdClientes.set(cnpjKey, novoCliente.id);
+              createdCount++;
+            }
+          } else {
+            // Verificar se já criamos este fornecedor nesta importação
+            if (createdFornecedores.has(cnpjKey)) {
+              fornecedorId = createdFornecedores.get(cnpjKey);
+            } else {
+              const { data: novoFornecedor, error } = await supabase
+                .from('fornecedores')
+                .insert({
+                  cnpj_cpf: formatCnpjCpf(row.cnpjCpfParaCriar),
+                  razao_social: row.nomeParaCriar || `Fornecedor ${row.cnpjCpfParaCriar}`,
+                  tipo_pessoa: determineTipoPessoa(row.cnpjCpfParaCriar),
+                  status: 'ativo',
+                })
+                .select('id')
+                .single();
+              
+              if (error) throw error;
+              fornecedorId = novoFornecedor.id;
+              createdFornecedores.set(cnpjKey, novoFornecedor.id);
+              createdCount++;
+            }
+          }
+        }
+
         if (row.tipo === 'entrada') {
-          await supabase.from('contas_receber').insert({
-            cliente_id: row.cliente_id!,
+          const { error } = await supabase.from('contas_receber').insert({
+            cliente_id: clienteId!,
             descricao: row.descricao,
             valor: row.valor,
             data_vencimento: row.data_vencimento,
@@ -353,9 +462,10 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             conta_bancaria_id: row.conta_bancaria_id || null,
             status: 'pendente',
           });
+          if (error) throw error;
         } else {
-          await supabase.from('contas_pagar').insert({
-            fornecedor_id: row.fornecedor_id!,
+          const { error } = await supabase.from('contas_pagar').insert({
+            fornecedor_id: fornecedorId!,
             descricao: row.descricao,
             valor: row.valor,
             data_vencimento: row.data_vencimento,
@@ -365,6 +475,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             conta_bancaria_id: row.conta_bancaria_id || null,
             status: 'pendente',
           });
+          if (error) throw error;
         }
         successCount++;
       } catch (error) {
@@ -377,14 +488,16 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         total: validRows.length,
         success: successCount,
         errors: errorCount,
+        created: createdCount,
       });
     }
 
     setImporting(false);
     
+    const createdMsg = createdCount > 0 ? ` ${createdCount} cliente(s)/fornecedor(es) criado(s).` : '';
     toast({
       title: "Importação concluída",
-      description: `${successCount} lançamento(s) importado(s) com sucesso. ${errorCount} erro(s).`,
+      description: `${successCount} lançamento(s) importado(s) com sucesso.${createdMsg} ${errorCount} erro(s).`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
 
@@ -442,15 +555,32 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
               </label>
             </div>
 
+            <div className="flex items-center space-x-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <Checkbox 
+                id="auto-criar" 
+                checked={autoCriarClienteFornecedor}
+                onCheckedChange={(checked) => setAutoCriarClienteFornecedor(checked === true)}
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="auto-criar" className="flex items-center gap-2 cursor-pointer">
+                  <UserPlus className="w-4 h-4 text-primary" />
+                  Criar cliente/fornecedor automaticamente
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Se o CNPJ/CPF não for encontrado, um novo cadastro será criado com os dados informados
+                </p>
+              </div>
+            </div>
+
             <div className="bg-muted p-4 rounded-lg">
               <h4 className="font-medium mb-2">Instruções:</h4>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                 <li>Baixe o modelo de planilha clicando no botão acima</li>
                 <li>Preencha os dados conforme o modelo (campos obrigatórios: Tipo, Descrição, Valor, Datas)</li>
                 <li>Use <strong>CNPJ/CPF</strong> para identificar o cliente/fornecedor automaticamente (prioridade sobre o nome)</li>
-                <li>Se não tiver o CNPJ, use o <strong>Nome Fantasia ou Razão Social</strong> para identificar</li>
-                <li>Para <strong>entradas</strong>, o CNPJ/Nome deve corresponder a um <strong>cliente</strong> cadastrado</li>
-                <li>Para <strong>saídas</strong>, o CNPJ/Nome deve corresponder a um <strong>fornecedor</strong> cadastrado</li>
+                <li>Se o CNPJ não for encontrado e a opção acima estiver habilitada, será criado automaticamente</li>
+                <li>Para <strong>entradas</strong>, será criado/buscado um <strong>cliente</strong></li>
+                <li>Para <strong>saídas</strong>, será criado/buscado um <strong>fornecedor</strong></li>
                 <li>Plano de Contas, Centro de Custo e Conta Bancária são opcionais</li>
                 <li>Faça upload do arquivo preenchido para visualizar e importar</li>
               </ul>
@@ -460,7 +590,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
         {step === 'preview' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <Badge variant="default" className="gap-1">
                 <CheckCircle2 className="w-3 h-3" />
                 {validCount} válido(s)
@@ -469,6 +599,12 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                 <Badge variant="destructive" className="gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {invalidCount} com erro(s)
+                </Badge>
+              )}
+              {previewData.filter(r => r.willCreateClienteFornecedor).length > 0 && (
+                <Badge variant="outline" className="gap-1 border-primary text-primary">
+                  <UserPlus className="w-3 h-3" />
+                  {previewData.filter(r => r.willCreateClienteFornecedor).length} será(ão) criado(s)
                 </Badge>
               )}
             </div>
@@ -483,15 +619,28 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                     <TableHead>Valor</TableHead>
                     <TableHead>Vencimento</TableHead>
                     <TableHead>Cliente/Fornecedor</TableHead>
-                    <TableHead>Erros</TableHead>
+                    <TableHead>Observações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {previewData.map((row, index) => (
-                    <TableRow key={index} className={row.valid ? '' : 'bg-destructive/10'}>
+                    <TableRow 
+                      key={index} 
+                      className={
+                        !row.valid 
+                          ? 'bg-destructive/10' 
+                          : row.willCreateClienteFornecedor 
+                            ? 'bg-primary/5' 
+                            : ''
+                      }
+                    >
                       <TableCell>
                         {row.valid ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          row.willCreateClienteFornecedor ? (
+                            <UserPlus className="w-4 h-4 text-primary" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          )
                         ) : (
                           <AlertCircle className="w-4 h-4 text-destructive" />
                         )}
@@ -506,9 +655,21 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.valor)}
                       </TableCell>
                       <TableCell>{row.data_vencimento ? format(new Date(row.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}</TableCell>
-                      <TableCell className="max-w-[150px] truncate">{row.cliente_fornecedor_nome}</TableCell>
-                      <TableCell className="text-xs text-destructive max-w-[200px]">
-                        {row.errors.join('; ')}
+                      <TableCell className="max-w-[150px] truncate">
+                        <div className="flex items-center gap-1">
+                          {row.willCreateClienteFornecedor && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary text-primary">NOVO</Badge>
+                          )}
+                          {row.cliente_fornecedor_nome}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[200px]">
+                        {row.errors.length > 0 && (
+                          <span className="text-destructive">{row.errors.join('; ')}</span>
+                        )}
+                        {row.warnings.length > 0 && row.errors.length === 0 && (
+                          <span className="text-primary">{row.warnings.join('; ')}</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -545,6 +706,9 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             </div>
             <div className="flex justify-center gap-4 text-sm">
               <span className="text-emerald-600">{progress.success} sucesso</span>
+              {progress.created > 0 && (
+                <span className="text-primary">{progress.created} cadastro(s) criado(s)</span>
+              )}
               {progress.errors > 0 && (
                 <span className="text-destructive">{progress.errors} erros</span>
               )}
