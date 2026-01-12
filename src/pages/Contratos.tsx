@@ -155,6 +155,44 @@ export default function Contratos() {
 
   const handleInactivate = async (id: string) => {
     try {
+      // 1. Buscar parcelas pendentes do contrato
+      const { data: parcelas } = await supabase
+        .from('parcelas_contrato')
+        .select('id, tipo')
+        .eq('contrato_id', id)
+        .in('status', ['pendente', 'vencido']);
+
+      if (parcelas && parcelas.length > 0) {
+        const parcelaIds = parcelas.map(p => p.id);
+
+        // 2. Cancelar contas a receber vinculadas às parcelas
+        const { error: errorReceber } = await supabase
+          .from('contas_receber')
+          .update({ status: 'cancelado' })
+          .in('parcela_id', parcelaIds)
+          .in('status', ['pendente', 'vencido']);
+
+        if (errorReceber) console.error('Erro ao cancelar contas a receber:', errorReceber);
+
+        // 3. Cancelar contas a pagar vinculadas às parcelas
+        const { error: errorPagar } = await supabase
+          .from('contas_pagar')
+          .update({ status: 'cancelado' })
+          .in('parcela_id', parcelaIds)
+          .in('status', ['pendente', 'vencido']);
+
+        if (errorPagar) console.error('Erro ao cancelar contas a pagar:', errorPagar);
+
+        // 4. Cancelar as parcelas
+        const { error: errorParcelas } = await supabase
+          .from('parcelas_contrato')
+          .update({ status: 'cancelado' })
+          .in('id', parcelaIds);
+
+        if (errorParcelas) console.error('Erro ao cancelar parcelas:', errorParcelas);
+      }
+
+      // 5. Inativar o contrato
       const { error } = await supabase
         .from('contratos')
         .update({ status: 'inativo', data_reativacao: null })
@@ -164,7 +202,7 @@ export default function Contratos() {
 
       toast({
         title: "Sucesso",
-        description: "Contrato inativado com sucesso!",
+        description: "Contrato inativado e parcelas pendentes canceladas com sucesso!",
       });
       fetchContratos();
     } catch (error) {
