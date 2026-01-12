@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus, Pencil, Mail, Phone } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus, Pencil, Mail, Phone, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -18,10 +18,33 @@ interface ImportarLancamentosDialogProps {
   onSuccess: () => void;
 }
 
+interface CnpjApiData {
+  razao_social: string;
+  nome_fantasia?: string;
+  endereco: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  cep: string;
+  telefone: string;
+  email: string;
+}
+
 interface NovosCadastrosContato {
   email?: string;
   telefone?: string;
   nomeFantasia?: string;
+  // Dados de endereço obtidos da API
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
+  apiLoaded?: boolean; // Indica se os dados foram carregados da API
 }
 
 interface PreviewRow {
@@ -380,6 +403,48 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return digits.length === 11 ? 'fisica' : 'juridica';
   };
 
+  // Função para buscar dados do CNPJ via API (sem toast para uso silencioso)
+  const buscarCnpjSilently = async (cnpj: string): Promise<CnpjApiData | null> => {
+    const cnpjLimpo = cnpj.replace(/\D/g, "");
+    
+    if (cnpjLimpo.length !== 14) {
+      return null;
+    }
+
+    try {
+      // Primeiro tenta a BrasilAPI
+      let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+      
+      if (!response.ok) {
+        // Se falhar, tenta a API alternativa
+        response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjLimpo}`);
+      }
+      
+      if (!response.ok) {
+        return null;
+      }
+
+      const dados = await response.json();
+
+      // Mapeia os dados para o formato padrão independente da API
+      return {
+        razao_social: dados.company?.name || dados.razao_social || dados.nome || "",
+        nome_fantasia: dados.alias || dados.nome_fantasia || dados.company?.alias || "",
+        endereco: dados.address?.street || dados.logradouro || "",
+        numero: dados.address?.number || dados.numero || "",
+        complemento: dados.address?.details || dados.complemento || "",
+        bairro: dados.address?.district || dados.bairro || "",
+        cidade: dados.address?.city || dados.municipio || "",
+        uf: dados.address?.state || dados.uf || "",
+        cep: (dados.address?.zip || dados.cep || "").replace(/\D/g, ""),
+        telefone: dados.phones?.[0]?.number || dados.telefone || "",
+        email: dados.emails?.[0]?.address || dados.email || "",
+      };
+    } catch {
+      return null;
+    }
+  };
+
   // Obter lista única de novos cadastros a serem criados
   const getNovosCadastrosUnicos = () => {
     const novos = new Map<string, { cnpj: string; nome: string; tipo: 'cliente' | 'fornecedor' }>();
@@ -398,7 +463,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return novos;
   };
 
-  const updateNovoContato = (cnpjKey: string, field: keyof NovosCadastrosContato, value: string) => {
+  const updateNovoContato = (cnpjKey: string, field: keyof NovosCadastrosContato, value: string | boolean) => {
     setNovosCadastrosContato(prev => {
       const newMap = new Map(prev);
       const current = newMap.get(cnpjKey) || {};
@@ -407,7 +472,53 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     });
   };
 
-  const handleProceedToEditNovos = () => {
+  const [loadingCnpjs, setLoadingCnpjs] = useState<Set<string>>(new Set());
+
+  // Função para buscar dados de um CNPJ específico na tela de edição
+  const handleBuscarCnpj = async (cnpjKey: string, cnpj: string) => {
+    setLoadingCnpjs(prev => new Set(prev).add(cnpjKey));
+    
+    const dados = await buscarCnpjSilently(cnpj);
+    
+    if (dados) {
+      setNovosCadastrosContato(prev => {
+        const newMap = new Map(prev);
+        newMap.set(cnpjKey, {
+          ...prev.get(cnpjKey),
+          nomeFantasia: dados.nome_fantasia || prev.get(cnpjKey)?.nomeFantasia || '',
+          email: dados.email || prev.get(cnpjKey)?.email || '',
+          telefone: dados.telefone || prev.get(cnpjKey)?.telefone || '',
+          endereco: dados.endereco || '',
+          numero: dados.numero || '',
+          complemento: dados.complemento || '',
+          bairro: dados.bairro || '',
+          cidade: dados.cidade || '',
+          uf: dados.uf || '',
+          cep: dados.cep || '',
+          apiLoaded: true,
+        });
+        return newMap;
+      });
+      toast({
+        title: "Dados encontrados!",
+        description: `Endereço e contato de ${cnpj} preenchidos automaticamente.`,
+      });
+    } else {
+      toast({
+        title: "CNPJ não encontrado",
+        description: "Não foi possível buscar os dados deste CNPJ. Preencha manualmente.",
+        variant: "destructive",
+      });
+    }
+    
+    setLoadingCnpjs(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(cnpjKey);
+      return newSet;
+    });
+  };
+
+  const handleProceedToEditNovos = async () => {
     const novos = getNovosCadastrosUnicos();
     if (novos.size > 0) {
       // Inicializar o map de contatos para os novos cadastros
@@ -417,10 +528,70 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           nomeFantasia: '',
           email: '',
           telefone: '',
+          endereco: '',
+          numero: '',
+          complemento: '',
+          bairro: '',
+          cidade: '',
+          uf: '',
+          cep: '',
+          apiLoaded: false,
         });
       });
       setNovosCadastrosContato(initialContatos);
       setStep('edit-novos');
+
+      // Buscar dados de CNPJ automaticamente para todos os novos cadastros (apenas CNPJs com 14 dígitos)
+      const cnpjsParaBuscar = Array.from(novos.entries()).filter(([cnpjKey]) => cnpjKey.length === 14);
+      
+      if (cnpjsParaBuscar.length > 0) {
+        toast({
+          title: "Buscando dados dos CNPJs...",
+          description: `Consultando ${cnpjsParaBuscar.length} CNPJ(s) na Receita Federal.`,
+        });
+
+        // Buscar CNPJs em paralelo (com limite de 3 simultâneos para não sobrecarregar)
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < cnpjsParaBuscar.length; i += BATCH_SIZE) {
+          const batch = cnpjsParaBuscar.slice(i, i + BATCH_SIZE);
+          const resultados = await Promise.all(
+            batch.map(async ([cnpjKey, data]) => {
+              const dados = await buscarCnpjSilently(data.cnpj);
+              return { cnpjKey, dados };
+            })
+          );
+
+          // Atualizar contatos com os dados obtidos
+          setNovosCadastrosContato(prev => {
+            const newMap = new Map(prev);
+            resultados.forEach(({ cnpjKey, dados }) => {
+              if (dados) {
+                const current = newMap.get(cnpjKey) || {};
+                newMap.set(cnpjKey, {
+                  ...current,
+                  nomeFantasia: dados.nome_fantasia || current.nomeFantasia || '',
+                  email: dados.email || current.email || '',
+                  telefone: dados.telefone || current.telefone || '',
+                  endereco: dados.endereco || '',
+                  numero: dados.numero || '',
+                  complemento: dados.complemento || '',
+                  bairro: dados.bairro || '',
+                  cidade: dados.cidade || '',
+                  uf: dados.uf || '',
+                  cep: dados.cep || '',
+                  apiLoaded: true,
+                });
+              }
+            });
+            return newMap;
+          });
+        }
+
+        toast({
+          title: "Busca concluída!",
+          description: "Revise os dados e complete as informações faltantes.",
+        });
+      }
     } else {
       handleImport();
     }
@@ -474,6 +645,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                   nome_fantasia: contato.nomeFantasia || null,
                   email: contato.email ? [contato.email] : null,
                   telefone: contato.telefone || null,
+                  endereco: contato.endereco || null,
+                  numero: contato.numero || null,
+                  complemento: contato.complemento || null,
+                  bairro: contato.bairro || null,
+                  cidade: contato.cidade || null,
+                  uf: contato.uf || null,
+                  cep: contato.cep || null,
                   tipo_pessoa: determineTipoPessoa(row.cnpjCpfParaCriar),
                   status: 'ativo',
                 })
@@ -499,6 +677,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                   nome_fantasia: contato.nomeFantasia || null,
                   email: contato.email ? [contato.email] : null,
                   telefone: contato.telefone || null,
+                  endereco: contato.endereco || null,
+                  numero: contato.numero || null,
+                  complemento: contato.complemento || null,
+                  bairro: contato.bairro || null,
+                  cidade: contato.cidade || null,
+                  uf: contato.uf || null,
+                  cep: contato.cep || null,
                   tipo_pessoa: determineTipoPessoa(row.cnpjCpfParaCriar),
                   status: 'ativo',
                 })
@@ -794,16 +979,17 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
               <div>
                 <p className="font-medium text-sm">Novos Cadastros</p>
                 <p className="text-xs text-muted-foreground">
-                  Adicione informações de contato para os novos clientes/fornecedores antes de importar
+                  Os dados de endereço e contato são buscados automaticamente via CNPJ. Revise e complete as informações se necessário.
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4 max-h-[400px] overflow-auto">
+            <div className="space-y-4 max-h-[500px] overflow-auto">
               {Array.from(getNovosCadastrosUnicos()).map(([cnpjKey, data]) => {
                 const contato = novosCadastrosContato.get(cnpjKey) || {};
+                const isLoading = loadingCnpjs.has(cnpjKey);
                 return (
-                  <div key={cnpjKey} className="border rounded-lg p-4 space-y-3">
+                  <div key={cnpjKey} className="border rounded-lg p-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <Badge variant={data.tipo === 'cliente' ? 'default' : 'secondary'} className="mb-1">
@@ -812,8 +998,37 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                         <p className="font-medium">{data.nome}</p>
                         <p className="text-sm text-muted-foreground">CNPJ/CPF: {formatCnpjCpf(data.cnpj)}</p>
                       </div>
+                      <div className="flex items-center gap-2">
+                        {contato.apiLoaded && (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Dados carregados
+                          </Badge>
+                        )}
+                        {cnpjKey.length === 14 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleBuscarCnpj(cnpjKey, data.cnpj)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                Buscando...
+                              </>
+                            ) : (
+                              <>
+                                <Pencil className="w-3 h-3 mr-1" />
+                                Buscar CNPJ
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
+                    {/* Dados Básicos */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor={`nome-fantasia-${cnpjKey}`} className="text-xs">
@@ -853,6 +1068,86 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                           onChange={(e) => updateNovoContato(cnpjKey, 'telefone', e.target.value)}
                           className="h-9"
                         />
+                      </div>
+                    </div>
+
+                    {/* Endereço */}
+                    <div className="pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Endereço</p>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="md:col-span-2 space-y-1.5">
+                          <Label htmlFor={`endereco-${cnpjKey}`} className="text-xs">Logradouro</Label>
+                          <Input
+                            id={`endereco-${cnpjKey}`}
+                            placeholder="Rua, Avenida..."
+                            value={contato.endereco || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'endereco', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`numero-${cnpjKey}`} className="text-xs">Número</Label>
+                          <Input
+                            id={`numero-${cnpjKey}`}
+                            placeholder="Nº"
+                            value={contato.numero || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'numero', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`complemento-${cnpjKey}`} className="text-xs">Complemento</Label>
+                          <Input
+                            id={`complemento-${cnpjKey}`}
+                            placeholder="Apto, Sala..."
+                            value={contato.complemento || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'complemento', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`bairro-${cnpjKey}`} className="text-xs">Bairro</Label>
+                          <Input
+                            id={`bairro-${cnpjKey}`}
+                            placeholder="Bairro"
+                            value={contato.bairro || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'bairro', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`cidade-${cnpjKey}`} className="text-xs">Cidade</Label>
+                          <Input
+                            id={`cidade-${cnpjKey}`}
+                            placeholder="Cidade"
+                            value={contato.cidade || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'cidade', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`uf-${cnpjKey}`} className="text-xs">UF</Label>
+                          <Input
+                            id={`uf-${cnpjKey}`}
+                            placeholder="SP"
+                            maxLength={2}
+                            value={contato.uf || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'uf', e.target.value.toUpperCase())}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`cep-${cnpjKey}`} className="text-xs">CEP</Label>
+                          <Input
+                            id={`cep-${cnpjKey}`}
+                            placeholder="00000-000"
+                            value={contato.cep || ''}
+                            onChange={(e) => updateNovoContato(cnpjKey, 'cep', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
