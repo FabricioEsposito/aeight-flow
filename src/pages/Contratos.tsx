@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ContratosTable } from '@/components/contratos/ContratosTable';
 import { ReativarContratoDialog } from '@/components/contratos/ReativarContratoDialog';
 import { BatchEditContratosDialog } from '@/components/contratos/BatchEditContratosDialog';
+import { InativarContratoDialog } from '@/components/contratos/InativarContratoDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 
 interface CentroCusto {
   id: string;
@@ -153,19 +154,33 @@ export default function Contratos() {
     }
   };
 
-  const handleInactivate = async (id: string) => {
+  const [inativarDialogOpen, setInativarDialogOpen] = useState(false);
+  const [contratoParaInativar, setContratoParaInativar] = useState<{ id: string; numero: string } | null>(null);
+
+  const handleInactivateClick = (id: string, numeroContrato: string) => {
+    setContratoParaInativar({ id, numero: numeroContrato });
+    setInativarDialogOpen(true);
+  };
+
+  const handleInactivate = async (dataInativacao: Date) => {
+    if (!contratoParaInativar) return;
+    
+    const id = contratoParaInativar.id;
+    const dataInativacaoStr = format(dataInativacao, 'yyyy-MM-dd');
+    
     try {
-      // 1. Buscar parcelas pendentes do contrato
+      // 1. Buscar parcelas pendentes do contrato com vencimento >= data de inativação
       const { data: parcelas } = await supabase
         .from('parcelas_contrato')
         .select('id, tipo')
         .eq('contrato_id', id)
-        .in('status', ['pendente', 'vencido']);
+        .in('status', ['pendente', 'vencido'])
+        .gte('data_vencimento', dataInativacaoStr);
 
       if (parcelas && parcelas.length > 0) {
         const parcelaIds = parcelas.map(p => p.id);
 
-        // 2. Cancelar contas a receber vinculadas às parcelas
+        // 2. Cancelar contas a receber vinculadas às parcelas com vencimento >= data de inativação
         const { error: errorReceber } = await supabase
           .from('contas_receber')
           .update({ status: 'cancelado' })
@@ -174,7 +189,7 @@ export default function Contratos() {
 
         if (errorReceber) console.error('Erro ao cancelar contas a receber:', errorReceber);
 
-        // 3. Cancelar contas a pagar vinculadas às parcelas
+        // 3. Cancelar contas a pagar vinculadas às parcelas com vencimento >= data de inativação
         const { error: errorPagar } = await supabase
           .from('contas_pagar')
           .update({ status: 'cancelado' })
@@ -200,11 +215,13 @@ export default function Contratos() {
 
       if (error) throw error;
 
+      const parcelasCount = parcelas?.length || 0;
       toast({
         title: "Sucesso",
-        description: "Contrato inativado e parcelas pendentes canceladas com sucesso!",
+        description: `Contrato inativado! ${parcelasCount} parcela(s) a partir de ${format(dataInativacao, 'dd/MM/yyyy')} foram canceladas.`,
       });
       fetchContratos();
+      setContratoParaInativar(null);
     } catch (error) {
       console.error('Erro ao inativar contrato:', error);
       toast({
@@ -417,7 +434,7 @@ export default function Contratos() {
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onInactivate={handleInactivate}
+          onInactivate={handleInactivateClick}
           onReactivate={handleReactivateClick}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
@@ -433,6 +450,13 @@ export default function Contratos() {
           />
         )}
       </Card>
+
+      <InativarContratoDialog
+        open={inativarDialogOpen}
+        onOpenChange={setInativarDialogOpen}
+        onConfirm={handleInactivate}
+        contratoNumero={contratoParaInativar?.numero}
+      />
 
       <ReativarContratoDialog
         open={reativarDialogOpen}
