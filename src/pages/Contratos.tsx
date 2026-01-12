@@ -21,6 +21,12 @@ interface CentroCusto {
   descricao: string;
 }
 
+interface PlanoContas {
+  id: string;
+  codigo: string;
+  descricao: string;
+}
+
 interface Contrato {
   id: string;
   numero_contrato: string;
@@ -36,6 +42,7 @@ interface Contrato {
   periodo_recorrencia?: string;
   clientes?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
+  plano_contas?: PlanoContas;
   tem_go_live?: boolean;
   centro_custo_info?: CentroCusto;
 }
@@ -67,12 +74,13 @@ export default function Contratos() {
 
   const fetchContratos = async () => {
     try {
-      const { data, error } = await supabase
+        const { data, error } = await supabase
         .from('contratos')
         .select(`
           *,
           clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
           fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
+          plano_contas:plano_contas_id (id, codigo, descricao),
           parcelas_contrato (
             id,
             status
@@ -230,10 +238,15 @@ export default function Contratos() {
   };
 
   const filteredContratos = contratosComCentroCusto.filter(contrato => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      contrato.numero_contrato.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contrato.clientes?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contrato.fornecedores?.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase());
+      contrato.numero_contrato.toLowerCase().includes(searchLower) ||
+      (contrato.clientes?.razao_social || '').toLowerCase().includes(searchLower) ||
+      (contrato.clientes?.nome_fantasia || '').toLowerCase().includes(searchLower) ||
+      (contrato.fornecedores?.razao_social || '').toLowerCase().includes(searchLower) ||
+      (contrato.fornecedores?.nome_fantasia || '').toLowerCase().includes(searchLower) ||
+      (contrato.plano_contas?.descricao || '').toLowerCase().includes(searchLower) ||
+      (contrato.plano_contas?.codigo || '').toLowerCase().includes(searchLower);
     
     const matchesType = filterType === 'todos' || contrato.tipo_contrato === filterType;
     
@@ -331,7 +344,7 @@ export default function Contratos() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Buscar por número do contrato ou cliente..."
+              placeholder="Buscar por contrato, nome fantasia ou categoria..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-background"
