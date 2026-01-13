@@ -72,10 +72,11 @@ interface PreviewRow {
 }
 
 export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: ImportarLancamentosDialogProps) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'edit-novos' | 'importing'>('upload');
+  const [step, setStep] = useState<'upload' | 'preview' | 'loading-cnpj' | 'edit-novos' | 'importing'>('upload');
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, success: 0, errors: 0, created: 0 });
+  const [cnpjProgress, setCnpjProgress] = useState({ current: 0, total: 0, currentCnpj: '' });
   const [autoCriarClienteFornecedor, setAutoCriarClienteFornecedor] = useState(true);
   // Map de CNPJ para dados de contato dos novos cadastros
   const [novosCadastrosContato, setNovosCadastrosContato] = useState<Map<string, NovosCadastrosContato>>(new Map());
@@ -625,16 +626,14 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         });
       });
       setNovosCadastrosContato(initialContatos);
-      setStep('edit-novos');
 
       // Buscar dados de CNPJ automaticamente para todos os novos cadastros (apenas CNPJs com 14 dígitos)
       const cnpjsParaBuscar = Array.from(novos.entries()).filter(([cnpjKey]) => cnpjKey.length === 14);
       
       if (cnpjsParaBuscar.length > 0) {
-        toast({
-          title: "Buscando dados dos CNPJs...",
-          description: `Consultando ${cnpjsParaBuscar.length} CNPJ(s) na Receita Federal. Aguarde...`,
-        });
+        // Mostrar tela de loading
+        setCnpjProgress({ current: 0, total: cnpjsParaBuscar.length, currentCnpj: '' });
+        setStep('loading-cnpj');
 
         // Coletar todos os resultados primeiro, depois atualizar o estado
         const todosResultados: { cnpjKey: string; dados: CnpjApiData | null; cnpj: string }[] = [];
@@ -642,6 +641,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         // Buscar CNPJs um por um para evitar rate limiting (APIs públicas são sensíveis)
         for (let i = 0; i < cnpjsParaBuscar.length; i++) {
           const [cnpjKey, data] = cnpjsParaBuscar[i];
+          
+          // Atualizar progresso
+          setCnpjProgress({ 
+            current: i + 1, 
+            total: cnpjsParaBuscar.length, 
+            currentCnpj: formatCnpjCpf(data.cnpj)
+          });
           
           // Delay entre requisições (exceto a primeira)
           if (i > 0) {
@@ -709,6 +715,12 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             variant: "destructive",
           });
         }
+
+        // Ir para tela de edição após buscar todos
+        setStep('edit-novos');
+      } else {
+        // Não há CNPJs para buscar, ir direto para edição
+        setStep('edit-novos');
       }
     } else {
       handleImport();
@@ -880,11 +892,12 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
   };
 
   const handleClose = () => {
-    if (!importing) {
+    if (!importing && step !== 'loading-cnpj') {
       onOpenChange(false);
       setStep('upload');
       setPreviewData([]);
       setNovosCadastrosContato(new Map());
+      setCnpjProgress({ current: 0, total: 0, currentCnpj: '' });
     }
   };
 
@@ -1064,6 +1077,40 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                 </Button>
               )}
             </DialogFooter>
+          </div>
+        )}
+
+        {step === 'loading-cnpj' && (
+          <div className="space-y-6 py-12">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+              <p className="text-lg font-medium">Consultando CNPJs na Receita Federal...</p>
+              <p className="text-muted-foreground mt-1">
+                Buscando dados de endereço e contato automaticamente
+              </p>
+            </div>
+            
+            <div className="max-w-md mx-auto space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Progresso</span>
+                <span className="font-medium">{cnpjProgress.current} de {cnpjProgress.total}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-primary h-3 rounded-full transition-all duration-300"
+                  style={{ width: `${cnpjProgress.total > 0 ? (cnpjProgress.current / cnpjProgress.total) * 100 : 0}%` }}
+                />
+              </div>
+              {cnpjProgress.currentCnpj && (
+                <p className="text-center text-sm text-muted-foreground">
+                  Consultando: <span className="font-mono">{cnpjProgress.currentCnpj}</span>
+                </p>
+              )}
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
+              Aguarde enquanto buscamos os dados. Isso pode levar alguns segundos por CNPJ.
+            </p>
           </div>
         )}
 
