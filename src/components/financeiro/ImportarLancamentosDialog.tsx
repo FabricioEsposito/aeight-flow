@@ -403,26 +403,23 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return digits.length === 11 ? 'fisica' : 'juridica';
   };
 
-  // Função para buscar dados do CNPJ via API (sem toast para uso silencioso)
-  const buscarCnpjSilently = async (cnpj: string): Promise<CnpjApiData | null> => {
+  // Função para buscar dados do CNPJ via API com retry automático
+  const buscarCnpjSilently = async (cnpj: string, retries = 2): Promise<CnpjApiData | null> => {
     const cnpjLimpo = cnpj.replace(/\D/g, "");
     
     if (cnpjLimpo.length !== 14) {
       return null;
     }
 
-    try {
+    const tentarBuscar = async (): Promise<CnpjApiData | null> => {
       // Primeiro tenta a BrasilAPI
-      let dados = null;
-      
       try {
         const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`, {
           signal: AbortSignal.timeout(10000),
         });
         
         if (response.ok) {
-          dados = await response.json();
-          // Retorna dados da BrasilAPI
+          const dados = await response.json();
           return {
             razao_social: dados.razao_social || dados.nome || "",
             nome_fantasia: dados.nome_fantasia || "",
@@ -448,8 +445,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         });
         
         if (response.ok) {
-          dados = await response.json();
-          // Retorna dados da publica.cnpj.ws (estrutura diferente)
+          const dados = await response.json();
           return {
             razao_social: dados.razao_social || dados.company?.name || "",
             nome_fantasia: dados.estabelecimento?.nome_fantasia || dados.alias || "",
@@ -471,10 +467,31 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       }
 
       return null;
-    } catch (error) {
-      console.error(`Erro ao buscar CNPJ ${cnpjLimpo}:`, error);
-      return null;
+    };
+
+    // Tentar buscar com retry
+    for (let tentativa = 0; tentativa <= retries; tentativa++) {
+      try {
+        const resultado = await tentarBuscar();
+        if (resultado) {
+          return resultado;
+        }
+        
+        // Se não encontrou e ainda há tentativas, esperar antes de tentar novamente
+        if (tentativa < retries) {
+          console.log(`CNPJ ${cnpjLimpo}: tentativa ${tentativa + 1} falhou, aguardando para retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * (tentativa + 1))); // Delay progressivo
+        }
+      } catch (error) {
+        console.error(`Erro na tentativa ${tentativa + 1} para CNPJ ${cnpjLimpo}:`, error);
+        if (tentativa < retries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * (tentativa + 1)));
+        }
+      }
     }
+
+    console.log(`CNPJ ${cnpjLimpo}: todas as tentativas falharam`);
+    return null;
   };
 
   // Obter lista única de novos cadastros a serem criados
@@ -616,67 +633,63 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       if (cnpjsParaBuscar.length > 0) {
         toast({
           title: "Buscando dados dos CNPJs...",
-          description: `Consultando ${cnpjsParaBuscar.length} CNPJ(s) na Receita Federal.`,
+          description: `Consultando ${cnpjsParaBuscar.length} CNPJ(s) na Receita Federal. Aguarde...`,
         });
 
-        // Buscar CNPJs em paralelo (com limite de 2 simultâneos para evitar rate limiting)
-        const BATCH_SIZE = 2;
-        let encontrados = 0;
-        let naoEncontrados = 0;
+        // Coletar todos os resultados primeiro, depois atualizar o estado
+        const todosResultados: { cnpjKey: string; dados: CnpjApiData | null; cnpj: string }[] = [];
         
-        for (let i = 0; i < cnpjsParaBuscar.length; i += BATCH_SIZE) {
-          const batch = cnpjsParaBuscar.slice(i, i + BATCH_SIZE);
+        // Buscar CNPJs um por um para evitar rate limiting (APIs públicas são sensíveis)
+        for (let i = 0; i < cnpjsParaBuscar.length; i++) {
+          const [cnpjKey, data] = cnpjsParaBuscar[i];
           
-          // Adicionar delay entre batches para evitar rate limiting
+          // Delay entre requisições (exceto a primeira)
           if (i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
           
-          const resultados = await Promise.all(
-            batch.map(async ([cnpjKey, data]) => {
-              try {
-                const dados = await buscarCnpjSilently(data.cnpj);
-                return { cnpjKey, dados, cnpj: data.cnpj };
-              } catch (error) {
-                console.error(`Erro ao buscar CNPJ ${data.cnpj}:`, error);
-                return { cnpjKey, dados: null, cnpj: data.cnpj };
-              }
-            })
-          );
-
-          // Atualizar contatos com os dados obtidos
-          setNovosCadastrosContato(prev => {
-            const newMap = new Map(prev);
-            resultados.forEach(({ cnpjKey, dados }) => {
-              if (dados) {
-                encontrados++;
-                const current = newMap.get(cnpjKey) || { emails: [] };
-                // Adicionar email da API ao array de emails
-                const emailsAtuais = current.emails || [];
-                const emailsNovos = dados.email && !emailsAtuais.includes(dados.email)
-                  ? [...emailsAtuais.filter(e => e), dados.email]
-                  : emailsAtuais.filter(e => e);
-                newMap.set(cnpjKey, {
-                  ...current,
-                  nomeFantasia: dados.nome_fantasia || current.nomeFantasia || '',
-                  emails: emailsNovos.length > 0 ? emailsNovos : [''],
-                  telefone: dados.telefone || current.telefone || '',
-                  endereco: dados.endereco || '',
-                  numero: dados.numero || '',
-                  complemento: dados.complemento || '',
-                  bairro: dados.bairro || '',
-                  cidade: dados.cidade || '',
-                  uf: dados.uf || '',
-                  cep: dados.cep || '',
-                  apiLoaded: true,
-                });
-              } else {
-                naoEncontrados++;
-              }
-            });
-            return newMap;
-          });
+          try {
+            const dados = await buscarCnpjSilently(data.cnpj);
+            todosResultados.push({ cnpjKey, dados, cnpj: data.cnpj });
+          } catch (error) {
+            console.error(`Erro ao buscar CNPJ ${data.cnpj}:`, error);
+            todosResultados.push({ cnpjKey, dados: null, cnpj: data.cnpj });
+          }
         }
+
+        // Contar resultados
+        const encontrados = todosResultados.filter(r => r.dados !== null).length;
+        const naoEncontrados = todosResultados.filter(r => r.dados === null).length;
+
+        // Atualizar todos os contatos de uma vez
+        setNovosCadastrosContato(prev => {
+          const newMap = new Map(prev);
+          todosResultados.forEach(({ cnpjKey, dados }) => {
+            if (dados) {
+              const current = newMap.get(cnpjKey) || { emails: [] };
+              // Adicionar email da API ao array de emails
+              const emailsAtuais = current.emails || [];
+              const emailsNovos = dados.email && !emailsAtuais.includes(dados.email)
+                ? [...emailsAtuais.filter(e => e), dados.email]
+                : emailsAtuais.filter(e => e);
+              newMap.set(cnpjKey, {
+                ...current,
+                nomeFantasia: dados.nome_fantasia || current.nomeFantasia || '',
+                emails: emailsNovos.length > 0 ? emailsNovos : [''],
+                telefone: dados.telefone || current.telefone || '',
+                endereco: dados.endereco || '',
+                numero: dados.numero || '',
+                complemento: dados.complemento || '',
+                bairro: dados.bairro || '',
+                cidade: dados.cidade || '',
+                uf: dados.uf || '',
+                cep: dados.cep || '',
+                apiLoaded: true,
+              });
+            }
+          });
+          return newMap;
+        });
 
         // Mostrar resultado da busca
         if (naoEncontrados === 0) {
