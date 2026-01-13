@@ -1396,7 +1396,8 @@ export default function Extrato() {
                 <TableHead>Serviço / Importância</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor (R$)</TableHead>
-                <TableHead className="text-right">Saldo (R$)</TableHead>
+                <TableHead className="text-right">Realizado (R$)</TableHead>
+                <TableHead className="text-right">Previsto (R$)</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -1564,22 +1565,14 @@ export default function Extrato() {
                       {lanc.tipo === 'entrada' ? '+' : '-'} {formatCurrency(lanc.valor)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      <div className="flex flex-col items-end">
-                        {lanc.status === 'pago' ? (
-                          <span>{formatCurrency(saldoRealizado)}</span>
-                        ) : (
-                          <>
-                            <span className="text-xs text-muted-foreground">Previsto:</span>
-                            <span>{formatCurrency(saldoPrevisto)}</span>
-
-                            {isVencido && (
-                              <span className="text-xs text-muted-foreground">
-                                Realizado: {formatCurrency(saldoRealizado)}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      <span className={lanc.status === 'pago' ? '' : 'text-muted-foreground'}>
+                        {formatCurrency(saldoRealizado)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      <span className={lanc.status !== 'pago' ? '' : 'text-muted-foreground'}>
+                        {formatCurrency(saldoPrevisto)}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <ExtratoActionsDropdown
