@@ -71,12 +71,27 @@ interface PreviewRow {
   conta_bancaria_id?: string;
 }
 
+interface ValidationError {
+  linha: number;
+  campo: string;
+  valorAtual: string;
+  mensagem: string;
+}
+
+interface ValidationProgress {
+  current: number;
+  total: number;
+  phase: 'lendo' | 'validando' | 'concluido';
+}
+
 export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: ImportarLancamentosDialogProps) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'loading-cnpj' | 'edit-novos' | 'importing'>('upload');
+  const [step, setStep] = useState<'upload' | 'validating' | 'validation-errors' | 'preview' | 'loading-cnpj' | 'edit-novos' | 'importing'>('upload');
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, success: 0, errors: 0, created: 0 });
   const [cnpjProgress, setCnpjProgress] = useState({ current: 0, total: 0, currentCnpj: '' });
+  const [validationProgress, setValidationProgress] = useState<ValidationProgress>({ current: 0, total: 0, phase: 'lendo' });
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [autoCriarClienteFornecedor, setAutoCriarClienteFornecedor] = useState(true);
   // Map de CNPJ para dados de contato dos novos cadastros
   const [novosCadastrosContato, setNovosCadastrosContato] = useState<Map<string, NovosCadastrosContato>>(new Map());
@@ -166,11 +181,77 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return null;
   };
 
+  // Função para validar formato do CNPJ/CPF
+  const validarCnpjCpf = (valor: string): { valido: boolean; tipo: 'cnpj' | 'cpf' | 'invalido'; mensagem: string } => {
+    const digitos = valor.replace(/\D/g, '');
+    
+    if (digitos.length === 0) {
+      return { valido: true, tipo: 'invalido', mensagem: '' }; // Campo vazio é permitido se nome for informado
+    }
+    
+    if (digitos.length === 11) {
+      // Validar CPF
+      if (/^(\d)\1{10}$/.test(digitos)) {
+        return { valido: false, tipo: 'cpf', mensagem: 'CPF inválido (todos dígitos iguais)' };
+      }
+      return { valido: true, tipo: 'cpf', mensagem: '' };
+    }
+    
+    if (digitos.length === 14) {
+      // Validar CNPJ
+      if (/^(\d)\1{13}$/.test(digitos)) {
+        return { valido: false, tipo: 'cnpj', mensagem: 'CNPJ inválido (todos dígitos iguais)' };
+      }
+      return { valido: true, tipo: 'cnpj', mensagem: '' };
+    }
+    
+    return { 
+      valido: false, 
+      tipo: 'invalido', 
+      mensagem: `CNPJ/CPF com ${digitos.length} dígitos. CNPJ deve ter 14 dígitos, CPF deve ter 11` 
+    };
+  };
+
+  // Função para validar formato de valor
+  const validarValor = (valor: any): { valido: boolean; valorNumerico: number; mensagem: string } => {
+    if (typeof valor === 'number' && valor > 0) {
+      return { valido: true, valorNumerico: valor, mensagem: '' };
+    }
+    
+    if (typeof valor === 'string') {
+      const valorLimpo = valor.replace(/[^\d,.-]/g, '').replace(',', '.');
+      const numero = parseFloat(valorLimpo);
+      
+      if (isNaN(numero)) {
+        return { valido: false, valorNumerico: 0, mensagem: 'Formato de valor inválido' };
+      }
+      
+      if (numero <= 0) {
+        return { valido: false, valorNumerico: numero, mensagem: 'Valor deve ser maior que zero' };
+      }
+      
+      return { valido: true, valorNumerico: numero, mensagem: '' };
+    }
+    
+    return { valido: false, valorNumerico: 0, mensagem: 'Valor não informado ou inválido' };
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Limpar estados anteriores
+    setValidationErrors([]);
+    setPreviewData([]);
+    
+    // Iniciar validação
+    setStep('validating');
+    setValidationProgress({ current: 0, total: 0, phase: 'lendo' });
+
     try {
+      // Simular tempo de leitura do arquivo
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheetName = workbook.SheetNames[0];
@@ -183,10 +264,154 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           description: "A planilha não contém dados para importar.",
           variant: "destructive",
         });
+        setStep('upload');
         return;
       }
 
-      // Buscar dados para validação
+      // Atualizar para fase de validação
+      setValidationProgress({ current: 0, total: jsonData.length, phase: 'validando' });
+      
+      // Coletar erros de validação
+      const errosValidacao: ValidationError[] = [];
+
+      // Validar cada linha da planilha
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i] as any;
+        const linhaExcel = i + 2; // +2 porque linha 1 é cabeçalho e index começa em 0
+        
+        // Atualizar progresso
+        setValidationProgress({ current: i + 1, total: jsonData.length, phase: 'validando' });
+        
+        // Delay para dar tempo de visualizar o progresso
+        if (i > 0 && i % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Validar Tipo
+        const tipoRaw = (row['Tipo (entrada/saida)'] || row['Tipo'] || '').toString().toLowerCase().trim();
+        if (!tipoRaw) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Tipo',
+            valorAtual: tipoRaw || '(vazio)',
+            mensagem: 'Campo obrigatório. Use "entrada" ou "saida"',
+          });
+        } else if (tipoRaw !== 'entrada' && tipoRaw !== 'saida') {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Tipo',
+            valorAtual: tipoRaw,
+            mensagem: 'Valor inválido. Use "entrada" ou "saida"',
+          });
+        }
+
+        // Validar Descrição
+        const descricao = (row['Descrição'] || '').toString().trim();
+        if (!descricao) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Descrição',
+            valorAtual: '(vazio)',
+            mensagem: 'Campo obrigatório',
+          });
+        } else if (descricao.length > 500) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Descrição',
+            valorAtual: `${descricao.substring(0, 30)}...`,
+            mensagem: `Descrição muito longa (${descricao.length} caracteres). Máximo: 500`,
+          });
+        }
+
+        // Validar Valor
+        const valorRaw = row['Valor'];
+        const validacaoValor = validarValor(valorRaw);
+        if (!validacaoValor.valido) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Valor',
+            valorAtual: String(valorRaw || '(vazio)'),
+            mensagem: validacaoValor.mensagem,
+          });
+        }
+
+        // Validar Data de Vencimento
+        const dataVencRaw = row['Data Vencimento (DD/MM/AAAA)'] || row['Data Vencimento'] || '';
+        const dataVencimento = parseDate(String(dataVencRaw));
+        if (!dataVencRaw) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Data Vencimento',
+            valorAtual: '(vazio)',
+            mensagem: 'Campo obrigatório. Use formato DD/MM/AAAA',
+          });
+        } else if (!dataVencimento) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Data Vencimento',
+            valorAtual: String(dataVencRaw),
+            mensagem: 'Formato de data inválido. Use DD/MM/AAAA',
+          });
+        }
+
+        // Validar Data de Competência
+        const dataCompRaw = row['Data Competência (DD/MM/AAAA)'] || row['Data Competência'] || '';
+        const dataCompetencia = parseDate(String(dataCompRaw));
+        if (!dataCompRaw) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Data Competência',
+            valorAtual: '(vazio)',
+            mensagem: 'Campo obrigatório. Use formato DD/MM/AAAA',
+          });
+        } else if (!dataCompetencia) {
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'Data Competência',
+            valorAtual: String(dataCompRaw),
+            mensagem: 'Formato de data inválido. Use DD/MM/AAAA',
+          });
+        }
+
+        // Validar CNPJ/CPF
+        const cnpjCpfRaw = (row['CNPJ/CPF'] || row['CNPJ'] || row['CPF'] || '').toString().trim();
+        const clienteFornecedorNome = (row['Cliente/Fornecedor (Nome Fantasia ou Razão Social)'] || row['Cliente/Fornecedor'] || '').toString().trim();
+        
+        if (cnpjCpfRaw) {
+          const validacaoCnpj = validarCnpjCpf(cnpjCpfRaw);
+          if (!validacaoCnpj.valido) {
+            errosValidacao.push({
+              linha: linhaExcel,
+              campo: 'CNPJ/CPF',
+              valorAtual: cnpjCpfRaw,
+              mensagem: validacaoCnpj.mensagem,
+            });
+          }
+        } else if (!clienteFornecedorNome) {
+          // Se não tem CNPJ nem nome, é erro
+          errosValidacao.push({
+            linha: linhaExcel,
+            campo: 'CNPJ/CPF ou Cliente/Fornecedor',
+            valorAtual: '(ambos vazios)',
+            mensagem: 'Informe CNPJ/CPF ou Nome do Cliente/Fornecedor',
+          });
+        }
+      }
+
+      // Finalizar validação
+      setValidationProgress({ current: jsonData.length, total: jsonData.length, phase: 'concluido' });
+      
+      // Esperar um pouco para mostrar 100%
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Se houver erros de formatação, mostrar tela de erros
+      if (errosValidacao.length > 0) {
+        setValidationErrors(errosValidacao);
+        setStep('validation-errors');
+        return;
+      }
+
+      // Buscar dados para validação de referências
       const [clientesRes, fornecedoresRes, planoContasRes, centrosCustoRes, contasBancariasRes] = await Promise.all([
         supabase.from('clientes').select('id, razao_social, nome_fantasia, cnpj_cpf'),
         supabase.from('fornecedores').select('id, razao_social, nome_fantasia, cnpj_cpf'),
@@ -373,6 +598,12 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       });
 
       setPreviewData(preview);
+      
+      toast({
+        title: "Validação concluída!",
+        description: `${jsonData.length} linha(s) validada(s) com sucesso.`,
+      });
+      
       setStep('preview');
     } catch (error) {
       console.error('Erro ao processar arquivo:', error);
@@ -381,6 +612,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         description: "Verifique se o arquivo está no formato correto (.xlsx ou .xls)",
         variant: "destructive",
       });
+      setStep('upload');
     }
 
     // Limpar input
@@ -892,12 +1124,25 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
   };
 
   const handleClose = () => {
-    if (!importing && step !== 'loading-cnpj') {
+    if (!importing && step !== 'loading-cnpj' && step !== 'validating') {
       onOpenChange(false);
       setStep('upload');
       setPreviewData([]);
       setNovosCadastrosContato(new Map());
       setCnpjProgress({ current: 0, total: 0, currentCnpj: '' });
+      setValidationProgress({ current: 0, total: 0, phase: 'lendo' });
+      setValidationErrors([]);
+    }
+  };
+
+  const handleBackToUpload = () => {
+    setStep('upload');
+    setPreviewData([]);
+    setValidationErrors([]);
+    setValidationProgress({ current: 0, total: 0, phase: 'lendo' });
+    // Limpar input de arquivo
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -969,6 +1214,104 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                 <li>Faça upload do arquivo preenchido para visualizar e importar</li>
               </ul>
             </div>
+          </div>
+        )}
+
+        {step === 'validating' && (
+          <div className="space-y-6 py-12">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+              <p className="text-lg font-medium">
+                {validationProgress.phase === 'lendo' && 'Lendo planilha...'}
+                {validationProgress.phase === 'validando' && 'Validando dados da planilha...'}
+                {validationProgress.phase === 'concluido' && 'Validação concluída!'}
+              </p>
+              <p className="text-muted-foreground mt-1">
+                {validationProgress.phase === 'lendo' && 'Processando arquivo Excel'}
+                {validationProgress.phase === 'validando' && 'Verificando formato de todos os campos'}
+                {validationProgress.phase === 'concluido' && 'Preparando próxima etapa...'}
+              </p>
+            </div>
+            
+            {validationProgress.total > 0 && (
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Progresso</span>
+                  <span className="font-medium">{validationProgress.current} de {validationProgress.total} linhas</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-3">
+                  <div 
+                    className="bg-primary h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${validationProgress.total > 0 ? (validationProgress.current / validationProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <p className="text-center text-xs text-muted-foreground">
+              Verificando: Tipo, Descrição, Valor, Datas e CNPJ/CPF
+            </p>
+          </div>
+        )}
+
+        {step === 'validation-errors' && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+              <div>
+                <p className="font-medium text-destructive">Erros de formatação encontrados</p>
+                <p className="text-sm text-muted-foreground">
+                  Foram encontrados {validationErrors.length} erro(s) na planilha. 
+                  Corrija os dados apontados abaixo e faça o upload novamente.
+                </p>
+              </div>
+            </div>
+
+            <div className="border rounded-lg max-h-[400px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[80px]">Linha</TableHead>
+                    <TableHead className="w-[150px]">Campo</TableHead>
+                    <TableHead className="w-[180px]">Valor Atual</TableHead>
+                    <TableHead>Problema</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {validationErrors.map((erro, index) => (
+                    <TableRow key={index} className="bg-destructive/5">
+                      <TableCell className="font-mono font-medium">{erro.linha}</TableCell>
+                      <TableCell className="font-medium text-destructive">{erro.campo}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground max-w-[180px] truncate" title={erro.valorAtual}>
+                        {erro.valorAtual}
+                      </TableCell>
+                      <TableCell className="text-sm">{erro.mensagem}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4" />
+                Como corrigir:
+              </h4>
+              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Abra a planilha e localize as linhas indicadas</li>
+                <li>Corrija os valores conforme as mensagens de erro</li>
+                <li>Certifique-se que as datas estão no formato DD/MM/AAAA</li>
+                <li>CNPJ deve ter 14 dígitos e CPF deve ter 11 dígitos</li>
+                <li>Salve a planilha e faça o upload novamente</li>
+              </ul>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleBackToUpload}>
+                <Upload className="w-4 h-4 mr-2" />
+                Fazer Novo Upload
+              </Button>
+            </DialogFooter>
           </div>
         )}
 
