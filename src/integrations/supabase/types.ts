@@ -652,6 +652,45 @@ export type Database = {
           },
         ]
       }
+      historico_baixas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_baixa: string
+          id: string
+          lancamento_id: string
+          lancamento_residual_id: string | null
+          observacao: string | null
+          tipo_lancamento: string
+          valor_baixa: number
+          valor_restante: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_baixa: string
+          id?: string
+          lancamento_id: string
+          lancamento_residual_id?: string | null
+          observacao?: string | null
+          tipo_lancamento: string
+          valor_baixa: number
+          valor_restante: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_baixa?: string
+          id?: string
+          lancamento_id?: string
+          lancamento_residual_id?: string | null
+          observacao?: string | null
+          tipo_lancamento?: string
+          valor_baixa?: number
+          valor_restante?: number
+        }
+        Relationships: []
+      }
       movimentacoes: {
         Row: {
           centro_custo: string | null
