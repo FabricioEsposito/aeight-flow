@@ -1148,6 +1148,10 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
   const validCount = previewData.filter(r => r.valid).length;
   const invalidCount = previewData.filter(r => !r.valid).length;
+  
+  // Contar cadastros únicos (não duplicados)
+  const cadastrosUnicos = getNovosCadastrosUnicos();
+  const totalLinhasComNovoCadastro = previewData.filter(r => r.willCreateClienteFornecedor).length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -1328,13 +1332,31 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                   {invalidCount} com erro(s)
                 </Badge>
               )}
-              {previewData.filter(r => r.willCreateClienteFornecedor).length > 0 && (
+              {cadastrosUnicos.size > 0 && (
                 <Badge variant="outline" className="gap-1 border-primary text-primary">
                   <UserPlus className="w-3 h-3" />
-                  {previewData.filter(r => r.willCreateClienteFornecedor).length} será(ão) criado(s)
+                  {cadastrosUnicos.size} cadastro(s) novo(s)
+                  {totalLinhasComNovoCadastro > cadastrosUnicos.size && (
+                    <span className="text-xs ml-1">
+                      ({totalLinhasComNovoCadastro} lançamentos)
+                    </span>
+                  )}
                 </Badge>
               )}
             </div>
+
+            {totalLinhasComNovoCadastro > cadastrosUnicos.size && (
+              <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg text-sm">
+                <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-medium text-primary">CNPJs duplicados detectados:</span>
+                  <span className="text-muted-foreground ml-1">
+                    {totalLinhasComNovoCadastro} lançamentos usam {cadastrosUnicos.size} CNPJ(s) não cadastrado(s).
+                    Será criado apenas 1 cadastro por CNPJ, vinculado a todos os lançamentos correspondentes.
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="border rounded-lg max-h-[400px] overflow-auto">
               <Table>
