@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.send-billing-emails]
 verify_jwt = false
+
+[functions.cnpj-lookup]
+verify_jwt = false
