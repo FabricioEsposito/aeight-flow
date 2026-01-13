@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 interface ContaBancaria {
   id: string;
@@ -321,12 +322,10 @@ export default function ContasBancarias() {
                       <FormItem>
                         <FormLabel>Saldo Inicial</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0,00" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          <CurrencyInput 
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="0,00"
                           />
                         </FormControl>
                         <FormMessage />

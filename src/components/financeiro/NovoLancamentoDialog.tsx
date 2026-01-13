@@ -19,7 +19,7 @@ import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { supabase } from '@/integrations/supabase/client';
-
+import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
 interface NovoLancamentoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,7 +32,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
   const [fornecedorId, setFornecedorId] = useState('');
   const [dataCompetencia, setDataCompetencia] = useState<Date>(new Date());
   const [descricao, setDescricao] = useState('');
-  const [valor, setValor] = useState('');
+  const [valor, setValor] = useState<number>(0);
   const [categoriaId, setCategoriaId] = useState('');
   const [centroCustoId, setCentroCustoId] = useState('');
   const [codigoReferencia, setCodigoReferencia] = useState('');
@@ -70,7 +70,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setFornecedorId('');
     setDataCompetencia(new Date());
     setDescricao('');
-    setValor('');
+    setValor(0);
     setCategoriaId('');
     setCentroCustoId('');
     setCodigoReferencia('');
@@ -85,15 +85,10 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setObservacoes('');
   };
 
-  const parseValor = (valorStr: string): number => {
-    const cleaned = valorStr.replace(/[^\d,.-]/g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
-  };
-
   const handleSave = async () => {
     setLoading(true);
     try {
-      const valorTotal = parseValor(valor);
+      const valorTotal = valor;
       const numParcelas = parseInt(numeroParcelas) || 1;
       const valorParcela = valorTotal / numParcelas;
 
@@ -147,9 +142,9 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
 
   const isFormValid = () => {
     if (tipoLancamento === 'receita') {
-      return clienteId && descricao && valor && dataCompetencia && dataVencimento;
+      return clienteId && descricao && valor > 0 && dataCompetencia && dataVencimento;
     } else {
-      return fornecedorId && descricao && valor && dataCompetencia && dataVencimento;
+      return fornecedorId && descricao && valor > 0 && dataCompetencia && dataVencimento;
     }
   };
 
@@ -207,18 +202,18 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Valor *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                    <Input
-                      value={valor}
-                      onChange={(e) => setValor(e.target.value)}
-                      placeholder="0,00"
-                      className="pl-10"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label>Valor *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                  <CurrencyInput
+                    value={valor}
+                    onChange={setValor}
+                    placeholder="0,00"
+                    className="pl-10"
+                  />
                 </div>
+              </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -411,18 +406,18 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Valor *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                    <Input
-                      value={valor}
-                      onChange={(e) => setValor(e.target.value)}
-                      placeholder="0,00"
-                      className="pl-10"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label>Valor *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                  <CurrencyInput
+                    value={valor}
+                    onChange={setValor}
+                    placeholder="0,00"
+                    className="pl-10"
+                  />
                 </div>
+              </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">

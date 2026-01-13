@@ -391,20 +391,15 @@ export default function Vendedores() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="comissao">Percentual de Comissão (%)</Label>
-                <Input
-                  id="comissao"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
+                <CurrencyInput
                   value={formData.percentual_comissao}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setFormData({
                       ...formData,
-                      percentual_comissao: parseFloat(e.target.value) || 0,
+                      percentual_comissao: value,
                     })
                   }
-                  placeholder="0"
+                  placeholder="0,00"
                 />
               </div>
             </div>
