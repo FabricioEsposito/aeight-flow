@@ -18,6 +18,9 @@ export interface RolePermissions {
   canEditComercial: boolean;
   canEditCadastro: boolean;
   
+  // Financial operations
+  canPerformBaixas: boolean; // Permite realizar baixas (total/parcial) sem aprovação
+  
   // Approval permissions
   canApproveFinanceiroRequests: boolean;
   canApproveCommissions: boolean;
@@ -78,6 +81,7 @@ export function useUserRole() {
       canEditFinanceiro: false,
       canEditComercial: false,
       canEditCadastro: false,
+      canPerformBaixas: false,
       canApproveFinanceiroRequests: false,
       canApproveCommissions: false,
       needsApprovalForFinanceiroEdits: false,
@@ -97,6 +101,7 @@ export function useUserRole() {
           canEditFinanceiro: true,
           canEditComercial: true,
           canEditCadastro: true,
+          canPerformBaixas: true,
           canApproveFinanceiroRequests: true,
           canApproveCommissions: true,
           needsApprovalForFinanceiroEdits: false,
@@ -113,6 +118,7 @@ export function useUserRole() {
           canEditFinanceiro: true,
           canEditComercial: true,
           canEditCadastro: true,
+          canPerformBaixas: true,
           canApproveFinanceiroRequests: true,
           canApproveCommissions: true,
           needsApprovalForFinanceiroEdits: false,
@@ -126,9 +132,10 @@ export function useUserRole() {
           canAccessFinanceiro: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: true,
-          canEditFinanceiro: false, // needs approval
+          canEditFinanceiro: false, // needs approval for general edits
           canEditComercial: false,
-          canEditCadastro: true, // can create/edit contracts, clients, faturamento
+          canEditCadastro: false, // RLS não permite UPDATE em cadastros
+          canPerformBaixas: true, // PODE realizar baixas total/parcial
           canApproveFinanceiroRequests: false,
           canApproveCommissions: false,
           needsApprovalForFinanceiroEdits: true,
@@ -145,6 +152,7 @@ export function useUserRole() {
           canEditFinanceiro: false,
           canEditComercial: true,
           canEditCadastro: false,
+          canPerformBaixas: false,
           canApproveFinanceiroRequests: false,
           canApproveCommissions: true,
           needsApprovalForFinanceiroEdits: false,
@@ -161,6 +169,7 @@ export function useUserRole() {
           canEditFinanceiro: false,
           canEditComercial: false, // can only request
           canEditCadastro: false,
+          canPerformBaixas: false,
           canApproveFinanceiroRequests: false,
           canApproveCommissions: false,
           needsApprovalForFinanceiroEdits: false,
