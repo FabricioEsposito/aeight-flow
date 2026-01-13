@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus, Pencil, Mail, Phone, Loader2 } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, UserPlus, Pencil, Mail, Phone, Loader2, Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -33,7 +33,7 @@ interface CnpjApiData {
 }
 
 interface NovosCadastrosContato {
-  email?: string;
+  emails: string[]; // Suporte a múltiplos e-mails
   telefone?: string;
   nomeFantasia?: string;
   // Dados de endereço obtidos da API
@@ -463,11 +463,42 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return novos;
   };
 
-  const updateNovoContato = (cnpjKey: string, field: keyof NovosCadastrosContato, value: string | boolean) => {
+  const updateNovoContato = (cnpjKey: string, field: keyof NovosCadastrosContato, value: string | string[] | boolean) => {
     setNovosCadastrosContato(prev => {
       const newMap = new Map(prev);
-      const current = newMap.get(cnpjKey) || {};
+      const current = newMap.get(cnpjKey) || { emails: [] };
       newMap.set(cnpjKey, { ...current, [field]: value });
+      return newMap;
+    });
+  };
+
+  const addEmail = (cnpjKey: string) => {
+    setNovosCadastrosContato(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(cnpjKey) || { emails: [] };
+      newMap.set(cnpjKey, { ...current, emails: [...(current.emails || []), ''] });
+      return newMap;
+    });
+  };
+
+  const removeEmail = (cnpjKey: string, emailIndex: number) => {
+    setNovosCadastrosContato(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(cnpjKey) || { emails: [] };
+      const newEmails = [...(current.emails || [])];
+      newEmails.splice(emailIndex, 1);
+      newMap.set(cnpjKey, { ...current, emails: newEmails });
+      return newMap;
+    });
+  };
+
+  const updateEmail = (cnpjKey: string, emailIndex: number, value: string) => {
+    setNovosCadastrosContato(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(cnpjKey) || { emails: [] };
+      const newEmails = [...(current.emails || [])];
+      newEmails[emailIndex] = value;
+      newMap.set(cnpjKey, { ...current, emails: newEmails });
       return newMap;
     });
   };
@@ -483,11 +514,17 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     if (dados) {
       setNovosCadastrosContato(prev => {
         const newMap = new Map(prev);
+        const existing = prev.get(cnpjKey) || { emails: [] };
+        // Adicionar email da API ao array de emails, se existir e não estiver vazio
+        const emailsAtuais = existing.emails || [];
+        const emailsNovos = dados.email && !emailsAtuais.includes(dados.email) 
+          ? [...emailsAtuais.filter(e => e), dados.email] 
+          : emailsAtuais.filter(e => e);
         newMap.set(cnpjKey, {
-          ...prev.get(cnpjKey),
-          nomeFantasia: dados.nome_fantasia || prev.get(cnpjKey)?.nomeFantasia || '',
-          email: dados.email || prev.get(cnpjKey)?.email || '',
-          telefone: dados.telefone || prev.get(cnpjKey)?.telefone || '',
+          ...existing,
+          nomeFantasia: dados.nome_fantasia || existing.nomeFantasia || '',
+          emails: emailsNovos.length > 0 ? emailsNovos : [''],
+          telefone: dados.telefone || existing.telefone || '',
           endereco: dados.endereco || '',
           numero: dados.numero || '',
           complemento: dados.complemento || '',
@@ -526,7 +563,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       novos.forEach((data, cnpjKey) => {
         initialContatos.set(cnpjKey, {
           nomeFantasia: '',
-          email: '',
+          emails: [''], // Inicializa com um campo de email vazio
           telefone: '',
           endereco: '',
           numero: '',
@@ -566,11 +603,16 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             const newMap = new Map(prev);
             resultados.forEach(({ cnpjKey, dados }) => {
               if (dados) {
-                const current = newMap.get(cnpjKey) || {};
+                const current = newMap.get(cnpjKey) || { emails: [] };
+                // Adicionar email da API ao array de emails
+                const emailsAtuais = current.emails || [];
+                const emailsNovos = dados.email && !emailsAtuais.includes(dados.email)
+                  ? [...emailsAtuais.filter(e => e), dados.email]
+                  : emailsAtuais.filter(e => e);
                 newMap.set(cnpjKey, {
                   ...current,
                   nomeFantasia: dados.nome_fantasia || current.nomeFantasia || '',
-                  email: dados.email || current.email || '',
+                  emails: emailsNovos.length > 0 ? emailsNovos : [''],
                   telefone: dados.telefone || current.telefone || '',
                   endereco: dados.endereco || '',
                   numero: dados.numero || '',
@@ -636,14 +678,16 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             if (createdClientes.has(cnpjKey)) {
               clienteId = createdClientes.get(cnpjKey);
             } else {
-              const contato = novosCadastrosContato.get(cnpjKey) || {};
+              const contato = novosCadastrosContato.get(cnpjKey) || { emails: [] };
+              // Filtrar emails vazios
+              const emailsValidos = (contato.emails || []).filter(e => e && e.trim());
               const { data: novoCliente, error } = await supabase
                 .from('clientes')
                 .insert({
                   cnpj_cpf: formatCnpjCpf(row.cnpjCpfParaCriar),
                   razao_social: row.nomeParaCriar || `Cliente ${row.cnpjCpfParaCriar}`,
                   nome_fantasia: contato.nomeFantasia || null,
-                  email: contato.email ? [contato.email] : null,
+                  email: emailsValidos.length > 0 ? emailsValidos : null,
                   telefone: contato.telefone || null,
                   endereco: contato.endereco || null,
                   numero: contato.numero || null,
@@ -668,14 +712,16 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             if (createdFornecedores.has(cnpjKey)) {
               fornecedorId = createdFornecedores.get(cnpjKey);
             } else {
-              const contato = novosCadastrosContato.get(cnpjKey) || {};
+              const contato = novosCadastrosContato.get(cnpjKey) || { emails: [] };
+              // Filtrar emails vazios
+              const emailsValidos = (contato.emails || []).filter(e => e && e.trim());
               const { data: novoFornecedor, error } = await supabase
                 .from('fornecedores')
                 .insert({
                   cnpj_cpf: formatCnpjCpf(row.cnpjCpfParaCriar),
                   razao_social: row.nomeParaCriar || `Fornecedor ${row.cnpjCpfParaCriar}`,
                   nome_fantasia: contato.nomeFantasia || null,
-                  email: contato.email ? [contato.email] : null,
+                  email: emailsValidos.length > 0 ? emailsValidos : null,
                   telefone: contato.telefone || null,
                   endereco: contato.endereco || null,
                   numero: contato.numero || null,
@@ -986,8 +1032,9 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
             <div className="space-y-4 max-h-[500px] overflow-auto">
               {Array.from(getNovosCadastrosUnicos()).map(([cnpjKey, data]) => {
-                const contato = novosCadastrosContato.get(cnpjKey) || {};
+                const contato = novosCadastrosContato.get(cnpjKey) || { emails: [] };
                 const isLoading = loadingCnpjs.has(cnpjKey);
+                const emails = contato.emails || [''];
                 return (
                   <div key={cnpjKey} className="border rounded-lg p-4 space-y-4">
                     <div className="flex items-center justify-between">
@@ -1029,7 +1076,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                     </div>
                     
                     {/* Dados Básicos */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor={`nome-fantasia-${cnpjKey}`} className="text-xs">
                           Nome Fantasia
@@ -1039,20 +1086,6 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                           placeholder="Nome fantasia (opcional)"
                           value={contato.nomeFantasia || ''}
                           onChange={(e) => updateNovoContato(cnpjKey, 'nomeFantasia', e.target.value)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`email-${cnpjKey}`} className="text-xs flex items-center gap-1">
-                          <Mail className="w-3 h-3" />
-                          E-mail
-                        </Label>
-                        <Input
-                          id={`email-${cnpjKey}`}
-                          type="email"
-                          placeholder="email@exemplo.com"
-                          value={contato.email || ''}
-                          onChange={(e) => updateNovoContato(cnpjKey, 'email', e.target.value)}
                           className="h-9"
                         />
                       </div>
@@ -1069,6 +1102,53 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                           className="h-9"
                         />
                       </div>
+                    </div>
+
+                    {/* E-mails - Múltiplos */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          E-mails (para notificações)
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => addEmail(cnpjKey)}
+                          className="h-7 text-xs"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Adicionar e-mail
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {emails.map((email, emailIndex) => (
+                          <div key={emailIndex} className="flex items-center gap-2">
+                            <Input
+                              type="email"
+                              placeholder="email@exemplo.com"
+                              value={email}
+                              onChange={(e) => updateEmail(cnpjKey, emailIndex, e.target.value)}
+                              className="h-9"
+                            />
+                            {emails.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeEmail(cnpjKey, emailIndex)}
+                                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Adicione todos os e-mails que devem receber notificações de cobrança e faturamento.
+                      </p>
                     </div>
 
                     {/* Endereço */}
