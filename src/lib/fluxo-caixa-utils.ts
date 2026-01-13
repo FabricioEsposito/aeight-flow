@@ -132,10 +132,11 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
 
   // Processar cada movimentação
   for (const mov of movNoPeriodoFiltradas) {
-    const data = mov.data_movimento;
+    // Normalizar a data para YYYY-MM-DD (remove timestamp se existir)
+    const data = normalizeDateToYYYYMMDD(mov.data_movimento);
     
-    // Ignorar se data fora do período
-    if (data < dataInicio || data > dataFim) continue;
+    // Ignorar se data inválida ou fora do período
+    if (!data || data < dataInicio || data > dataFim) continue;
     
     // Garantir que o dia existe no mapa
     if (!movimentacoesPorDia[data]) {
@@ -227,6 +228,32 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
 }
 
 /**
+ * Normaliza uma string de data para o formato YYYY-MM-DD
+ * Aceita formatos: YYYY-MM-DD, YYYY-MM-DDTHH:mm:ss, etc.
+ */
+export function normalizeDateToYYYYMMDD(dateStr: string): string {
+  if (!dateStr) return '';
+  // Se já está no formato YYYY-MM-DD (10 caracteres), retorna como está
+  if (dateStr.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  // Se tem timestamp, extrai apenas a parte da data
+  if (dateStr.includes('T')) {
+    return dateStr.split('T')[0];
+  }
+  // Caso tenha espaço (formato com hora), extrai apenas a data
+  if (dateStr.includes(' ')) {
+    return dateStr.split(' ')[0];
+  }
+  // Tenta parsear como Date e formatar
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return formatDateLocal(date);
+  }
+  return dateStr;
+}
+
+/**
  * Formata data para YYYY-MM-DD
  */
 export function formatDateLocal(date: Date): string {
@@ -237,7 +264,8 @@ export function formatDateLocal(date: Date): string {
  * Formata data para DD/MM
  */
 export function formatDateDisplay(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
+  const normalizedDate = normalizeDateToYYYYMMDD(dateStr);
+  const date = new Date(normalizedDate + 'T00:00:00');
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
@@ -267,9 +295,12 @@ export function prepararMovimentacoes(
     const isPago = conta.status === 'pago';
     
     // Para pagos, usar data_recebimento. Para pendentes, usar data_vencimento
-    const dataMovimento = isPago && conta.data_recebimento 
-      ? conta.data_recebimento 
-      : conta.data_vencimento;
+    // Normalizar para YYYY-MM-DD
+    const dataMovimento = normalizeDateToYYYYMMDD(
+      isPago && conta.data_recebimento 
+        ? conta.data_recebimento 
+        : conta.data_vencimento
+    );
     
     movimentacoes.push({
       valor: conta.valor,
@@ -285,9 +316,12 @@ export function prepararMovimentacoes(
     const isPago = conta.status === 'pago';
     
     // Para pagos, usar data_pagamento. Para pendentes, usar data_vencimento
-    const dataMovimento = isPago && conta.data_pagamento 
-      ? conta.data_pagamento 
-      : conta.data_vencimento;
+    // Normalizar para YYYY-MM-DD
+    const dataMovimento = normalizeDateToYYYYMMDD(
+      isPago && conta.data_pagamento 
+        ? conta.data_pagamento 
+        : conta.data_vencimento
+    );
     
     movimentacoes.push({
       valor: conta.valor,
