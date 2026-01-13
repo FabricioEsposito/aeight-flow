@@ -20,6 +20,24 @@ export function parseBrazilianCurrency(value: string): number {
   return isNaN(parsed) ? 0 : parsed;
 }
 
+// Formata valor como moeda brasileira enquanto digita (apenas números)
+function formatAsCurrency(value: string): string {
+  // Remove tudo que não é número
+  const numbers = value.replace(/\D/g, '');
+  
+  if (!numbers) return '';
+  
+  // Converte para centavos e depois para reais
+  const cents = parseInt(numbers, 10);
+  const reais = cents / 100;
+  
+  // Formata como moeda brasileira
+  return reais.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 interface CurrencyInputProps {
   value: number;
   onChange: (value: number) => void;
@@ -46,14 +64,20 @@ export function CurrencyInput({ value, onChange, placeholder = "0,00", className
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     
-    // Remove tudo exceto números, vírgula e ponto
-    const filtered = inputValue.replace(/[^\d,.-]/g, '');
+    // Formata automaticamente enquanto digita
+    const formatted = formatAsCurrency(inputValue);
+    setDisplayValue(formatted);
     
-    setDisplayValue(filtered);
-    
-    // Converte para número usando o parser brasileiro
-    const numericValue = parseBrazilianCurrency(filtered);
+    // Converte para número
+    const numericValue = parseBrazilianCurrency(formatted);
     onChange(numericValue);
+  };
+
+  const handleFocus = () => {
+    // Ao focar, se o valor for 0, limpa o campo
+    if (value === 0) {
+      setDisplayValue('');
+    }
   };
 
   const handleBlur = () => {
@@ -69,9 +93,11 @@ export function CurrencyInput({ value, onChange, placeholder = "0,00", className
     <Input
       ref={inputRef}
       type="text"
+      inputMode="numeric"
       data-currency-input="true"
       value={displayValue}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       placeholder={placeholder}
       className={className}
@@ -105,14 +131,19 @@ export function PercentageInput({ value, onChange, placeholder = "0,00%", classN
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     
-    // Remove tudo exceto números, vírgula e ponto
-    const filtered = inputValue.replace(/[^\d,.-]/g, '');
-    
-    setDisplayValue(filtered);
+    // Formata automaticamente enquanto digita
+    const formatted = formatAsCurrency(inputValue);
+    setDisplayValue(formatted);
     
     // Converte para número
-    const numericValue = parseBrazilianCurrency(filtered);
+    const numericValue = parseBrazilianCurrency(formatted);
     onChange(numericValue);
+  };
+
+  const handleFocus = () => {
+    if (value === 0) {
+      setDisplayValue('');
+    }
   };
 
   const handleBlur = () => {
@@ -127,8 +158,10 @@ export function PercentageInput({ value, onChange, placeholder = "0,00%", classN
     <Input
       ref={inputRef}
       type="text"
+      inputMode="numeric"
       value={displayValue}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       placeholder={placeholder}
       className={className}
