@@ -1114,6 +1114,23 @@ export default function Extrato() {
     });
   }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores]);
   
+  // Debug: log para verificar cálculos de saldo
+  console.log('=== DEBUG FLUXO CAIXA ===', {
+    dateRange,
+    contasBancariasIds: contaBancariaFilter,
+    saldoInicialContas: contasBancarias
+      .filter(c => contaBancariaFilter.length === 0 || contaBancariaFilter.includes(c.id))
+      .reduce((acc, c) => acc + c.saldo_inicial, 0),
+    movimentacoesAnteriores: {
+      total: movimentacoesAnteriores.length,
+      entradas: movimentacoesAnteriores.filter(m => m.tipo === 'entrada' && (contaBancariaFilter.length === 0 || (m.conta_bancaria_id && contaBancariaFilter.includes(m.conta_bancaria_id)))).reduce((acc, m) => acc + m.valor, 0),
+      saidas: movimentacoesAnteriores.filter(m => m.tipo === 'saida' && (contaBancariaFilter.length === 0 || (m.conta_bancaria_id && contaBancariaFilter.includes(m.conta_bancaria_id)))).reduce((acc, m) => acc + m.valor, 0),
+    },
+    saldoInicialPeriodo: fluxoResult?.saldoInicialPeriodo,
+    saldoFinalRealizado: fluxoResult?.saldoFinalRealizado,
+    saldoFinalPrevisto: fluxoResult?.saldoFinalPrevisto,
+  });
+  
   // Usar valores do fluxo calculado
   const saldoInicial = fluxoResult?.saldoInicialPeriodo || 0;
   const totalReceber = fluxoResult?.totalEntradasPrevistas || 0;
