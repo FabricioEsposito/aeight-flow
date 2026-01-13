@@ -636,95 +636,116 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     return digits.length === 11 ? 'fisica' : 'juridica';
   };
 
-  // Função para buscar dados do CNPJ via API com retry automático
-  const buscarCnpjSilently = async (cnpj: string, retries = 2): Promise<CnpjApiData | null> => {
+  // Função para buscar dados do CNPJ via Edge Function (server-side, sem CORS)
+  const buscarCnpjSilently = async (cnpj: string): Promise<CnpjApiData | null> => {
     const cnpjLimpo = cnpj.replace(/\D/g, "");
     
     if (cnpjLimpo.length !== 14) {
       return null;
     }
 
-    const tentarBuscar = async (): Promise<CnpjApiData | null> => {
-      // Primeiro tenta a BrasilAPI
-      try {
-        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`, {
-          signal: AbortSignal.timeout(10000),
-        });
-        
-        if (response.ok) {
-          const dados = await response.json();
-          return {
-            razao_social: dados.razao_social || dados.nome || "",
-            nome_fantasia: dados.nome_fantasia || "",
-            endereco: dados.logradouro || "",
-            numero: dados.numero || "",
-            complemento: dados.complemento || "",
-            bairro: dados.bairro || "",
-            cidade: dados.municipio || "",
-            uf: dados.uf || "",
-            cep: (dados.cep || "").replace(/\D/g, ""),
-            telefone: dados.ddd_telefone_1 || "",
-            email: dados.email || "",
-          };
+    try {
+      const { data, error } = await supabase.functions.invoke('cnpj-lookup', {
+        body: null,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      // A função usa query params, então vamos usar fetch direto
+      const response = await fetch(
+        `https://epgifclglrrgzpguqbde.supabase.co/functions/v1/cnpj-lookup?cnpj=${cnpjLimpo}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
-      } catch (error) {
-        console.log(`BrasilAPI falhou para CNPJ ${cnpjLimpo}, tentando API alternativa...`);
+      );
+
+      if (!response.ok) {
+        console.error(`Edge Function retornou status ${response.status}`);
+        return null;
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        return {
+          razao_social: result.data.razao_social || "",
+          nome_fantasia: result.data.nome_fantasia || "",
+          endereco: result.data.endereco || "",
+          numero: result.data.numero || "",
+          complemento: result.data.complemento || "",
+          bairro: result.data.bairro || "",
+          cidade: result.data.cidade || "",
+          uf: result.data.uf || "",
+          cep: result.data.cep || "",
+          telefone: result.data.telefone || "",
+          email: result.data.email || "",
+        };
       }
       
-      // Se BrasilAPI falhar, tenta a API alternativa (publica.cnpj.ws)
-      try {
-        const response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjLimpo}`, {
-          signal: AbortSignal.timeout(10000),
-        });
-        
-        if (response.ok) {
-          const dados = await response.json();
-          return {
-            razao_social: dados.razao_social || dados.company?.name || "",
-            nome_fantasia: dados.estabelecimento?.nome_fantasia || dados.alias || "",
-            endereco: dados.estabelecimento?.logradouro || dados.address?.street || "",
-            numero: dados.estabelecimento?.numero || dados.address?.number || "",
-            complemento: dados.estabelecimento?.complemento || dados.address?.details || "",
-            bairro: dados.estabelecimento?.bairro || dados.address?.district || "",
-            cidade: dados.estabelecimento?.cidade?.nome || dados.address?.city || "",
-            uf: dados.estabelecimento?.estado?.sigla || dados.address?.state || "",
-            cep: (dados.estabelecimento?.cep || dados.address?.zip || "").replace(/\D/g, ""),
-            telefone: dados.estabelecimento?.ddd1 && dados.estabelecimento?.telefone1 
-              ? `(${dados.estabelecimento.ddd1}) ${dados.estabelecimento.telefone1}` 
-              : "",
-            email: dados.estabelecimento?.email || "",
-          };
-        }
-      } catch (error) {
-        console.log(`API alternativa também falhou para CNPJ ${cnpjLimpo}`);
-      }
-
+      console.log(`CNPJ ${cnpjLimpo}: ${result.error || 'não encontrado'}`);
       return null;
-    };
+    } catch (error) {
+      console.error(`Erro ao buscar CNPJ ${cnpjLimpo} via Edge Function:`, error);
+      return null;
+    }
+  };
 
-    // Tentar buscar com retry
-    for (let tentativa = 0; tentativa <= retries; tentativa++) {
-      try {
-        const resultado = await tentarBuscar();
-        if (resultado) {
-          return resultado;
+  // Função para buscar múltiplos CNPJs em lote via Edge Function
+  const buscarCnpjsEmLote = async (cnpjs: string[]): Promise<Map<string, CnpjApiData | null>> => {
+    const resultados = new Map<string, CnpjApiData | null>();
+    
+    if (cnpjs.length === 0) return resultados;
+
+    try {
+      const cnpjsLimpos = cnpjs.map(c => c.replace(/\D/g, "")).filter(c => c.length === 14);
+      
+      const response = await fetch(
+        `https://epgifclglrrgzpguqbde.supabase.co/functions/v1/cnpj-lookup?cnpjs=${cnpjsLimpos.join(',')}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
-        
-        // Se não encontrou e ainda há tentativas, esperar antes de tentar novamente
-        if (tentativa < retries) {
-          console.log(`CNPJ ${cnpjLimpo}: tentativa ${tentativa + 1} falhou, aguardando para retry...`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * (tentativa + 1))); // Delay progressivo
-        }
-      } catch (error) {
-        console.error(`Erro na tentativa ${tentativa + 1} para CNPJ ${cnpjLimpo}:`, error);
-        if (tentativa < retries) {
-          await new Promise(resolve => setTimeout(resolve, 2000 * (tentativa + 1)));
+      );
+
+      if (!response.ok) {
+        console.error(`Edge Function em lote retornou status ${response.status}`);
+        return resultados;
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.results) {
+        for (const [cnpj, data] of Object.entries(result.results)) {
+          const cnpjResult = data as { success: boolean; data?: CnpjApiData; fromCache?: boolean };
+          if (cnpjResult.success && cnpjResult.data) {
+            resultados.set(cnpj, {
+              razao_social: cnpjResult.data.razao_social || "",
+              nome_fantasia: (cnpjResult.data as any).nome_fantasia || "",
+              endereco: cnpjResult.data.endereco || "",
+              numero: cnpjResult.data.numero || "",
+              complemento: cnpjResult.data.complemento || "",
+              bairro: cnpjResult.data.bairro || "",
+              cidade: cnpjResult.data.cidade || "",
+              uf: cnpjResult.data.uf || "",
+              cep: cnpjResult.data.cep || "",
+              telefone: cnpjResult.data.telefone || "",
+              email: cnpjResult.data.email || "",
+            });
+          } else {
+            resultados.set(cnpj, null);
+          }
         }
       }
+      
+      return resultados;
+    } catch (error) {
+      console.error('Erro ao buscar CNPJs em lote via Edge Function:', error);
+      return resultados;
     }
-
-    console.log(`CNPJ ${cnpjLimpo}: todas as tentativas falharam`);
-    return null;
   };
 
   // Obter lista única de novos cadastros a serem criados
@@ -864,46 +885,32 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       
       if (cnpjsParaBuscar.length > 0) {
         // Mostrar tela de loading
-        setCnpjProgress({ current: 0, total: cnpjsParaBuscar.length, currentCnpj: '' });
+        setCnpjProgress({ current: 0, total: cnpjsParaBuscar.length, currentCnpj: 'Iniciando busca em lote...' });
         setStep('loading-cnpj');
 
-        // Coletar todos os resultados primeiro, depois atualizar o estado
-        const todosResultados: { cnpjKey: string; dados: CnpjApiData | null; cnpj: string }[] = [];
+        // Usar busca em lote via Edge Function (muito mais rápido e sem CORS)
+        const cnpjsList = cnpjsParaBuscar.map(([cnpjKey]) => cnpjKey);
         
-        // Buscar CNPJs um por um para evitar rate limiting (APIs públicas são sensíveis)
-        for (let i = 0; i < cnpjsParaBuscar.length; i++) {
-          const [cnpjKey, data] = cnpjsParaBuscar[i];
-          
-          // Atualizar progresso
-          setCnpjProgress({ 
-            current: i + 1, 
-            total: cnpjsParaBuscar.length, 
-            currentCnpj: formatCnpjCpf(data.cnpj)
-          });
-          
-          // Delay entre requisições (exceto a primeira)
-          if (i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
-          }
-          
-          try {
-            const dados = await buscarCnpjSilently(data.cnpj);
-            todosResultados.push({ cnpjKey, dados, cnpj: data.cnpj });
-          } catch (error) {
-            console.error(`Erro ao buscar CNPJ ${data.cnpj}:`, error);
-            todosResultados.push({ cnpjKey, dados: null, cnpj: data.cnpj });
-          }
-        }
+        // Atualizar progresso para indicar busca em andamento
+        setCnpjProgress({ 
+          current: 1, 
+          total: cnpjsParaBuscar.length, 
+          currentCnpj: `Consultando ${cnpjsParaBuscar.length} CNPJ(s) via servidor...`
+        });
 
+        const resultadosLote = await buscarCnpjsEmLote(cnpjsList);
+        
         // Contar resultados
-        const encontrados = todosResultados.filter(r => r.dados !== null).length;
-        const naoEncontrados = todosResultados.filter(r => r.dados === null).length;
+        let encontrados = 0;
+        let naoEncontrados = 0;
 
         // Atualizar todos os contatos de uma vez
         setNovosCadastrosContato(prev => {
           const newMap = new Map(prev);
-          todosResultados.forEach(({ cnpjKey, dados }) => {
+          cnpjsParaBuscar.forEach(([cnpjKey]) => {
+            const dados = resultadosLote.get(cnpjKey);
             if (dados) {
+              encontrados++;
               const current = newMap.get(cnpjKey) || { emails: [] };
               // Adicionar email da API ao array de emails
               const emailsAtuais = current.emails || [];
@@ -924,6 +931,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                 cep: dados.cep || '',
                 apiLoaded: true,
               });
+            } else {
+              naoEncontrados++;
             }
           });
           return newMap;
