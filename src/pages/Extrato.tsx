@@ -28,6 +28,7 @@ import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDial
 import { ImportarLancamentosDialog } from '@/components/financeiro/ImportarLancamentosDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 
 interface LancamentoExtrato {
@@ -1609,9 +1610,19 @@ export default function Extrato() {
                            'Em dia'}
                         </Badge>
                         {lanc.status === 'pago' && lanc.valor_original && lanc.valor_original > 0 && lanc.valor < lanc.valor_original && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30">
-                            Baixa Parcial
-                          </Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30 cursor-help">
+                                Baixa Parcial
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              <div className="space-y-1">
+                                <p><span className="text-muted-foreground">Valor original:</span> <span className="font-medium">{formatCurrency(lanc.valor_original)}</span></p>
+                                <p><span className="text-muted-foreground">Valor pago:</span> <span className="font-medium text-emerald-600">{formatCurrency(lanc.valor)}</span></p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>
