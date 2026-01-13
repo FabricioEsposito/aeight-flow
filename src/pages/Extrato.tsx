@@ -65,6 +65,7 @@ export default function Extrato() {
   const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number; saldo_inicial: number; data_inicio: string }>>([]);
   const [movimentacoesAnteriores, setMovimentacoesAnteriores] = useState<Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }>>([]);
+  const [pendentesAnteriores, setPendentesAnteriores] = useState<Array<{ valor: number; data_movimento: string; tipo: 'entrada' | 'saida'; status: 'pendente'; conta_bancaria_id: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
@@ -418,6 +419,7 @@ export default function Extrato() {
       // IMPORTANTE: Sempre buscar TODOS os movimentos pagos antes da data inicial do filtro
       // independente de qual período foi selecionado, para garantir consistência no saldo
       const dataInicioFiltro = dateRange?.start || format(new Date(), 'yyyy-MM-dd');
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
       
       // Buscar entradas pagas antes do período (usando data_recebimento)
       const { data: entradasAnteriores } = await supabase
@@ -439,6 +441,41 @@ export default function Extrato() {
       ];
       
       setMovimentacoesAnteriores(movimentacoesAnt);
+      
+      // NOVO: Buscar pendentes EM DIA anteriores ao período (para saldo previsto consistente)
+      // Pendentes com vencimento >= hoje E < data_inicio do filtro
+      const { data: pendentesReceberAnt } = await supabase
+        .from('contas_receber')
+        .select('valor, data_vencimento, conta_bancaria_id')
+        .neq('status', 'pago')
+        .gte('data_vencimento', todayStr) // Em dia (não vencido)
+        .lt('data_vencimento', dataInicioFiltro);
+      
+      const { data: pendentesPagarAnt } = await supabase
+        .from('contas_pagar')
+        .select('valor, data_vencimento, conta_bancaria_id')
+        .neq('status', 'pago')
+        .gte('data_vencimento', todayStr)
+        .lt('data_vencimento', dataInicioFiltro);
+      
+      const pendentesAnt: Array<{ valor: number; data_movimento: string; tipo: 'entrada' | 'saida'; status: 'pendente'; conta_bancaria_id: string | null }> = [
+        ...(pendentesReceberAnt || []).map(e => ({ 
+          valor: e.valor, 
+          data_movimento: e.data_vencimento, 
+          tipo: 'entrada' as const, 
+          status: 'pendente' as const,
+          conta_bancaria_id: e.conta_bancaria_id 
+        })),
+        ...(pendentesPagarAnt || []).map(s => ({ 
+          valor: s.valor, 
+          data_movimento: s.data_vencimento, 
+          tipo: 'saida' as const, 
+          status: 'pendente' as const,
+          conta_bancaria_id: s.conta_bancaria_id 
+        }))
+      ];
+      
+      setPendentesAnteriores(pendentesAnt);
 
       const todosLancamentos = [...receberComServicos, ...pagarComServicos].sort(
         (a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
@@ -1110,26 +1147,17 @@ export default function Extrato() {
       })),
       contasBancariasIds: contaBancariaFilter,
       movimentacoesAnteriores,
-      movimentacoesNoPeriodo
+      movimentacoesNoPeriodo,
+      // NOVO: Passar pendentes anteriores para saldo previsto consistente
+      pendentesAnteriores: pendentesAnteriores.map(p => ({
+        valor: p.valor,
+        data_movimento: p.data_movimento,
+        tipo: p.tipo,
+        status: p.status,
+        conta_bancaria_id: p.conta_bancaria_id
+      }))
     });
-  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores]);
-  
-  // Debug: log para verificar cálculos de saldo
-  console.log('=== DEBUG FLUXO CAIXA ===', {
-    dateRange,
-    contasBancariasIds: contaBancariaFilter,
-    saldoInicialContas: contasBancarias
-      .filter(c => contaBancariaFilter.length === 0 || contaBancariaFilter.includes(c.id))
-      .reduce((acc, c) => acc + c.saldo_inicial, 0),
-    movimentacoesAnteriores: {
-      total: movimentacoesAnteriores.length,
-      entradas: movimentacoesAnteriores.filter(m => m.tipo === 'entrada' && (contaBancariaFilter.length === 0 || (m.conta_bancaria_id && contaBancariaFilter.includes(m.conta_bancaria_id)))).reduce((acc, m) => acc + m.valor, 0),
-      saidas: movimentacoesAnteriores.filter(m => m.tipo === 'saida' && (contaBancariaFilter.length === 0 || (m.conta_bancaria_id && contaBancariaFilter.includes(m.conta_bancaria_id)))).reduce((acc, m) => acc + m.valor, 0),
-    },
-    saldoInicialPeriodo: fluxoResult?.saldoInicialPeriodo,
-    saldoFinalRealizado: fluxoResult?.saldoFinalRealizado,
-    saldoFinalPrevisto: fluxoResult?.saldoFinalPrevisto,
-  });
+  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores, pendentesAnteriores]);
   
   // Usar valores do fluxo calculado
   const saldoInicial = fluxoResult?.saldoInicialPeriodo || 0;

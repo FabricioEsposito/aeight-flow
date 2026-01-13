@@ -42,6 +42,8 @@ export interface FluxoCaixaParams {
   contasBancariasIds: string[]; // IDs selecionados, vazio = todas
   movimentacoesAnteriores: { valor: number; tipo: 'entrada' | 'saida'; conta_bancaria_id: string | null }[];
   movimentacoesNoPeriodo: MovimentacaoFluxo[];
+  // NOVO: Pendentes EM DIA anteriores ao período (para cálculo consistente do saldo previsto)
+  pendentesAnteriores?: MovimentacaoFluxo[];
 }
 
 export interface FluxoCaixaResult {
@@ -65,7 +67,8 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
     contasBancarias,
     contasBancariasIds,
     movimentacoesAnteriores,
-    movimentacoesNoPeriodo
+    movimentacoesNoPeriodo,
+    pendentesAnteriores = []
   } = params;
 
   const today = new Date();
@@ -96,6 +99,20 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
 
   // Saldo inicial do período = saldo_inicial + entradas pagas antes - saídas pagas antes
   const saldoInicialPeriodo = saldoInicialContas + entradasAnteriores - saidasAnteriores;
+  
+  // NOVO: Calcular pendentes EM DIA anteriores ao período para saldo previsto consistente
+  const pendentesAntFiltrados = contasBancariasIds.length === 0
+    ? pendentesAnteriores
+    : pendentesAnteriores.filter(m => m.conta_bancaria_id && contasBancariasIds.includes(m.conta_bancaria_id));
+  
+  const saldoPendentesAnteriores = pendentesAntFiltrados.reduce((acc, p) => {
+    // Só considerar pendentes em dia (vencimento >= hoje)
+    const dataVencimento = new Date(p.data_movimento + 'T00:00:00');
+    if (dataVencimento >= today && p.status === 'pendente') {
+      return acc + (p.tipo === 'entrada' ? p.valor : -p.valor);
+    }
+    return acc;
+  }, 0);
 
   // Filtrar movimentações do período por conta bancária
   const movNoPeriodoFiltradas = contasBancariasIds.length === 0
@@ -173,7 +190,8 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
   // Calcular fluxo dia a dia
   const fluxoDiario: FluxoDiario[] = [];
   let saldoAcumuladoRealizado = saldoInicialPeriodo;
-  let saldoAcumuladoPrevisto = saldoInicialPeriodo;
+  // CORRIGIDO: saldo previsto inicial inclui pendentes EM DIA anteriores ao período
+  let saldoAcumuladoPrevisto = saldoInicialPeriodo + saldoPendentesAnteriores;
 
   let totalEntradasRealizadas = 0;
   let totalEntradasPrevistas = 0;
