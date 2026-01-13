@@ -474,7 +474,7 @@ export default function Extrato() {
   }, [datePreset, customDateRange, dateFilterType]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
-    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para marcar lançamentos como pagos/recebidos. Entre em contato com o administrador.')) {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para marcar lançamentos como pagos/recebidos. Entre em contato com o administrador.')) {
       return;
     }
     setPartialPaymentLancamento(lancamento);
@@ -482,7 +482,7 @@ export default function Extrato() {
   };
 
   const handleMarkAsOpenClick = (lancamento: LancamentoExtrato) => {
-    if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de lançamentos. Entre em contato com o administrador.')) {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para alterar o status de lançamentos. Entre em contato com o administrador.')) {
       return;
     }
     setStatusChangeData({ lancamento, newStatus: 'pendente' });

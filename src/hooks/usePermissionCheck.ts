@@ -21,6 +21,7 @@ const permissionMessages: Record<PermissionKey, string> = {
   canEditFinanceiro: 'Você não tem permissão para editar dados financeiros. Entre em contato com o administrador ou gerente financeiro.',
   canEditComercial: 'Você não tem permissão para editar dados comerciais.',
   canEditCadastro: 'Você não tem permissão para editar cadastros.',
+  canPerformBaixas: 'Você não tem permissão para realizar baixas de lançamentos. Entre em contato com o administrador ou gerente financeiro.',
   canApproveFinanceiroRequests: 'Você não tem permissão para aprovar solicitações financeiras.',
   canApproveCommissions: 'Você não tem permissão para aprovar comissões.',
   needsApprovalForFinanceiroEdits: 'Esta ação requer aprovação de um administrador ou gerente financeiro.',
