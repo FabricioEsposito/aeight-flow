@@ -1565,12 +1565,12 @@ export default function Extrato() {
                       {lanc.tipo === 'entrada' ? '+' : '-'} {formatCurrency(lanc.valor)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      <span className={lanc.status === 'pago' ? '' : 'text-muted-foreground'}>
+                      <span className={`${saldoRealizado >= 0 ? 'text-emerald-600' : 'text-destructive'} ${lanc.status !== 'pago' ? 'opacity-50' : ''}`}>
                         {formatCurrency(saldoRealizado)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      <span className={lanc.status !== 'pago' ? '' : 'text-muted-foreground'}>
+                      <span className={`${saldoPrevisto >= 0 ? 'text-emerald-600' : 'text-destructive'} ${lanc.status === 'pago' ? 'opacity-50' : ''}`}>
                         {formatCurrency(saldoPrevisto)}
                       </span>
                     </TableCell>
