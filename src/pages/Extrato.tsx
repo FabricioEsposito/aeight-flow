@@ -415,30 +415,30 @@ export default function Extrato() {
       setContasBancarias(dataContas || []);
 
       // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
-      if (dateRange) {
-        // Buscar entradas pagas antes do período
-        const { data: entradasAnteriores } = await supabase
-          .from('contas_receber')
-          .select('valor, conta_bancaria_id')
-          .eq('status', 'pago')
-          .lt('data_recebimento', dateRange.start);
-        
-        // Buscar saídas pagas antes do período
-        const { data: saidasAnteriores } = await supabase
-          .from('contas_pagar')
-          .select('valor, conta_bancaria_id')
-          .eq('status', 'pago')
-          .lt('data_pagamento', dateRange.start);
-        
-        const movimentacoesAnt: Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }> = [
-          ...(entradasAnteriores || []).map(e => ({ valor: e.valor, conta_bancaria_id: e.conta_bancaria_id, tipo: 'entrada' as const })),
-          ...(saidasAnteriores || []).map(s => ({ valor: s.valor, conta_bancaria_id: s.conta_bancaria_id, tipo: 'saida' as const }))
-        ];
-        
-        setMovimentacoesAnteriores(movimentacoesAnt);
-      } else {
-        setMovimentacoesAnteriores([]);
-      }
+      // IMPORTANTE: Sempre buscar TODOS os movimentos pagos antes da data inicial do filtro
+      // independente de qual período foi selecionado, para garantir consistência no saldo
+      const dataInicioFiltro = dateRange?.start || format(new Date(), 'yyyy-MM-dd');
+      
+      // Buscar entradas pagas antes do período (usando data_recebimento)
+      const { data: entradasAnteriores } = await supabase
+        .from('contas_receber')
+        .select('valor, conta_bancaria_id')
+        .eq('status', 'pago')
+        .lt('data_recebimento', dataInicioFiltro);
+      
+      // Buscar saídas pagas antes do período (usando data_pagamento)
+      const { data: saidasAnteriores } = await supabase
+        .from('contas_pagar')
+        .select('valor, conta_bancaria_id')
+        .eq('status', 'pago')
+        .lt('data_pagamento', dataInicioFiltro);
+      
+      const movimentacoesAnt: Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }> = [
+        ...(entradasAnteriores || []).map(e => ({ valor: e.valor, conta_bancaria_id: e.conta_bancaria_id, tipo: 'entrada' as const })),
+        ...(saidasAnteriores || []).map(s => ({ valor: s.valor, conta_bancaria_id: s.conta_bancaria_id, tipo: 'saida' as const }))
+      ];
+      
+      setMovimentacoesAnteriores(movimentacoesAnt);
 
       const todosLancamentos = [...receberComServicos, ...pagarComServicos].sort(
         (a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
