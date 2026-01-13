@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TablePagination } from '@/components/ui/table-pagination';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
+import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
 
 interface LancamentoExtrato {
   id: string;
@@ -1074,98 +1075,50 @@ export default function Extrato() {
     return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
-  // Cálculos para resumo - específicos por conta bancária e período
+  // Cálculos para resumo usando a função unificada de fluxo de caixa
   const dateRange = getDateRange();
   
-  // Contas filtradas pelo filtro de conta bancária
-  const contasFiltradas = contaBancariaFilter.length === 0 
-    ? contasBancarias 
-    : contasBancarias.filter(c => contaBancariaFilter.includes(c.id));
+  // Calcular fluxo de caixa usando a função unificada
+  const fluxoResult = useMemo(() => {
+    if (!dateRange) return null;
+    
+    // Preparar movimentações do período
+    const movimentacoesNoPeriodo = prepararMovimentacoes(
+      lancamentos.filter(l => l.tipo === 'entrada').map(l => ({
+        valor: l.valor,
+        data_vencimento: l.data_vencimento,
+        data_recebimento: l.data_recebimento || null,
+        status: l.status,
+        conta_bancaria_id: l.conta_bancaria_id || null
+      })),
+      lancamentos.filter(l => l.tipo === 'saida').map(l => ({
+        valor: l.valor,
+        data_vencimento: l.data_vencimento,
+        data_pagamento: l.data_pagamento || null,
+        status: l.status,
+        conta_bancaria_id: l.conta_bancaria_id || null
+      }))
+    );
+    
+    return calcularFluxoCaixa({
+      dataInicio: dateRange.start,
+      dataFim: dateRange.end,
+      contasBancarias: contasBancarias.map(c => ({
+        id: c.id,
+        saldo_inicial: c.saldo_inicial,
+        data_inicio: c.data_inicio
+      })),
+      contasBancariasIds: contaBancariaFilter,
+      movimentacoesAnteriores,
+      movimentacoesNoPeriodo
+    });
+  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores]);
   
-  // Saldo inicial das contas filtradas (data_inicio)
-  const saldoInicialContas = contasFiltradas.reduce((acc, conta) => acc + conta.saldo_inicial, 0);
-  
-  // Filtrar lançamentos por conta bancária para os cálculos
-  const lancamentosContaFiltrada = lancamentos.filter(l => 
-    contaBancariaFilter.length === 0 || (l.conta_bancaria_id && contaBancariaFilter.includes(l.conta_bancaria_id))
-  );
-  
-  // Filtrar movimentações anteriores pela conta bancária selecionada
-  const movimentacoesAnterioresFiltradas = movimentacoesAnteriores.filter(m => 
-    contaBancariaFilter.length === 0 || (m.conta_bancaria_id && contaBancariaFilter.includes(m.conta_bancaria_id))
-  );
-  
-  const entradasAntesDoInicio = movimentacoesAnterioresFiltradas
-    .filter(m => m.tipo === 'entrada')
-    .reduce((acc, m) => acc + m.valor, 0);
-  
-  const saidasAntesDoInicio = movimentacoesAnterioresFiltradas
-    .filter(m => m.tipo === 'saida')
-    .reduce((acc, m) => acc + m.valor, 0);
-  
-  // Saldo inicial do período = saldo inicial da conta + entradas antes do período - saídas antes do período
-  // Usa os dados buscados diretamente do banco de dados para garantir que TODAS as movimentações anteriores sejam consideradas
-  const saldoInicial = saldoInicialContas + entradasAntesDoInicio - saidasAntesDoInicio;
-  
-  // Movimentações realizadas DENTRO do período (entradas e saídas pagas)
-  const movimentacoesNoPeriodo = lancamentosContaFiltrada.filter(l => {
-    if (!dateRange) return l.status === 'pago';
-    const dataMovimento = l.data_recebimento || l.data_pagamento;
-    if (!dataMovimento || l.status !== 'pago') return false;
-    return dataMovimento >= dateRange.start && dataMovimento <= dateRange.end;
-  });
-  
-  // Entradas realizadas no período
-  const entradasNoPeriodo = movimentacoesNoPeriodo
-    .filter(l => l.tipo === 'entrada')
-    .reduce((acc, l) => acc + l.valor, 0);
-  
-  // Saídas realizadas no período
-  const saidasNoPeriodo = movimentacoesNoPeriodo
-    .filter(l => l.tipo === 'saida')
-    .reduce((acc, l) => acc + l.valor, 0);
-  
-  // A receber e a pagar pendentes no período
-  const lancamentosNoPeriodoFiltrado = lancamentosContaFiltrada.filter(l => {
-    if (!dateRange) return true;
-    return l.data_vencimento >= dateRange.start && l.data_vencimento <= dateRange.end;
-  });
-  
-  // Só conta no saldo previsto: pendentes EM DIA (vencimento >= hoje)
-  // Vencidos NÃO contam no saldo (regra do usuário)
-  const todayLocal = new Date();
-  todayLocal.setHours(0, 0, 0, 0);
-
-  const totalReceber = lancamentosNoPeriodoFiltrado
-    .filter(l => {
-      if (l.tipo !== 'entrada') return false;
-      if (l.status === 'pago') return false; // já está no entradasNoPeriodo
-      if (l.status === 'vencido') return false; // não conta
-      if (l.status === 'pendente') {
-        const venc = new Date(l.data_vencimento + 'T00:00:00');
-        return venc >= todayLocal; // só em dia
-      }
-      return false;
-    })
-    .reduce((acc, l) => acc + l.valor, 0);
-
-  const totalPagar = lancamentosNoPeriodoFiltrado
-    .filter(l => {
-      if (l.tipo !== 'saida') return false;
-      if (l.status === 'pago') return false;
-      if (l.status === 'vencido') return false;
-      if (l.status === 'pendente') {
-        const venc = new Date(l.data_vencimento + 'T00:00:00');
-        return venc >= todayLocal;
-      }
-      return false;
-    })
-    .reduce((acc, l) => acc + l.valor, 0);
-
-  // Saldo final = saldo inicial + entradas pagas no período - saídas pagas no período
-  // + pendentes em dia a receber - pendentes em dia a pagar
-  // Vencidos NÃO afetam o saldo previsto
-  const saldoFinal = saldoInicial + entradasNoPeriodo + totalReceber - saidasNoPeriodo - totalPagar;
+  // Usar valores do fluxo calculado
+  const saldoInicial = fluxoResult?.saldoInicialPeriodo || 0;
+  const totalReceber = fluxoResult?.totalEntradasPrevistas || 0;
+  const totalPagar = fluxoResult?.totalSaidasPrevistas || 0;
+  const saldoFinal = fluxoResult?.saldoFinalPrevisto || saldoInicial;
 
   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
