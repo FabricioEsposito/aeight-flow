@@ -21,7 +21,6 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
-import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDialog';
@@ -71,7 +70,7 @@ export default function Extrato() {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
-  const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
+  
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -203,10 +202,6 @@ export default function Extrato() {
     try {
       const dateRange = getDateRange();
       
-      // Determinar qual campo de data usar baseado no filtro selecionado
-      const dateFieldReceber = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
-      const dateFieldPagar = dateFilterType === 'competencia' ? 'data_competencia' : 'data_vencimento';
-      
       // Buscar plano de contas para lookup
       const { data: planoContasData } = await supabase
         .from('plano_contas')
@@ -215,90 +210,81 @@ export default function Extrato() {
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
       
-      // Buscar contas a receber - query principal pelo campo selecionado
-      let queryReceber = supabase
+      // NOVA LÓGICA: Buscar por data_vencimento para pendentes
+      let queryReceberPendentes = supabase
         .from('contas_receber')
         .select(`
           *,
           clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
           parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
         `)
+        .neq('status', 'pago')
         .order('data_vencimento', { ascending: true });
 
       if (dateRange) {
-        queryReceber = queryReceber.gte(dateFieldReceber, dateRange.start).lte(dateFieldReceber, dateRange.end);
+        queryReceberPendentes = queryReceberPendentes.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
       }
 
-      const { data: dataReceber, error: errorReceber } = await queryReceber;
-      if (errorReceber) throw errorReceber;
+      const { data: dataReceberPendentes, error: errorReceberPendentes } = await queryReceberPendentes;
+      if (errorReceberPendentes) throw errorReceberPendentes;
 
-      // Buscar também contas a receber pela data de recebimento (para itens baixados no período)
-      let dataReceberPorMovimento: any[] = [];
+      // NOVA LÓGICA: Buscar por data_recebimento para pagos
+      let queryReceberPagos = supabase
+        .from('contas_receber')
+        .select(`
+          *,
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+        `)
+        .eq('status', 'pago')
+        .order('data_recebimento', { ascending: true });
+
       if (dateRange) {
-        const { data: receberMovimento, error: errorReceberMov } = await supabase
-          .from('contas_receber')
-          .select(`
-            *,
-            clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
-          `)
-          .eq('status', 'pago')
-          .gte('data_recebimento', dateRange.start)
-          .lte('data_recebimento', dateRange.end);
-        
-        if (!errorReceberMov && receberMovimento) {
-          dataReceberPorMovimento = receberMovimento;
-        }
+        queryReceberPagos = queryReceberPagos.gte('data_recebimento', dateRange.start).lte('data_recebimento', dateRange.end);
       }
 
-      // Buscar contas a pagar - query principal pelo campo selecionado
-      let queryPagar = supabase
+      const { data: dataReceberPagos, error: errorReceberPagos } = await queryReceberPagos;
+      if (errorReceberPagos) throw errorReceberPagos;
+
+      // NOVA LÓGICA: Buscar por data_vencimento para pendentes (contas a pagar)
+      let queryPagarPendentes = supabase
         .from('contas_pagar')
         .select(`
           *,
           fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
           parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
         `)
+        .neq('status', 'pago')
         .order('data_vencimento', { ascending: true });
 
       if (dateRange) {
-        queryPagar = queryPagar.gte(dateFieldPagar, dateRange.start).lte(dateFieldPagar, dateRange.end);
+        queryPagarPendentes = queryPagarPendentes.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
       }
 
-      const { data: dataPagar, error: errorPagar } = await queryPagar;
-      if (errorPagar) throw errorPagar;
+      const { data: dataPagarPendentes, error: errorPagarPendentes } = await queryPagarPendentes;
+      if (errorPagarPendentes) throw errorPagarPendentes;
 
-      // Buscar também contas a pagar pela data de pagamento (para itens baixados no período)
-      let dataPagarPorMovimento: any[] = [];
+      // NOVA LÓGICA: Buscar por data_pagamento para pagos (contas a pagar)
+      let queryPagarPagos = supabase
+        .from('contas_pagar')
+        .select(`
+          *,
+          fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+        `)
+        .eq('status', 'pago')
+        .order('data_pagamento', { ascending: true });
+
       if (dateRange) {
-        const { data: pagarMovimento, error: errorPagarMov } = await supabase
-          .from('contas_pagar')
-          .select(`
-            *,
-            fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
-          `)
-          .eq('status', 'pago')
-          .gte('data_pagamento', dateRange.start)
-          .lte('data_pagamento', dateRange.end);
-        
-        if (!errorPagarMov && pagarMovimento) {
-          dataPagarPorMovimento = pagarMovimento;
-        }
+        queryPagarPagos = queryPagarPagos.gte('data_pagamento', dateRange.start).lte('data_pagamento', dateRange.end);
       }
 
-      // Combinar resultados removendo duplicatas
-      const receberIds = new Set((dataReceber || []).map((r: any) => r.id));
-      const receberCombinado = [
-        ...(dataReceber || []),
-        ...dataReceberPorMovimento.filter(r => !receberIds.has(r.id))
-      ];
+      const { data: dataPagarPagos, error: errorPagarPagos } = await queryPagarPagos;
+      if (errorPagarPagos) throw errorPagarPagos;
 
-      const pagarIds = new Set((dataPagar || []).map((p: any) => p.id));
-      const pagarCombinado = [
-        ...(dataPagar || []),
-        ...dataPagarPorMovimento.filter(p => !pagarIds.has(p.id))
-      ];
+      // Combinar resultados (pendentes + pagos)
+      const receberCombinado = [...(dataReceberPendentes || []), ...(dataReceberPagos || [])];
+      const pagarCombinado = [...(dataPagarPendentes || []), ...(dataPagarPagos || [])];
 
       // Filtrar parcelas de contratos inativos - Contas a Receber
       const dataReceberFiltrado = receberCombinado.filter((r: any) => {
@@ -472,7 +458,7 @@ export default function Extrato() {
 
   useEffect(() => {
     fetchLancamentos();
-  }, [datePreset, customDateRange, dateFilterType]);
+  }, [datePreset, customDateRange]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
     if (!checkPermission('canPerformBaixas', 'Você não tem permissão para marcar lançamentos como pagos/recebidos. Entre em contato com o administrador.')) {
@@ -1050,19 +1036,19 @@ export default function Extrato() {
       const startDate = new Date(`${dateRange.start}T00:00:00`);
       const endDate = new Date(`${dateRange.end}T23:59:59.999`);
 
-      const primaryDateStr = dateFilterType === 'competencia' ? lanc.data_competencia : lanc.data_vencimento;
-      const primaryDate = primaryDateStr ? new Date(`${primaryDateStr}T00:00:00`) : null;
-
+      // NOVA LÓGICA: para lançamentos não baixados usa data_vencimento, para baixados usa data_movimento
+      const isPago = lanc.status === 'pago';
       const movStr = lanc.data_recebimento || lanc.data_pagamento;
-      const movementDate = movStr
-        ? new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr)
-        : null;
-
-      const inPrimaryRange = primaryDate ? primaryDate >= startDate && primaryDate <= endDate : false;
-      const inMovementRange = movementDate ? movementDate >= startDate && movementDate <= endDate : false;
-
-      // Extrato: mostrar também por data de movimento (baixa), mesmo com vencimento/competência fora do período
-      matchesDate = inPrimaryRange || inMovementRange;
+      
+      if (isPago && movStr) {
+        // Para lançamentos baixados, filtra pela data de movimento
+        const movementDate = new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr);
+        matchesDate = movementDate >= startDate && movementDate <= endDate;
+      } else {
+        // Para lançamentos não baixados, filtra pela data de vencimento
+        const vencimentoDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
+        matchesDate = vencimentoDate ? vencimentoDate >= startDate && vencimentoDate <= endDate : false;
+      }
     }
 
     return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesDate;
@@ -1305,11 +1291,6 @@ export default function Extrato() {
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
-          <DateTypeFilter
-            value={dateFilterType}
-            onChange={setDateFilterType}
-          />
-          
           <DateRangeFilter
             value={datePreset}
             onChange={(preset, range) => {
