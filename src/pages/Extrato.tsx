@@ -545,11 +545,30 @@ export default function Extrato() {
         novoLancamento.multa = 0;
         novoLancamento.desconto = 0;
 
-        const { error: insertError } = await supabase
+        const { data: insertedData, error: insertError } = await supabase
           .from(table)
-          .insert(novoLancamento);
+          .insert(novoLancamento)
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
+
+        // Buscar usuário atual para registrar no histórico
+        const { data: userData } = await supabase.auth.getUser();
+        
+        // Registrar no histórico de baixas
+        await supabase
+          .from('historico_baixas')
+          .insert({
+            lancamento_id: lancamento.id,
+            tipo_lancamento: lancamento.origem,
+            valor_baixa: data.paidAmount,
+            data_baixa: data.paymentDate,
+            valor_restante: remainingAmount,
+            lancamento_residual_id: insertedData?.id,
+            observacao: `Baixa parcial de ${formatCurrencyExport(data.paidAmount)} - valor residual: ${formatCurrencyExport(remainingAmount)}`,
+            created_by: userData?.user?.id,
+          });
 
         toast({
           title: "Sucesso",
