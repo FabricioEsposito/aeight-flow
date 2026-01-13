@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -15,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
-
+import { CurrencyInput, formatBrazilianCurrency } from '@/components/ui/currency-input';
 interface ContaBancaria {
   id: string;
   descricao: string;
@@ -58,9 +57,9 @@ export function SolicitarAjusteDialog({
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [planoContaId, setPlanoContaId] = useState('');
   const [centroCusto, setCentroCusto] = useState('');
-  const [juros, setJuros] = useState('');
-  const [multa, setMulta] = useState('');
-  const [desconto, setDesconto] = useState('');
+  const [juros, setJuros] = useState<number>(0);
+  const [multa, setMulta] = useState<number>(0);
+  const [desconto, setDesconto] = useState<number>(0);
   const [motivo, setMotivo] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -70,25 +69,12 @@ export function SolicitarAjusteDialog({
       setContaBancariaId(initialData.conta_bancaria_id || '');
       setPlanoContaId(initialData.plano_conta_id || '');
       setCentroCusto(initialData.centro_custo || '');
-      setJuros(initialData.juros?.toString() || '0');
-      setMulta(initialData.multa?.toString() || '0');
-      setDesconto(initialData.desconto?.toString() || '0');
+      setJuros(initialData.juros || 0);
+      setMulta(initialData.multa || 0);
+      setDesconto(initialData.desconto || 0);
       setMotivo('');
     }
   }, [open, initialData]);
-
-  const parseNumber = (value: string): number => {
-    if (!value) return 0;
-    const cleanValue = value.replace(/\./g, '').replace(',', '.');
-    return parseFloat(cleanValue) || 0;
-  };
-
-  const formatCurrency = (value: number): string => {
-    return value.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
 
   const handleSubmit = async () => {
     if (!dataVencimento) {
@@ -126,11 +112,11 @@ export function SolicitarAjusteDialog({
           status: 'pendente',
           valor_original: initialData.valor,
           juros_atual: initialData.juros || 0,
-          juros_solicitado: parseNumber(juros),
+          juros_solicitado: juros,
           multa_atual: initialData.multa || 0,
-          multa_solicitada: parseNumber(multa),
+          multa_solicitada: multa,
           desconto_atual: initialData.desconto || 0,
-          desconto_solicitado: parseNumber(desconto),
+          desconto_solicitado: desconto,
           plano_conta_id: planoContaId || null,
           centro_custo: centroCusto || null,
           conta_bancaria_id: contaBancariaId || null,
@@ -159,10 +145,7 @@ export function SolicitarAjusteDialog({
   };
 
   const valorOriginal = initialData?.valor || 0;
-  const valorJuros = parseNumber(juros);
-  const valorMulta = parseNumber(multa);
-  const valorDesconto = parseNumber(desconto);
-  const valorTotal = valorOriginal + valorJuros + valorMulta - valorDesconto;
+  const valorTotal = valorOriginal + juros + multa - desconto;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -230,30 +213,27 @@ export function SolicitarAjusteDialog({
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="juros">Juros (R$)</Label>
-                <Input
-                  id="juros"
+                <CurrencyInput
                   value={juros}
-                  onChange={(e) => setJuros(e.target.value)}
+                  onChange={setJuros}
                   placeholder="0,00"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="multa">Multa (R$)</Label>
-                <Input
-                  id="multa"
+                <CurrencyInput
                   value={multa}
-                  onChange={(e) => setMulta(e.target.value)}
+                  onChange={setMulta}
                   placeholder="0,00"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="desconto">Desconto (R$)</Label>
-                <Input
-                  id="desconto"
+                <CurrencyInput
                   value={desconto}
-                  onChange={(e) => setDesconto(e.target.value)}
+                  onChange={setDesconto}
                   placeholder="0,00"
                 />
               </div>
@@ -263,29 +243,29 @@ export function SolicitarAjusteDialog({
           <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Valor Original:</span>
-              <span className="font-medium">R$ {formatCurrency(valorOriginal)}</span>
+              <span className="font-medium">R$ {formatBrazilianCurrency(valorOriginal)}</span>
             </div>
-            {valorJuros > 0 && (
+            {juros > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Juros:</span>
-                <span className="text-emerald-600">+ R$ {formatCurrency(valorJuros)}</span>
+                <span className="text-emerald-600">+ R$ {formatBrazilianCurrency(juros)}</span>
               </div>
             )}
-            {valorMulta > 0 && (
+            {multa > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Multa:</span>
-                <span className="text-emerald-600">+ R$ {formatCurrency(valorMulta)}</span>
+                <span className="text-emerald-600">+ R$ {formatBrazilianCurrency(multa)}</span>
               </div>
             )}
-            {valorDesconto > 0 && (
+            {desconto > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Desconto:</span>
-                <span className="text-destructive">- R$ {formatCurrency(valorDesconto)}</span>
+                <span className="text-destructive">- R$ {formatBrazilianCurrency(desconto)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold pt-2 border-t">
               <span>Valor Total:</span>
-              <span>R$ {formatCurrency(valorTotal)}</span>
+              <span>R$ {formatBrazilianCurrency(valorTotal)}</span>
             </div>
           </div>
 

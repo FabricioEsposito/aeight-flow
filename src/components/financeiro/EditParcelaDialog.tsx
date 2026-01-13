@@ -13,7 +13,7 @@ import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { FileUpload } from '@/components/ui/file-upload';
-
+import { CurrencyInput } from '@/components/ui/currency-input';
 interface EditParcelaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,9 +63,9 @@ export function EditParcelaDialog({
   const [planoContaId, setPlanoContaId] = useState<string>('');
   const [centroCusto, setCentroCusto] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState<string>('');
-  const [juros, setJuros] = useState('0');
-  const [multa, setMulta] = useState('0');
-  const [desconto, setDesconto] = useState('0');
+  const [juros, setJuros] = useState<number>(0);
+  const [multa, setMulta] = useState<number>(0);
+  const [desconto, setDesconto] = useState<number>(0);
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
 
@@ -77,24 +77,16 @@ export function EditParcelaDialog({
       setPlanoContaId(initialData.plano_conta_id || 'none');
       setCentroCusto(initialData.centro_custo || '');
       setContaBancariaId(initialData.conta_bancaria_id || 'none');
-      setJuros(initialData.juros?.toString() || '0');
-      setMulta(initialData.multa?.toString() || '0');
-      setDesconto(initialData.desconto?.toString() || '0');
+      setJuros(initialData.juros || 0);
+      setMulta(initialData.multa || 0);
+      setDesconto(initialData.desconto || 0);
       setLinkNf(initialData.link_nf || null);
       setLinkBoleto(initialData.link_boleto || null);
     }
   }, [initialData, open]);
 
-  const parseNumber = (value: string): number => {
-    const cleaned = value.replace(/[^\d,.-]/g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
-  };
-
   const valorOriginal = initialData?.valor_original || 0;
-  const valorJuros = parseNumber(juros);
-  const valorMulta = parseNumber(multa);
-  const valorDesconto = parseNumber(desconto);
-  const valorTotal = valorOriginal + valorJuros + valorMulta - valorDesconto;
+  const valorTotal = valorOriginal + juros + multa - desconto;
 
   const handleSave = () => {
     if (!initialData || !dataVencimento) return;
@@ -106,9 +98,9 @@ export function EditParcelaDialog({
       plano_conta_id: planoContaId && planoContaId !== 'none' ? planoContaId : undefined,
       centro_custo: centroCusto || undefined,
       conta_bancaria_id: contaBancariaId && contaBancariaId !== 'none' ? contaBancariaId : undefined,
-      juros: valorJuros,
-      multa: valorMulta,
-      desconto: valorDesconto,
+      juros: juros,
+      multa: multa,
+      desconto: desconto,
       valor_total: valorTotal,
       valor_original: valorOriginal,
       link_nf: linkNf,
@@ -207,31 +199,28 @@ export function EditParcelaDialog({
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Juros (R$)</Label>
-                <Input
+                <CurrencyInput
                   value={juros}
-                  onChange={(e) => setJuros(e.target.value)}
+                  onChange={setJuros}
                   placeholder="0,00"
-                  type="text"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>Multa (R$)</Label>
-                <Input
+                <CurrencyInput
                   value={multa}
-                  onChange={(e) => setMulta(e.target.value)}
+                  onChange={setMulta}
                   placeholder="0,00"
-                  type="text"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>Desconto (R$)</Label>
-                <Input
+                <CurrencyInput
                   value={desconto}
-                  onChange={(e) => setDesconto(e.target.value)}
+                  onChange={setDesconto}
                   placeholder="0,00"
-                  type="text"
                 />
               </div>
             </div>
@@ -241,22 +230,22 @@ export function EditParcelaDialog({
                 <span>Valor Original:</span>
                 <span className="font-medium">{formatCurrency(valorOriginal)}</span>
               </div>
-              {valorJuros > 0 && (
+              {juros > 0 && (
                 <div className="flex justify-between text-sm text-amber-600">
                   <span>+ Juros:</span>
-                  <span>{formatCurrency(valorJuros)}</span>
+                  <span>{formatCurrency(juros)}</span>
                 </div>
               )}
-              {valorMulta > 0 && (
+              {multa > 0 && (
                 <div className="flex justify-between text-sm text-amber-600">
                   <span>+ Multa:</span>
-                  <span>{formatCurrency(valorMulta)}</span>
+                  <span>{formatCurrency(multa)}</span>
                 </div>
               )}
-              {valorDesconto > 0 && (
+              {desconto > 0 && (
                 <div className="flex justify-between text-sm text-emerald-600">
                   <span>- Desconto:</span>
-                  <span>{formatCurrency(valorDesconto)}</span>
+                  <span>{formatCurrency(desconto)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-base border-t pt-2">
