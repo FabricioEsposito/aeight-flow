@@ -1526,7 +1526,14 @@ export default function Extrato() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{lanc.descricao}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{lanc.descricao}</p>
+                          {lanc.descricao?.includes('(Residual)') && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                              Residual
+                            </Badge>
+                          )}
+                        </div>
                         {lanc.numero_contrato && (
                           <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
                         )}
@@ -1590,16 +1597,23 @@ export default function Extrato() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={
-                        displayStatus === 'pago' || displayStatus === 'recebido' ? 'default' : 
-                        displayStatus === 'vencido' ? 'destructive' : 
-                        'secondary'
-                      }>
-                        {displayStatus === 'pago' ? 'Pago' : 
-                         displayStatus === 'recebido' ? 'Recebido' : 
-                         displayStatus === 'vencido' ? 'Vencido' :
-                         'Em dia'}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant={
+                          displayStatus === 'pago' || displayStatus === 'recebido' ? 'default' : 
+                          displayStatus === 'vencido' ? 'destructive' : 
+                          'secondary'
+                        }>
+                          {displayStatus === 'pago' ? 'Pago' : 
+                           displayStatus === 'recebido' ? 'Recebido' : 
+                           displayStatus === 'vencido' ? 'Vencido' :
+                           'Em dia'}
+                        </Badge>
+                        {lanc.status === 'pago' && lanc.valor_original && lanc.valor_original > 0 && lanc.valor < lanc.valor_original && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/30">
+                            Baixa Parcial
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className={`text-right font-semibold ${lanc.tipo === 'entrada' ? 'text-emerald-600' : 'text-destructive'}`}>
                       {lanc.tipo === 'entrada' ? '+' : '-'} {formatCurrency(lanc.valor)}
