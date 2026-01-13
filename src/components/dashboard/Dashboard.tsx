@@ -23,6 +23,7 @@ import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
 import { ReguaCobranca } from "./ReguaCobranca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContaBancariaMultiSelect } from "@/components/financeiro/ContaBancariaMultiSelect";
+import { calcularFluxoCaixa, prepararMovimentacoes, formatDateLocal } from "@/lib/fluxo-caixa-utils";
 
 interface DashboardStats {
   faturamento: number;
@@ -102,10 +103,7 @@ export function Dashboard() {
     fetchDashboardData();
   }, [datePreset, customRange, selectedCentroCusto, selectedContaBancaria]);
 
-  // Função auxiliar para formatar data sem problemas de timezone
-  const formatDateLocal = (date: Date) => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  };
+  // Função auxiliar formatDateLocal agora é importada de fluxo-caixa-utils
 
   const getDateRange = () => {
     const today = new Date();
@@ -369,209 +367,107 @@ export function Dashboard() {
 
       setFaturamentoClienteData(faturamentoClienteChartData);
 
+      // Buscar contas bancárias para cálculo de fluxo de caixa
       let contasBancariasQuery = supabase
         .from('contas_bancarias')
-        .select('id, saldo_atual, saldo_inicial')
+        .select('id, saldo_atual, saldo_inicial, data_inicio')
         .eq('status', 'ativo');
-      
-      if (selectedContaBancaria.length > 0) {
-        contasBancariasQuery = contasBancariasQuery.in('id', selectedContaBancaria);
-      }
 
       const { data: contasBancariasData } = await contasBancariasQuery;
-      const saldoInicialContas = contasBancariasData?.reduce((sum, c) => sum + Number(c.saldo_inicial), 0) || 0;
 
-      // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
-      // Igual ao Extrato: considera apenas movimentações REALIZADAS (pagas) antes do período
-      // NÃO filtra por centro de custo, apenas por conta bancária (igual Extrato)
-      let entradasPagasAnteriores: Array<{ valor: number }> = [];
-      let saidasPagasAnteriores: Array<{ valor: number }> = [];
+      // Buscar movimentações PAGAS anteriores ao período
+      let movimentacoesAnteriores: Array<{ valor: number; tipo: 'entrada' | 'saida'; conta_bancaria_id: string | null }> = [];
 
       if (dateRange) {
-        // Buscar entradas PAGAS antes do período (pela data de recebimento)
-        let entradasPagasQuery = supabase
+        const { data: entradasAnteriores } = await supabase
           .from('contas_receber')
           .select('valor, conta_bancaria_id')
           .eq('status', 'pago')
           .lt('data_recebimento', dateRange.from);
-        
-        if (selectedContaBancaria.length > 0) {
-          entradasPagasQuery = entradasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
-        }
-        
-        const { data: entradasPagasData } = await entradasPagasQuery;
-        entradasPagasAnteriores = entradasPagasData || [];
-        
-        // Buscar saídas PAGAS antes do período (pela data de pagamento)
-        let saidasPagasQuery = supabase
+
+        const { data: saidasAnteriores } = await supabase
           .from('contas_pagar')
           .select('valor, conta_bancaria_id')
           .eq('status', 'pago')
           .lt('data_pagamento', dateRange.from);
-        
-        if (selectedContaBancaria.length > 0) {
-          saidasPagasQuery = saidasPagasQuery.in('conta_bancaria_id', selectedContaBancaria);
-        }
-        
-        const { data: saidasPagasData } = await saidasPagasQuery;
-        saidasPagasAnteriores = saidasPagasData || [];
+
+        movimentacoesAnteriores = [
+          ...(entradasAnteriores || []).map(e => ({ valor: Number(e.valor), tipo: 'entrada' as const, conta_bancaria_id: e.conta_bancaria_id })),
+          ...(saidasAnteriores || []).map(s => ({ valor: Number(s.valor), tipo: 'saida' as const, conta_bancaria_id: s.conta_bancaria_id }))
+        ];
       }
 
-      // Calcular entradas e saídas PAGAS anteriores ao período (igual Extrato)
-      const entradasPagasAntes = entradasPagasAnteriores.reduce((sum, e) => sum + Number(e.valor), 0);
-      const saidasPagasAntes = saidasPagasAnteriores.reduce((sum, s) => sum + Number(s.valor), 0);
+      // Preparar movimentações do período para o cálculo
+      const movimentacoesNoPeriodo = prepararMovimentacoes(
+        (contasReceberFluxo || []).map(c => ({
+          valor: Number(c.valor),
+          data_vencimento: c.data_vencimento,
+          data_recebimento: c.data_recebimento,
+          status: c.status,
+          conta_bancaria_id: c.conta_bancaria_id
+        })),
+        (contasPagarFluxo || []).map(c => ({
+          valor: Number(c.valor),
+          data_vencimento: c.data_vencimento,
+          data_pagamento: c.data_pagamento,
+          status: c.status,
+          conta_bancaria_id: c.conta_bancaria_id
+        }))
+      );
 
-      // Saldo inicial do período = saldo inicial da conta + entradas pagas antes - saídas pagas antes
-      // Mesma lógica do Extrato: só considera movimentações REALIZADAS (pagas) antes do período
-      const saldoContas = saldoInicialContas + entradasPagasAntes - saidasPagasAntes;
-
-      // Agregar dados de contas por data - separar realizados e previstos
-      // Dados para a TABELA (todos os dias do período)
-      const fluxoPorDiaTabela: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
-      // Dados para o GRÁFICO (apenas dias com movimentação)
-      const fluxoPorDiaGrafico: Record<string, { receitaRealizada: number; receitaPrevista: number; despesaRealizada: number; despesaPrevista: number }> = {};
-      
-      // Gerar todos os dias do período selecionado para a tabela
+      // Calcular fluxo de caixa usando a função unificada
+      let fluxoResult = null;
       if (dateRange) {
-        const startDate = new Date(dateRange.from + 'T00:00:00');
-        const endDate = new Date(dateRange.to + 'T00:00:00');
-        const currentDate = new Date(startDate);
-        
-        while (currentDate <= endDate) {
-          const dateStr = formatDateLocal(currentDate);
-          fluxoPorDiaTabela[dateStr] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
+        fluxoResult = calcularFluxoCaixa({
+          dataInicio: dateRange.from,
+          dataFim: dateRange.to,
+          contasBancarias: (contasBancariasData || []).map(c => ({
+            id: c.id,
+            saldo_inicial: Number(c.saldo_inicial),
+            data_inicio: ''
+          })),
+          contasBancariasIds: selectedContaBancaria,
+          movimentacoesAnteriores,
+          movimentacoesNoPeriodo
+        });
       }
-      
-      // Adicionar contas recebidas (efetivamente pagas - realizado)
-      contasReceberFluxo?.filter(c => c.status === 'pago' && c.data_recebimento).forEach(c => {
-        const date = c.data_recebimento!;
-        
-        if (!fluxoPorDiaTabela[date]) {
-          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaTabela[date].receitaRealizada += Number(c.valor);
-        
-        if (!fluxoPorDiaGrafico[date]) {
-          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaGrafico[date].receitaRealizada += Number(c.valor);
-      });
 
-      // Adicionar contas pagas (efetivamente pagas - realizado)
-      contasPagarFluxo?.filter(c => c.status === 'pago' && c.data_pagamento).forEach(c => {
-        const date = c.data_pagamento!;
-        
-        if (!fluxoPorDiaTabela[date]) {
-          fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaTabela[date].despesaRealizada += Number(c.valor);
-        
-        if (!fluxoPorDiaGrafico[date]) {
-          fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-        }
-        fluxoPorDiaGrafico[date].despesaRealizada += Number(c.valor);
-      });
-      
-      // Adicionar previsões (contas pendentes EM DIA dentro do período)
-      // Regra: vencidos NÃO contam no saldo previsto. Apenas pendentes com vencimento >= hoje.
-      const todayStr = today;
-      
-      contasReceberFluxo
-        ?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= todayStr)
-        .forEach(c => {
-          const date = c.data_vencimento!;
+      // Converter resultado para o formato esperado pelos gráficos
+      const fluxoChartData = fluxoResult?.fluxoDiario
+        .filter(d => d.entradaRealizada > 0 || d.entradaPrevista > 0 || d.saidaRealizada > 0 || d.saidaPrevista > 0)
+        .map(d => ({
+          date: d.dateFormatted,
+          fullDate: d.date,
+          saldoConta: d.saldoInicial,
+          receitaRealizada: d.entradaRealizada,
+          receitaPrevista: d.entradaPrevista,
+          despesaRealizada: d.saidaRealizada,
+          despesaPrevista: d.saidaPrevista,
+          saldoFinal: d.saldoFinalPrevisto,
+        })) || [];
 
-          if (!fluxoPorDiaTabela[date]) {
-            fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-          }
-          fluxoPorDiaTabela[date].receitaPrevista += Number(c.valor);
-
-          if (!fluxoPorDiaGrafico[date]) {
-            fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-          }
-          fluxoPorDiaGrafico[date].receitaPrevista += Number(c.valor);
-        });
-
-      contasPagarFluxo
-        ?.filter(c => c.status === 'pendente' && c.data_vencimento && c.data_vencimento >= todayStr)
-        .forEach(c => {
-          const date = c.data_vencimento!;
-
-          if (!fluxoPorDiaTabela[date]) {
-            fluxoPorDiaTabela[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-          }
-          fluxoPorDiaTabela[date].despesaPrevista += Number(c.valor);
-
-          if (!fluxoPorDiaGrafico[date]) {
-            fluxoPorDiaGrafico[date] = { receitaRealizada: 0, receitaPrevista: 0, despesaRealizada: 0, despesaPrevista: 0 };
-          }
-          fluxoPorDiaGrafico[date].despesaPrevista += Number(c.valor);
-        });
-
-      // Dados para o GRÁFICO (apenas dias com movimentação)
-      const sortedDatesGrafico = Object.keys(fluxoPorDiaGrafico).sort();
-      let saldoAcumuladoGrafico = saldoContas;
-      
-      const fluxoChartData = sortedDatesGrafico.map(date => {
-        const valores = fluxoPorDiaGrafico[date];
-        const receitaTotal = valores.receitaRealizada + valores.receitaPrevista;
-        const despesaTotal = valores.despesaRealizada + valores.despesaPrevista;
-        saldoAcumuladoGrafico = saldoAcumuladoGrafico + receitaTotal - despesaTotal;
-        
-        return {
-          date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          fullDate: date,
-          saldoConta: saldoContas,
-          receitaRealizada: valores.receitaRealizada,
-          receitaPrevista: valores.receitaPrevista,
-          despesaRealizada: valores.despesaRealizada,
-          despesaPrevista: valores.despesaPrevista,
-          saldoFinal: saldoAcumuladoGrafico,
-        };
-      });
-
-      // Dados para a TABELA (todos os dias do período)
-      const sortedDatesTabela = Object.keys(fluxoPorDiaTabela).sort();
-      let saldoAcumuladoTabela = saldoContas;
-      
-      const fluxoTabelaData = sortedDatesTabela.map(date => {
-        const valores = fluxoPorDiaTabela[date];
-        const receitaTotal = valores.receitaRealizada + valores.receitaPrevista;
-        const despesaTotal = valores.despesaRealizada + valores.despesaPrevista;
-        saldoAcumuladoTabela = saldoAcumuladoTabela + receitaTotal - despesaTotal;
-        
-        return {
-          date: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          fullDate: date,
-          saldoConta: saldoContas,
-          receitaRealizada: valores.receitaRealizada,
-          receitaPrevista: valores.receitaPrevista,
-          despesaRealizada: valores.despesaRealizada,
-          despesaPrevista: valores.despesaPrevista,
-          saldoFinal: saldoAcumuladoTabela,
-        };
-      });
+      const fluxoTabelaData = fluxoResult?.fluxoDiario.map(d => ({
+        date: d.dateFormatted,
+        fullDate: d.date,
+        saldoConta: d.saldoInicial,
+        receitaRealizada: d.entradaRealizada,
+        receitaPrevista: d.entradaPrevista,
+        despesaRealizada: d.saidaRealizada,
+        despesaPrevista: d.saidaPrevista,
+        saldoFinal: d.saldoFinalPrevisto,
+      })) || [];
 
       setFluxoCaixaData(fluxoChartData);
       setFluxoCaixaTabelaData(fluxoTabelaData);
 
-      // Calcular saldos inicial e final (último dia útil do mês)
-      // O saldo inicial já foi calculado corretamente com saldoContas (saldo_inicial + movimentações anteriores)
-      const saldoInicial = saldoContas;
-      const ultimoDia = fluxoChartData.length > 0 ? fluxoChartData[fluxoChartData.length - 1] : null;
-      const saldoFinal = ultimoDia ? ultimoDia.saldoFinal : saldoInicial;
-      const saldoFinalPrevisto = saldoFinal; // Agora saldoFinal já inclui previsões (pendentes)
+      // Usar os valores calculados pela função unificada
+      const saldoInicial = fluxoResult?.saldoInicialPeriodo || 0;
+      const saldoFinal = fluxoResult?.saldoFinalRealizado || saldoInicial;
+      const saldoFinalPrevisto = fluxoResult?.saldoFinalPrevisto || saldoFinal;
 
       // Calcular valores efetivamente recebidos e pagos no período
-      const valorRecebido = contasReceberFluxo
-        ?.filter(c => c.status === 'pago' && c.data_recebimento)
-        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
-
-      const valorPago = contasPagarFluxo
-        ?.filter(c => c.status === 'pago' && c.data_pagamento)
-        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
+      const valorRecebido = fluxoResult?.totalEntradasRealizadas || 0;
+      const valorPago = fluxoResult?.totalSaidasRealizadas || 0;
 
       // Calcular percentual de inadimplentes
       const percentualInadimplentes = faturamento > 0 ? (inadimplentes / faturamento) * 100 : 0;
