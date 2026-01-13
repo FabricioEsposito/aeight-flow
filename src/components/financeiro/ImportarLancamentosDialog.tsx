@@ -413,34 +413,66 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
     try {
       // Primeiro tenta a BrasilAPI
-      let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+      let dados = null;
       
-      if (!response.ok) {
-        // Se falhar, tenta a API alternativa
-        response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjLimpo}`);
+      try {
+        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        
+        if (response.ok) {
+          dados = await response.json();
+          // Retorna dados da BrasilAPI
+          return {
+            razao_social: dados.razao_social || dados.nome || "",
+            nome_fantasia: dados.nome_fantasia || "",
+            endereco: dados.logradouro || "",
+            numero: dados.numero || "",
+            complemento: dados.complemento || "",
+            bairro: dados.bairro || "",
+            cidade: dados.municipio || "",
+            uf: dados.uf || "",
+            cep: (dados.cep || "").replace(/\D/g, ""),
+            telefone: dados.ddd_telefone_1 || "",
+            email: dados.email || "",
+          };
+        }
+      } catch (error) {
+        console.log(`BrasilAPI falhou para CNPJ ${cnpjLimpo}, tentando API alternativa...`);
       }
       
-      if (!response.ok) {
-        return null;
+      // Se BrasilAPI falhar, tenta a API alternativa (publica.cnpj.ws)
+      try {
+        const response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjLimpo}`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        
+        if (response.ok) {
+          dados = await response.json();
+          // Retorna dados da publica.cnpj.ws (estrutura diferente)
+          return {
+            razao_social: dados.razao_social || dados.company?.name || "",
+            nome_fantasia: dados.estabelecimento?.nome_fantasia || dados.alias || "",
+            endereco: dados.estabelecimento?.logradouro || dados.address?.street || "",
+            numero: dados.estabelecimento?.numero || dados.address?.number || "",
+            complemento: dados.estabelecimento?.complemento || dados.address?.details || "",
+            bairro: dados.estabelecimento?.bairro || dados.address?.district || "",
+            cidade: dados.estabelecimento?.cidade?.nome || dados.address?.city || "",
+            uf: dados.estabelecimento?.estado?.sigla || dados.address?.state || "",
+            cep: (dados.estabelecimento?.cep || dados.address?.zip || "").replace(/\D/g, ""),
+            telefone: dados.estabelecimento?.ddd1 && dados.estabelecimento?.telefone1 
+              ? `(${dados.estabelecimento.ddd1}) ${dados.estabelecimento.telefone1}` 
+              : "",
+            email: dados.estabelecimento?.email || "",
+          };
+        }
+      } catch (error) {
+        console.log(`API alternativa também falhou para CNPJ ${cnpjLimpo}`);
       }
 
-      const dados = await response.json();
-
-      // Mapeia os dados para o formato padrão independente da API
-      return {
-        razao_social: dados.company?.name || dados.razao_social || dados.nome || "",
-        nome_fantasia: dados.alias || dados.nome_fantasia || dados.company?.alias || "",
-        endereco: dados.address?.street || dados.logradouro || "",
-        numero: dados.address?.number || dados.numero || "",
-        complemento: dados.address?.details || dados.complemento || "",
-        bairro: dados.address?.district || dados.bairro || "",
-        cidade: dados.address?.city || dados.municipio || "",
-        uf: dados.address?.state || dados.uf || "",
-        cep: (dados.address?.zip || dados.cep || "").replace(/\D/g, ""),
-        telefone: dados.phones?.[0]?.number || dados.telefone || "",
-        email: dados.emails?.[0]?.address || dados.email || "",
-      };
-    } catch {
+      return null;
+    } catch (error) {
+      console.error(`Erro ao buscar CNPJ ${cnpjLimpo}:`, error);
       return null;
     }
   };
@@ -587,14 +619,28 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           description: `Consultando ${cnpjsParaBuscar.length} CNPJ(s) na Receita Federal.`,
         });
 
-        // Buscar CNPJs em paralelo (com limite de 3 simultâneos para não sobrecarregar)
-        const BATCH_SIZE = 3;
+        // Buscar CNPJs em paralelo (com limite de 2 simultâneos para evitar rate limiting)
+        const BATCH_SIZE = 2;
+        let encontrados = 0;
+        let naoEncontrados = 0;
+        
         for (let i = 0; i < cnpjsParaBuscar.length; i += BATCH_SIZE) {
           const batch = cnpjsParaBuscar.slice(i, i + BATCH_SIZE);
+          
+          // Adicionar delay entre batches para evitar rate limiting
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
           const resultados = await Promise.all(
             batch.map(async ([cnpjKey, data]) => {
-              const dados = await buscarCnpjSilently(data.cnpj);
-              return { cnpjKey, dados };
+              try {
+                const dados = await buscarCnpjSilently(data.cnpj);
+                return { cnpjKey, dados, cnpj: data.cnpj };
+              } catch (error) {
+                console.error(`Erro ao buscar CNPJ ${data.cnpj}:`, error);
+                return { cnpjKey, dados: null, cnpj: data.cnpj };
+              }
             })
           );
 
@@ -603,6 +649,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             const newMap = new Map(prev);
             resultados.forEach(({ cnpjKey, dados }) => {
               if (dados) {
+                encontrados++;
                 const current = newMap.get(cnpjKey) || { emails: [] };
                 // Adicionar email da API ao array de emails
                 const emailsAtuais = current.emails || [];
@@ -623,16 +670,32 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                   cep: dados.cep || '',
                   apiLoaded: true,
                 });
+              } else {
+                naoEncontrados++;
               }
             });
             return newMap;
           });
         }
 
-        toast({
-          title: "Busca concluída!",
-          description: "Revise os dados e complete as informações faltantes.",
-        });
+        // Mostrar resultado da busca
+        if (naoEncontrados === 0) {
+          toast({
+            title: "Busca concluída!",
+            description: `Dados de ${encontrados} CNPJ(s) carregados automaticamente.`,
+          });
+        } else if (encontrados > 0) {
+          toast({
+            title: "Busca parcialmente concluída",
+            description: `${encontrados} CNPJ(s) encontrado(s), ${naoEncontrados} não encontrado(s). Complete os dados manualmente.`,
+          });
+        } else {
+          toast({
+            title: "Busca sem resultados",
+            description: `Não foi possível buscar os dados de ${naoEncontrados} CNPJ(s). Preencha manualmente.`,
+            variant: "destructive",
+          });
+        }
       }
     } else {
       handleImport();
