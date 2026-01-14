@@ -53,6 +53,9 @@ interface PreviewRow {
   valor: number;
   data_vencimento: string;
   data_competencia: string;
+  // Valores originais da planilha para exibição
+  data_vencimento_original?: string;
+  data_competencia_original?: string;
   cliente_fornecedor_nome: string;
   plano_conta_codigo?: string;
   centro_custo_codigo?: string;
@@ -478,9 +481,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         }
         if (valor <= 0) errors.push('Valor deve ser maior que zero');
 
-        // Datas
-        const dataVencimento = parseDate(row['Data Vencimento (DD/MM/AAAA)'] || row['Data Vencimento'] || '');
-        const dataCompetencia = parseDate(row['Data Competência (DD/MM/AAAA)'] || row['Data Competência'] || '');
+        // Datas - guardar valores originais para exibição
+        const dataVencRaw = row['Data Vencimento (DD/MM/AAAA)'] || row['Data Vencimento'] || '';
+        const dataCompRaw = row['Data Competência (DD/MM/AAAA)'] || row['Data Competência'] || '';
+        const dataVencOriginalStr = typeof dataVencRaw === 'number' ? `Serial: ${dataVencRaw}` : String(dataVencRaw);
+        const dataCompOriginalStr = typeof dataCompRaw === 'number' ? `Serial: ${dataCompRaw}` : String(dataCompRaw);
+        const dataVencimento = parseDate(dataVencRaw);
+        const dataCompetencia = parseDate(dataCompRaw);
         if (!dataVencimento) errors.push('Data de vencimento inválida');
         if (!dataCompetencia) errors.push('Data de competência inválida');
 
@@ -608,6 +615,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           valor,
           data_vencimento: dataVencimento || '',
           data_competencia: dataCompetencia || '',
+          data_vencimento_original: dataVencOriginalStr,
+          data_competencia_original: dataCompOriginalStr,
           cliente_fornecedor_nome: nomeEncontrado || clienteFornecedorNome || cnpjCpf,
           plano_conta_codigo: planoContaCodigo,
           centro_custo_codigo: centroCustoCodigo,
@@ -1423,6 +1432,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                     <TableHead>Descrição</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Vencimento</TableHead>
+                    <TableHead>Competência</TableHead>
                     <TableHead>Cliente/Fornecedor</TableHead>
                     <TableHead>Observações</TableHead>
                   </TableRow>
@@ -1459,7 +1469,30 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                       <TableCell>
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.valor)}
                       </TableCell>
-                      <TableCell>{row.data_vencimento ? format(new Date(row.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className={row.data_vencimento ? 'text-foreground font-medium' : 'text-destructive'}>
+                            {row.data_vencimento ? format(new Date(row.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy') : 'Inválida'}
+                          </span>
+                          {row.data_vencimento_original?.startsWith('Serial:') && (
+                            <span className="text-xs text-muted-foreground">
+                              ({row.data_vencimento_original})
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className={row.data_competencia ? 'text-foreground' : 'text-destructive'}>
+                            {row.data_competencia ? format(new Date(row.data_competencia + 'T00:00:00'), 'dd/MM/yyyy') : 'Inválida'}
+                          </span>
+                          {row.data_competencia_original?.startsWith('Serial:') && (
+                            <span className="text-xs text-muted-foreground">
+                              ({row.data_competencia_original})
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="max-w-[150px] truncate">
                         <div className="flex items-center gap-1">
                           {row.willCreateClienteFornecedor && (
