@@ -285,15 +285,15 @@ export default function Clientes() {
         </div>
 
         <div className="rounded-md border">
-          <Table>
+          <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="min-w-[250px]">Cliente</TableHead>
+                <TableHead className="min-w-[70px]">Tipo</TableHead>
+                <TableHead className="min-w-[140px]">Telefone</TableHead>
+                <TableHead className="min-w-[250px]">E-mail</TableHead>
+                <TableHead className="min-w-[80px]">Status</TableHead>
+                <TableHead className="min-w-[60px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -317,14 +317,9 @@ export default function Clientes() {
                     {cliente.email && Array.isArray(cliente.email) && cliente.email.length > 0 ? (
                       <div className="flex items-center gap-1">
                         <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate max-w-[120px]" title={cliente.email.join(', ')}>
-                          {cliente.email[0]}
+                        <span title={cliente.email.join(', ')}>
+                          {cliente.email.join(', ')}
                         </span>
-                        {cliente.email.length > 1 && (
-                          <Badge variant="secondary" className="text-xs px-1 py-0">
-                            +{cliente.email.length - 1}
-                          </Badge>
-                        )}
                       </div>
                     ) : '-'}
                   </TableCell>

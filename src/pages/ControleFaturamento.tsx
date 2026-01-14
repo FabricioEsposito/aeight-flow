@@ -632,7 +632,7 @@ export default function ControleFaturamento() {
 
       {/* Table */}
       <Card>
-        <Table>
+        <Table className="w-full">
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">
@@ -642,18 +642,18 @@ export default function ControleFaturamento() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
-              <TableHead>Data Competência</TableHead>
-              <TableHead>Vencimento</TableHead>
-              <TableHead>Razão Social</TableHead>
-              <TableHead>Nome Fantasia</TableHead>
-              <TableHead>Serviço</TableHead>
-              <TableHead>CNPJ</TableHead>
-              <TableHead>NF</TableHead>
-              <TableHead className="text-center">Anexos</TableHead>
-              <TableHead className="text-right">Valor Bruto</TableHead>
+              <TableHead className="min-w-[95px]">Data Competência</TableHead>
+              <TableHead className="min-w-[95px]">Vencimento</TableHead>
+              <TableHead className="min-w-[200px]">Razão Social</TableHead>
+              <TableHead className="min-w-[150px]">Nome Fantasia</TableHead>
+              <TableHead className="min-w-[200px]">Serviço</TableHead>
+              <TableHead className="min-w-[150px]">CNPJ</TableHead>
+              <TableHead className="min-w-[80px]">NF</TableHead>
+              <TableHead className="min-w-[80px] text-center">Anexos</TableHead>
+              <TableHead className="min-w-[110px] text-right">Valor Bruto</TableHead>
               {showImpostosDetalhados ? (
                 <>
-                  <TableHead className="text-right">
+                  <TableHead className="min-w-[90px] text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -667,12 +667,12 @@ export default function ControleFaturamento() {
                       IRRF
                     </div>
                   </TableHead>
-                  <TableHead className="text-right">PIS</TableHead>
-                  <TableHead className="text-right">COFINS</TableHead>
-                  <TableHead className="text-right">CSLL</TableHead>
+                  <TableHead className="min-w-[90px] text-right">PIS</TableHead>
+                  <TableHead className="min-w-[90px] text-right">COFINS</TableHead>
+                  <TableHead className="min-w-[90px] text-right">CSLL</TableHead>
                 </>
               ) : (
-                <TableHead className="text-right">
+                <TableHead className="min-w-[100px] text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button
                       variant="ghost"
@@ -687,9 +687,9 @@ export default function ControleFaturamento() {
                   </div>
                 </TableHead>
               )}
-              <TableHead className="text-right">Valor Líquido</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-center">Ações</TableHead>
+              <TableHead className="min-w-[110px] text-right">Valor Líquido</TableHead>
+              <TableHead className="min-w-[90px]">Status</TableHead>
+              <TableHead className="min-w-[60px] text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -746,7 +746,12 @@ export default function ControleFaturamento() {
                   <TableCell>{faturamento.cliente_nome_fantasia || '-'}</TableCell>
                   <TableCell>
                     {faturamento.servicos_detalhes.length > 0 
-                      ? faturamento.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')
+                      ? faturamento.servicos_detalhes.map((s, idx) => (
+                          <div key={idx} className="text-sm">
+                            <span className="font-medium">{s.codigo}</span>
+                            <span className="text-muted-foreground"> - {s.nome}</span>
+                          </div>
+                        ))
                       : 'N/A'}
                   </TableCell>
                   <TableCell>{formatCnpj(faturamento.cliente_cnpj)}</TableCell>

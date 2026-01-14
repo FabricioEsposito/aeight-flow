@@ -285,16 +285,16 @@ export default function Fornecedores() {
         </div>
 
         <div className="rounded-md border">
-          <Table>
+          <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead>Razão Social</TableHead>
-                <TableHead>Nome Fantasia</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="min-w-[220px]">Razão Social</TableHead>
+                <TableHead className="min-w-[180px]">Nome Fantasia</TableHead>
+                <TableHead className="min-w-[70px]">Tipo</TableHead>
+                <TableHead className="min-w-[140px]">Telefone</TableHead>
+                <TableHead className="min-w-[250px]">E-mail</TableHead>
+                <TableHead className="min-w-[80px]">Status</TableHead>
+                <TableHead className="min-w-[60px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -319,14 +319,9 @@ export default function Fornecedores() {
                     {fornecedor.email && Array.isArray(fornecedor.email) && fornecedor.email.length > 0 ? (
                       <div className="flex items-center gap-1">
                         <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate max-w-[120px]" title={fornecedor.email.join(', ')}>
-                          {fornecedor.email[0]}
+                        <span title={fornecedor.email.join(', ')}>
+                          {fornecedor.email.join(', ')}
                         </span>
-                        {fornecedor.email.length > 1 && (
-                          <Badge variant="secondary" className="text-xs px-1 py-0">
-                            +{fornecedor.email.length - 1}
-                          </Badge>
-                        )}
                       </div>
                     ) : '-'}
                   </TableCell>

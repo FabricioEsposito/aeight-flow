@@ -667,28 +667,28 @@ export default function ContasReceber() {
         </div>
 
         <div className="rounded-md border overflow-hidden">
-          <Table className="table-fixed w-full">
+          <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[95px]">Competência</TableHead>
-                <TableHead className="w-[95px]">Vencimento</TableHead>
-                <TableHead className="w-[180px]">Cliente</TableHead>
-                <TableHead className="w-[140px]">Contrato</TableHead>
-                <TableHead className="w-[200px]">Descrição</TableHead>
-                <TableHead className="w-[140px]">Centro de Custos</TableHead>
-                <TableHead className="w-[110px]">Valor</TableHead>
-                <TableHead className="w-[90px]">Status</TableHead>
-                <TableHead className="w-[50px] text-right">Ações</TableHead>
+                <TableHead className="min-w-[95px]">Competência</TableHead>
+                <TableHead className="min-w-[95px]">Vencimento</TableHead>
+                <TableHead className="min-w-[200px]">Cliente</TableHead>
+                <TableHead className="min-w-[180px]">Contrato / Serviço</TableHead>
+                <TableHead className="min-w-[220px]">Descrição</TableHead>
+                <TableHead className="min-w-[180px]">Centro de Custos</TableHead>
+                <TableHead className="min-w-[110px]">Valor</TableHead>
+                <TableHead className="min-w-[90px]">Status</TableHead>
+                <TableHead className="min-w-[50px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedContas.map((conta) => (
                 <TableRow key={conta.id}>
-                  <TableCell className="text-sm">{formatDate(conta.data_competencia)}</TableCell>
-                  <TableCell className="text-sm">{formatDate(conta.data_vencimento)}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{formatDate(conta.data_competencia)}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col truncate">
-                      <span className="font-medium text-sm truncate" title={conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '-'}>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm" title={conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '-'}>
                         {conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '-'}
                       </span>
                       {conta.clientes?.cnpj_cpf && (
@@ -703,9 +703,14 @@ export default function ContasReceber() {
                       <div className="flex flex-col gap-0.5">
                         <Badge variant="outline" className="w-fit text-xs">{conta.contratos.numero}</Badge>
                         {conta.contratos.servicos_detalhes && conta.contratos.servicos_detalhes.length > 0 && (
-                          <span className="text-xs text-muted-foreground truncate" title={conta.contratos.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}>
-                            {conta.contratos.servicos_detalhes.map(s => s.codigo).join(', ')}
-                          </span>
+                          <div className="flex flex-col">
+                            {conta.contratos.servicos_detalhes.map((s, idx) => (
+                              <span key={idx} className="text-xs" title={`${s.codigo} - ${s.nome}`}>
+                                <span className="font-medium text-foreground">{s.codigo}</span>
+                                <span className="text-muted-foreground"> - {s.nome}</span>
+                              </span>
+                            ))}
+                          </div>
                         )}
                         {conta.contratos.importancia && (
                           <Badge variant="secondary" className="w-fit text-[10px] px-1 py-0">
@@ -716,10 +721,10 @@ export default function ContasReceber() {
                       </div>
                     ) : '-'}
                   </TableCell>
-                  <TableCell className="truncate" title={conta.descricao}>
+                  <TableCell title={conta.descricao}>
                     <span className="text-sm">{conta.descricao}</span>
                   </TableCell>
-                  <TableCell className="truncate">
+                  <TableCell>
                     {conta.centro_custo ? (
                       (() => {
                         const cc = centrosCusto.find(c => c.id === conta.centro_custo);
