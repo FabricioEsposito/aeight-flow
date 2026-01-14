@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -81,7 +81,7 @@ export default function Extrato() {
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
-  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | null>(null);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
@@ -979,6 +979,57 @@ export default function Extrato() {
           title: "Sucesso",
           description: `${selectedLancamentos.length} lançamento(s) clonado(s)!`,
         });
+      } else if (batchActionType === 'delete') {
+        // Verificar permissão
+        if (!isAdmin) {
+          toast({
+            title: "Permissão negada",
+            description: "Apenas administradores podem excluir lançamentos em lote.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        let deletedCount = 0;
+        let errorCount = 0;
+        
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          
+          // Se tiver parcela_id vinculada, excluir também a parcela do contrato
+          if (lanc.parcela_id) {
+            await supabase
+              .from('parcelas_contrato')
+              .delete()
+              .eq('id', lanc.parcela_id);
+          }
+          
+          // Excluir o lançamento
+          const { error } = await supabase
+            .from(table)
+            .delete()
+            .eq('id', lanc.id);
+          
+          if (error) {
+            console.error('Erro ao excluir lançamento:', lanc.id, error);
+            errorCount++;
+          } else {
+            deletedCount++;
+          }
+        }
+        
+        if (deletedCount > 0) {
+          toast({
+            title: "Sucesso",
+            description: `${deletedCount} lançamento(s) excluído(s) com sucesso!${errorCount > 0 ? ` (${errorCount} erro(s))` : ''}`,
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: "Não foi possível excluir os lançamentos.",
+            variant: "destructive",
+          });
+        }
       }
       
       setSelectedIds(new Set());
@@ -1410,6 +1461,19 @@ export default function Extrato() {
                   <Copy className="w-4 h-4 mr-2" />
                   Clonar
                 </Button>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      setBatchActionType('delete');
+                      setBatchDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
