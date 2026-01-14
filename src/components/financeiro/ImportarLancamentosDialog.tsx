@@ -60,6 +60,8 @@ interface PreviewRow {
   plano_conta_codigo?: string;
   centro_custo_codigo?: string;
   conta_bancaria_nome?: string;
+  servico_codigo?: string;
+  servico_nome?: string;
   valid: boolean;
   errors: string[];
   warnings: string[];
@@ -72,6 +74,7 @@ interface PreviewRow {
   plano_conta_id?: string;
   centro_custo?: string;
   conta_bancaria_id?: string;
+  servico_id?: string;
 }
 
 interface ValidationError {
@@ -114,6 +117,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Plano de Contas (Código)': '1.1.01',
         'Centro de Custo (Código)': 'CC001',
         'Conta Bancária (Descrição)': 'Conta Principal',
+        'Serviço (Código)': 'SRV001',
       },
       {
         'Tipo (entrada/saida)': 'saida',
@@ -126,6 +130,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Plano de Contas (Código)': '2.1.01',
         'Centro de Custo (Código)': '',
         'Conta Bancária (Descrição)': '',
+        'Serviço (Código)': '',
       }
     ];
 
@@ -145,6 +150,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       { wch: 25 }, // Plano de Contas
       { wch: 25 }, // Centro de Custo
       { wch: 30 }, // Conta Bancária
+      { wch: 20 }, // Serviço
     ];
 
     XLSX.writeFile(wb, 'modelo_importacao_lancamentos.xlsx');
@@ -444,12 +450,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       }
 
       // Buscar dados para validação de referências
-      const [clientesRes, fornecedoresRes, planoContasRes, centrosCustoRes, contasBancariasRes] = await Promise.all([
+      const [clientesRes, fornecedoresRes, planoContasRes, centrosCustoRes, contasBancariasRes, servicosRes] = await Promise.all([
         supabase.from('clientes').select('id, razao_social, nome_fantasia, cnpj_cpf'),
         supabase.from('fornecedores').select('id, razao_social, nome_fantasia, cnpj_cpf'),
         supabase.from('plano_contas').select('id, codigo, descricao').eq('status', 'ativo'),
         supabase.from('centros_custo').select('id, codigo, descricao').eq('status', 'ativo'),
         supabase.from('contas_bancarias').select('id, descricao, banco').eq('status', 'ativo'),
+        supabase.from('servicos').select('id, codigo, nome').eq('status', 'ativo'),
       ]);
 
       const clientes = clientesRes.data || [];
@@ -457,6 +464,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       const planoContas = planoContasRes.data || [];
       const centrosCusto = centrosCustoRes.data || [];
       const contasBancarias = contasBancariasRes.data || [];
+      const servicos = servicosRes.data || [];
 
       // Processar cada linha
       const preview: PreviewRow[] = jsonData.map((row: any) => {
@@ -599,6 +607,23 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           }
         }
 
+        // Serviço (opcional)
+        const servicoCodigo = (row['Serviço (Código)'] || row['Serviço'] || row['Servico'] || '').toString().trim();
+        let servico_id: string | undefined;
+        let servico_nome: string | undefined;
+        if (servicoCodigo) {
+          const servico = servicos.find(s => 
+            s.codigo.toLowerCase() === servicoCodigo.toLowerCase() ||
+            s.nome.toLowerCase() === servicoCodigo.toLowerCase()
+          );
+          if (servico) {
+            servico_id = servico.id;
+            servico_nome = servico.nome;
+          } else {
+            warnings.push(`Serviço "${servicoCodigo}" não encontrado`);
+          }
+        }
+
         // Se vai criar cliente/fornecedor mas auto-criar está desabilitado, é erro
         const finalErrors = [...errors];
         if (willCreateClienteFornecedor && !autoCriarClienteFornecedor) {
@@ -621,6 +646,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           plano_conta_codigo: planoContaCodigo,
           centro_custo_codigo: centroCustoCodigo,
           conta_bancaria_nome: contaBancariaNome,
+          servico_codigo: servicoCodigo || undefined,
+          servico_nome: servico_nome,
           valid: finalErrors.length === 0,
           errors: finalErrors,
           warnings,
@@ -632,6 +659,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           plano_conta_id,
           centro_custo,
           conta_bancaria_id,
+          servico_id,
         };
       });
 
@@ -1111,6 +1139,9 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           }
         }
 
+        // Montar observações com serviço se informado
+        const observacoes = row.servico_nome ? `Serviço: ${row.servico_nome}` : null;
+
         if (row.tipo === 'entrada') {
           // Verificar se temos cliente_id válido antes de inserir
           if (!clienteId) {
@@ -1126,6 +1157,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             plano_conta_id: row.plano_conta_id || null,
             centro_custo: row.centro_custo || null,
             conta_bancaria_id: row.conta_bancaria_id || null,
+            observacoes,
             status: 'pendente',
           });
           if (error) throw error;
@@ -1144,6 +1176,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             plano_conta_id: row.plano_conta_id || null,
             centro_custo: row.centro_custo || null,
             conta_bancaria_id: row.conta_bancaria_id || null,
+            observacoes,
             status: 'pendente',
           });
           if (error) throw error;
