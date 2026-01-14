@@ -1467,6 +1467,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                     <TableHead>Vencimento</TableHead>
                     <TableHead>Competência</TableHead>
                     <TableHead>Cliente/Fornecedor</TableHead>
+                    <TableHead>Serviço</TableHead>
                     <TableHead>Observações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1533,6 +1534,19 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
                           )}
                           {row.cliente_fornecedor_nome}
                         </div>
+                      </TableCell>
+                      <TableCell className="max-w-[120px]">
+                        {row.servico_nome ? (
+                          <span className="text-foreground truncate block" title={row.servico_nome}>
+                            {row.servico_nome}
+                          </span>
+                        ) : row.servico_codigo ? (
+                          <span className="text-amber-600 text-xs" title={`Código "${row.servico_codigo}" não encontrado`}>
+                            ⚠ {row.servico_codigo}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs max-w-[200px]">
                         {row.errors.length > 0 && (
