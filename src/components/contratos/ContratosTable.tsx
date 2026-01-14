@@ -152,7 +152,7 @@ export function ContratosTable({
 
   return (
     <div className="rounded-md border overflow-hidden">
-      <Table className="table-fixed w-full">
+      <Table className="w-full">
         <TableHeader>
           <TableRow>
             {isSelectable && (
@@ -168,18 +168,18 @@ export function ContratosTable({
                 />
               </TableHead>
             )}
-            <TableHead className="w-[85px]">Data</TableHead>
-            <TableHead className="w-[150px]">Razão Social</TableHead>
-            <TableHead className="w-[120px]">Nome Fantasia</TableHead>
-            <TableHead className="w-[110px]">Contrato</TableHead>
-            <TableHead className="w-[70px]">Tipo</TableHead>
-            <TableHead className="w-[80px]">Recorrência</TableHead>
-            <TableHead className="w-[120px]">Centro Custos</TableHead>
-            <TableHead className="w-[85px]">Import.</TableHead>
-            <TableHead className="w-[100px]">Valor Bruto</TableHead>
-            <TableHead className="w-[100px]">Valor Líquido</TableHead>
-            <TableHead className="w-[70px]">Status</TableHead>
-            <TableHead className="w-[50px] text-right">Ações</TableHead>
+            <TableHead className="min-w-[85px]">Data</TableHead>
+            <TableHead className="min-w-[180px]">Razão Social</TableHead>
+            <TableHead className="min-w-[150px]">Nome Fantasia</TableHead>
+            <TableHead className="min-w-[120px]">Contrato</TableHead>
+            <TableHead className="min-w-[70px]">Tipo</TableHead>
+            <TableHead className="min-w-[90px]">Recorrência</TableHead>
+            <TableHead className="min-w-[180px]">Centro Custos</TableHead>
+            <TableHead className="min-w-[85px]">Import.</TableHead>
+            <TableHead className="min-w-[110px]">Valor Bruto</TableHead>
+            <TableHead className="min-w-[110px]">Valor Líquido</TableHead>
+            <TableHead className="min-w-[70px]">Status</TableHead>
+            <TableHead className="min-w-[50px] text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -204,10 +204,10 @@ export function ContratosTable({
                       />
                     </TableCell>
                   )}
-                  <TableCell className="text-sm">{formatDate(contrato.data_inicio)}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{formatDate(contrato.data_inicio)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col truncate">
-                      <span className="font-medium text-sm truncate" title={contrato.tipo_contrato === 'venda' ? contrato.clientes?.razao_social : contrato.fornecedores?.razao_social}>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm" title={contrato.tipo_contrato === 'venda' ? contrato.clientes?.razao_social : contrato.fornecedores?.razao_social}>
                         {contrato.tipo_contrato === 'venda' 
                           ? contrato.clientes?.razao_social 
                           : contrato.fornecedores?.razao_social}
@@ -219,7 +219,7 @@ export function ContratosTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="truncate text-sm" title={contrato.tipo_contrato === 'venda' ? contrato.clientes?.nome_fantasia || '-' : contrato.fornecedores?.nome_fantasia || '-'}>
+                  <TableCell className="text-sm" title={contrato.tipo_contrato === 'venda' ? contrato.clientes?.nome_fantasia || '-' : contrato.fornecedores?.nome_fantasia || '-'}>
                     {contrato.tipo_contrato === 'venda' 
                       ? contrato.clientes?.nome_fantasia || '-'
                       : contrato.fornecedores?.nome_fantasia || '-'}
@@ -245,9 +245,9 @@ export function ContratosTable({
                       {formatRecorrencia(contrato.recorrente, contrato.periodo_recorrencia)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="truncate text-sm" title={contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
+                  <TableCell className="text-sm" title={contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
                     {contrato.centro_custo_info 
-                      ? `${contrato.centro_custo_info.codigo}`
+                      ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}`
                       : contrato.centro_custo || '-'}
                   </TableCell>
                   <TableCell>

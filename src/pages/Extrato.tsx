@@ -1490,7 +1490,7 @@ export default function Extrato() {
         )}
 
         <div className="rounded-md border overflow-hidden">
-          <Table className="table-fixed w-full">
+          <Table className="w-full">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40px]">
@@ -1499,18 +1499,18 @@ export default function Extrato() {
                     onCheckedChange={handleToggleSelectAll}
                   />
                 </TableHead>
-                <TableHead className="w-[95px]">Vencimento</TableHead>
-                <TableHead className="w-[95px]">Movimentação</TableHead>
-                <TableHead className="w-[140px]">Cliente/Fornecedor</TableHead>
-                <TableHead className="w-[180px]">Descrição</TableHead>
-                <TableHead className="w-[60px]">NF</TableHead>
-                <TableHead className="w-[80px]">Anexos</TableHead>
-                <TableHead className="w-[130px]">Serviço / Import.</TableHead>
-                <TableHead className="w-[90px]">Situação</TableHead>
-                <TableHead className="w-[100px] text-right">Valor (R$)</TableHead>
-                <TableHead className="w-[100px] text-right">Realizado</TableHead>
-                <TableHead className="w-[100px] text-right">Previsto</TableHead>
-                <TableHead className="w-[50px] text-right">Ações</TableHead>
+                <TableHead className="min-w-[90px]">Vencimento</TableHead>
+                <TableHead className="min-w-[90px]">Movimentação</TableHead>
+                <TableHead className="min-w-[180px]">Cliente/Fornecedor</TableHead>
+                <TableHead className="min-w-[200px]">Descrição</TableHead>
+                <TableHead className="min-w-[60px]">NF</TableHead>
+                <TableHead className="min-w-[80px]">Anexos</TableHead>
+                <TableHead className="min-w-[180px]">Serviço / Import.</TableHead>
+                <TableHead className="min-w-[90px]">Situação</TableHead>
+                <TableHead className="min-w-[110px] text-right">Valor (R$)</TableHead>
+                <TableHead className="min-w-[110px] text-right">Realizado</TableHead>
+                <TableHead className="min-w-[110px] text-right">Previsto</TableHead>
+                <TableHead className="min-w-[50px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1562,20 +1562,22 @@ export default function Extrato() {
                         onCheckedChange={() => handleToggleSelect(lanc.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">{formatDate(lanc.data_vencimento)}</TableCell>
-                    <TableCell className="font-medium text-sm">
+                    <TableCell className="font-medium text-sm whitespace-nowrap">{formatDate(lanc.data_vencimento)}</TableCell>
+                    <TableCell className="font-medium text-sm whitespace-nowrap">
                       {lanc.status === 'pago' 
                         ? formatDate(lanc.origem === 'receber' ? lanc.data_recebimento || '' : lanc.data_pagamento || '')
                         : '-'
                       }
                     </TableCell>
-                    <TableCell className="truncate" title={lanc.cliente_fornecedor || '-'}>
-                      {lanc.cliente_fornecedor || '-'}
+                    <TableCell>
+                      <span title={lanc.cliente_fornecedor || '-'}>
+                        {lanc.cliente_fornecedor || '-'}
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <div className="truncate">
+                      <div>
                         <div className="flex items-center gap-1">
-                          <p className="font-medium text-sm truncate" title={lanc.descricao}>{lanc.descricao}</p>
+                          <p className="font-medium text-sm" title={lanc.descricao}>{lanc.descricao}</p>
                           {lanc.descricao?.includes('(Residual)') && (
                             <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-amber-500/10 text-amber-600 border-amber-500/30 flex-shrink-0">
                               Res
@@ -1583,7 +1585,7 @@ export default function Extrato() {
                           )}
                         </div>
                         {lanc.numero_contrato && (
-                          <p className="text-xs text-muted-foreground truncate">Contrato: {lanc.numero_contrato}</p>
+                          <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
                         )}
                       </div>
                     </TableCell>
