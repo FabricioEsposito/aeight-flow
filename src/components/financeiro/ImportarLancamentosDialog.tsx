@@ -1139,8 +1139,8 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           }
         }
 
-        // Montar observações com serviço se informado
-        const observacoes = row.servico_nome ? `Serviço: ${row.servico_nome}` : null;
+        // Montar observações com serviço se informado (formato: código - nome)
+        const observacoes = row.servico_nome ? `Serviço: ${row.servico_codigo ? `${row.servico_codigo} - ` : ''}${row.servico_nome}` : null;
 
         if (row.tipo === 'entrada') {
           // Verificar se temos cliente_id válido antes de inserir
