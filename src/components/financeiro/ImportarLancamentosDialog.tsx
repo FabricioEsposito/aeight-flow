@@ -1074,8 +1074,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         }
 
         if (row.tipo === 'entrada') {
+          // Verificar se temos cliente_id válido antes de inserir
+          if (!clienteId) {
+            console.error('Erro: cliente_id não definido para lançamento de entrada', row);
+            throw new Error(`Cliente não encontrado ou não foi possível criar para: ${row.descricao}`);
+          }
           const { error } = await supabase.from('contas_receber').insert({
-            cliente_id: clienteId!,
+            cliente_id: clienteId,
             descricao: row.descricao,
             valor: row.valor,
             data_vencimento: row.data_vencimento,
@@ -1087,8 +1092,13 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           });
           if (error) throw error;
         } else {
+          // Verificar se temos fornecedor_id válido antes de inserir
+          if (!fornecedorId) {
+            console.error('Erro: fornecedor_id não definido para lançamento de saída', row);
+            throw new Error(`Fornecedor não encontrado ou não foi possível criar para: ${row.descricao}`);
+          }
           const { error } = await supabase.from('contas_pagar').insert({
-            fornecedor_id: fornecedorId!,
+            fornecedor_id: fornecedorId,
             descricao: row.descricao,
             valor: row.valor,
             data_vencimento: row.data_vencimento,
@@ -1101,8 +1111,16 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           if (error) throw error;
         }
         successCount++;
-      } catch (error) {
-        console.error('Erro ao importar linha:', error);
+      } catch (error: any) {
+        console.error('Erro ao importar linha:', {
+          descricao: row.descricao,
+          tipo: row.tipo,
+          cliente_id: row.cliente_id,
+          fornecedor_id: row.fornecedor_id,
+          willCreate: row.willCreateClienteFornecedor,
+          cnpjParaCriar: row.cnpjCpfParaCriar,
+          error: error?.message || error
+        });
         errorCount++;
       }
 
