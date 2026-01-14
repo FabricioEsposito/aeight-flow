@@ -170,6 +170,19 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     const dateStr = String(dateValue).trim();
     if (!dateStr) return null;
     
+    // NOVA VERIFICAÇÃO: Se string contém apenas números (4-6 dígitos), 
+    // tratar como serial do Excel que foi convertido para string
+    if (/^\d{4,6}$/.test(dateStr)) {
+      const serialNumber = parseInt(dateStr, 10);
+      if (serialNumber > 1000 && serialNumber < 100000) {
+        const excelEpoch = new Date(1900, 0, 1);
+        const jsDate = new Date(excelEpoch.getTime() + (serialNumber - 2) * 24 * 60 * 60 * 1000);
+        if (isValid(jsDate) && jsDate.getFullYear() >= 1970 && jsDate.getFullYear() <= 2100) {
+          return format(jsDate, 'yyyy-MM-dd');
+        }
+      }
+    }
+    
     // Tentar diversos formatos de string
     const formats = ['dd/MM/yyyy', 'yyyy-MM-dd', 'dd-MM-yyyy', 'MM/dd/yyyy', 'd/M/yyyy'];
     
@@ -353,7 +366,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
         // Validar Data de Vencimento
         const dataVencRaw = row['Data Vencimento (DD/MM/AAAA)'] || row['Data Vencimento'] || '';
-        const dataVencimento = parseDate(String(dataVencRaw));
+        const dataVencimento = parseDate(dataVencRaw);
         if (!dataVencRaw) {
           errosValidacao.push({
             linha: linhaExcel,
@@ -372,7 +385,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
 
         // Validar Data de Competência
         const dataCompRaw = row['Data Competência (DD/MM/AAAA)'] || row['Data Competência'] || '';
-        const dataCompetencia = parseDate(String(dataCompRaw));
+        const dataCompetencia = parseDate(dataCompRaw);
         if (!dataCompRaw) {
           errosValidacao.push({
             linha: linhaExcel,
