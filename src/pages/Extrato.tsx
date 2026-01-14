@@ -1630,23 +1630,28 @@ export default function Extrato() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-0.5">
-                        {lanc.servicos_detalhes && lanc.servicos_detalhes.length > 0 && (
-                          <span className="text-xs text-muted-foreground truncate" title={lanc.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}>
-                            {lanc.servicos_detalhes.map(s => s.codigo).join(', ')}
-                          </span>
-                        )}
-                        {!lanc.servicos_detalhes && lanc.observacoes?.startsWith('Serviço: ') && (
-                          <span className="text-xs text-muted-foreground truncate" title={lanc.observacoes.replace('Serviço: ', '')}>
+                        {lanc.servicos_detalhes && lanc.servicos_detalhes.length > 0 ? (
+                          <div className="flex flex-col">
+                            {lanc.servicos_detalhes.map((s, idx) => (
+                              <span key={idx} className="text-xs truncate" title={`${s.codigo} - ${s.nome}`}>
+                                <span className="font-medium text-foreground">{s.codigo}</span>
+                                <span className="text-muted-foreground"> - {s.nome}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : lanc.observacoes?.startsWith('Serviço: ') ? (
+                          <span className="text-xs truncate" title={lanc.observacoes.replace('Serviço: ', '')}>
                             {lanc.observacoes.replace('Serviço: ', '')}
                           </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                         {lanc.importancia_contrato && (
-                          <Badge variant="secondary" className="w-fit text-[10px] px-1 py-0">
+                          <Badge variant="secondary" className="w-fit text-[10px] px-1 py-0 mt-0.5">
                             {lanc.importancia_contrato === 'importante' ? 'Imp.' : 
                              lanc.importancia_contrato === 'mediano' ? 'Med.' : 'N/Imp.'}
                           </Badge>
                         )}
-                        {!lanc.servicos_detalhes && !lanc.observacoes?.startsWith('Serviço: ') && !lanc.importancia_contrato && '-'}
                       </div>
                     </TableCell>
                     <TableCell>
