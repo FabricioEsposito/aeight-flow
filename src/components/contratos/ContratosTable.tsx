@@ -151,12 +151,12 @@ export function ContratosTable({
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
+    <div className="rounded-md border overflow-hidden">
+      <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow>
             {isSelectable && (
-              <TableHead className="w-12">
+              <TableHead className="w-[40px]">
                 <Checkbox
                   checked={allSelected}
                   ref={(el) => {
@@ -168,18 +168,18 @@ export function ContratosTable({
                 />
               </TableHead>
             )}
-            <TableHead>Data</TableHead>
-            <TableHead>Razão Social</TableHead>
-            <TableHead>Nome Fantasia</TableHead>
-            <TableHead>Contrato</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Recorrência</TableHead>
-            <TableHead>Centro de Custos</TableHead>
-            <TableHead>Importância</TableHead>
-            <TableHead>Valor Bruto</TableHead>
-            <TableHead>Valor Líquido</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            <TableHead className="w-[85px]">Data</TableHead>
+            <TableHead className="w-[150px]">Razão Social</TableHead>
+            <TableHead className="w-[120px]">Nome Fantasia</TableHead>
+            <TableHead className="w-[110px]">Contrato</TableHead>
+            <TableHead className="w-[70px]">Tipo</TableHead>
+            <TableHead className="w-[80px]">Recorrência</TableHead>
+            <TableHead className="w-[120px]">Centro Custos</TableHead>
+            <TableHead className="w-[85px]">Import.</TableHead>
+            <TableHead className="w-[100px]">Valor Bruto</TableHead>
+            <TableHead className="w-[100px]">Valor Líquido</TableHead>
+            <TableHead className="w-[70px]">Status</TableHead>
+            <TableHead className="w-[50px] text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -204,65 +204,66 @@ export function ContratosTable({
                       />
                     </TableCell>
                   )}
-                  <TableCell>{formatDate(contrato.data_inicio)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(contrato.data_inicio)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">
+                    <div className="flex flex-col truncate">
+                      <span className="font-medium text-sm truncate" title={contrato.tipo_contrato === 'venda' ? contrato.clientes?.razao_social : contrato.fornecedores?.razao_social}>
                         {contrato.tipo_contrato === 'venda' 
                           ? contrato.clientes?.razao_social 
                           : contrato.fornecedores?.razao_social}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {contrato.tipo_contrato === 'venda' 
                           ? formatCnpjCpf(contrato.clientes?.cnpj_cpf || '')
                           : formatCnpjCpf(contrato.fornecedores?.cnpj_cpf || '')}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate text-sm" title={contrato.tipo_contrato === 'venda' ? contrato.clientes?.nome_fantasia || '-' : contrato.fornecedores?.nome_fantasia || '-'}>
                     {contrato.tipo_contrato === 'venda' 
                       ? contrato.clientes?.nome_fantasia || '-'
                       : contrato.fornecedores?.nome_fantasia || '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{contrato.numero_contrato}</Badge>
+                    <div className="flex flex-col gap-0.5">
+                      <Badge variant="outline" className="w-fit text-xs">{contrato.numero_contrato}</Badge>
                       {contrato.tem_go_live && (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
-                          <Rocket className="h-3 w-3" />
-                          Go Live
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-0.5 text-[10px] px-1 py-0 w-fit">
+                          <Rocket className="h-2.5 w-2.5" />
+                          GoLive
                         </Badge>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'}>
+                    <Badge variant={contrato.tipo_contrato === 'venda' ? 'default' : 'secondary'} className="text-xs">
                       {contrato.tipo_contrato === 'venda' ? 'Venda' : 'Compra'}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getRecorrenciaBadgeVariant(contrato.recorrente, contrato.periodo_recorrencia) as any}>
+                    <Badge variant={getRecorrenciaBadgeVariant(contrato.recorrente, contrato.periodo_recorrencia) as any} className="text-xs">
                       {formatRecorrencia(contrato.recorrente, contrato.periodo_recorrencia)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate text-sm" title={contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
                     {contrato.centro_custo_info 
-                      ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}`
+                      ? `${contrato.centro_custo_info.codigo}`
                       : contrato.centro_custo || '-'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getImportanciaBadgeVariant(contrato.importancia_cliente_fornecedor)}>
-                      {formatImportancia(contrato.importancia_cliente_fornecedor)}
+                    <Badge variant={getImportanciaBadgeVariant(contrato.importancia_cliente_fornecedor)} className="text-xs">
+                      {contrato.importancia_cliente_fornecedor === 'importante' ? 'Imp.' : 
+                       contrato.importancia_cliente_fornecedor === 'mediano' ? 'Med.' : 'N/Imp.'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-medium text-muted-foreground">
+                  <TableCell className="font-medium text-muted-foreground text-sm">
                     {formatCurrency(valorBruto)}
                   </TableCell>
-                  <TableCell className="font-semibold text-primary">
+                  <TableCell className="font-semibold text-primary text-sm">
                     {formatCurrency(contrato.valor_total)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={contrato.status === 'ativo' ? 'default' : 'secondary'}>
+                    <Badge variant={contrato.status === 'ativo' ? 'default' : 'secondary'} className="text-xs">
                       {contrato.status}
                     </Badge>
                   </TableCell>

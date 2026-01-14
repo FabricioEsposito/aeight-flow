@@ -666,33 +666,33 @@ export default function ContasReceber() {
           </Select>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
+        <div className="rounded-md border overflow-hidden">
+          <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow>
-                <TableHead>Data de Competência</TableHead>
-                <TableHead>Data de Vencimento</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Contrato</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Centro de Custos</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[95px]">Competência</TableHead>
+                <TableHead className="w-[95px]">Vencimento</TableHead>
+                <TableHead className="w-[180px]">Cliente</TableHead>
+                <TableHead className="w-[140px]">Contrato</TableHead>
+                <TableHead className="w-[200px]">Descrição</TableHead>
+                <TableHead className="w-[140px]">Centro de Custos</TableHead>
+                <TableHead className="w-[110px]">Valor</TableHead>
+                <TableHead className="w-[90px]">Status</TableHead>
+                <TableHead className="w-[50px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedContas.map((conta) => (
                 <TableRow key={conta.id}>
-                  <TableCell>{formatDate(conta.data_competencia)}</TableCell>
-                  <TableCell>{formatDate(conta.data_vencimento)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(conta.data_competencia)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(conta.data_vencimento)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">
+                    <div className="flex flex-col truncate">
+                      <span className="font-medium text-sm truncate" title={conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '-'}>
                         {conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '-'}
                       </span>
                       {conta.clientes?.cnpj_cpf && (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {formatCnpjCpf(conta.clientes.cnpj_cpf)}
                         </span>
                       )}
@@ -700,36 +700,39 @@ export default function ContasReceber() {
                   </TableCell>
                   <TableCell>
                     {conta.contratos ? (
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="outline" className="w-fit">{conta.contratos.numero}</Badge>
+                      <div className="flex flex-col gap-0.5">
+                        <Badge variant="outline" className="w-fit text-xs">{conta.contratos.numero}</Badge>
                         {conta.contratos.servicos_detalhes && conta.contratos.servicos_detalhes.length > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {conta.contratos.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}
+                          <span className="text-xs text-muted-foreground truncate" title={conta.contratos.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}>
+                            {conta.contratos.servicos_detalhes.map(s => s.codigo).join(', ')}
                           </span>
                         )}
                         {conta.contratos.importancia && (
-                          <Badge variant="secondary" className="w-fit text-xs">
-                            {conta.contratos.importancia === 'importante' ? 'Importante' : 
-                             conta.contratos.importancia === 'mediano' ? 'Mediano' : 'Não Importante'}
+                          <Badge variant="secondary" className="w-fit text-[10px] px-1 py-0">
+                            {conta.contratos.importancia === 'importante' ? 'Imp.' : 
+                             conta.contratos.importancia === 'mediano' ? 'Med.' : 'N/Imp.'}
                           </Badge>
                         )}
                       </div>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>{conta.descricao}</TableCell>
-                  <TableCell>
+                  <TableCell className="truncate" title={conta.descricao}>
+                    <span className="text-sm">{conta.descricao}</span>
+                  </TableCell>
+                  <TableCell className="truncate">
                     {conta.centro_custo ? (
                       (() => {
                         const cc = centrosCusto.find(c => c.id === conta.centro_custo);
-                        return cc ? `${cc.codigo} - ${cc.descricao}` : conta.centro_custo;
+                        const texto = cc ? `${cc.codigo} - ${cc.descricao}` : conta.centro_custo;
+                        return <span className="text-sm" title={texto}>{texto}</span>;
                       })()
                     ) : '-'}
                   </TableCell>
-                  <TableCell className="font-semibold text-emerald-600">
+                  <TableCell className="font-semibold text-emerald-600 text-sm">
                     {formatCurrency(conta.valor)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(conta.status, conta.data_vencimento)}>
+                    <Badge variant={getStatusVariant(conta.status, conta.data_vencimento)} className="text-xs">
                       {getStatusLabel(conta.status, conta.data_vencimento)}
                     </Badge>
                   </TableCell>
