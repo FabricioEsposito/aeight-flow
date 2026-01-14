@@ -1635,16 +1635,34 @@ export default function Extrato() {
                         {lanc.servicos_detalhes && lanc.servicos_detalhes.length > 0 ? (
                           <div className="flex flex-col">
                             {lanc.servicos_detalhes.map((s, idx) => (
-                              <span key={idx} className="text-xs truncate" title={`${s.codigo} - ${s.nome}`}>
+                              <span key={idx} className="text-xs" title={`${s.codigo} - ${s.nome}`}>
                                 <span className="font-medium text-foreground">{s.codigo}</span>
                                 <span className="text-muted-foreground"> - {s.nome}</span>
                               </span>
                             ))}
                           </div>
                         ) : lanc.observacoes?.startsWith('Serviço: ') ? (
-                          <span className="text-xs truncate" title={lanc.observacoes.replace('Serviço: ', '')}>
-                            {lanc.observacoes.replace('Serviço: ', '')}
-                          </span>
+                          (() => {
+                            const servicoTexto = lanc.observacoes.replace('Serviço: ', '');
+                            // Verificar se já está no formato "código - nome"
+                            const partes = servicoTexto.split(' - ');
+                            if (partes.length >= 2) {
+                              const codigo = partes[0];
+                              const nome = partes.slice(1).join(' - ');
+                              return (
+                                <span className="text-xs" title={servicoTexto}>
+                                  <span className="font-medium text-foreground">{codigo}</span>
+                                  <span className="text-muted-foreground"> - {nome}</span>
+                                </span>
+                              );
+                            }
+                            // Formato antigo: só nome
+                            return (
+                              <span className="text-xs text-muted-foreground" title={servicoTexto}>
+                                {servicoTexto}
+                              </span>
+                            );
+                          })()
                         ) : (
                           <span className="text-xs text-muted-foreground">-</span>
                         )}
