@@ -1489,28 +1489,28 @@ export default function Extrato() {
           </div>
         )}
 
-        <div className="rounded-md border">
-          <Table>
+        <div className="rounded-md border overflow-hidden">
+          <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50px]">
+                <TableHead className="w-[40px]">
                   <Checkbox
                     checked={paginatedLancamentos.length > 0 && paginatedLancamentos.every(l => selectedIds.has(l.id))}
                     onCheckedChange={handleToggleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Data de Vencimento</TableHead>
-                <TableHead>Data da Movimentação</TableHead>
-                <TableHead>Cliente/Fornecedor</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>NF</TableHead>
-                <TableHead>Anexos</TableHead>
-                <TableHead>Serviço / Importância</TableHead>
-                <TableHead>Situação</TableHead>
-                <TableHead className="text-right">Valor (R$)</TableHead>
-                <TableHead className="text-right">Realizado (R$)</TableHead>
-                <TableHead className="text-right">Previsto (R$)</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[95px]">Vencimento</TableHead>
+                <TableHead className="w-[95px]">Movimentação</TableHead>
+                <TableHead className="w-[140px]">Cliente/Fornecedor</TableHead>
+                <TableHead className="w-[180px]">Descrição</TableHead>
+                <TableHead className="w-[60px]">NF</TableHead>
+                <TableHead className="w-[80px]">Anexos</TableHead>
+                <TableHead className="w-[130px]">Serviço / Import.</TableHead>
+                <TableHead className="w-[90px]">Situação</TableHead>
+                <TableHead className="w-[100px] text-right">Valor (R$)</TableHead>
+                <TableHead className="w-[100px] text-right">Realizado</TableHead>
+                <TableHead className="w-[100px] text-right">Previsto</TableHead>
+                <TableHead className="w-[50px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1562,32 +1562,32 @@ export default function Extrato() {
                         onCheckedChange={() => handleToggleSelect(lanc.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{formatDate(lanc.data_vencimento)}</TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-sm">{formatDate(lanc.data_vencimento)}</TableCell>
+                    <TableCell className="font-medium text-sm">
                       {lanc.status === 'pago' 
                         ? formatDate(lanc.origem === 'receber' ? lanc.data_recebimento || '' : lanc.data_pagamento || '')
                         : '-'
                       }
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="truncate" title={lanc.cliente_fornecedor || '-'}>
                       {lanc.cliente_fornecedor || '-'}
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{lanc.descricao}</p>
+                      <div className="truncate">
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium text-sm truncate" title={lanc.descricao}>{lanc.descricao}</p>
                           {lanc.descricao?.includes('(Residual)') && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-500/30">
-                              Residual
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-amber-500/10 text-amber-600 border-amber-500/30 flex-shrink-0">
+                              Res
                             </Badge>
                           )}
                         </div>
                         {lanc.numero_contrato && (
-                          <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
+                          <p className="text-xs text-muted-foreground truncate">Contrato: {lanc.numero_contrato}</p>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm">
                       {lanc.origem === 'receber' && lanc.numero_nf ? lanc.numero_nf : '-'}
                     </TableCell>
                     <TableCell>
@@ -1629,21 +1629,21 @@ export default function Extrato() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-0.5">
                         {lanc.servicos_detalhes && lanc.servicos_detalhes.length > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {lanc.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}
+                          <span className="text-xs text-muted-foreground truncate" title={lanc.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}>
+                            {lanc.servicos_detalhes.map(s => s.codigo).join(', ')}
                           </span>
                         )}
                         {!lanc.servicos_detalhes && lanc.observacoes?.startsWith('Serviço: ') && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground truncate" title={lanc.observacoes.replace('Serviço: ', '')}>
                             {lanc.observacoes.replace('Serviço: ', '')}
                           </span>
                         )}
                         {lanc.importancia_contrato && (
-                          <Badge variant="secondary" className="w-fit text-xs">
-                            {lanc.importancia_contrato === 'importante' ? 'Importante' : 
-                             lanc.importancia_contrato === 'mediano' ? 'Mediano' : 'Não Importante'}
+                          <Badge variant="secondary" className="w-fit text-[10px] px-1 py-0">
+                            {lanc.importancia_contrato === 'importante' ? 'Imp.' : 
+                             lanc.importancia_contrato === 'mediano' ? 'Med.' : 'N/Imp.'}
                           </Badge>
                         )}
                         {!lanc.servicos_detalhes && !lanc.observacoes?.startsWith('Serviço: ') && !lanc.importancia_contrato && '-'}
@@ -1678,15 +1678,15 @@ export default function Extrato() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className={`text-right font-semibold ${lanc.tipo === 'entrada' ? 'text-emerald-600' : 'text-destructive'}`}>
-                      {lanc.tipo === 'entrada' ? '+' : '-'} {formatCurrency(lanc.valor)}
+                    <TableCell className={`text-right font-semibold text-sm ${lanc.tipo === 'entrada' ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {lanc.tipo === 'entrada' ? '+' : '-'}{formatCurrency(lanc.valor)}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-right font-medium text-sm">
                       <span className={`${saldoRealizado >= 0 ? 'text-emerald-600' : 'text-destructive'} ${lanc.status !== 'pago' ? 'opacity-50' : ''}`}>
                         {formatCurrency(saldoRealizado)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-right font-medium text-sm">
                       <span className={`${saldoPrevisto >= 0 ? 'text-emerald-600' : 'text-destructive'} ${lanc.status === 'pago' ? 'opacity-50' : ''}`}>
                         {formatCurrency(saldoPrevisto)}
                       </span>

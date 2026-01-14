@@ -28,10 +28,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       <div className={`flex-1 flex flex-col min-w-0 ${!isTabletOrMobile ? 'ml-64' : ''}`}>
         <AppHeader onMenuToggle={isTabletOrMobile ? () => setSidebarOpen(true) : undefined} />
-        <main className="flex-1 p-4 lg:p-6 xl:p-8 overflow-x-auto">
-          <div className="w-full max-w-[1600px] mx-auto">
-            {children}
-          </div>
+        <main className="flex-1 p-4 lg:p-5 xl:p-6 overflow-x-auto">
+          {children}
         </main>
       </div>
     </div>
