@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle, Copy, X } from 'lucide-react';
+import { Calendar, CheckCircle, Copy, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +22,7 @@ interface BatchActionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedCount: number;
-  actionType: 'change-date' | 'mark-paid' | 'clone' | null;
+  actionType: 'change-date' | 'mark-paid' | 'clone' | 'delete' | null;
   onConfirm: (data: any) => void;
   tipo?: 'entrada' | 'saida';
   allPaid?: boolean;
@@ -51,6 +51,8 @@ export function BatchActionsDialog({
         return tipo === 'entrada' ? 'Marcar como Recebido' : 'Marcar como Pago';
       case 'clone':
         return 'Clonar Lançamentos';
+      case 'delete':
+        return 'Excluir Lançamentos';
       default:
         return 'Ação em Lote';
     }
@@ -67,6 +69,8 @@ export function BatchActionsDialog({
         return `Marcar ${selectedCount} lançamento(s) como ${tipo === 'entrada' ? 'recebido' : 'pago'}?`;
       case 'clone':
         return `Deseja clonar ${selectedCount} lançamento(s) selecionado(s)?`;
+      case 'delete':
+        return `Tem certeza que deseja excluir ${selectedCount} lançamento(s)? Esta ação não pode ser desfeita.`;
       default:
         return '';
     }
@@ -118,6 +122,14 @@ export function BatchActionsDialog({
               />
             </div>
           )}
+
+          {actionType === 'delete' && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30">
+              <p className="text-sm text-destructive font-medium">
+                ⚠️ Atenção: Os lançamentos vinculados a contratos também terão suas parcelas excluídas.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -126,12 +138,13 @@ export function BatchActionsDialog({
           </Button>
           <Button
             onClick={handleConfirm}
+            variant={actionType === 'delete' ? 'destructive' : 'default'}
             disabled={
               (actionType === 'change-date' && !newDate) ||
               (actionType === 'mark-paid' && !allPaid && !paymentDate)
             }
           >
-            Confirmar
+            {actionType === 'delete' ? 'Excluir' : 'Confirmar'}
           </Button>
         </DialogFooter>
       </DialogContent>

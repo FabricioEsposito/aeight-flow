@@ -151,16 +151,32 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
     });
   };
 
-  const parseDate = (dateStr: string): string | null => {
+  const parseDate = (dateValue: any): string | null => {
+    if (!dateValue && dateValue !== 0) return null;
+    
+    // Se for número, tratar como serial do Excel (dias desde 01/01/1900)
+    if (typeof dateValue === 'number') {
+      // Excel usa 1 = 01/01/1900, mas tem um bug que considera 1900 como ano bissexto
+      // Por isso subtraímos 2 dias: 1 para ajustar o offset e 1 para o bug do ano bissexto
+      const excelEpoch = new Date(1900, 0, 1);
+      const jsDate = new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
+      
+      if (isValid(jsDate) && jsDate.getFullYear() >= 1970 && jsDate.getFullYear() <= 2100) {
+        return format(jsDate, 'yyyy-MM-dd');
+      }
+      return null;
+    }
+    
+    const dateStr = String(dateValue).trim();
     if (!dateStr) return null;
     
-    // Tentar diversos formatos
-    const formats = ['dd/MM/yyyy', 'yyyy-MM-dd', 'dd-MM-yyyy', 'MM/dd/yyyy'];
+    // Tentar diversos formatos de string
+    const formats = ['dd/MM/yyyy', 'yyyy-MM-dd', 'dd-MM-yyyy', 'MM/dd/yyyy', 'd/M/yyyy'];
     
     for (const fmt of formats) {
       try {
-        const parsed = parse(dateStr.toString().trim(), fmt, new Date());
-        if (isValid(parsed)) {
+        const parsed = parse(dateStr, fmt, new Date());
+        if (isValid(parsed) && parsed.getFullYear() >= 1970 && parsed.getFullYear() <= 2100) {
           return format(parsed, 'yyyy-MM-dd');
         }
       } catch {
@@ -168,10 +184,10 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       }
     }
     
-    // Tentar parsing direto
+    // Tentar parsing direto (cuidado: pode interpretar números como timestamp)
     try {
       const direct = new Date(dateStr);
-      if (isValid(direct)) {
+      if (isValid(direct) && direct.getFullYear() >= 1970 && direct.getFullYear() <= 2100) {
         return format(direct, 'yyyy-MM-dd');
       }
     } catch {
