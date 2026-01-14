@@ -59,6 +59,7 @@ interface LancamentoExtrato {
   numero_nf?: string | null;
   link_nf?: string | null;
   link_boleto?: string | null;
+  observacoes?: string | null;
 }
 
 export default function Extrato() {
@@ -331,6 +332,7 @@ export default function Extrato() {
           numero_nf: r.numero_nf,
           link_nf: r.link_nf,
           link_boleto: r.link_boleto,
+          observacoes: r.observacoes,
         };
 
         if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
@@ -389,6 +391,7 @@ export default function Extrato() {
           data_pagamento: p.data_pagamento,
           link_nf: p.link_nf,
           link_boleto: p.link_boleto,
+          observacoes: p.observacoes,
         };
 
         if (p.parcelas_contrato?.contratos?.servicos && Array.isArray(p.parcelas_contrato.contratos.servicos) && p.parcelas_contrato.contratos.servicos.length > 0) {
@@ -1632,13 +1635,18 @@ export default function Extrato() {
                             {lanc.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ')}
                           </span>
                         )}
+                        {!lanc.servicos_detalhes && lanc.observacoes?.startsWith('Serviço: ') && (
+                          <span className="text-xs text-muted-foreground">
+                            {lanc.observacoes.replace('Serviço: ', '')}
+                          </span>
+                        )}
                         {lanc.importancia_contrato && (
                           <Badge variant="secondary" className="w-fit text-xs">
                             {lanc.importancia_contrato === 'importante' ? 'Importante' : 
                              lanc.importancia_contrato === 'mediano' ? 'Mediano' : 'Não Importante'}
                           </Badge>
                         )}
-                        {!lanc.servicos_detalhes && !lanc.importancia_contrato && '-'}
+                        {!lanc.servicos_detalhes && !lanc.observacoes?.startsWith('Serviço: ') && !lanc.importancia_contrato && '-'}
                       </div>
                     </TableCell>
                     <TableCell>
