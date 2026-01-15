@@ -86,40 +86,79 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
     try {
       const hoje = new Date().toISOString().split('T')[0];
 
-      // Buscar todas contas a receber para calcular total de receita (apenas de contratos)
-      let queryReceita = supabase
+      // Buscar todas contas a receber para calcular total de receita (contratos + avulsos com serviço)
+      // Query 1: Parcelas de contratos
+      let queryReceitaContratos = supabase
         .from('contas_receber')
         .select('valor')
-        .not('parcela_id', 'is', null) // Somente parcelas de contratos
+        .not('parcela_id', 'is', null)
+        .gte('data_vencimento', dataInicio)
+        .lte('data_vencimento', dataFim);
+
+      // Query 2: Lançamentos avulsos com serviço vinculado
+      let queryReceitaAvulsos = supabase
+        .from('contas_receber')
+        .select('valor')
+        .is('parcela_id', null)
+        .like('observacoes', 'Serviço:%')
         .gte('data_vencimento', dataInicio)
         .lte('data_vencimento', dataFim);
 
       if (centroCusto && centroCusto !== 'todos') {
-        queryReceita = queryReceita.eq('centro_custo', centroCusto);
+        queryReceitaContratos = queryReceitaContratos.eq('centro_custo', centroCusto);
+        queryReceitaAvulsos = queryReceitaAvulsos.eq('centro_custo', centroCusto);
       }
 
-      const { data: receitaData } = await queryReceita;
-      const receita = receitaData?.reduce((sum, conta) => sum + (conta.valor || 0), 0) || 0;
+      const [{ data: receitaContratosData }, { data: receitaAvulsosData }] = await Promise.all([
+        queryReceitaContratos,
+        queryReceitaAvulsos
+      ]);
+      
+      const receitaContratos = receitaContratosData?.reduce((sum, conta) => sum + (conta.valor || 0), 0) || 0;
+      const receitaAvulsos = receitaAvulsosData?.reduce((sum, conta) => sum + (conta.valor || 0), 0) || 0;
+      const receita = receitaContratos + receitaAvulsos;
       setTotalReceita(receita);
 
-      // Buscar parcelas vencidas (apenas de contratos)
-      let query = supabase
+      // Buscar parcelas vencidas (contratos + avulsos com serviço)
+      // Query 1: Parcelas de contratos vencidas
+      let queryContratos = supabase
         .from('contas_receber')
         .select('*, clientes(id, razao_social, nome_fantasia, email)')
-        .not('parcela_id', 'is', null) // Somente parcelas de contratos
+        .not('parcela_id', 'is', null)
+        .eq('status', 'pendente')
+        .lt('data_vencimento', hoje)
+        .gte('data_vencimento', dataInicio)
+        .lte('data_vencimento', dataFim);
+
+      // Query 2: Lançamentos avulsos com serviço vinculado vencidos
+      let queryAvulsos = supabase
+        .from('contas_receber')
+        .select('*, clientes(id, razao_social, nome_fantasia, email)')
+        .is('parcela_id', null)
+        .like('observacoes', 'Serviço:%')
         .eq('status', 'pendente')
         .lt('data_vencimento', hoje)
         .gte('data_vencimento', dataInicio)
         .lte('data_vencimento', dataFim);
 
       if (centroCusto && centroCusto !== 'todos') {
-        query = query.eq('centro_custo', centroCusto);
+        queryContratos = queryContratos.eq('centro_custo', centroCusto);
+        queryAvulsos = queryAvulsos.eq('centro_custo', centroCusto);
       }
 
-      const { data, error } = await query.order('data_vencimento', { ascending: true });
-      if (error) throw error;
+      const [resultContratos, resultAvulsos] = await Promise.all([
+        queryContratos.order('data_vencimento', { ascending: true }),
+        queryAvulsos.order('data_vencimento', { ascending: true })
+      ]);
 
-      const parcelasVencidas: ParcelaVencida[] = data?.map((conta: any) => {
+      if (resultContratos.error) throw resultContratos.error;
+      if (resultAvulsos.error) throw resultAvulsos.error;
+
+      // Combinar resultados
+      const combinedData = [...(resultContratos.data || []), ...(resultAvulsos.data || [])]
+        .sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime());
+
+      const parcelasVencidas: ParcelaVencida[] = combinedData?.map((conta: any) => {
         const vencimento = new Date(conta.data_vencimento + 'T00:00:00');
         const agora = new Date();
         const diasAtraso = Math.floor((agora.getTime() - vencimento.getTime()) / (1000 * 60 * 60 * 24));
