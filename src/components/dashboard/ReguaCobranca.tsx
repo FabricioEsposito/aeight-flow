@@ -85,24 +85,35 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
     setLoading(true);
     try {
       const hoje = new Date().toISOString().split('T')[0];
+      
+      // Verificar se há filtro de período (se vazio, busca tudo)
+      const temFiltroPeriodo = dataInicio && dataFim;
 
       // Buscar todas contas a receber para calcular total de receita (contratos + avulsos com serviço)
       // Query 1: Parcelas de contratos
       let queryReceitaContratos = supabase
         .from('contas_receber')
         .select('valor')
-        .not('parcela_id', 'is', null)
-        .gte('data_vencimento', dataInicio)
-        .lte('data_vencimento', dataFim);
+        .not('parcela_id', 'is', null);
+      
+      if (temFiltroPeriodo) {
+        queryReceitaContratos = queryReceitaContratos
+          .gte('data_vencimento', dataInicio)
+          .lte('data_vencimento', dataFim);
+      }
 
       // Query 2: Lançamentos avulsos com serviço vinculado
       let queryReceitaAvulsos = supabase
         .from('contas_receber')
         .select('valor')
         .is('parcela_id', null)
-        .like('observacoes', 'Serviço:%')
-        .gte('data_vencimento', dataInicio)
-        .lte('data_vencimento', dataFim);
+        .like('observacoes', 'Serviço:%');
+      
+      if (temFiltroPeriodo) {
+        queryReceitaAvulsos = queryReceitaAvulsos
+          .gte('data_vencimento', dataInicio)
+          .lte('data_vencimento', dataFim);
+      }
 
       if (centroCusto && centroCusto !== 'todos') {
         queryReceitaContratos = queryReceitaContratos.eq('centro_custo', centroCusto);
@@ -126,9 +137,13 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
         .select('*, clientes(id, razao_social, nome_fantasia, email)')
         .not('parcela_id', 'is', null)
         .eq('status', 'pendente')
-        .lt('data_vencimento', hoje)
-        .gte('data_vencimento', dataInicio)
-        .lte('data_vencimento', dataFim);
+        .lt('data_vencimento', hoje);
+      
+      if (temFiltroPeriodo) {
+        queryContratos = queryContratos
+          .gte('data_vencimento', dataInicio)
+          .lte('data_vencimento', dataFim);
+      }
 
       // Query 2: Lançamentos avulsos com serviço vinculado vencidos
       let queryAvulsos = supabase
@@ -137,9 +152,13 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
         .is('parcela_id', null)
         .like('observacoes', 'Serviço:%')
         .eq('status', 'pendente')
-        .lt('data_vencimento', hoje)
-        .gte('data_vencimento', dataInicio)
-        .lte('data_vencimento', dataFim);
+        .lt('data_vencimento', hoje);
+      
+      if (temFiltroPeriodo) {
+        queryAvulsos = queryAvulsos
+          .gte('data_vencimento', dataInicio)
+          .lte('data_vencimento', dataFim);
+      }
 
       if (centroCusto && centroCusto !== 'todos') {
         queryContratos = queryContratos.eq('centro_custo', centroCusto);
@@ -157,6 +176,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       // Combinar resultados
       const combinedData = [...(resultContratos.data || []), ...(resultAvulsos.data || [])]
         .sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime());
+
 
       const parcelasVencidas: ParcelaVencida[] = combinedData?.map((conta: any) => {
         const vencimento = new Date(conta.data_vencimento + 'T00:00:00');
