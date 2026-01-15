@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Mail, Send, Loader2, Filter, X } from 'lucide-react';
+import { Mail, Send, Loader2, Filter, X, MailX } from 'lucide-react';
 import { useEmailLogs } from '@/hooks/useEmailLogs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -63,14 +63,6 @@ const NIVEIS_ATRASO = [
   { value: 'pessimo', label: 'Péssimo Pagador (6+ dias)' },
 ];
 
-const FAIXAS_DIAS = [
-  { value: 'todos', label: 'Todos os dias' },
-  { value: '1-3', label: '1 a 3 dias' },
-  { value: '4-7', label: '4 a 7 dias' },
-  { value: '8-15', label: '8 a 15 dias' },
-  { value: '16-30', label: '16 a 30 dias' },
-  { value: '31+', label: 'Mais de 30 dias' },
-];
 
 export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobrancaProps) {
   const [parcelas, setParcelas] = useState<ParcelaVencida[]>([]);
@@ -82,7 +74,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   // Filtros
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroNivel, setFiltroNivel] = useState('todos');
-  const [filtroDias, setFiltroDias] = useState('todos');
+  
   
   // Seleção em lote
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -101,7 +93,7 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   // Limpar seleção quando os filtros mudam
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [filtroCliente, filtroNivel, filtroDias]);
+  }, [filtroCliente, filtroNivel]);
 
   const getNivelAtraso = (diasAtraso: number): { nivel: string; color: string; key: string } => {
     if (diasAtraso <= 1) return { nivel: 'Ótimo Pagador', color: 'bg-green-500', key: 'otimo' };
@@ -269,30 +261,10 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
         }
       }
       
-      // Filtro por faixa de dias
-      if (filtroDias !== 'todos') {
-        switch (filtroDias) {
-          case '1-3':
-            if (p.dias_atraso < 1 || p.dias_atraso > 3) return false;
-            break;
-          case '4-7':
-            if (p.dias_atraso < 4 || p.dias_atraso > 7) return false;
-            break;
-          case '8-15':
-            if (p.dias_atraso < 8 || p.dias_atraso > 15) return false;
-            break;
-          case '16-30':
-            if (p.dias_atraso < 16 || p.dias_atraso > 30) return false;
-            break;
-          case '31+':
-            if (p.dias_atraso < 31) return false;
-            break;
-        }
-      }
       
       return true;
     });
-  }, [parcelas, filtroCliente, filtroNivel, filtroDias]);
+  }, [parcelas, filtroCliente, filtroNivel]);
 
   // Lista de clientes únicos para o filtro
   const clientesUnicos = useMemo(() => {
@@ -341,12 +313,20 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = new Set(parcelasFiltradas.map(p => p.id));
+      // Só seleciona parcelas de clientes que têm e-mail
+      const allIds = new Set(
+        parcelasFiltradas
+          .filter(p => p.cliente_emails && p.cliente_emails.length > 0)
+          .map(p => p.id)
+      );
       setSelectedIds(allIds);
     } else {
       setSelectedIds(new Set());
     }
   };
+
+  // Contagem de parcelas selecionáveis (com e-mail)
+  const parcelasComEmail = parcelasFiltradas.filter(p => p.cliente_emails && p.cliente_emails.length > 0);
 
   const handleSelectOne = (id: string, checked: boolean) => {
     const newSelected = new Set(selectedIds);
@@ -361,10 +341,9 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   const limparFiltros = () => {
     setFiltroCliente('');
     setFiltroNivel('todos');
-    setFiltroDias('todos');
   };
 
-  const temFiltrosAtivos = filtroCliente || filtroNivel !== 'todos' || filtroDias !== 'todos';
+  const temFiltrosAtivos = filtroCliente || filtroNivel !== 'todos';
 
   // Calcular estatísticas dos selecionados
   const selectedParcelas = parcelasFiltradas.filter(p => selectedIds.has(p.id));
@@ -385,8 +364,9 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   }
 
   const totalVencido = parcelasFiltradas.reduce((sum, p) => sum + p.valor, 0);
-  const allSelected = parcelasFiltradas.length > 0 && selectedIds.size === parcelasFiltradas.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < parcelasFiltradas.length;
+  const parcelasSemEmail = parcelasFiltradas.filter(p => !p.cliente_emails || p.cliente_emails.length === 0);
+  const allSelected = parcelasComEmail.length > 0 && selectedIds.size === parcelasComEmail.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < parcelasComEmail.length;
 
   return (
     <>
@@ -400,6 +380,15 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                   <span>Total vencido: {formatCurrency(totalVencido)}</span>
                   <span>•</span>
                   <span>{parcelasFiltradas.length} parcela(s) em atraso</span>
+                  {parcelasSemEmail.length > 0 && (
+                    <>
+                      <span>•</span>
+                      <span className="text-destructive flex items-center gap-1">
+                        <MailX className="h-3 w-3" />
+                        {parcelasSemEmail.length} sem e-mail
+                      </span>
+                    </>
+                  )}
                   {parcelas.length !== parcelasFiltradas.length && (
                     <>
                       <span>•</span>
@@ -446,19 +435,6 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                   {NIVEIS_ATRASO.map(nivel => (
                     <SelectItem key={nivel.value} value={nivel.value}>
                       {nivel.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={filtroDias} onValueChange={setFiltroDias}>
-                <SelectTrigger className="w-[180px] h-9">
-                  <SelectValue placeholder="Dias de atraso" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FAIXAS_DIAS.map(faixa => (
-                    <SelectItem key={faixa.value} value={faixa.value}>
-                      {faixa.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -520,18 +496,48 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                     const isSelected = selectedIds.has(parcela.id);
 
                     return (
-                      <TableRow key={parcela.id} className={isSelected ? 'bg-muted/50' : ''}>
+                      <TableRow 
+                        key={parcela.id} 
+                        className={`${isSelected ? 'bg-muted/50' : ''} ${!hasEmails ? 'opacity-60' : ''}`}
+                      >
                         <TableCell className="text-center">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={(checked) => handleSelectOne(parcela.id, checked as boolean)}
-                            aria-label={`Selecionar ${parcela.cliente_nome}`}
-                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => handleSelectOne(parcela.id, checked as boolean)}
+                                  aria-label={`Selecionar ${parcela.cliente_nome}`}
+                                  disabled={!hasEmails}
+                                  className={!hasEmails ? 'cursor-not-allowed' : ''}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            {!hasEmails && (
+                              <TooltipContent>
+                                Cliente sem e-mail cadastrado
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
                         </TableCell>
                         <TableCell className="text-center">
                           {format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                         </TableCell>
-                        <TableCell className="font-medium">{parcela.cliente_nome}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {parcela.cliente_nome}
+                            {!hasEmails && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <MailX className="h-4 w-4 text-destructive" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Cliente sem e-mail cadastrado
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{parcela.descricao}</TableCell>
                         <TableCell className="text-center">
                           <span className="font-semibold text-destructive">
