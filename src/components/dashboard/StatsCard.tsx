@@ -4,6 +4,11 @@ import { cn } from "@/lib/utils";
 
 type CardVariant = "default" | "primary" | "success" | "warning" | "destructive";
 
+interface CompanyThemeColors {
+  primaryColor: string;
+  lightColor: string;
+}
+
 interface StatsCardProps {
   title: string;
   value: string;
@@ -13,6 +18,7 @@ interface StatsCardProps {
   className?: string;
   subtitle?: string;
   variant?: CardVariant;
+  companyTheme?: CompanyThemeColors | null;
 }
 
 const variantStyles: Record<CardVariant, {
@@ -67,32 +73,56 @@ export function StatsCard({
   icon: Icon, 
   className, 
   subtitle,
-  variant = "default"
+  variant = "default",
+  companyTheme
 }: StatsCardProps) {
   const styles = variantStyles[variant];
   
+  // Se temos um tema de empresa, usamos as cores dele
+  const hasCompanyTheme = companyTheme && companyTheme.primaryColor;
+  
   return (
-    <Card className={cn(
-      "relative overflow-hidden transition-all duration-300 border-l-4",
-      styles.borderColor,
-      styles.hoverShadow,
-      className
-    )}>
+    <Card 
+      className={cn(
+        "relative overflow-hidden transition-all duration-300 border-l-4",
+        !hasCompanyTheme && styles.borderColor,
+        styles.hoverShadow,
+        className
+      )}
+      style={hasCompanyTheme ? {
+        borderLeftColor: companyTheme.primaryColor
+      } : undefined}
+    >
       {/* Subtle gradient accent */}
-      {variant !== "default" && (
+      {hasCompanyTheme ? (
+        <div 
+          className="absolute inset-0 opacity-10"
+          style={{ 
+            background: `linear-gradient(to bottom right, ${companyTheme.primaryColor}, transparent)` 
+          }} 
+        />
+      ) : variant !== "default" ? (
         <div className={cn(
           "absolute inset-0 bg-gradient-to-br opacity-50",
           styles.accentGradient
         )} />
-      )}
+      ) : null}
       
       <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className={cn(
-          "p-2 rounded-lg transition-transform duration-300 hover:scale-110",
-          styles.iconBg
-        )}>
-          <Icon className={cn("h-4 w-4", styles.iconColor)} />
+        <div 
+          className={cn(
+            "p-2 rounded-lg transition-transform duration-300 hover:scale-110",
+            !hasCompanyTheme && styles.iconBg
+          )}
+          style={hasCompanyTheme ? {
+            backgroundColor: `${companyTheme.primaryColor}15`
+          } : undefined}
+        >
+          <Icon 
+            className={cn("h-4 w-4", !hasCompanyTheme && styles.iconColor)} 
+            style={hasCompanyTheme ? { color: companyTheme.primaryColor } : undefined}
+          />
         </div>
       </CardHeader>
       <CardContent className="relative">
