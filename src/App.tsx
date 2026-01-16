@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { SessionTimeoutProvider } from "./components/SessionTimeoutProvider";
 import Index from "./pages/Index";
@@ -36,43 +37,45 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <SessionTimeoutProvider>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
-              <Route path="/fornecedores" element={<ProtectedRoute><Fornecedores /></ProtectedRoute>} />
-              <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
-              <Route path="/contratos/novo" element={<ProtectedRoute><NovoContrato /></ProtectedRoute>} />
-              <Route path="/contratos/:id" element={<ProtectedRoute><VisualizarContrato /></ProtectedRoute>} />
-              <Route path="/contratos/:id/edit" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
-              <Route path="/contratos/:id/edit-completo" element={<ProtectedRoute><EditarContratoCompleto /></ProtectedRoute>} />
-              <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
-              <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
-              <Route path="/plano-contas" element={<ProtectedRoute><PlanoContas /></ProtectedRoute>} />
-              <Route path="/contas-receber" element={<ProtectedRoute><ContasReceber /></ProtectedRoute>} />
-              <Route path="/contas-pagar" element={<ProtectedRoute><ContasPagar /></ProtectedRoute>} />
-              <Route path="/extrato" element={<ProtectedRoute><Extrato /></ProtectedRoute>} />
-              <Route path="/controle-faturamento" element={<ProtectedRoute><ControleFaturamento /></ProtectedRoute>} />
-              <Route path="/centro-custos" element={<ProtectedRoute><CentroCustos /></ProtectedRoute>} />
-              <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
-              <Route path="/solicitacoes" element={<ProtectedRoute><Solicitacoes /></ProtectedRoute>} />
-              <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
-              <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
-              <Route path="/vendedores" element={<ProtectedRoute><Vendedores /></ProtectedRoute>} />
-              <Route path="/dashboard-comercial" element={<ProtectedRoute><DashboardComercial /></ProtectedRoute>} />
-              <Route path="/comissionamento" element={<ProtectedRoute><Comissionamento /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </SessionTimeoutProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <SessionTimeoutProvider>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+                <Route path="/fornecedores" element={<ProtectedRoute><Fornecedores /></ProtectedRoute>} />
+                <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+                <Route path="/contratos/novo" element={<ProtectedRoute><NovoContrato /></ProtectedRoute>} />
+                <Route path="/contratos/:id" element={<ProtectedRoute><VisualizarContrato /></ProtectedRoute>} />
+                <Route path="/contratos/:id/edit" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
+                <Route path="/contratos/:id/edit-completo" element={<ProtectedRoute><EditarContratoCompleto /></ProtectedRoute>} />
+                <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
+                <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
+                <Route path="/plano-contas" element={<ProtectedRoute><PlanoContas /></ProtectedRoute>} />
+                <Route path="/contas-receber" element={<ProtectedRoute><ContasReceber /></ProtectedRoute>} />
+                <Route path="/contas-pagar" element={<ProtectedRoute><ContasPagar /></ProtectedRoute>} />
+                <Route path="/extrato" element={<ProtectedRoute><Extrato /></ProtectedRoute>} />
+                <Route path="/controle-faturamento" element={<ProtectedRoute><ControleFaturamento /></ProtectedRoute>} />
+                <Route path="/centro-custos" element={<ProtectedRoute><CentroCustos /></ProtectedRoute>} />
+                <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+                <Route path="/solicitacoes" element={<ProtectedRoute><Solicitacoes /></ProtectedRoute>} />
+                <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+                <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+                <Route path="/vendedores" element={<ProtectedRoute><Vendedores /></ProtectedRoute>} />
+                <Route path="/dashboard-comercial" element={<ProtectedRoute><DashboardComercial /></ProtectedRoute>} />
+                <Route path="/comissionamento" element={<ProtectedRoute><Comissionamento /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </SessionTimeoutProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
