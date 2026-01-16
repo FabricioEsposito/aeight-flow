@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -728,8 +729,10 @@ export default function ContasReceber() {
                     {conta.centro_custo ? (
                       (() => {
                         const cc = centrosCusto.find(c => c.id === conta.centro_custo);
-                        const texto = cc ? `${cc.codigo} - ${cc.descricao}` : conta.centro_custo;
-                        return <span className="text-sm" title={texto}>{texto}</span>;
+                        if (cc) {
+                          return <CompanyTag codigo={cc.codigo} />;
+                        }
+                        return <span className="text-sm text-muted-foreground">{conta.centro_custo}</span>;
                       })()
                     ) : '-'}
                   </TableCell>
