@@ -1,4 +1,4 @@
-import { Edit, Trash2, MoreVertical, XCircle } from 'lucide-react';
+import { Edit, Trash2, MoreVertical, XCircle, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from 'react';
 import { CentroCusto } from '@/pages/CentroCustos';
+import { CompanyBadge } from './CompanyBadge';
+import { getCompanyTheme } from '@/hooks/useCentroCustoTheme';
 
 interface CentroCustosTableProps {
   centrosCusto: CentroCusto[];
@@ -67,71 +69,96 @@ export default function CentroCustosTable({
   };
 
   if (loading) {
-    return <div className="text-center py-8">Carregando...</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span>Carregando centros de custo...</span>
+        </div>
+      </div>
+    );
   }
 
   if (centrosCusto.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        Nenhum centro de custo encontrado
+      <div className="text-center py-12 text-muted-foreground">
+        <Building2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
+        <p className="text-lg font-medium">Nenhum centro de custo encontrado</p>
+        <p className="text-sm mt-1">Cadastre o primeiro centro de custo para começar.</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Código</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Status</TableHead>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-semibold">Empresa</TableHead>
+              <TableHead className="font-semibold">Descrição</TableHead>
+              <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="w-[70px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {centrosCusto.map((centroCusto) => (
-              <TableRow key={centroCusto.id}>
-                <TableCell>
-                  <Badge variant="outline">{centroCusto.codigo}</Badge>
-                </TableCell>
-                <TableCell>{centroCusto.descricao}</TableCell>
-                <TableCell>
-                  <Badge variant={centroCusto.status === 'ativo' ? 'default' : 'secondary'}>
-                    {centroCusto.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-background z-50">
-                      <DropdownMenuItem onClick={() => onEdit(centroCusto)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      {centroCusto.status === 'ativo' && (
-                        <DropdownMenuItem onClick={() => handleInactivateClick(centroCusto)}>
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Inativar
+            {centrosCusto.map((centroCusto) => {
+              const theme = getCompanyTheme(centroCusto.codigo);
+              
+              return (
+                <TableRow 
+                  key={centroCusto.id}
+                  className="group hover:bg-muted/30 transition-colors"
+                >
+                  <TableCell>
+                    <CompanyBadge codigo={centroCusto.codigo} />
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">{centroCusto.descricao}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={centroCusto.status === 'ativo' ? 'default' : 'secondary'}
+                      className={centroCusto.status === 'ativo' ? 'bg-success hover:bg-success/90' : ''}
+                    >
+                      {centroCusto.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-background z-50">
+                        <DropdownMenuItem onClick={() => onEdit(centroCusto)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem 
-                        onClick={() => handleDeleteClick(centroCusto)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+                        {centroCusto.status === 'ativo' && (
+                          <DropdownMenuItem onClick={() => handleInactivateClick(centroCusto)}>
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Inativar
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteClick(centroCusto)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -147,7 +174,9 @@ export default function CentroCustosTable({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Excluir</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
