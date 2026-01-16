@@ -24,6 +24,7 @@ import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDialog';
 import { ImportarLancamentosDialog } from '@/components/financeiro/ImportarLancamentosDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -74,6 +75,7 @@ export default function Extrato() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useState<string>('todos');
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
   
@@ -1200,6 +1202,11 @@ export default function Extrato() {
     const matchesConta = contaBancariaFilter.length === 0 || 
                         (lanc.conta_bancaria_id && contaBancariaFilter.includes(lanc.conta_bancaria_id));
 
+    let matchesCentroCusto = true;
+    if (centroCustoFilter !== 'todos') {
+      matchesCentroCusto = lanc.centro_custo === centroCustoFilter;
+    }
+
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange) {
@@ -1222,7 +1229,7 @@ export default function Extrato() {
       }
     }
 
-    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesDate;
+    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesDate;
   }).sort((a, b) => {
     // Ordenar por data de movimento em ordem crescente (menor para maior)
     const getMovementDate = (lanc: LancamentoExtrato) => {
@@ -1457,6 +1464,12 @@ export default function Extrato() {
               <SelectItem value="saida">Saídas</SelectItem>
             </SelectContent>
           </Select>
+
+          <CentroCustoFilterSelect
+            value={centroCustoFilter}
+            onValueChange={setCentroCustoFilter}
+            placeholder="Centro de Custo"
+          />
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
