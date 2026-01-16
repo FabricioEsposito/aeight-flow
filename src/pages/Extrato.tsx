@@ -47,6 +47,7 @@ interface LancamentoExtrato {
   servicos_detalhes?: Array<{ codigo: string; nome: string }>;
   importancia_contrato?: string;
   centro_custo?: string;
+  centro_custo_nome?: string;
   plano_conta_id?: string;
   plano_conta_descricao?: string;
   conta_bancaria_id?: string;
@@ -133,7 +134,7 @@ export default function Extrato() {
       }
       return '-';
     }},
-    { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo || '-' },
+    { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
     { header: 'Conta Bancária', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
     { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
@@ -271,6 +272,13 @@ export default function Extrato() {
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
 
+      // Buscar centros de custo para lookup (necessário para mapear nome)
+      const { data: centrosCustoData } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao');
+      
+      const centrosCustoMap = new Map((centrosCustoData || []).map(c => [c.id, c]));
+
       // Buscar contas bancárias para lookup (necessário para mapear nome da conta)
       const { data: contasBancariasData, error: errorContasBancarias } = await supabase
         .from('contas_bancarias')
@@ -373,6 +381,7 @@ export default function Extrato() {
       const receberComServicos = await Promise.all(dataReceberFiltrado.map(async (r: any) => {
         const planoContaInfo = r.plano_conta_id ? planoContasMap.get(r.plano_conta_id) : null;
         const contaBancariaInfo = r.conta_bancaria_id ? contasBancariasMap.get(r.conta_bancaria_id) : null;
+        const centroCustoInfo = r.centro_custo ? centrosCustoMap.get(r.centro_custo) : null;
         
         const lancamento: any = {
           id: r.id,
@@ -389,6 +398,7 @@ export default function Extrato() {
           servicos_contrato: r.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
           centro_custo: r.centro_custo,
+          centro_custo_nome: centroCustoInfo ? `${centroCustoInfo.codigo} - ${centroCustoInfo.descricao}` : undefined,
           plano_conta_id: r.plano_conta_id,
           plano_conta_descricao: planoContaInfo ? `${planoContaInfo.codigo} - ${planoContaInfo.descricao}` : undefined,
           conta_bancaria_id: r.conta_bancaria_id,
@@ -435,6 +445,7 @@ export default function Extrato() {
       const pagarComServicos = await Promise.all(dataPagarFiltrado.map(async (p: any) => {
         const planoContaInfo = p.plano_conta_id ? planoContasMap.get(p.plano_conta_id) : null;
         const contaBancariaInfo = p.conta_bancaria_id ? contasBancariasMap.get(p.conta_bancaria_id) : null;
+        const centroCustoInfo = p.centro_custo ? centrosCustoMap.get(p.centro_custo) : null;
         
         const lancamento: any = {
           id: p.id,
@@ -451,6 +462,7 @@ export default function Extrato() {
           servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
           centro_custo: p.centro_custo,
+          centro_custo_nome: centroCustoInfo ? `${centroCustoInfo.codigo} - ${centroCustoInfo.descricao}` : undefined,
           plano_conta_id: p.plano_conta_id,
           plano_conta_descricao: planoContaInfo ? `${planoContaInfo.codigo} - ${planoContaInfo.descricao}` : undefined,
           conta_bancaria_id: p.conta_bancaria_id,
