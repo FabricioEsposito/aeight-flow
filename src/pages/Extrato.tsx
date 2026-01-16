@@ -50,6 +50,7 @@ interface LancamentoExtrato {
   plano_conta_id?: string;
   plano_conta_descricao?: string;
   conta_bancaria_id?: string;
+  conta_bancaria_nome?: string;
   valor_original?: number;
   juros?: number;
   multa?: number;
@@ -123,6 +124,17 @@ export default function Extrato() {
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'Entrada' : 'Saída' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
     { header: 'Descrição', accessor: 'descricao' },
+    { header: 'Serviço', accessor: (row: LancamentoExtrato) => {
+      if (row.servicos_detalhes && row.servicos_detalhes.length > 0) {
+        return row.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ');
+      }
+      if (row.observacoes?.startsWith('Serviço: ')) {
+        return row.observacoes.replace('Serviço: ', '');
+      }
+      return '-';
+    }},
+    { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo || '-' },
+    { header: 'Conta Bancária', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
     { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
       const status = getDisplayStatus(row);
@@ -131,24 +143,70 @@ export default function Extrato() {
       if (status === 'vencido') return 'Vencido';
       return 'Em dia';
     }},
+    { header: 'Saldo Realizado', accessor: 'saldo_realizado', type: 'currency' as const },
+    { header: 'Saldo Previsto', accessor: 'saldo_previsto', type: 'currency' as const },
   ];
 
+  // Função para calcular saldos para exportação
+  const calcularDadosComSaldos = () => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    return filteredLancamentos.map((lanc, index) => {
+      const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
+      
+      const saldoRealizado =
+        saldoInicial +
+        lancamentosAteAqui
+          .filter(l => l.status === 'pago' && l.tipo === 'entrada')
+          .reduce((acc, l) => acc + l.valor, 0) -
+        lancamentosAteAqui
+          .filter(l => l.status === 'pago' && l.tipo === 'saida')
+          .reduce((acc, l) => acc + l.valor, 0);
+
+      const saldoPrevisto =
+        saldoRealizado +
+        lancamentosAteAqui
+          .filter(l => {
+            if (l.status !== 'pendente' || l.tipo !== 'entrada') return false;
+            const venc = new Date(l.data_vencimento + 'T00:00:00');
+            return venc >= hoje;
+          })
+          .reduce((acc, l) => acc + l.valor, 0) -
+        lancamentosAteAqui
+          .filter(l => {
+            if (l.status !== 'pendente' || l.tipo !== 'saida') return false;
+            const venc = new Date(l.data_vencimento + 'T00:00:00');
+            return venc >= hoje;
+          })
+          .reduce((acc, l) => acc + l.valor, 0);
+
+      return {
+        ...lanc,
+        saldo_realizado: saldoRealizado,
+        saldo_previsto: saldoPrevisto,
+      };
+    });
+  };
+
   const handleExportPDF = () => {
+    const dadosComSaldos = calcularDadosComSaldos();
     exportToPDF({
       title: 'Relatório de Extrato e Conciliação',
       filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
       columns: exportColumns,
-      data: filteredLancamentos,
+      data: dadosComSaldos,
       dateRange: getDateRangeLabel(),
     });
   };
 
   const handleExportExcel = () => {
+    const dadosComSaldos = calcularDadosComSaldos();
     exportToExcel({
       title: 'Extrato e Conciliação',
       filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
       columns: exportColumns,
-      data: filteredLancamentos,
+      data: dadosComSaldos,
       dateRange: getDateRangeLabel(),
     });
   };
@@ -212,6 +270,15 @@ export default function Extrato() {
       
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
+
+      // Buscar contas bancárias para lookup (necessário para mapear nome da conta)
+      const { data: contasBancariasData, error: errorContasBancarias } = await supabase
+        .from('contas_bancarias')
+        .select('id, descricao, banco, saldo_atual, saldo_inicial, data_inicio, status')
+        .order('descricao');
+
+      if (errorContasBancarias) throw errorContasBancarias;
+      const contasBancariasMap = new Map((contasBancariasData || []).map(c => [c.id, c]));
       
       // NOVA LÓGICA: Buscar por data_vencimento para pendentes
       let queryReceberPendentes = supabase
@@ -305,6 +372,7 @@ export default function Extrato() {
       // Buscar detalhes dos serviços para contas a receber
       const receberComServicos = await Promise.all(dataReceberFiltrado.map(async (r: any) => {
         const planoContaInfo = r.plano_conta_id ? planoContasMap.get(r.plano_conta_id) : null;
+        const contaBancariaInfo = r.conta_bancaria_id ? contasBancariasMap.get(r.conta_bancaria_id) : null;
         
         const lancamento: any = {
           id: r.id,
@@ -324,6 +392,7 @@ export default function Extrato() {
           plano_conta_id: r.plano_conta_id,
           plano_conta_descricao: planoContaInfo ? `${planoContaInfo.codigo} - ${planoContaInfo.descricao}` : undefined,
           conta_bancaria_id: r.conta_bancaria_id,
+          conta_bancaria_nome: contaBancariaInfo ? `${contaBancariaInfo.banco} - ${contaBancariaInfo.descricao}` : undefined,
           valor_original: r.valor_original,
           juros: r.juros,
           multa: r.multa,
@@ -365,6 +434,7 @@ export default function Extrato() {
       // Buscar detalhes dos serviços para contas a pagar
       const pagarComServicos = await Promise.all(dataPagarFiltrado.map(async (p: any) => {
         const planoContaInfo = p.plano_conta_id ? planoContasMap.get(p.plano_conta_id) : null;
+        const contaBancariaInfo = p.conta_bancaria_id ? contasBancariasMap.get(p.conta_bancaria_id) : null;
         
         const lancamento: any = {
           id: p.id,
@@ -384,6 +454,7 @@ export default function Extrato() {
           plano_conta_id: p.plano_conta_id,
           plano_conta_descricao: planoContaInfo ? `${planoContaInfo.codigo} - ${planoContaInfo.descricao}` : undefined,
           conta_bancaria_id: p.conta_bancaria_id,
+          conta_bancaria_nome: contaBancariaInfo ? `${contaBancariaInfo.banco} - ${contaBancariaInfo.descricao}` : undefined,
           valor_original: p.valor_original,
           juros: p.juros,
           multa: p.multa,
@@ -408,15 +479,10 @@ export default function Extrato() {
         return lancamento;
       }));
 
-      // Buscar contas bancárias
-      const { data: dataContas, error: errorContas } = await supabase
-        .from('contas_bancarias')
-        .select('id, descricao, banco, saldo_atual, saldo_inicial, data_inicio')
-        .eq('status', 'ativo')
-        .order('descricao');
-
-      if (errorContas) throw errorContas;
-      setContasBancarias(dataContas || []);
+      // Usar as contas bancárias já carregadas (incluindo inativas para referência)
+      // Filtrar apenas ativas para o state de seleção
+      const contasAtivas = (contasBancariasData || []).filter((c: any) => c.status !== 'inativo');
+      setContasBancarias(contasAtivas);
 
       // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
       // IMPORTANTE: Sempre buscar TODOS os movimentos pagos antes da data inicial do filtro
