@@ -643,12 +643,14 @@ export function Dashboard() {
             title="Faturamento"
             value={formatCurrency(stats.faturamento)}
             icon={DollarSign}
+            variant="success"
             changeType="neutral"
           />
           <StatsCard
             title="Contas a Receber"
             value={formatCurrency(stats.contasReceber)}
             icon={TrendingUp}
+            variant="primary"
             changeType="neutral"
             subtitle={stats.previsaoReceber > 0 ? `Previsão: ${formatCurrency(stats.previsaoReceber)}` : undefined}
           />
@@ -656,12 +658,14 @@ export function Dashboard() {
             title="Inadimplentes"
             value={formatCurrency(stats.inadimplentes)}
             icon={AlertTriangle}
+            variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
           />
           <StatsCard
             title="% Inadimplentes"
             value={`${stats.percentualInadimplentes.toFixed(2)}%`}
             icon={AlertTriangle}
+            variant="destructive"
             changeType={stats.percentualInadimplentes > 5 ? "negative" : "neutral"}
           />
         </div>
@@ -671,12 +675,14 @@ export function Dashboard() {
             title="Saldo Inicial"
             value={formatCurrency(stats.saldoInicial)}
             icon={Wallet}
+            variant="default"
             changeType="neutral"
           />
           <StatsCard
             title="Contas a Pagar"
             value={formatCurrency(stats.contasPagar)}
             icon={TrendingDown}
+            variant="warning"
             changeType="neutral"
             subtitle={`Pago: ${formatCurrency(stats.valorPago)}${stats.previsaoPagar > 0 ? ` | Previsão: ${formatCurrency(stats.previsaoPagar)}` : ''}`}
           />
@@ -684,12 +690,14 @@ export function Dashboard() {
             title="À Pagar Atrasado"
             value={formatCurrency(stats.pagarAtrasado)}
             icon={AlertTriangle}
+            variant="destructive"
             changeType={stats.pagarAtrasado > 0 ? "negative" : "neutral"}
           />
           <StatsCard
             title="Contas a Receber"
             value={formatCurrency(stats.contasReceber)}
             icon={TrendingUp}
+            variant="success"
             changeType="neutral"
             subtitle={`Recebido: ${formatCurrency(stats.valorRecebido)}${stats.previsaoReceber > 0 ? ` | Previsão: ${formatCurrency(stats.previsaoReceber)}` : ''}`}
           />
@@ -697,6 +705,7 @@ export function Dashboard() {
             title="Inadimplentes"
             value={formatCurrency(stats.inadimplentes)}
             icon={AlertTriangle}
+            variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
           />
           <StatsCard
@@ -704,6 +713,7 @@ export function Dashboard() {
             value={formatCurrency(stats.saldoFinal)}
             subtitle={stats.saldoFinalPrevisto ? `Previsto: ${formatCurrency(stats.saldoFinalPrevisto)}` : undefined}
             icon={Wallet}
+            variant="primary"
             changeType="neutral"
           />
         </div>

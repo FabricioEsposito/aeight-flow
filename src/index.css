@@ -160,44 +160,44 @@
 
   /* === COMPANY THEMES === */
 
-  /* 001_b8one - Tech Lab (Cobalt Blue) */
+  /* 001_b8one - Tech/Professional (Dark Gray/Black) */
   .theme-b8one {
-    --company-primary: 217 91% 50%;
-    --company-accent: 217 91% 45%;
+    --company-primary: 0 0% 10%;
+    --company-accent: 215 14% 34%;
   }
   .theme-b8one.dark, .dark .theme-b8one {
-    --company-primary: 217 91% 55%;
-    --company-accent: 217 91% 60%;
+    --company-primary: 0 0% 85%;
+    --company-accent: 215 14% 60%;
   }
 
-  /* 002_Lomadee - Marketing/Influencers (Electric Pink/Magenta) */
+  /* 002_Lomadee - Marketing (Vibrant Orange) */
   .theme-lomadee {
-    --company-primary: 328 100% 45%;
-    --company-accent: 197 100% 47%;
+    --company-primary: 14 100% 57%;
+    --company-accent: 14 82% 50%;
   }
   .theme-lomadee.dark, .dark .theme-lomadee {
-    --company-primary: 328 100% 55%;
-    --company-accent: 197 100% 55%;
+    --company-primary: 14 100% 62%;
+    --company-accent: 14 82% 55%;
   }
 
-  /* 003_Cryah - Digital Agency (Rose/Magenta) */
+  /* 003_Cryah - Digital Agency (Deep Purple/Violet) */
   .theme-cryah {
-    --company-primary: 340 82% 52%;
-    --company-accent: 340 82% 47%;
+    --company-primary: 270 51% 36%;
+    --company-accent: 291 61% 38%;
   }
   .theme-cryah.dark, .dark .theme-cryah {
-    --company-primary: 340 82% 60%;
-    --company-accent: 340 82% 55%;
+    --company-primary: 270 51% 55%;
+    --company-accent: 291 61% 50%;
   }
 
-  /* 004_SAIO - AI/SaaS (Tech Blue) */
+  /* 004_SAIO - AI/SaaS (Lavender/Violet) */
   .theme-saio {
-    --company-primary: 217 91% 50%;
-    --company-accent: 221 83% 53%;
+    --company-primary: 248 52% 63%;
+    --company-accent: 248 70% 73%;
   }
   .theme-saio.dark, .dark .theme-saio {
-    --company-primary: 217 91% 55%;
-    --company-accent: 221 83% 58%;
+    --company-primary: 248 52% 68%;
+    --company-accent: 248 70% 78%;
   }
 }
 
@@ -244,6 +244,18 @@
 
   .shadow-accent {
     box-shadow: var(--shadow-accent);
+  }
+
+  .shadow-success {
+    box-shadow: 0 4px 14px 0 hsl(160 84% 39% / 0.25);
+  }
+
+  .shadow-warning {
+    box-shadow: 0 4px 14px 0 hsl(38 92% 50% / 0.25);
+  }
+
+  .shadow-destructive {
+    box-shadow: 0 4px 14px 0 hsl(0 84% 60% / 0.25);
   }
   
   /* Transition utilities */
