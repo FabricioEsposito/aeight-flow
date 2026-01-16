@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClienteDetalhesDialog } from './ClienteDetalhesDialog';
@@ -196,19 +196,12 @@ export function AnaliseCreditoClientes() {
                 className="pl-9"
               />
             </div>
-            <Select value={selectedCentroCusto} onValueChange={setSelectedCentroCusto}>
-              <SelectTrigger className="w-full sm:w-[250px]">
-                <SelectValue placeholder="Centro de Custo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Centros de Custo</SelectItem>
-                {centrosCusto.map((cc) => (
-                  <SelectItem key={cc.id} value={cc.codigo}>
-                    {cc.codigo} - {cc.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CentroCustoFilterSelect
+              value={selectedCentroCusto}
+              onValueChange={setSelectedCentroCusto}
+              placeholder="Centro de Custo"
+              className="w-full sm:w-[250px]"
+            />
           </div>
 
           <div className="rounded-md border">

@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
-import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 
 interface CentroCusto {
@@ -387,14 +387,12 @@ export default function Contratos() {
             customRange={customDateRange}
           />
 
-          <div className="w-56">
-            <CentroCustoSelect
-              value={filterCentroCusto}
-              onValueChange={setFilterCentroCusto}
-              placeholder="Centro de Custos"
-              showAllOption
-            />
-          </div>
+          <CentroCustoFilterSelect
+            value={filterCentroCusto}
+            onValueChange={setFilterCentroCusto}
+            placeholder="Centro de Custo"
+            className="w-56"
+          />
 
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />

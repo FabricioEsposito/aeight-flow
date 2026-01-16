@@ -18,7 +18,7 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import { FaturamentoDetailsDialog } from '@/components/faturamento/FaturamentoDetailsDialog';
 import { EditFaturamentoDialog } from '@/components/faturamento/EditFaturamentoDialog';
 import { EnviarEmailFaturamentoDialog } from '@/components/faturamento/EnviarEmailFaturamentoDialog';
-import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -595,14 +595,12 @@ export default function ControleFaturamento() {
             customRange={customDateRange}
           />
 
-          <div className="w-[250px]">
-            <CentroCustoSelect
-              value={selectedCentroCusto}
-              onValueChange={setSelectedCentroCusto}
-              placeholder="Empresa / Centro de Custo"
-              showAllOption={true}
-            />
-          </div>
+          <CentroCustoFilterSelect
+            value={selectedCentroCusto}
+            onValueChange={setSelectedCentroCusto}
+            placeholder="Centro de Custo"
+            className="w-[250px]"
+          />
           
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
