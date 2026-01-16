@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -1584,6 +1585,7 @@ export default function Extrato() {
                 <TableHead className="min-w-[60px]">NF</TableHead>
                 <TableHead className="min-w-[80px]">Anexos</TableHead>
                 <TableHead className="min-w-[180px]">Serviço / Import.</TableHead>
+                <TableHead className="min-w-[130px]">Centro de Custo</TableHead>
                 <TableHead className="min-w-[90px]">Situação</TableHead>
                 <TableHead className="min-w-[110px] text-right">Valor (R$)</TableHead>
                 <TableHead className="min-w-[110px] text-right">Realizado</TableHead>
@@ -1751,6 +1753,13 @@ export default function Extrato() {
                           </Badge>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {lanc.centro_custo_nome ? (
+                        <CompanyTag codigo={lanc.centro_custo_nome.split(' - ')[0] || lanc.centro_custo_nome} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
