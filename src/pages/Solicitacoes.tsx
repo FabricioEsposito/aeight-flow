@@ -13,7 +13,39 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, X, Clock, FileText, CheckSquare } from 'lucide-react';
+import { Check, X, Clock, FileText, CheckSquare, Building2, User, CreditCard, Receipt, Calendar, DollarSign, Banknote } from 'lucide-react';
+import { CompanyDot } from '@/components/centro-custos/CompanyBadge';
+
+interface LancamentoDetalhes {
+  id: string;
+  descricao: string;
+  data_competencia: string;
+  status: string | null;
+  observacoes: string | null;
+  numero_nf?: string | null;
+  cliente?: {
+    razao_social: string;
+    nome_fantasia: string | null;
+    cnpj_cpf: string;
+  };
+  fornecedor?: {
+    razao_social: string;
+    nome_fantasia: string | null;
+    cnpj_cpf: string;
+  };
+  plano_conta?: {
+    codigo: string;
+    descricao: string;
+  };
+  conta_bancaria?: {
+    descricao: string;
+    banco: string;
+  };
+  centro_custo_info?: {
+    codigo: string;
+    descricao: string;
+  };
+}
 
 interface SolicitacaoAjuste {
   id: string;
@@ -46,6 +78,7 @@ interface SolicitacaoAjuste {
     nome: string;
     email: string;
   };
+  lancamento?: LancamentoDetalhes;
 }
 
 export default function Solicitacoes() {
@@ -111,7 +144,7 @@ export default function Solicitacoes() {
 
       if (error) throw error;
       
-      // Buscar perfis dos solicitantes e aprovadores
+      // Buscar perfis dos solicitantes, aprovadores e detalhes dos lançamentos
       const solicitacoesComPerfis = await Promise.all(
         (data || []).map(async (sol) => {
           const { data: solicitanteData } = await supabase
@@ -130,10 +163,119 @@ export default function Solicitacoes() {
             aprovadorData = aprovador;
           }
           
+          // Buscar detalhes do lançamento
+          let lancamentoDetalhes: LancamentoDetalhes | undefined;
+          if (sol.tipo_lancamento === 'receber') {
+            const { data: lancamento } = await supabase
+              .from('contas_receber')
+              .select(`
+                id,
+                descricao,
+                data_competencia,
+                status,
+                observacoes,
+                numero_nf,
+                cliente:clientes (
+                  razao_social,
+                  nome_fantasia,
+                  cnpj_cpf
+                ),
+                plano_conta:plano_contas (
+                  codigo,
+                  descricao
+                ),
+                conta_bancaria:contas_bancarias (
+                  descricao,
+                  banco
+                ),
+                centro_custo
+              `)
+              .eq('id', sol.lancamento_id)
+              .maybeSingle();
+            
+            if (lancamento) {
+              // Buscar centro de custo separadamente se existir
+              let centroCustoInfo = undefined;
+              if (lancamento.centro_custo) {
+                const { data: cc } = await supabase
+                  .from('centros_custo')
+                  .select('codigo, descricao')
+                  .eq('codigo', lancamento.centro_custo)
+                  .maybeSingle();
+                centroCustoInfo = cc || undefined;
+              }
+              
+              lancamentoDetalhes = {
+                id: lancamento.id,
+                descricao: lancamento.descricao,
+                data_competencia: lancamento.data_competencia,
+                status: lancamento.status,
+                observacoes: lancamento.observacoes,
+                numero_nf: lancamento.numero_nf,
+                cliente: lancamento.cliente as any,
+                plano_conta: lancamento.plano_conta as any,
+                conta_bancaria: lancamento.conta_bancaria as any,
+                centro_custo_info: centroCustoInfo,
+              };
+            }
+          } else {
+            const { data: lancamento } = await supabase
+              .from('contas_pagar')
+              .select(`
+                id,
+                descricao,
+                data_competencia,
+                status,
+                observacoes,
+                fornecedor:fornecedores (
+                  razao_social,
+                  nome_fantasia,
+                  cnpj_cpf
+                ),
+                plano_conta:plano_contas (
+                  codigo,
+                  descricao
+                ),
+                conta_bancaria:contas_bancarias (
+                  descricao,
+                  banco
+                ),
+                centro_custo
+              `)
+              .eq('id', sol.lancamento_id)
+              .maybeSingle();
+            
+            if (lancamento) {
+              // Buscar centro de custo separadamente se existir
+              let centroCustoInfo = undefined;
+              if (lancamento.centro_custo) {
+                const { data: cc } = await supabase
+                  .from('centros_custo')
+                  .select('codigo, descricao')
+                  .eq('codigo', lancamento.centro_custo)
+                  .maybeSingle();
+                centroCustoInfo = cc || undefined;
+              }
+              
+              lancamentoDetalhes = {
+                id: lancamento.id,
+                descricao: lancamento.descricao,
+                data_competencia: lancamento.data_competencia,
+                status: lancamento.status,
+                observacoes: lancamento.observacoes,
+                fornecedor: lancamento.fornecedor as any,
+                plano_conta: lancamento.plano_conta as any,
+                conta_bancaria: lancamento.conta_bancaria as any,
+                centro_custo_info: centroCustoInfo,
+              };
+            }
+          }
+          
           return {
             ...sol,
             solicitante: solicitanteData || { nome: 'Desconhecido', email: '' },
             aprovador: aprovadorData,
+            lancamento: lancamentoDetalhes,
           };
         })
       );
@@ -524,9 +666,21 @@ export default function Solicitacoes() {
     const hasChangedJuros = solicitacao.juros_atual !== solicitacao.juros_solicitado;
     const hasChangedMulta = solicitacao.multa_atual !== solicitacao.multa_solicitada;
     const hasChangedDesconto = solicitacao.desconto_atual !== solicitacao.desconto_solicitado;
+    const lancamento = solicitacao.lancamento;
+
+    const getStatusLabel = (status: string | null) => {
+      switch (status) {
+        case 'pendente': return { label: 'Pendente', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' };
+        case 'pago': return { label: 'Pago', color: 'bg-green-500/10 text-green-600 border-green-500/20' };
+        case 'recebido': return { label: 'Recebido', color: 'bg-green-500/10 text-green-600 border-green-500/20' };
+        case 'vencido': return { label: 'Vencido', color: 'bg-red-500/10 text-red-600 border-red-500/20' };
+        case 'cancelado': return { label: 'Cancelado', color: 'bg-gray-500/10 text-gray-600 border-gray-500/20' };
+        default: return { label: status || 'N/A', color: 'bg-gray-500/10 text-gray-600 border-gray-500/20' };
+      }
+    };
 
     return (
-      <Card key={solicitacao.id}>
+      <Card key={solicitacao.id} className="overflow-hidden">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between gap-4">
             {/* Checkbox for batch selection */}
@@ -541,12 +695,119 @@ export default function Solicitacoes() {
             {/* Left Section - Info */}
             <div className="flex-1 space-y-4">
               {/* Header */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Badge variant={solicitacao.tipo_lancamento === 'receber' ? 'default' : 'secondary'}>
                   {solicitacao.tipo_lancamento === 'receber' ? 'Contas a Receber' : 'Contas a Pagar'}
                 </Badge>
                 {getStatusBadge(solicitacao.status)}
+                {lancamento?.centro_custo_info && (
+                  <div className="flex items-center gap-1.5">
+                    <CompanyDot codigo={lancamento.centro_custo_info.codigo} size="md" />
+                    <span className="text-xs font-medium">{lancamento.centro_custo_info.codigo}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Detalhes do Lançamento */}
+              {lancamento && (
+                <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Receipt className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold text-primary">Detalhes do Lançamento</p>
+                  </div>
+                  
+                  {/* Cliente/Fornecedor */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {lancamento.cliente && (
+                      <div className="flex items-start gap-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Cliente</p>
+                          <p className="text-sm font-medium">{lancamento.cliente.nome_fantasia || lancamento.cliente.razao_social}</p>
+                          <p className="text-xs text-muted-foreground">{lancamento.cliente.cnpj_cpf}</p>
+                        </div>
+                      </div>
+                    )}
+                    {lancamento.fornecedor && (
+                      <div className="flex items-start gap-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Fornecedor</p>
+                          <p className="text-sm font-medium">{lancamento.fornecedor.nome_fantasia || lancamento.fornecedor.razao_social}</p>
+                          <p className="text-xs text-muted-foreground">{lancamento.fornecedor.cnpj_cpf}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Status do Lançamento */}
+                    <div className="flex items-start gap-2">
+                      <DollarSign className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Status do Lançamento</p>
+                        <Badge variant="outline" className={getStatusLabel(lancamento.status).color}>
+                          {getStatusLabel(lancamento.status).label}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Descrição */}
+                  <div className="flex items-start gap-2">
+                    <FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Descrição</p>
+                      <p className="text-sm font-medium">{lancamento.descricao}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Grid de informações */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-primary/10">
+                    {lancamento.data_competencia && (
+                      <div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Competência
+                        </p>
+                        <p className="text-sm font-medium">{format(new Date(lancamento.data_competencia), 'MM/yyyy')}</p>
+                      </div>
+                    )}
+                    
+                    {lancamento.numero_nf && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nº NF</p>
+                        <p className="text-sm font-medium">{lancamento.numero_nf}</p>
+                      </div>
+                    )}
+                    
+                    {lancamento.plano_conta && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Plano de Contas</p>
+                        <p className="text-sm font-medium">{lancamento.plano_conta.codigo}</p>
+                        <p className="text-xs text-muted-foreground">{lancamento.plano_conta.descricao}</p>
+                      </div>
+                    )}
+                    
+                    {lancamento.conta_bancaria && (
+                      <div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Banknote className="w-3 h-3" />
+                          Conta Bancária
+                        </p>
+                        <p className="text-sm font-medium">{lancamento.conta_bancaria.descricao}</p>
+                        <p className="text-xs text-muted-foreground">{lancamento.conta_bancaria.banco}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Observações */}
+                  {lancamento.observacoes && (
+                    <div className="pt-2 border-t border-primary/10">
+                      <p className="text-xs text-muted-foreground">Observações</p>
+                      <p className="text-sm text-muted-foreground italic">{lancamento.observacoes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Solicitante */}
               <div className="grid grid-cols-2 gap-4 text-sm">
