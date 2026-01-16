@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -24,6 +24,7 @@ import { ReguaCobranca } from "./ReguaCobranca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContaBancariaMultiSelect } from "@/components/financeiro/ContaBancariaMultiSelect";
 import { calcularFluxoCaixa, prepararMovimentacoes, formatDateLocal } from "@/lib/fluxo-caixa-utils";
+import { getCompanyTheme } from "@/hooks/useCentroCustoTheme";
 
 interface DashboardStats {
   faturamento: number;
@@ -94,6 +95,20 @@ export function Dashboard() {
   
   // Controle de visualização
   const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca'>('faturamento');
+
+  // Obter cores do tema do centro de custo selecionado
+  const companyTheme = useMemo(() => {
+    if (selectedCentroCusto === 'todos') {
+      return null; // Cores neutras
+    }
+    return getCompanyTheme(selectedCentroCusto);
+  }, [selectedCentroCusto]);
+
+  // Cor principal para gráficos (usa a cor da empresa ou cor padrão)
+  const chartPrimaryColor = companyTheme?.primaryColor || 'hsl(var(--primary))';
+  const chartSecondaryColor = companyTheme?.primaryColor 
+    ? `${companyTheme.primaryColor}99` 
+    : 'hsl(var(--primary) / 0.6)';
 
   useEffect(() => {
     fetchFiltersData();
@@ -637,6 +652,7 @@ export function Dashboard() {
             icon={DollarSign}
             variant="success"
             changeType="neutral"
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="Contas a Receber"
@@ -645,6 +661,7 @@ export function Dashboard() {
             variant="primary"
             changeType="neutral"
             subtitle={stats.previsaoReceber > 0 ? `Previsão: ${formatCurrency(stats.previsaoReceber)}` : undefined}
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="Inadimplentes"
@@ -652,6 +669,7 @@ export function Dashboard() {
             icon={AlertTriangle}
             variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="% Inadimplentes"
@@ -659,6 +677,7 @@ export function Dashboard() {
             icon={AlertTriangle}
             variant="destructive"
             changeType={stats.percentualInadimplentes > 5 ? "negative" : "neutral"}
+            companyTheme={companyTheme}
           />
         </div>
       ) : analiseAtiva === 'caixa' ? (
@@ -669,6 +688,7 @@ export function Dashboard() {
             icon={Wallet}
             variant="default"
             changeType="neutral"
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="Contas a Pagar"
@@ -677,6 +697,7 @@ export function Dashboard() {
             variant="warning"
             changeType="neutral"
             subtitle={`Pago: ${formatCurrency(stats.valorPago)}${stats.previsaoPagar > 0 ? ` | Previsão: ${formatCurrency(stats.previsaoPagar)}` : ''}`}
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="À Pagar Atrasado"
@@ -684,6 +705,7 @@ export function Dashboard() {
             icon={AlertTriangle}
             variant="destructive"
             changeType={stats.pagarAtrasado > 0 ? "negative" : "neutral"}
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="Contas a Receber"
@@ -692,6 +714,7 @@ export function Dashboard() {
             variant="success"
             changeType="neutral"
             subtitle={`Recebido: ${formatCurrency(stats.valorRecebido)}${stats.previsaoReceber > 0 ? ` | Previsão: ${formatCurrency(stats.previsaoReceber)}` : ''}`}
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="Inadimplentes"
@@ -699,6 +722,7 @@ export function Dashboard() {
             icon={AlertTriangle}
             variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
+            companyTheme={companyTheme}
           />
           <StatsCard
             title="Saldo Final"
@@ -707,6 +731,7 @@ export function Dashboard() {
             icon={Wallet}
             variant="primary"
             changeType="neutral"
+            companyTheme={companyTheme}
           />
         </div>
       ) : null}
@@ -716,16 +741,20 @@ export function Dashboard() {
         {/* Faturamento Charts - Apenas em Análise de Faturamento */}
         {analiseAtiva === 'faturamento' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card style={companyTheme ? { borderColor: `${companyTheme.primaryColor}30` } : undefined}>
               <CardHeader>
-                <CardTitle>Faturamento por Período</CardTitle>
+                <CardTitle 
+                  style={companyTheme ? { color: companyTheme.primaryColor } : undefined}
+                >
+                  Faturamento por Período
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer
                   config={{
                     valor: {
                       label: "Faturamento",
-                      color: "hsl(var(--primary))",
+                      color: chartPrimaryColor,
                     },
                   }}
                   className="h-80"
@@ -736,23 +765,27 @@ export function Dashboard() {
                       <XAxis dataKey="month" />
                       <YAxis tickFormatter={(value) => formatCurrency(value)} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="valor" fill={chartPrimaryColor} radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card style={companyTheme ? { borderColor: `${companyTheme.primaryColor}30` } : undefined}>
               <CardHeader>
-                <CardTitle>Faturamento por Cliente (Top 10)</CardTitle>
+                <CardTitle 
+                  style={companyTheme ? { color: companyTheme.primaryColor } : undefined}
+                >
+                  Faturamento por Cliente (Top 10)
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer
                   config={{
                     valor: {
                       label: "Faturamento",
-                      color: "hsl(142, 76%, 36%)",
+                      color: chartPrimaryColor,
                     },
                   }}
                   className="h-80"
@@ -789,7 +822,7 @@ export function Dashboard() {
                           return null;
                         }}
                       />
-                      <Bar dataKey="valor" fill="hsl(142, 76%, 36%)" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="valor" fill={chartPrimaryColor} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
