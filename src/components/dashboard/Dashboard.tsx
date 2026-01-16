@@ -101,8 +101,13 @@ export function Dashboard() {
     if (selectedCentroCusto === 'todos') {
       return null; // Cores neutras
     }
-    return getCompanyTheme(selectedCentroCusto);
-  }, [selectedCentroCusto]);
+    // Buscar o código do centro de custo pelo ID
+    const centroCusto = centrosCusto.find(cc => cc.id === selectedCentroCusto);
+    if (centroCusto) {
+      return getCompanyTheme(centroCusto.codigo);
+    }
+    return null;
+  }, [selectedCentroCusto, centrosCusto]);
 
   // Cor principal para gráficos (usa a cor da empresa ou cor padrão)
   const chartPrimaryColor = companyTheme?.primaryColor || 'hsl(var(--primary))';
