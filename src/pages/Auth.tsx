@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
+import { Building2 } from 'lucide-react';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }).max(255, { message: "Email deve ter menos de 255 caracteres" }),
@@ -261,20 +262,34 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/20 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            {isRecoveryMode ? "Definir Nova Senha" : isForgotPasswordMode ? "Recuperar Senha" : "Bem-vindo"}
-          </CardTitle>
-          <CardDescription className="text-center">
-            {isRecoveryMode 
-              ? "Crie sua nova senha abaixo" 
-              : isForgotPasswordMode 
-              ? "Digite seu email para receber o link de recuperação"
-              : "Acesse sua conta ou crie uma nova"}
-          </CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-subtle" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
+      
+      <Card className="w-full max-w-md relative z-10 shadow-lg border-border/50">
+        <CardHeader className="space-y-4 pb-6">
+          {/* Logo */}
+          <div className="flex justify-center">
+            <div className="w-16 h-16 rounded-xl bg-gradient-primary flex items-center justify-center shadow-primary">
+              <Building2 className="w-8 h-8 text-primary-foreground" />
+            </div>
+          </div>
+          
+          <div className="text-center space-y-1">
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              {isRecoveryMode ? "Definir Nova Senha" : isForgotPasswordMode ? "Recuperar Senha" : "A&EIGHT ERP"}
+            </CardTitle>
+            <CardDescription>
+              {isRecoveryMode 
+                ? "Crie sua nova senha abaixo" 
+                : isForgotPasswordMode 
+                ? "Digite seu email para receber o link de recuperação"
+                : "Sistema de gestão empresarial"}
+            </CardDescription>
+          </div>
         </CardHeader>
+        
         <CardContent>
           {isRecoveryMode ? (
             <form onSubmit={handlePasswordReset} className="space-y-4">
@@ -288,6 +303,7 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                   required
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2">
@@ -300,9 +316,10 @@ export default function Auth() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isLoading}
                   required
+                  className="h-11"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11" disabled={isLoading}>
                 {isLoading ? "Definindo..." : "Definir Senha"}
               </Button>
             </form>
@@ -318,9 +335,10 @@ export default function Auth() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                   required
+                  className="h-11"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11" disabled={isLoading}>
                 {isLoading ? "Enviando..." : "Enviar Link de Recuperação"}
               </Button>
               <Button 
@@ -337,7 +355,7 @@ export default function Auth() {
             </form>
           ) : (
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
               </TabsList>
@@ -354,6 +372,7 @@ export default function Auth() {
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={isLoading}
                       required
+                      className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
@@ -366,15 +385,16 @@ export default function Auth() {
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={isLoading}
                       required
+                      className="h-11"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
                     {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
                   <Button 
                     type="button" 
                     variant="link" 
-                    className="w-full"
+                    className="w-full text-muted-foreground hover:text-primary"
                     onClick={() => setIsForgotPasswordMode(true)}
                   >
                     Esqueci minha senha
@@ -394,6 +414,7 @@ export default function Auth() {
                       onChange={(e) => setNome(e.target.value)}
                       disabled={isLoading}
                       required
+                      className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
@@ -406,6 +427,7 @@ export default function Auth() {
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={isLoading}
                       required
+                      className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
@@ -418,6 +440,7 @@ export default function Auth() {
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={isLoading}
                       required
+                      className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
@@ -430,9 +453,10 @@ export default function Auth() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       disabled={isLoading}
                       required
+                      className="h-11"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
                     {isLoading ? "Criando conta..." : "Criar Conta"}
                   </Button>
                 </form>
@@ -441,6 +465,11 @@ export default function Auth() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Footer */}
+      <div className="absolute bottom-4 text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} A&EIGHT Group. Todos os direitos reservados.
+      </div>
     </div>
   );
 }

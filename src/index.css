@@ -2,139 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
-/* A&EIGHT ERP Design System - Professional business theme */
+/* A&EIGHT ERP Design System - Premium Corporate Theme */
 
 @layer base {
   :root {
+    /* === A&EIGHT BASE THEME (Light Mode) === */
+    
     /* Core backgrounds */
-    --background: 240 10% 98%;
-    --foreground: 230 25% 15%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 4%;
 
     /* Card system */
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 15%;
+    --card-foreground: 0 0% 4%;
 
     /* Popover system */
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 15%;
+    --popover-foreground: 0 0% 4%;
 
-    /* Primary brand - Professional blue */
-    --primary: 220 91% 25%;
+    /* Primary brand - A&EIGHT Tech Blue */
+    --primary: 217 91% 50%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 220 91% 30%;
-    --primary-light: 220 50% 95%;
+    --primary-hover: 217 91% 45%;
+    --primary-light: 217 91% 96%;
 
     /* Secondary - Neutral grays */
-    --secondary: 220 15% 96%;
-    --secondary-foreground: 230 25% 20%;
-    --secondary-hover: 220 15% 92%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --secondary-hover: 220 14% 92%;
 
     /* Muted elements */
-    --muted: 220 15% 96%;
-    --muted-foreground: 230 10% 45%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    /* Accent - Success green */
-    --accent: 142 70% 45%;
+    /* Accent - For CTAs (Orange vibrant) */
+    --accent: 24 95% 53%;
     --accent-foreground: 0 0% 100%;
-    --accent-light: 142 50% 95%;
+    --accent-light: 24 95% 95%;
 
     /* Status colors */
-    --success: 142 70% 45%;
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
-    --success-light: 142 50% 95%;
+    --success-light: 160 84% 95%;
 
-    --warning: 45 95% 50%;
-    --warning-foreground: 45 10% 10%;
-    --warning-light: 45 95% 95%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
+    --warning-light: 38 92% 95%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-light: 0 75% 95%;
+    --destructive-light: 0 84% 95%;
 
     /* Borders and inputs */
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 220 91% 25%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 50%;
 
     /* Layout */
-    --radius: 0.5rem;
+    --radius: 0.375rem;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(220 91% 25%), hsl(220 91% 35%));
-    --gradient-success: linear-gradient(135deg, hsl(142 70% 45%), hsl(142 70% 55%));
-    --gradient-subtle: linear-gradient(180deg, hsl(240 10% 98%), hsl(220 15% 96%));
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 50%), hsl(217 91% 40%));
+    --gradient-accent: linear-gradient(135deg, hsl(24 95% 53%), hsl(24 95% 43%));
+    --gradient-success: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 29%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(220 14% 96%));
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(220 15% 25% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(220 15% 25% / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(220 15% 25% / 0.1);
-    --shadow-xl: 0 20px 25px -5px hsl(220 15% 25% / 0.1);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1);
+    --shadow-primary: 0 4px 14px 0 hsl(217 91% 50% / 0.25);
+    --shadow-accent: 0 4px 14px 0 hsl(24 95% 53% / 0.25);
 
     /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.15s ease-in-out;
 
-    --sidebar-background: 240 10% 99%;
-    --sidebar-foreground: 230 25% 15%;
-    --sidebar-primary: 220 91% 25%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 4%;
+    --sidebar-primary: 217 91% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 96%;
-    --sidebar-accent-foreground: 230 25% 20%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 220 91% 25%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217 91% 50%;
+
+    /* Company theme colors - default */
+    --company-primary: 217 91% 50%;
+    --company-accent: 217 91% 45%;
   }
 
+  /* === A&EIGHT DARK MODE === */
   .dark {
-    /* Dark mode colors */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
 
-    --card: 230 25% 10%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 230 25% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 220 91% 35%;
+    --primary: 217 91% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 220 91% 40%;
-    --primary-light: 220 50% 15%;
+    --primary-hover: 217 91% 60%;
+    --primary-light: 217 91% 15%;
 
-    --secondary: 230 25% 12%;
-    --secondary-foreground: 210 40% 98%;
-    --secondary-hover: 230 25% 15%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --secondary-hover: 0 0% 15%;
 
-    --muted: 230 25% 12%;
-    --muted-foreground: 210 10% 65%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 64%;
 
-    --accent: 142 70% 45%;
+    --accent: 24 95% 55%;
     --accent-foreground: 0 0% 100%;
-    --accent-light: 142 50% 15%;
+    --accent-light: 24 95% 15%;
 
-    --success: 142 70% 45%;
+    --success: 160 84% 45%;
     --success-foreground: 0 0% 100%;
-    --success-light: 142 50% 15%;
+    --success-light: 160 84% 15%;
 
-    --warning: 45 95% 50%;
-    --warning-foreground: 45 10% 10%;
-    --warning-light: 45 95% 15%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 9%;
+    --warning-light: 38 92% 15%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 84% 65%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-light: 0 75% 15%;
+    --destructive-light: 0 84% 15%;
 
-    --border: 230 25% 18%;
-    --input: 230 25% 18%;
-    --ring: 220 91% 35%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 217 91% 55%;
 
-    --sidebar-background: 230 25% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 220 91% 35%;
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(24 95% 55%), hsl(24 95% 45%));
+    --gradient-success: linear-gradient(135deg, hsl(160 84% 45%), hsl(160 84% 35%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 4%), hsl(0 0% 7%));
+
+    --shadow-primary: 0 4px 14px 0 hsl(217 91% 55% / 0.35);
+    --shadow-accent: 0 4px 14px 0 hsl(24 95% 55% / 0.35);
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 217 91% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 230 25% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 230 25% 18%;
-    --sidebar-ring: 220 91% 35%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 217 91% 55%;
+
+    --company-primary: 217 91% 55%;
+    --company-accent: 217 91% 60%;
+  }
+
+  /* === COMPANY THEMES === */
+
+  /* 001_b8one - Tech Lab (Cobalt Blue) */
+  .theme-b8one {
+    --company-primary: 217 91% 50%;
+    --company-accent: 217 91% 45%;
+  }
+  .theme-b8one.dark, .dark .theme-b8one {
+    --company-primary: 217 91% 55%;
+    --company-accent: 217 91% 60%;
+  }
+
+  /* 002_Lomadee - Marketing/Influencers (Electric Pink/Magenta) */
+  .theme-lomadee {
+    --company-primary: 328 100% 45%;
+    --company-accent: 197 100% 47%;
+  }
+  .theme-lomadee.dark, .dark .theme-lomadee {
+    --company-primary: 328 100% 55%;
+    --company-accent: 197 100% 55%;
+  }
+
+  /* 003_Cryah - Digital Agency (Rose/Magenta) */
+  .theme-cryah {
+    --company-primary: 340 82% 52%;
+    --company-accent: 340 82% 47%;
+  }
+  .theme-cryah.dark, .dark .theme-cryah {
+    --company-primary: 340 82% 60%;
+    --company-accent: 340 82% 55%;
+  }
+
+  /* 004_SAIO - AI/SaaS (Tech Blue) */
+  .theme-saio {
+    --company-primary: 217 91% 50%;
+    --company-accent: 221 83% 53%;
+  }
+  .theme-saio.dark, .dark .theme-saio {
+    --company-primary: 217 91% 55%;
+    --company-accent: 221 83% 58%;
   }
 }
 
@@ -144,13 +207,18 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
 @layer utilities {
+  /* Gradient utilities */
   .bg-gradient-primary {
     background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
   }
   
   .bg-gradient-success {
@@ -160,16 +228,48 @@
   .bg-gradient-subtle {
     background: var(--gradient-subtle);
   }
-  
+
+  .bg-gradient-company {
+    background: linear-gradient(135deg, hsl(var(--company-primary)), hsl(var(--company-accent)));
+  }
+
+  /* Shadow utilities */
   .shadow-elegant {
-    box-shadow: var(--shadow-elegant);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .shadow-primary {
+    box-shadow: var(--shadow-primary);
+  }
+
+  .shadow-accent {
+    box-shadow: var(--shadow-accent);
   }
   
+  /* Transition utilities */
   .transition-smooth {
     transition: var(--transition-smooth);
   }
   
   .transition-fast {
     transition: var(--transition-fast);
+  }
+
+  /* Company color utilities */
+  .text-company {
+    color: hsl(var(--company-primary));
+  }
+
+  .bg-company {
+    background-color: hsl(var(--company-primary));
+  }
+
+  .border-company {
+    border-color: hsl(var(--company-primary));
+  }
+
+  /* Tabular numbers for financial data */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }

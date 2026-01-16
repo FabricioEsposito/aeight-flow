@@ -166,11 +166,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
       <NavLink
         to={item.url}
         onClick={handleNavigation}
-        className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+        className={cn(
+          "flex-1 flex items-center gap-3 px-3 py-2.5 rounded transition-all duration-200",
           isActive(item.url)
-            ? "bg-primary text-primary-foreground font-medium"
-            : "hover:bg-secondary text-foreground"
-        }`}
+            ? "bg-primary text-primary-foreground font-medium shadow-sm"
+            : "text-foreground hover:bg-secondary"
+        )}
       >
         <item.icon className="w-4 h-4 flex-shrink-0" />
         <span className="text-sm">{item.title}</span>
@@ -183,9 +184,9 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
             toggleFavorite(item.url);
           }}
           className={cn(
-            "p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100",
+            "p-1.5 rounded transition-all duration-200 opacity-0 group-hover:opacity-100",
             isFavorite(item.url) 
-              ? "text-yellow-500 opacity-100" 
+              ? "text-warning opacity-100" 
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -203,14 +204,15 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   return (
     <aside className="w-64 border-r border-border bg-card flex flex-col h-full md:fixed md:left-0 md:top-0 md:h-screen">
+      {/* Header with A&EIGHT branding */}
       <header className="p-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-sm">
             <Building2 className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="font-bold text-lg text-foreground">A&EIGHT</h2>
-            <p className="text-sm text-muted-foreground">ERP System</p>
+            <h2 className="font-bold text-lg text-foreground tracking-tight">A&EIGHT</h2>
+            <p className="text-xs text-muted-foreground font-medium">ERP System</p>
           </div>
         </div>
       </header>
@@ -218,6 +220,9 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
       <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {!hasAnyAccess ? (
           <div className="text-center py-8 px-4">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <UserCog className="w-6 h-6 text-muted-foreground" />
+            </div>
             <p className="text-sm text-muted-foreground">
               Seu acesso ainda não foi configurado. Aguarde um administrador atribuir seu nível hierárquico.
             </p>
@@ -234,8 +239,8 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
             {/* Favoritos */}
             {favoriteItems.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-2 px-3 flex items-center gap-2">
-                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                <p className="text-xs font-semibold text-muted-foreground mb-2 px-3 flex items-center gap-2 uppercase tracking-wider">
+                  <Star className="w-3 h-3 text-warning fill-warning" />
                   Favoritos
                 </p>
                 <nav className="space-y-1">
@@ -250,16 +255,16 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                 key={group.name} 
                 open={openGroups[group.name]} 
                 onOpenChange={() => toggleGroup(group.name)}
-                className="mb-4"
+                className="mb-3"
               >
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider">
                   <span>{group.name}</span>
                   <ChevronDown className={cn(
-                    "w-4 h-4 transition-transform",
+                    "w-4 h-4 transition-transform duration-200",
                     openGroups[group.name] && "rotate-180"
                   )} />
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1">
+                <CollapsibleContent className="mt-1 animate-accordion-down">
                   <nav className="space-y-1">
                     {group.items.map((item) => renderNavItem(item))}
                   </nav>
@@ -281,17 +286,18 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         )}
       </div>
 
-      <footer className="p-4 border-t border-border flex-shrink-0">
-        <div className="space-y-2">
-          <div className="text-sm text-muted-foreground px-2">
-            <div>{user?.email}</div>
+      {/* Footer with user info */}
+      <footer className="p-4 border-t border-border flex-shrink-0 bg-secondary/30">
+        <div className="space-y-3">
+          <div className="px-2">
+            <div className="text-sm font-medium text-foreground truncate">{user?.email}</div>
             {role && (
-              <div className="text-xs mt-1 text-primary">{getRoleLabel(role)}</div>
+              <div className="text-xs mt-0.5 text-primary font-medium">{getRoleLabel(role)}</div>
             )}
           </div>
           <Button
             variant="ghost"
-            className="w-full justify-start text-foreground hover:bg-secondary"
+            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4 mr-2" />
