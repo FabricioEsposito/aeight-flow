@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -71,6 +72,7 @@ export default function ContasPagar() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useState<string>('todos');
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
   const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
   const [customDateRange, setCustomDateRange] = useState<{
@@ -483,7 +485,13 @@ export default function ContasPagar() {
     if (contaBancariaFilter !== 'todas') {
       matchesContaBancaria = conta.conta_bancaria_id === contaBancariaFilter;
     }
-    return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria;
+
+    let matchesCentroCusto = true;
+    if (centroCustoFilter !== 'todos') {
+      matchesCentroCusto = conta.centro_custo === centroCustoFilter;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria && matchesCentroCusto;
   });
   
   // Paginação
@@ -623,6 +631,12 @@ export default function ContasPagar() {
               showAllOption
             />
           </div>
+
+          <CentroCustoFilterSelect
+            value={centroCustoFilter}
+            onValueChange={setCentroCustoFilter}
+            placeholder="Centro de Custo"
+          />
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
