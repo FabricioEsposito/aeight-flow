@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, LineChart, Legend, ComposedChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { DREAnalysis } from "./DREAnalysis";
 import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
@@ -611,19 +611,11 @@ export function Dashboard() {
           />
 
           {analiseAtiva !== 'caixa' && (
-            <Select value={selectedCentroCusto} onValueChange={setSelectedCentroCusto}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Centro de Custo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os centros de custo</SelectItem>
-                {centrosCusto.map((cc) => (
-                  <SelectItem key={cc.id} value={cc.id}>
-                    {cc.codigo} - {cc.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CentroCustoFilterSelect
+              value={selectedCentroCusto}
+              onValueChange={setSelectedCentroCusto}
+              className="w-[250px]"
+            />
           )}
 
           {analiseAtiva === 'caixa' && (
