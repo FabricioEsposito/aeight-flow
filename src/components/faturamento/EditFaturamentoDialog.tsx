@@ -190,12 +190,12 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Editar Faturamento</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
           <div className="space-y-2">
             <Label className="text-muted-foreground">Cliente</Label>
             <p className="font-medium">{faturamento.cliente_razao_social}</p>
@@ -299,7 +299,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 border-t pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
