@@ -9,6 +9,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Limite global diário de e-mails (reservando 5 para NFs de faturamento)
+const DAILY_EMAIL_LIMIT = 95;
+
 interface ParcelaVencida {
   id: string;
   descricao: string;
@@ -92,26 +95,22 @@ function getEmailTemplate(diasAtraso: number): EmailTemplate {
   }
 }
 
-// Get allowed send times based on days overdue
-function getAllowedSendTimes(diasAtraso: number): number[] {
-  if (diasAtraso <= 1) return [11];
-  if (diasAtraso <= 3) return [11, 15];
-  return [11, 15, 17];
+// OTIMIZAÇÃO: Agora só enviamos 1x por dia às 11h
+function getAllowedSendTimes(_diasAtraso: number): number[] {
+  return [11]; // Apenas 11h para todos os níveis
 }
 
-// Get max emails per day based on days overdue
-function getMaxEmailsPerDay(diasAtraso: number): number {
-  if (diasAtraso <= 1) return 1;
-  if (diasAtraso <= 3) return 2;
-  return 3;
+// OTIMIZAÇÃO: Máximo de 1 e-mail por cliente por dia
+function getMaxEmailsPerDay(_diasAtraso: number): number {
+  return 1; // Sempre 1 e-mail por dia
 }
 
-// Get CC recipients based on days overdue
+// AJUSTADO: financeiro@aeight.global SEMPRE em cópia, sócios apenas 8+ dias
 function getCcRecipients(diasAtraso: number): string[] {
   const baseCc = ["financeiro@aeight.global"];
   
-  // 6+ dias: adicionar stakeholders
-  if (diasAtraso >= 6) {
+  // 8+ dias: adicionar stakeholders
+  if (diasAtraso >= 8) {
     return [...baseCc, "renato@aeight.global", "hugo@lomadee.com"];
   }
   
@@ -135,16 +134,13 @@ function isWithinSendWindow(diasAtraso: number): boolean {
   return false;
 }
 
-// Get which send slot we're in (1, 2, or 3)
+// Get which send slot we're in (simplified: only slot 1 now)
 function getCurrentSendSlot(): number {
   const now = new Date();
   const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const currentHour = brasilTime.getHours();
   
-  if (currentHour >= 11 && currentHour < 15) return 1;
-  if (currentHour >= 15 && currentHour < 17) return 2;
-  if (currentHour >= 17) return 3;
-  
+  if (currentHour >= 11) return 1;
   return 0;
 }
 
@@ -336,6 +332,25 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
   `;
 }
 
+// Buscar total de e-mails enviados hoje (todos os tipos)
+async function getTodayEmailCount(supabase: any): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const { data, error } = await supabase
+    .from("email_logs")
+    .select("id")
+    .gte("created_at", startOfDay.toISOString())
+    .eq("status", "enviado");
+  
+  if (error) {
+    console.error("Error counting today's emails:", error);
+    return 0;
+  }
+  
+  return data?.length || 0;
+}
+
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -347,9 +362,26 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { cliente_id, all, force, test_mode, test_email } = await req.json();
+    const { cliente_id, all, force, test_mode, test_email, check_quota } = await req.json();
     
-    console.log("Starting collection email process:", { cliente_id, all, force, test_mode, test_email });
+    console.log("Starting collection email process:", { cliente_id, all, force, test_mode, test_email, check_quota });
+
+    // NOVO: Endpoint para verificar quota
+    if (check_quota) {
+      const todayCount = await getTodayEmailCount(supabase);
+      const remaining = DAILY_EMAIL_LIMIT - todayCount;
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          today_count: todayCount,
+          daily_limit: DAILY_EMAIL_LIMIT,
+          remaining,
+          quota_available: remaining > 0,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // TEST MODE: Send sample emails with all 3 templates to test email
     if (test_mode && test_email) {
@@ -446,6 +478,25 @@ serve(async (req: Request): Promise<Response> => {
           success: true, 
           message: "Fora do horário de envio (antes das 11h)", 
           sent: 0 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // NOVO: Verificar quota global antes de processar
+    const todayEmailCount = await getTodayEmailCount(supabase);
+    console.log(`Emails sent today: ${todayEmailCount}/${DAILY_EMAIL_LIMIT}`);
+    
+    if (todayEmailCount >= DAILY_EMAIL_LIMIT && !force) {
+      console.log("Daily email quota reached, stopping automatic sends");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Limite diário de e-mails atingido (${todayEmailCount}/${DAILY_EMAIL_LIMIT}). Aguarde até amanhã.`,
+          sent: 0,
+          quota_reached: true,
+          today_count: todayEmailCount,
+          daily_limit: DAILY_EMAIL_LIMIT,
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -582,12 +633,29 @@ serve(async (req: Request): Promise<Response> => {
       clienteData.max_dias_atraso = Math.max(clienteData.max_dias_atraso, diasAtraso);
     }
 
+    // OTIMIZAÇÃO: Ordenar clientes por valor total vencido (maior primeiro)
+    const clientesOrdenados = Array.from(clientesMap.entries())
+      .sort((a, b) => b[1].total_vencido - a[1].total_vencido);
+    
+    console.log(`Processing ${clientesOrdenados.length} clients, ordered by total overdue value`);
+
     let totalSent = 0;
     let totalSkipped = 0;
+    let quotaReached = false;
     const errors: string[] = [];
 
-    // Process each client
-    for (const [clienteId, clienteData] of clientesMap) {
+    // Track emails sent in this execution
+    let emailsSentThisRun = todayEmailCount;
+
+    // Process each client (ordered by value)
+    for (const [clienteId, clienteData] of clientesOrdenados) {
+      // Verificar quota antes de cada envio
+      if (emailsSentThisRun >= DAILY_EMAIL_LIMIT && !force) {
+        console.log(`Daily quota reached during processing (${emailsSentThisRun}/${DAILY_EMAIL_LIMIT}), stopping`);
+        quotaReached = true;
+        break;
+      }
+
       if (clienteData.emails.length === 0) {
         console.log(`Client ${clienteData.cliente_nome} has no valid emails, skipping`);
         totalSkipped++;
@@ -618,9 +686,9 @@ serve(async (req: Request): Promise<Response> => {
 
       const emailsSentToday = todayLogs?.length || 0;
 
-      // Check if already sent in current slot
+      // Check if already sent in current slot (now simplified to 1 per day)
       if (emailsSentToday >= currentSlot && !force) {
-        console.log(`Client ${clienteData.cliente_nome} already received email in slot ${currentSlot} (sent today: ${emailsSentToday}), skipping`);
+        console.log(`Client ${clienteData.cliente_nome} already received email today (sent: ${emailsSentToday}), skipping`);
         totalSkipped++;
         continue;
       }
@@ -642,25 +710,33 @@ serve(async (req: Request): Promise<Response> => {
       const primeiroCentroCusto = clienteData.parcelas.find(p => p.centro_custo)?.centro_custo || null;
       const subject = buildEmailSubject(clienteData, template, primeiroNumeroNf, primeiroCentroCusto);
       
-      // Get CC recipients based on days overdue
+      // Get CC recipients based on days overdue (financeiro sempre + sócios para 8+ dias)
       const ccRecipients = getCcRecipients(diasAtraso);
       
       // Build attachments from parcelas
       const attachments = buildAttachments(clienteData.parcelas);
 
+      // OTIMIZAÇÃO: Consolidar e-mails - primeiro como TO, resto como CC do cliente
+      const primaryEmail = clienteData.emails[0];
+      const clienteCcEmails = clienteData.emails.slice(1);
+      const allCcRecipients = [...clienteCcEmails, ...ccRecipients];
+
       try {
         console.log(`Sending email to ${clienteData.cliente_nome}:`, {
           template: template.urgencyTag,
           diasAtraso,
-          ccRecipients,
+          to: primaryEmail,
+          clienteCc: clienteCcEmails,
+          internalCc: ccRecipients,
           attachmentsCount: attachments.length,
           subject,
+          totalVencido: formatCurrency(clienteData.total_vencido),
         });
 
         const emailPayload: any = {
           from: "Financeiro Aeight <cobranca@financeiro.aeight.global>",
-          to: clienteData.emails,
-          cc: ccRecipients,
+          to: [primaryEmail], // Apenas o primeiro e-mail como TO
+          cc: allCcRecipients.length > 0 ? allCcRecipients : undefined, // Resto como CC
           subject,
           html: htmlContent,
         };
@@ -673,41 +749,38 @@ serve(async (req: Request): Promise<Response> => {
 
         const emailResponse = await resend.emails.send(emailPayload);
 
-        console.log(`Email sent to ${clienteData.cliente_nome} (CC: ${ccRecipients.join(", ")}):`, emailResponse);
+        console.log(`Email sent to ${clienteData.cliente_nome} (TO: ${primaryEmail}, CC: ${allCcRecipients.join(", ")}):`, emailResponse);
 
-        // Log each email sent
-        for (const email of clienteData.emails) {
-          const { error: logError } = await supabase.from("email_logs").insert({
-            cliente_id: clienteId,
-            email_destino: email,
-            tipo: "cobranca",
-            status: "enviado",
-          });
+        // Log apenas 1 registro por cliente (não mais por cada email)
+        const { error: logError } = await supabase.from("email_logs").insert({
+          cliente_id: clienteId,
+          email_destino: primaryEmail,
+          tipo: "cobranca",
+          status: "enviado",
+        });
 
-          if (logError) {
-            console.error("Error logging email:", logError);
-          }
+        if (logError) {
+          console.error("Error logging email:", logError);
         }
 
         totalSent++;
+        emailsSentThisRun++;
       } catch (emailError: any) {
         console.error(`Error sending email to ${clienteData.cliente_nome}:`, emailError);
         errors.push(`${clienteData.cliente_nome}: ${emailError.message}`);
 
         // Log failed attempt
-        for (const email of clienteData.emails) {
-          await supabase.from("email_logs").insert({
-            cliente_id: clienteId,
-            email_destino: email,
-            tipo: "cobranca",
-            status: "falhou",
-            erro: emailError.message,
-          });
-        }
+        await supabase.from("email_logs").insert({
+          cliente_id: clienteId,
+          email_destino: primaryEmail,
+          tipo: "cobranca",
+          status: "falhou",
+          erro: emailError.message,
+        });
       }
     }
 
-    console.log(`Collection emails completed: ${totalSent} sent, ${totalSkipped} skipped`);
+    console.log(`Collection emails completed: ${totalSent} sent, ${totalSkipped} skipped, quota_reached: ${quotaReached}`);
 
     return new Response(
       JSON.stringify({
@@ -715,6 +788,9 @@ serve(async (req: Request): Promise<Response> => {
         sent: totalSent,
         skipped: totalSkipped,
         currentSlot,
+        quota_reached: quotaReached,
+        today_count: emailsSentThisRun,
+        daily_limit: DAILY_EMAIL_LIMIT,
         errors: errors.length > 0 ? errors : undefined,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

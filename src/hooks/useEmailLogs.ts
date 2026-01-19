@@ -18,11 +18,25 @@ interface SendEmailResult {
   skipped?: number;
   errors?: string[];
   message?: string;
+  quota_reached?: boolean;
+  today_count?: number;
+  daily_limit?: number;
 }
+
+interface EmailQuota {
+  today_count: number;
+  daily_limit: number;
+  remaining: number;
+  quota_available: boolean;
+}
+
+// Limite global diário (mantendo sincronizado com edge function)
+const DAILY_EMAIL_LIMIT = 95;
 
 export function useEmailLogs() {
   const [loading, setLoading] = useState(false);
   const [lastEmailByClient, setLastEmailByClient] = useState<Map<string, Date>>(new Map());
+  const [emailQuota, setEmailQuota] = useState<EmailQuota | null>(null);
 
   const fetchLastEmailsByClient = async (clienteIds: string[]) => {
     if (clienteIds.length === 0) return;
@@ -51,11 +65,72 @@ export function useEmailLogs() {
     }
   };
 
-  const getMaxEmailsPerDay = (diasAtraso: number): number => {
-    if (diasAtraso <= 1) return 1;
-    if (diasAtraso <= 3) return 2;
-    if (diasAtraso <= 5) return 3;
-    return 999;
+  // OTIMIZAÇÃO: Agora sempre retorna 1 (1 e-mail por dia por cliente)
+  const getMaxEmailsPerDay = (_diasAtraso: number): number => {
+    return 1; // Sempre 1 e-mail por dia
+  };
+
+  // Buscar total de e-mails enviados hoje
+  const getTodayEmailCount = async (): Promise<number> => {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from('email_logs')
+      .select('id')
+      .gte('created_at', startOfDay.toISOString())
+      .eq('status', 'enviado');
+
+    if (error) {
+      console.error('Error counting today emails:', error);
+      return 0;
+    }
+
+    return data?.length || 0;
+  };
+
+  // Calcular quota restante
+  const getRemainingQuota = async (): Promise<EmailQuota> => {
+    const todayCount = await getTodayEmailCount();
+    const remaining = DAILY_EMAIL_LIMIT - todayCount;
+    
+    const quota: EmailQuota = {
+      today_count: todayCount,
+      daily_limit: DAILY_EMAIL_LIMIT,
+      remaining: Math.max(0, remaining),
+      quota_available: remaining > 0,
+    };
+
+    setEmailQuota(quota);
+    return quota;
+  };
+
+  // Buscar quota da edge function (mais precisa)
+  const fetchEmailQuota = async (): Promise<EmailQuota | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-collection-emails', {
+        body: { check_quota: true },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        const quota: EmailQuota = {
+          today_count: data.today_count,
+          daily_limit: data.daily_limit,
+          remaining: data.remaining,
+          quota_available: data.quota_available,
+        };
+        setEmailQuota(quota);
+        return quota;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching email quota:', error);
+      // Fallback para contagem local
+      return getRemainingQuota();
+    }
   };
 
   const canSendEmail = async (clienteId: string, diasAtraso: number): Promise<boolean> => {
@@ -89,7 +164,19 @@ export function useEmailLogs() {
       if (error) throw error;
 
       if (data.success) {
-        if (data.sent > 0) {
+        // Atualizar quota após envio
+        if (data.today_count !== undefined && data.daily_limit !== undefined) {
+          setEmailQuota({
+            today_count: data.today_count,
+            daily_limit: data.daily_limit,
+            remaining: data.daily_limit - data.today_count,
+            quota_available: data.today_count < data.daily_limit,
+          });
+        }
+
+        if (data.quota_reached) {
+          toast.warning(`Limite diário de e-mails atingido (${data.today_count}/${data.daily_limit})`);
+        } else if (data.sent > 0) {
           toast.success(`${data.sent} e-mail(s) de cobrança enviado(s) com sucesso!`);
         } else if (data.message) {
           toast.info(data.message);
@@ -135,11 +222,15 @@ export function useEmailLogs() {
 
   return {
     loading,
+    emailQuota,
     sendCollectionEmail,
     fetchLastEmailsByClient,
     canSendEmail,
     getLastEmailDate,
     formatLastEmail,
     getMaxEmailsPerDay,
+    getTodayEmailCount,
+    getRemainingQuota,
+    fetchEmailQuota,
   };
 }
