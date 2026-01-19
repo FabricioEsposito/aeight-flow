@@ -117,8 +117,23 @@ function getCcRecipients(diasAtraso: number): string[] {
   return baseCc;
 }
 
+// Verifica se é dia útil (segunda a sexta)
+function isWeekday(): boolean {
+  const now = new Date();
+  const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const dayOfWeek = brasilTime.getDay();
+  
+  // 0 = Domingo, 6 = Sábado
+  return dayOfWeek >= 1 && dayOfWeek <= 5;
+}
+
 // Check if current time is within allowed send window
 function isWithinSendWindow(diasAtraso: number): boolean {
+  // Não enviar em finais de semana
+  if (!isWeekday()) {
+    return false;
+  }
+  
   const now = new Date();
   const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const currentHour = brasilTime.getHours();
