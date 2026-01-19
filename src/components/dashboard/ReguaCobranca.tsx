@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Mail, Send, Loader2, Filter, X, MailX } from 'lucide-react';
+import { Mail, Send, Loader2, Filter, X, MailX, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useEmailLogs } from '@/hooks/useEmailLogs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress';
 
 interface ParcelaVencida {
   id: string;
@@ -81,13 +82,16 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   
   const { 
     loading: sendingAll, 
+    emailQuota,
     sendCollectionEmail, 
     fetchLastEmailsByClient, 
     formatLastEmail,
+    fetchEmailQuota,
   } = useEmailLogs();
 
   useEffect(() => {
     fetchParcelas();
+    fetchEmailQuota();
   }, [dataInicio, dataFim, centroCusto]);
 
   // Limpar seleção quando os filtros mudam
@@ -102,12 +106,10 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
     return { nivel: 'Péssimo Pagador', color: 'bg-red-500', key: 'pessimo' };
   };
 
+  // ATUALIZADO: Nova regra de cobrança (1x/dia para todos)
   const getRegraCobranca = (diasAtraso: number): string => {
-    if (diasAtraso <= 1) return '1x às 11h';
-    if (diasAtraso <= 3) return '2x às 11h e 15h';
-    if (diasAtraso <= 5) return '3x às 11h, 15h e 17h';
-    if (diasAtraso <= 7) return '3x + CC Sócios';
-    return '3x às 11h, 15h e 17h';
+    if (diasAtraso <= 7) return '1x às 11h';
+    return '1x às 11h + CC Sócios';
   };
 
   const fetchParcelas = async () => {
@@ -282,9 +284,10 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
     setSendingClientId(clienteId);
     await sendCollectionEmail(clienteId, true); // force: true for manual sends
     setSendingClientId(null);
-    // Refresh last email dates
+    // Refresh last email dates and quota
     const clienteIds = [...new Set(parcelas.map(p => p.cliente_id).filter(id => id))];
     await fetchLastEmailsByClient(clienteIds);
+    await fetchEmailQuota();
   };
 
   const handleSendBatchEmails = async () => {
@@ -303,9 +306,10 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
       await sendCollectionEmail(clienteId, true);
     }
     
-    // Refresh last email dates
+    // Refresh last email dates and quota
     const clienteIds = [...new Set(parcelas.map(p => p.cliente_id).filter(id => id))];
     await fetchLastEmailsByClient(clienteIds);
+    await fetchEmailQuota();
     
     // Limpar seleção
     setSelectedIds(new Set());
@@ -349,6 +353,11 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
   const selectedParcelas = parcelasFiltradas.filter(p => selectedIds.has(p.id));
   const selectedTotal = selectedParcelas.reduce((sum, p) => sum + p.valor, 0);
   const selectedClientes = [...new Set(selectedParcelas.map(p => p.cliente_id).filter(id => id))];
+
+  // Calcular quota percentage
+  const quotaPercentage = emailQuota ? (emailQuota.today_count / emailQuota.daily_limit) * 100 : 0;
+  const isQuotaLow = emailQuota && emailQuota.remaining <= 10;
+  const isQuotaCritical = emailQuota && emailQuota.remaining <= 5;
 
   if (loading) {
     return (
@@ -412,6 +421,52 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                 </Button>
               )}
             </div>
+
+            {/* Indicador de Quota de E-mails */}
+            {emailQuota && (
+              <div className={`flex items-center gap-3 p-3 rounded-lg border ${
+                isQuotaCritical 
+                  ? 'bg-destructive/10 border-destructive/30' 
+                  : isQuotaLow 
+                    ? 'bg-yellow-500/10 border-yellow-500/30' 
+                    : 'bg-muted/50 border-border'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isQuotaCritical ? (
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  ) : isQuotaLow ? (
+                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  )}
+                  <span className="text-sm font-medium">Quota de E-mails:</span>
+                </div>
+                <div className="flex-1 max-w-[200px]">
+                  <Progress 
+                    value={quotaPercentage} 
+                    className={`h-2 ${
+                      isQuotaCritical 
+                        ? '[&>div]:bg-destructive' 
+                        : isQuotaLow 
+                          ? '[&>div]:bg-yellow-500' 
+                          : '[&>div]:bg-green-500'
+                    }`}
+                  />
+                </div>
+                <span className={`text-sm font-medium ${
+                  isQuotaCritical 
+                    ? 'text-destructive' 
+                    : isQuotaLow 
+                      ? 'text-yellow-600' 
+                      : 'text-muted-foreground'
+                }`}>
+                  {emailQuota.today_count}/{emailQuota.daily_limit} enviados
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  ({emailQuota.remaining} restantes)
+                </span>
+              </div>
+            )}
             
             {/* Filtros */}
             <div className="flex flex-wrap items-center gap-3">
@@ -550,9 +605,21 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <span className="text-sm font-medium">
-                            {parcela.regra_cobranca}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm font-medium cursor-help">
+                                {parcela.regra_cobranca}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-xs">
+                                {parcela.dias_atraso >= 8 
+                                  ? '1 e-mail/dia às 11h com CC para financeiro + sócios'
+                                  : '1 e-mail/dia às 11h com CC para financeiro'
+                                }
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(parcela.valor)}
@@ -615,6 +682,14 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
               <strong>Clientes afetados:</strong> {selectedClientes.length}
               <br />
               <strong>Total em aberto:</strong> {formatCurrency(selectedTotal)}
+              {emailQuota && (
+                <>
+                  <br /><br />
+                  <span className={isQuotaLow ? 'text-yellow-600 font-medium' : ''}>
+                    <strong>Quota restante:</strong> {emailQuota.remaining} e-mails
+                  </span>
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
