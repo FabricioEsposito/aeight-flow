@@ -1,8 +1,9 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface Faturamento {
   id: string;
@@ -42,6 +43,8 @@ interface FaturamentoDetailsDialogProps {
 }
 
 export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: FaturamentoDetailsDialogProps) {
+  const [copied, setCopied] = React.useState(false);
+
   if (!faturamento) return null;
 
   const formatCurrency = (value: number) => {
@@ -64,6 +67,15 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
       return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     }
     return value;
+  };
+
+  const getMonthName = (dateString: string): string => {
+    const date = new Date(dateString + 'T00:00:00');
+    const months = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ];
+    return months[date.getMonth()];
   };
 
   const getStatusBadge = (status: string, dataVencimento: string) => {
@@ -104,6 +116,46 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
   const csllValor = faturamento.valor_bruto * (faturamento.csll_percentual / 100);
   const pisCofinsValor = faturamento.valor_bruto * (faturamento.pis_cofins_percentual / 100);
 
+  // Gerar descrição da NF
+  const generateNfDescription = (): string => {
+    const servicosNomes = faturamento.servicos_detalhes.length > 0 
+      ? faturamento.servicos_detalhes.map(s => s.nome).join(', ')
+      : 'serviços prestados';
+    
+    const mesCompetencia = getMonthName(faturamento.data_competencia);
+    const dataVencimentoFormatada = formatDate(faturamento.data_vencimento);
+    
+    // Montar string de retenções apenas para impostos com valor > 0
+    const retencoes: string[] = [];
+    if (irrfValor > 0) retencoes.push(`IRRF ${formatCurrency(irrfValor)}`);
+    if (pisValor > 0) retencoes.push(`PIS ${formatCurrency(pisValor)}`);
+    if (cofinsValor > 0) retencoes.push(`COFINS ${formatCurrency(cofinsValor)}`);
+    if (csllValor > 0) retencoes.push(`CSLL ${formatCurrency(csllValor)}`);
+    
+    let descricao = `Referente à prestação do serviço de ${servicosNomes} para o cliente ${faturamento.cliente_razao_social}, correspondente ao mês de ${mesCompetencia}, com vencimento em ${dataVencimentoFormatada}`;
+    
+    if (retencoes.length > 0) {
+      descricao += `. Retenções: ${retencoes.join(', ')}`;
+    }
+    
+    descricao += '.';
+    
+    return descricao;
+  };
+
+  const nfDescription = generateNfDescription();
+
+  const handleCopyDescription = async () => {
+    try {
+      await navigator.clipboard.writeText(nfDescription);
+      setCopied(true);
+      toast.success('Descrição copiada para a área de transferência');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Erro ao copiar descrição');
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -124,6 +176,32 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
                 <p className="text-sm text-muted-foreground">CNPJ/CPF</p>
                 <p className="font-medium">{formatCnpj(faturamento.cliente_cnpj)}</p>
               </div>
+            </div>
+          </div>
+
+          {/* Descrição para Nota Fiscal */}
+          <div className="space-y-2">
+            <h3 className="font-semibold text-lg border-b pb-2">Descrição para Nota Fiscal</h3>
+            <div className="p-4 bg-muted/50 rounded-lg border">
+              <p className="text-sm leading-relaxed">{nfDescription}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={handleCopyDescription}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Copiado
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar Descrição
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
