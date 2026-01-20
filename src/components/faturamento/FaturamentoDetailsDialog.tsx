@@ -11,6 +11,7 @@ interface Faturamento {
   data_vencimento: string;
   cliente_id: string;
   cliente_razao_social: string;
+  cliente_nome_fantasia: string | null;
   cliente_cnpj: string;
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
@@ -125,6 +126,9 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
     const mesCompetencia = getMonthName(faturamento.data_competencia);
     const dataVencimentoFormatada = formatDate(faturamento.data_vencimento);
     
+    // Usar nome fantasia se disponível, senão razão social
+    const nomeCliente = faturamento.cliente_nome_fantasia || faturamento.cliente_razao_social;
+    
     // Montar string de retenções apenas para impostos com valor > 0
     const retencoes: string[] = [];
     if (irrfValor > 0) retencoes.push(`IRRF ${formatCurrency(irrfValor)}`);
@@ -132,7 +136,7 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
     if (cofinsValor > 0) retencoes.push(`COFINS ${formatCurrency(cofinsValor)}`);
     if (csllValor > 0) retencoes.push(`CSLL ${formatCurrency(csllValor)}`);
     
-    let descricao = `Referente à prestação do serviço de ${servicosNomes} para o cliente ${faturamento.cliente_razao_social}, correspondente ao mês de ${mesCompetencia}, com vencimento em ${dataVencimentoFormatada}`;
+    let descricao = `Referente à prestação do serviço de ${servicosNomes} para o cliente ${nomeCliente}, correspondente ao mês de ${mesCompetencia}, com vencimento em ${dataVencimentoFormatada}`;
     
     if (retencoes.length > 0) {
       descricao += `. Retenções: ${retencoes.join(', ')}`;
