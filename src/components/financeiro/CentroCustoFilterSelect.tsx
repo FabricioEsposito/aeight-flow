@@ -3,7 +3,6 @@ import { Building2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompanyDot } from '@/components/centro-custos/CompanyBadge';
 import { supabase } from '@/integrations/supabase/client';
-import { getCompanyTheme } from '@/hooks/useCentroCustoTheme';
 
 interface CentroCusto {
   id: string;
@@ -51,10 +50,7 @@ export function CentroCustoFilterSelect({
   const getSelectedLabel = () => {
     if (!value || value === 'todos') return placeholder;
     const cc = centrosCusto.find(c => c.id === value);
-    if (cc) {
-      const theme = getCompanyTheme(cc.codigo);
-      return theme.name;
-    }
+    if (cc) return `${cc.codigo.split('_')[0] || cc.codigo} - ${cc.descricao}`;
     return placeholder;
   };
 
@@ -89,17 +85,12 @@ export function CentroCustoFilterSelect({
           </div>
         </SelectItem>
         {centrosCusto.map((cc) => {
-          const theme = getCompanyTheme(cc.codigo);
+          const displayCode = cc.codigo.split('_')[0] || cc.codigo;
           return (
             <SelectItem key={cc.id} value={cc.id}>
               <div className="flex items-center gap-2">
                 <CompanyDot codigo={cc.codigo} size="sm" />
-                <span className="font-medium" style={{ color: theme.primaryColor }}>
-                  {theme.name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  ({cc.codigo.split('_')[0]})
-                </span>
+                <span className="font-medium">{displayCode} - {cc.descricao}</span>
               </div>
             </SelectItem>
           );

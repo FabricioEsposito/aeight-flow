@@ -18,7 +18,7 @@ import { Check, X, Send, Eye, RotateCcw } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
-import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
+import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 
 interface Vendedor {
   id: string;
@@ -690,11 +690,11 @@ export default function Comissionamento() {
               />
             </div>
             <div className="w-[250px]">
-              <CentroCustoSelect
+              <CentroCustoFilterSelect
                 value={selectedCentroCusto}
-                onValueChange={setSelectedCentroCusto}
-                placeholder="Todos os centros de custo"
-                showAllOption
+                onValueChange={(v) => setSelectedCentroCusto(v === 'todos' ? '' : v)}
+                placeholder="Centro de Custo"
+                className="w-full"
               />
             </div>
           </div>

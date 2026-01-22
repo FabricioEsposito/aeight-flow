@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,6 +17,7 @@ export default function VisualizarContrato() {
   const [loading, setLoading] = useState(true);
   const [contrato, setContrato] = useState<any>(null);
   const [parcelas, setParcelas] = useState<any[]>([]);
+  const [centroCustoInfo, setCentroCustoInfo] = useState<{ codigo: string; descricao: string } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -40,6 +42,17 @@ export default function VisualizarContrato() {
 
       if (error) throw error;
       setContrato(data);
+
+      if (data?.centro_custo) {
+        const { data: ccData, error: ccError } = await supabase
+          .from('centros_custo')
+          .select('codigo, descricao')
+          .eq('id', data.centro_custo)
+          .maybeSingle();
+        if (!ccError) setCentroCustoInfo(ccData ? { codigo: ccData.codigo, descricao: ccData.descricao } : null);
+      } else {
+        setCentroCustoInfo(null);
+      }
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -297,7 +310,16 @@ export default function VisualizarContrato() {
               <Separator />
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Centro de Custo</label>
-                <p className="text-lg">{contrato.centro_custo}</p>
+                <div className="mt-1 flex items-center gap-3">
+                  {centroCustoInfo?.codigo ? (
+                    <CompanyTag codigo={centroCustoInfo.codigo} />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                  )}
+                  {centroCustoInfo && (
+                    <p className="text-sm text-muted-foreground">{centroCustoInfo.codigo.split('_')[0] || centroCustoInfo.codigo} - {centroCustoInfo.descricao}</p>
+                  )}
+                </div>
               </div>
             </>
           )}
