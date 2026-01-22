@@ -18,6 +18,12 @@ export default function VisualizarContrato() {
   const [contrato, setContrato] = useState<any>(null);
   const [parcelas, setParcelas] = useState<any[]>([]);
   const [centroCustoInfo, setCentroCustoInfo] = useState<{ codigo: string; descricao: string } | null>(null);
+  const [vendedorInfo, setVendedorInfo] = useState<{
+    id: string;
+    nome: string;
+    centro_custo?: string | null;
+    centroCusto?: { codigo: string; descricao: string } | null;
+  } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -52,6 +58,33 @@ export default function VisualizarContrato() {
         if (!ccError) setCentroCustoInfo(ccData ? { codigo: ccData.codigo, descricao: ccData.descricao } : null);
       } else {
         setCentroCustoInfo(null);
+      }
+
+      // Resolve vendedor_responsavel (stored as vendedor.id) into a readable label
+      if (data?.vendedor_responsavel) {
+        const { data: vData, error: vError } = await supabase
+          .from('vendedores')
+          .select('id, nome, centro_custo')
+          .eq('id', data.vendedor_responsavel)
+          .maybeSingle();
+
+        if (vError || !vData) {
+          setVendedorInfo(null);
+        } else {
+          let centroCusto: { codigo: string; descricao: string } | null = null;
+          if (vData.centro_custo) {
+            const { data: vCcData } = await supabase
+              .from('centros_custo')
+              .select('codigo, descricao')
+              .eq('id', vData.centro_custo)
+              .maybeSingle();
+            centroCusto = vCcData ? { codigo: vCcData.codigo, descricao: vCcData.descricao } : null;
+          }
+
+          setVendedorInfo({ ...vData, centroCusto });
+        }
+      } else {
+        setVendedorInfo(null);
       }
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
@@ -328,7 +361,20 @@ export default function VisualizarContrato() {
               <Separator />
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Vendedor Responsável</label>
-                <p className="text-lg">{contrato.vendedor_responsavel}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-lg">
+                    {vendedorInfo?.nome || contrato.vendedor_responsavel}
+                  </p>
+                  {vendedorInfo?.centroCusto?.codigo ? (
+                    <>
+                      <span className="text-muted-foreground">—</span>
+                      <CompanyTag codigo={vendedorInfo.centroCusto.codigo} />
+                      <span className="text-sm text-muted-foreground">
+                        {vendedorInfo.centroCusto.codigo} - {vendedorInfo.centroCusto.descricao}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
               </div>
             </>
           )}
