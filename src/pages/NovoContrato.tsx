@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, X, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,7 @@ export default function NovoContrato() {
   const [planoContasId, setPlanoContasId] = useState('');
   const [vendedorId, setVendedorId] = useState('');
   const [centroCusto, setCentroCusto] = useState('');
+  const prevCentroCustoRef = useRef<string>('');
 
   // Itens
   const [itens, setItens] = useState<ItemContrato[]>([]);
@@ -125,6 +126,15 @@ export default function NovoContrato() {
       setDiaGeracao(dataInicio.getDate().toString());
     }
   }, [dataInicio]);
+
+  // When changing centro de custo, force reselect vendor to avoid homonyms across cost centers
+  useEffect(() => {
+    const prev = prevCentroCustoRef.current;
+    if (prev && prev !== centroCusto && vendedorId) {
+      setVendedorId('');
+    }
+    prevCentroCustoRef.current = centroCusto;
+  }, [centroCusto, vendedorId]);
 
   const fetchContasBancarias = async () => {
     const { data } = await supabase
@@ -767,7 +777,7 @@ export default function NovoContrato() {
                 {tipoContrato === 'venda' && (
                   <div className="space-y-2">
                     <Label>Vendedor responsável</Label>
-                    <VendedorSelect value={vendedorId} onChange={setVendedorId} />
+                    <VendedorSelect value={vendedorId} onChange={setVendedorId} centroCustoId={centroCusto || undefined} />
                   </div>
                 )}
               </div>

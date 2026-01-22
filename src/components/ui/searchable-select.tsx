@@ -73,7 +73,9 @@ export function SearchableSelect({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  // cmdk uses `value` for filtering/selection; make it unique even when labels repeat
+                  // while keeping the label searchable.
+                  value={`${option.label} ${option.value}`}
                   onSelect={() => {
                     onValueChange(option.value);
                     setOpen(false);
