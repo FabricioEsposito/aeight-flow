@@ -55,6 +55,12 @@ interface DateRange {
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
+const truncateLabel = (value: unknown, max = 16) => {
+  const s = String(value ?? "");
+  if (s.length <= max) return s;
+  return s.slice(0, Math.max(0, max - 1)) + "…";
+};
+
 export default function DashboardComercial() {
   const { user } = useAuth();
   const { isSalesperson, loading: roleLoading } = useUserRole();
@@ -158,8 +164,13 @@ export default function DashboardComercial() {
         .select("id, vendedor_responsavel, valor_total, cliente_id, created_at, centro_custo, clientes(razao_social, nome_fantasia)")
         .eq("tipo_contrato", "venda");
 
+      // Salesperson: ensure we fetch both the new format (vendedor_responsavel = vendedor.id)
+      // and legacy records where vendedor_responsavel may have been stored as the vendor name.
       if (isSalesperson && userVendedorId) {
-        contratosQuery = contratosQuery.eq("vendedor_responsavel", userVendedorId);
+        const legacyName = (vendedoresRes.data?.[0]?.nome || "").trim();
+        contratosQuery = legacyName
+          ? contratosQuery.or(`vendedor_responsavel.eq.${userVendedorId},vendedor_responsavel.eq.${legacyName}`)
+          : contratosQuery.eq("vendedor_responsavel", userVendedorId);
       }
 
       if (dateRange) {
@@ -377,7 +388,12 @@ export default function DashboardComercial() {
                 <BarChart data={vendasPorVendedor} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} />
-                  <YAxis type="category" dataKey="nome" width={100} />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={160}
+                    tickFormatter={(v) => truncateLabel(v, 18)}
+                  />
                   <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
                     labelFormatter={(label) => label}
@@ -432,7 +448,14 @@ export default function DashboardComercial() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={vendasPorCliente}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" angle={-45} textAnchor="end" height={100} />
+                  <XAxis
+                    dataKey="nome"
+                    angle={-35}
+                    textAnchor="end"
+                    height={110}
+                    interval={0}
+                    tickFormatter={(v) => truncateLabel(v, 14)}
+                  />
                   <YAxis tickFormatter={(v) => formatCurrency(v)} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Bar dataKey="valor" name="Vendas" fill="#f59e0b" />
