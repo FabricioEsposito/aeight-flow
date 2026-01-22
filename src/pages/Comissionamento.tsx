@@ -54,6 +54,8 @@ interface ParcelaPaga {
   contrato_numero: string;
   centro_custo_codigo: string | null;
   centro_custo_descricao: string | null;
+  percentual_comissao: number;
+  valor_comissao: number;
 }
 
 interface DateRange {
@@ -303,6 +305,21 @@ export default function Comissionamento() {
         });
       }
 
+      // Buscar percentuais de comissão por centro de custo do vendedor
+      const { data: vendedorCentros } = await (supabase as any)
+        .from("vendedores_centros_custo")
+        .select("centro_custo_id, percentual_comissao")
+        .eq("vendedor_id", selectedVendedor);
+
+      const comissaoPorCentro = new Map<string, number>();
+      vendedorCentros?.forEach((vc: any) => {
+        comissaoPorCentro.set(vc.centro_custo_id, vc.percentual_comissao);
+      });
+
+      // Fallback: buscar percentual global do vendedor
+      const vendedorGlobal = vendedores.find(v => v.id === selectedVendedor);
+      const percentualGlobal = vendedorGlobal?.percentual_comissao || 0;
+
       // Buscar contas a receber pagas no período para esses contratos
       const contratoIds = contratos.map((c) => c.id);
       
@@ -334,6 +351,14 @@ export default function Comissionamento() {
         const parcela = parcelas?.find((p) => p.id === cr.parcela_id);
         const contrato = contratos?.find((c) => c.id === parcela?.contrato_id);
         const centroCusto = contrato?.centro_custo ? centrosCustoMap.get(contrato.centro_custo) : null;
+        
+        // Buscar percentual de comissão específico do centro de custo ou usar global
+        const percentual = contrato?.centro_custo 
+          ? (comissaoPorCentro.get(contrato.centro_custo) ?? percentualGlobal)
+          : percentualGlobal;
+        
+        const valorComissao = cr.valor * (percentual / 100);
+        
         return {
           id: cr.id,
           valor: cr.valor,
@@ -342,6 +367,8 @@ export default function Comissionamento() {
           contrato_numero: contrato?.numero_contrato || "N/A",
           centro_custo_codigo: centroCusto?.codigo || null,
           centro_custo_descricao: centroCusto?.descricao || null,
+          percentual_comissao: percentual,
+          valor_comissao: valorComissao,
         };
       });
 
@@ -352,7 +379,6 @@ export default function Comissionamento() {
       setLoadingParcelas(false);
     }
   };
-
   const calcularComissao = useMemo(() => {
     const vendedor = vendedores.find((v) => v.id === selectedVendedor);
     if (!vendedor) return { total: 0, comissao: 0, percentual: 0 };
@@ -779,6 +805,8 @@ export default function Comissionamento() {
                       <TableHead>Centro de Custo</TableHead>
                       <TableHead>Data Recebimento</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-right">% Comissão</TableHead>
+                      <TableHead className="text-right">Valor Comissão</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -802,6 +830,8 @@ export default function Comissionamento() {
                           {format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
+                        <TableCell className="text-right">{p.percentual_comissao.toFixed(2)}%</TableCell>
+                        <TableCell className="text-right font-medium text-primary">{formatCurrency(p.valor_comissao)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
