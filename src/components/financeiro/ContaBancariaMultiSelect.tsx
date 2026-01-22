@@ -81,7 +81,7 @@ export function ContaBancariaMultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[250px] justify-between bg-background hover:bg-accent"
+          className="w-[250px] justify-between bg-background hover:bg-primary-light"
         >
           <span className="truncate">{getDisplayText()}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -133,8 +133,8 @@ export function ContaBancariaMultiSelect({
               <div
                 key={conta.id}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent transition-colors",
-                  selectedIds.includes(conta.id) && "bg-accent/50"
+                  "flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-primary-light transition-colors",
+                  selectedIds.includes(conta.id) && "bg-primary-light"
                 )}
                 onClick={() => handleToggle(conta.id)}
               >
