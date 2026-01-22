@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Vendedor {
   id: string;
   nome: string;
-  centro_custo?: string | null;
+  centro_custo?: string | null; // legado
 }
 
 interface VendedorSelectProps {
@@ -30,29 +30,52 @@ export function VendedorSelect({ value, onChange, disabled, centroCustoId }: Ven
 
   const fetchVendedores = async () => {
     try {
-      const [vendedoresRes, centrosRes] = await Promise.all([
-        (() => {
-          let q = supabase
+      const sb: any = supabase;
+
+      const centrosRes = await sb
+        .from('centros_custo')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo')
+        .order('codigo');
+
+      if (centrosRes.error) throw centrosRes.error;
+
+      // Novo modelo: vendedores_centros_custo define os vendedores permitidos por centro.
+      // Fallback legado: se não houver centroCustoId, lista todos os vendedores ativos.
+      let vendedoresRes: { data: Vendedor[] | null; error: any };
+
+      if (centroCustoId) {
+        const linksRes = await sb
+          .from('vendedores_centros_custo')
+          .select('vendedor_id')
+          .eq('centro_custo_id', centroCustoId);
+
+        if (linksRes.error) throw linksRes.error;
+        const ids: string[] = Array.from(
+          new Set<string>((linksRes.data || []).map((l: any) => String(l.vendedor_id)))
+        ).filter((v) => !!v);
+
+        if (ids.length === 0) {
+          vendedoresRes = { data: [], error: null } as any;
+        } else {
+          vendedoresRes = await sb
             .from('vendedores')
             .select('id, nome, centro_custo')
             .eq('status', 'ativo')
+            .eq('is_merged', false)
+            .in('id', ids)
             .order('nome');
-
-          if (centroCustoId) {
-            q = q.eq('centro_custo', centroCustoId);
-          }
-
-          return q;
-        })(),
-        supabase
-          .from('centros_custo')
-          .select('id, codigo, descricao')
+        }
+      } else {
+        vendedoresRes = await sb
+          .from('vendedores')
+          .select('id, nome, centro_custo')
           .eq('status', 'ativo')
-          .order('codigo'),
-      ]);
+          .eq('is_merged', false)
+          .order('nome');
+      }
 
       if (vendedoresRes.error) throw vendedoresRes.error;
-      if (centrosRes.error) throw centrosRes.error;
 
       setVendedores(vendedoresRes.data || []);
       setCentrosCusto(centrosRes.data || []);
@@ -66,7 +89,13 @@ export function VendedorSelect({ value, onChange, disabled, centroCustoId }: Ven
   const centrosMap = new Map(centrosCusto.map((cc) => [cc.id, `${cc.codigo} - ${cc.descricao}`] as const));
 
   const options: SearchableSelectOption[] = vendedores.map((vendedor) => {
-    const ccLabel = vendedor.centro_custo ? centrosMap.get(vendedor.centro_custo) : null;
+    // Preferimos exibir o centro do contrato (centroCustoId) quando aplicável,
+    // pois o vendedor pode atuar em múltiplos centros no novo modelo.
+    const ccLabel = centroCustoId
+      ? centrosMap.get(centroCustoId)
+      : vendedor.centro_custo
+        ? centrosMap.get(vendedor.centro_custo)
+        : null;
     return {
       value: vendedor.id,
       label: ccLabel ? `${vendedor.nome} — ${ccLabel}` : `${vendedor.nome} — Sem centro de custo`,

@@ -1150,6 +1150,8 @@ export type Database = {
           created_at: string
           fornecedor_id: string | null
           id: string
+          is_merged: boolean
+          merged_into_vendedor_id: string | null
           meta: number
           nome: string
           percentual_comissao: number
@@ -1161,6 +1163,8 @@ export type Database = {
           created_at?: string
           fornecedor_id?: string | null
           id?: string
+          is_merged?: boolean
+          merged_into_vendedor_id?: string | null
           meta?: number
           nome: string
           percentual_comissao?: number
@@ -1172,6 +1176,8 @@ export type Database = {
           created_at?: string
           fornecedor_id?: string | null
           id?: string
+          is_merged?: boolean
+          merged_into_vendedor_id?: string | null
           meta?: number
           nome?: string
           percentual_comissao?: number
@@ -1184,6 +1190,58 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendedores_merged_into_vendedor_id_fkey"
+            columns: ["merged_into_vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendedores_centros_custo: {
+        Row: {
+          centro_custo_id: string
+          created_at: string
+          id: string
+          meta: number
+          percentual_comissao: number
+          updated_at: string
+          vendedor_id: string
+        }
+        Insert: {
+          centro_custo_id: string
+          created_at?: string
+          id?: string
+          meta?: number
+          percentual_comissao?: number
+          updated_at?: string
+          vendedor_id: string
+        }
+        Update: {
+          centro_custo_id?: string
+          created_at?: string
+          id?: string
+          meta?: number
+          percentual_comissao?: number
+          updated_at?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendedores_centros_custo_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendedores_centros_custo_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
             referencedColumns: ["id"]
           },
         ]
