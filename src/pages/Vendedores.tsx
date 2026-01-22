@@ -14,6 +14,7 @@ import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
 
 interface Vendedor {
   id: string;
@@ -89,10 +90,9 @@ export default function Vendedores() {
     }
   };
 
-  const getCentroCustoDisplay = (centroCustoId: string | null) => {
-    if (!centroCustoId) return "-";
-    const cc = centrosCusto.find((c) => c.id === centroCustoId);
-    return cc ? `${cc.codigo} - ${cc.descricao}` : centroCustoId;
+  const getCentroCusto = (centroCustoId: string | null) => {
+    if (!centroCustoId) return null;
+    return centrosCusto.find((c) => c.id === centroCustoId) || null;
   };
 
   const getFornecedorDisplay = (fornecedorId: string | null) => {
@@ -278,7 +278,16 @@ export default function Vendedores() {
                 {paginatedVendedores.map((vendedor) => (
                   <TableRow key={vendedor.id}>
                     <TableCell className="font-medium">{vendedor.nome}</TableCell>
-                    <TableCell>{getCentroCustoDisplay(vendedor.centro_custo)}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const cc = getCentroCusto(vendedor.centro_custo);
+                        return cc?.codigo ? (
+                          <CompanyTag codigo={cc.codigo} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>{getFornecedorDisplay(vendedor.fornecedor_id)}</TableCell>
                     <TableCell>{formatCurrency(vendedor.meta)}</TableCell>
                     <TableCell>{vendedor.percentual_comissao}%</TableCell>
