@@ -61,27 +61,23 @@ export default function VisualizarContrato() {
       }
 
       // Resolve vendedor_responsavel (stored as vendedor.id) into a readable label
+      // Use the contract's centro_custo (not the vendedor's legacy centro_custo) for display
       if (data?.vendedor_responsavel) {
         const { data: vData, error: vError } = await supabase
           .from('vendedores')
-          .select('id, nome, centro_custo')
+          .select('id, nome')
           .eq('id', data.vendedor_responsavel)
           .maybeSingle();
 
         if (vError || !vData) {
           setVendedorInfo(null);
         } else {
-          let centroCusto: { codigo: string; descricao: string } | null = null;
-          if (vData.centro_custo) {
-            const { data: vCcData } = await supabase
-              .from('centros_custo')
-              .select('codigo, descricao')
-              .eq('id', vData.centro_custo)
-              .maybeSingle();
-            centroCusto = vCcData ? { codigo: vCcData.codigo, descricao: vCcData.descricao } : null;
-          }
-
-          setVendedorInfo({ ...vData, centroCusto });
+          // Use the contract's centro_custo for the vendedor display (already resolved in centroCustoInfo)
+          setVendedorInfo({ 
+            ...vData, 
+            centro_custo: data.centro_custo,
+            centroCusto: null // Will be set below using contract's centro_custo
+          });
         }
       } else {
         setVendedorInfo(null);
@@ -365,12 +361,13 @@ export default function VisualizarContrato() {
                   <p className="text-lg">
                     {vendedorInfo?.nome || contrato.vendedor_responsavel}
                   </p>
-                  {vendedorInfo?.centroCusto?.codigo ? (
+                  {/* Show the contract's centro_custo, not the vendedor's legacy centro_custo */}
+                  {centroCustoInfo?.codigo ? (
                     <>
                       <span className="text-muted-foreground">—</span>
-                      <CompanyTag codigo={vendedorInfo.centroCusto.codigo} />
+                      <CompanyTag codigo={centroCustoInfo.codigo} />
                       <span className="text-sm text-muted-foreground">
-                        {vendedorInfo.centroCusto.codigo} - {vendedorInfo.centroCusto.descricao}
+                        {centroCustoInfo.codigo} - {centroCustoInfo.descricao}
                       </span>
                     </>
                   ) : null}
