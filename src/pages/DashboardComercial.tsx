@@ -17,6 +17,7 @@ interface Vendedor {
   meta: number;
   percentual_comissao: number;
   centro_custo: string | null;
+  centros_vinculados?: { centro_custo_id: string; codigo: string; descricao: string; meta: number }[];
 }
 
 interface Contrato {
@@ -35,6 +36,7 @@ interface VendaVendedor {
   meta: number;
   percentual: number;
   centro_custo: string | null;
+  centros_vinculados?: { centro_custo_id: string; codigo: string; descricao: string; meta: number }[];
 }
 
 interface CentroCusto {
@@ -157,14 +159,53 @@ export default function DashboardComercial() {
         .from("centros_custo")
         .select("id, codigo, descricao");
 
-      // Fetch vendedores - filter for salesperson role
-      let vendedoresQuery = supabase.from("vendedores").select("*").eq("status", "ativo");
+      // Fetch all vendedores_centros_custo to know which centers each vendedor is linked to
+      const { data: vendedoresCentros } = await (supabase as any)
+        .from("vendedores_centros_custo")
+        .select("vendedor_id, centro_custo_id, meta, percentual_comissao");
+
+      // Fetch vendedores - filter for salesperson role or by linked centers
+      let vendedoresQuery = (supabase as any).from("vendedores").select("*").eq("status", "ativo").eq("is_merged", false);
       if (isSalesperson && userVendedorId) {
         vendedoresQuery = vendedoresQuery.eq("id", userVendedorId);
       } else if (selectedCentroCusto) {
-        vendedoresQuery = vendedoresQuery.eq("centro_custo", selectedCentroCusto);
+        // Find vendedor IDs linked to this centro_custo
+        const vendedorIdsForCenter = (vendedoresCentros || [])
+          .filter((vc: any) => vc.centro_custo_id === selectedCentroCusto)
+          .map((vc: any) => vc.vendedor_id);
+        if (vendedorIdsForCenter.length > 0) {
+          vendedoresQuery = vendedoresQuery.in("id", vendedorIdsForCenter);
+        } else {
+          // Fallback to legacy centro_custo field
+          vendedoresQuery = vendedoresQuery.eq("centro_custo", selectedCentroCusto);
+        }
       }
       const vendedoresRes = await vendedoresQuery;
+
+      // Enrich vendedores with their linked centros
+      const centrosMap = new Map((centrosCustoRes.data || []).map((c: any) => [c.id, c]));
+      const enrichedVendedores: Vendedor[] = (vendedoresRes.data || []).map((v: any) => {
+        const linkedCenters = (vendedoresCentros || [])
+          .filter((vc: any) => vc.vendedor_id === v.id)
+          .map((vc: any) => {
+            const cc = centrosMap.get(vc.centro_custo_id);
+            return {
+              centro_custo_id: vc.centro_custo_id,
+              codigo: cc?.codigo || "",
+              descricao: cc?.descricao || "",
+              meta: vc.meta || 0,
+            };
+          });
+        // Sum metas from linked centers if available, otherwise use vendedor.meta
+        const totalMeta = linkedCenters.length > 0 
+          ? linkedCenters.reduce((acc: number, lc: any) => acc + lc.meta, 0)
+          : v.meta;
+        return {
+          ...v,
+          meta: totalMeta,
+          centros_vinculados: linkedCenters,
+        };
+      });
 
       // Fetch contratos - filter for salesperson role
       let contratosQuery = supabase
@@ -197,7 +238,7 @@ export default function DashboardComercial() {
       if (contratosRes.error) throw contratosRes.error;
 
       setCentrosCusto(centrosCustoRes.data || []);
-      setVendedores(vendedoresRes.data || []);
+      setVendedores(enrichedVendedores);
       setContratos(contratosRes.data || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -224,6 +265,7 @@ export default function DashboardComercial() {
         meta: v.meta,
         percentual: 0,
         centro_custo: v.centro_custo,
+        centros_vinculados: v.centros_vinculados,
       });
     });
 
@@ -553,13 +595,22 @@ export default function DashboardComercial() {
                   <tbody>
                     {vendasPorVendedor.map((v) => {
                       const percentMeta = v.meta > 0 ? (v.valor / v.meta) * 100 : 0;
-                      const centroCusto = centrosCusto.find((c) => c.id === v.centro_custo);
+                      const hasLinkedCenters = v.centros_vinculados && v.centros_vinculados.length > 0;
                       return (
                         <tr key={v.nome} className="border-b">
                           <td className="py-2 px-4">{v.nome}</td>
                           <td className="py-2 px-4">
-                            {centroCusto?.codigo ? (
-                              <CompanyTag codigo={centroCusto.codigo} />
+                            {hasLinkedCenters ? (
+                              <div className="flex flex-wrap gap-1">
+                                {v.centros_vinculados!.map((cc) => (
+                                  <CompanyTag key={cc.centro_custo_id} codigo={cc.codigo} />
+                                ))}
+                              </div>
+                            ) : v.centro_custo ? (
+                              (() => {
+                                const legacyCc = centrosCusto.find((c) => c.id === v.centro_custo);
+                                return legacyCc?.codigo ? <CompanyTag codigo={legacyCc.codigo} /> : <span className="text-xs text-muted-foreground">-</span>;
+                              })()
                             ) : (
                               <span className="text-xs text-muted-foreground">-</span>
                             )}

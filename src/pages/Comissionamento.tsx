@@ -19,6 +19,7 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, 
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
+import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
 
 interface Vendedor {
   id: string;
@@ -51,6 +52,8 @@ interface ParcelaPaga {
   data_recebimento: string;
   cliente: string;
   contrato_numero: string;
+  centro_custo_codigo: string | null;
+  centro_custo_descricao: string | null;
 }
 
 interface DateRange {
@@ -271,10 +274,10 @@ export default function Comissionamento() {
       const startDate = dateRange.start;
       const endDate = dateRange.end;
 
-      // Buscar contratos do vendedor
+      // Buscar contratos do vendedor com centro de custo
       const { data: contratos, error: contratosError } = await supabase
         .from("contratos")
-        .select("id, numero_contrato, cliente_id, clientes(razao_social, nome_fantasia)")
+        .select("id, numero_contrato, cliente_id, centro_custo, clientes(razao_social, nome_fantasia)")
         .eq("vendedor_responsavel", selectedVendedor)
         .eq("tipo_contrato", "venda");
 
@@ -283,6 +286,21 @@ export default function Comissionamento() {
       if (!contratos || contratos.length === 0) {
         setParcelasPagas([]);
         return;
+      }
+
+      // Buscar centros de custo para resolver códigos/descrições
+      const centrosCustoIds = [...new Set(contratos.map(c => c.centro_custo).filter(Boolean))];
+      let centrosCustoMap = new Map<string, { codigo: string; descricao: string }>();
+      
+      if (centrosCustoIds.length > 0) {
+        const { data: centrosData } = await supabase
+          .from("centros_custo")
+          .select("id, codigo, descricao")
+          .in("id", centrosCustoIds);
+        
+        centrosData?.forEach(cc => {
+          centrosCustoMap.set(cc.id, { codigo: cc.codigo, descricao: cc.descricao });
+        });
       }
 
       // Buscar contas a receber pagas no período para esses contratos
@@ -315,12 +333,15 @@ export default function Comissionamento() {
       const parcelasComDetalhes: ParcelaPaga[] = (contasReceber || []).map((cr) => {
         const parcela = parcelas?.find((p) => p.id === cr.parcela_id);
         const contrato = contratos?.find((c) => c.id === parcela?.contrato_id);
+        const centroCusto = contrato?.centro_custo ? centrosCustoMap.get(contrato.centro_custo) : null;
         return {
           id: cr.id,
           valor: cr.valor,
           data_recebimento: cr.data_recebimento || "",
           cliente: cr.clientes?.nome_fantasia || cr.clientes?.razao_social || "N/A",
           contrato_numero: contrato?.numero_contrato || "N/A",
+          centro_custo_codigo: centroCusto?.codigo || null,
+          centro_custo_descricao: centroCusto?.descricao || null,
         };
       });
 
@@ -755,6 +776,7 @@ export default function Comissionamento() {
                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Contrato</TableHead>
+                      <TableHead>Centro de Custo</TableHead>
                       <TableHead>Data Recebimento</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
@@ -764,6 +786,18 @@ export default function Comissionamento() {
                       <TableRow key={p.id}>
                         <TableCell>{p.cliente}</TableCell>
                         <TableCell>{p.contrato_numero}</TableCell>
+                        <TableCell>
+                          {p.centro_custo_codigo ? (
+                            <div className="flex items-center gap-2">
+                              <CompanyTag codigo={p.centro_custo_codigo} />
+                              <span className="text-sm text-muted-foreground">
+                                {p.centro_custo_codigo} - {p.centro_custo_descricao}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}
                         </TableCell>
