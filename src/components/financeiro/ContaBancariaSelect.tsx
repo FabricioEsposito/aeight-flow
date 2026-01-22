@@ -54,7 +54,7 @@ export function ContaBancariaSelect({
     ...(showNoneOption ? [{ value: "none", label: "Nenhuma" }] : []),
     ...contasBancarias.map((conta) => ({
       value: conta.id,
-      label: `${conta.descricao} - ${conta.banco}`,
+      label: conta.descricao,
     })),
   ];
 
