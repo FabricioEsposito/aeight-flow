@@ -19,12 +19,18 @@ import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
 interface Vendedor {
   id: string;
   nome: string;
-  centro_custo: string | null;
   fornecedor_id: string | null;
-  meta: number;
-  percentual_comissao: number;
   status: string;
   created_at: string;
+  is_merged?: boolean;
+}
+
+interface VendedorCentroCustoLink {
+  id: string;
+  vendedor_id: string;
+  centro_custo_id: string;
+  meta: number;
+  percentual_comissao: number;
 }
 
 interface CentroCusto {
@@ -43,6 +49,7 @@ export default function Vendedores() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [links, setLinks] = useState<VendedorCentroCustoLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,11 +59,11 @@ export default function Vendedores() {
   const [selectedVendedor, setSelectedVendedor] = useState<Vendedor | null>(null);
   const [formData, setFormData] = useState({
     nome: "",
-    centro_custo: "",
     fornecedor_id: "",
-    meta: 0,
-    percentual_comissao: 0,
+    status: "ativo" as 'ativo' | 'inativo',
   });
+
+  const [formCentros, setFormCentros] = useState<Record<string, { selected: boolean; meta: number; percentual_comissao: number }>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,10 +72,11 @@ export default function Vendedores() {
 
   const fetchData = async () => {
     try {
+      const sb = supabase as any;
       const [vendedoresRes, centrosCustoRes, fornecedoresRes] = await Promise.all([
-        supabase.from("vendedores").select("*").order("nome"),
-        supabase.from("centros_custo").select("id, codigo, descricao").eq("status", "ativo"),
-        supabase.from("fornecedores").select("id, razao_social, nome_fantasia").eq("status", "ativo").order("razao_social"),
+        sb.from("vendedores").select("*").eq('is_merged', false).order("nome"),
+        sb.from("centros_custo").select("id, codigo, descricao").eq("status", "ativo"),
+        sb.from("fornecedores").select("id, razao_social, nome_fantasia").eq("status", "ativo").order("razao_social"),
       ]);
 
       if (vendedoresRes.error) throw vendedoresRes.error;
@@ -78,6 +86,19 @@ export default function Vendedores() {
       setVendedores(vendedoresRes.data || []);
       setCentrosCusto(centrosCustoRes.data || []);
       setFornecedores(fornecedoresRes.data || []);
+
+      const vendedorIds = (vendedoresRes.data || []).map((v: any) => v.id);
+      if (vendedorIds.length > 0) {
+        const linksRes = await sb
+          .from('vendedores_centros_custo')
+          .select('id, vendedor_id, centro_custo_id, meta, percentual_comissao')
+          .in('vendedor_id', vendedorIds);
+
+        if (linksRes.error) throw linksRes.error;
+        setLinks(linksRes.data || []);
+      } else {
+        setLinks([]);
+      }
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
@@ -106,20 +127,34 @@ export default function Vendedores() {
       setSelectedVendedor(vendedor);
       setFormData({
         nome: vendedor.nome,
-        centro_custo: vendedor.centro_custo || "",
         fornecedor_id: vendedor.fornecedor_id || "",
-        meta: vendedor.meta,
-        percentual_comissao: vendedor.percentual_comissao,
+        status: (vendedor.status as any) || 'ativo',
       });
+
+      const vendedorLinks = links.filter((l) => l.vendedor_id === vendedor.id);
+      const next: Record<string, { selected: boolean; meta: number; percentual_comissao: number }> = {};
+      centrosCusto.forEach((cc) => {
+        const link = vendedorLinks.find((l) => l.centro_custo_id === cc.id);
+        next[cc.id] = {
+          selected: !!link,
+          meta: Number(link?.meta ?? 0),
+          percentual_comissao: Number(link?.percentual_comissao ?? 0),
+        };
+      });
+      setFormCentros(next);
     } else {
       setSelectedVendedor(null);
       setFormData({
         nome: "",
-        centro_custo: "",
         fornecedor_id: "",
-        meta: 0,
-        percentual_comissao: 0,
+        status: 'ativo',
       });
+
+      const next: Record<string, { selected: boolean; meta: number; percentual_comissao: number }> = {};
+      centrosCusto.forEach((cc) => {
+        next[cc.id] = { selected: false, meta: 0, percentual_comissao: 0 };
+      });
+      setFormCentros(next);
     }
     setDialogOpen(true);
   };
@@ -135,15 +170,29 @@ export default function Vendedores() {
     }
 
     try {
+      const sb = supabase as any;
+      const selectedCentroIds = Object.entries(formCentros)
+        .filter(([, v]) => v.selected)
+        .map(([ccId]) => ccId);
+
+      if (selectedCentroIds.length === 0) {
+        toast({
+          title: 'Erro',
+          description: 'Selecione pelo menos um Centro de Custo para o vendedor.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      let vendedorId = selectedVendedor?.id;
+
       if (selectedVendedor) {
         const { error } = await supabase
           .from("vendedores")
           .update({
             nome: formData.nome,
-            centro_custo: formData.centro_custo || null,
             fornecedor_id: formData.fornecedor_id || null,
-            meta: formData.meta,
-            percentual_comissao: formData.percentual_comissao,
+            status: formData.status,
           })
           .eq("id", selectedVendedor.id);
 
@@ -153,19 +202,51 @@ export default function Vendedores() {
           description: "Vendedor atualizado com sucesso.",
         });
       } else {
-        const { error } = await supabase.from("vendedores").insert({
-          nome: formData.nome,
-          centro_custo: formData.centro_custo || null,
-          fornecedor_id: formData.fornecedor_id || null,
-          meta: formData.meta,
-          percentual_comissao: formData.percentual_comissao,
-        });
+        const { data, error } = await supabase
+          .from("vendedores")
+          .insert({
+            nome: formData.nome,
+            fornecedor_id: formData.fornecedor_id || null,
+            status: formData.status,
+            // Mantemos defaults globais como fallback legado
+            meta: 0,
+            percentual_comissao: 0,
+            centro_custo: null,
+            is_merged: false,
+          } as any)
+          .select('id')
+          .single();
 
         if (error) throw error;
+        vendedorId = data?.id;
         toast({
           title: "Sucesso",
           description: "Vendedor cadastrado com sucesso.",
         });
+      }
+
+      if (vendedorId) {
+        const upserts = selectedCentroIds.map((ccId) => ({
+          vendedor_id: vendedorId,
+          centro_custo_id: ccId,
+          meta: Number(formCentros[ccId]?.meta ?? 0),
+          percentual_comissao: Number(formCentros[ccId]?.percentual_comissao ?? 0),
+        }));
+
+        const upsertRes = await sb
+          .from('vendedores_centros_custo')
+          .upsert(upserts, { onConflict: 'vendedor_id,centro_custo_id' });
+        if (upsertRes.error) throw upsertRes.error;
+
+        // Remove vínculos desmarcados
+        if (selectedCentroIds.length > 0) {
+          const delRes = await sb
+            .from('vendedores_centros_custo')
+            .delete()
+            .eq('vendedor_id', vendedorId)
+            .not('centro_custo_id', 'in', `(${selectedCentroIds.map((id) => `"${id}"`).join(',')})`);
+          if (delRes.error) throw delRes.error;
+        }
       }
 
       setDialogOpen(false);
@@ -209,6 +290,14 @@ export default function Vendedores() {
   const filteredVendedores = vendedores.filter((v) =>
     v.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const linksByVendedor = useState(() => new Map<string, VendedorCentroCustoLink[]>())[0];
+  linksByVendedor.clear();
+  links.forEach((l) => {
+    const arr = linksByVendedor.get(l.vendedor_id) || [];
+    arr.push(l);
+    linksByVendedor.set(l.vendedor_id, arr);
+  });
 
   const totalPages = Math.ceil(filteredVendedores.length / itemsPerPage);
   const paginatedVendedores = filteredVendedores.slice(
@@ -266,10 +355,10 @@ export default function Vendedores() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Centro de Custo</TableHead>
+                  <TableHead>Centros de Custo</TableHead>
                   <TableHead>Fornecedor Vinculado</TableHead>
-                  <TableHead>Meta</TableHead>
-                  <TableHead>Comissão %</TableHead>
+                  <TableHead>Meta (soma)</TableHead>
+                  <TableHead>Comissão</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -279,18 +368,30 @@ export default function Vendedores() {
                   <TableRow key={vendedor.id}>
                     <TableCell className="font-medium">{vendedor.nome}</TableCell>
                     <TableCell>
-                      {(() => {
-                        const cc = getCentroCusto(vendedor.centro_custo);
-                        return cc?.codigo ? (
-                          <CompanyTag codigo={cc.codigo} />
+                      <div className="flex flex-wrap gap-2">
+                        {(linksByVendedor.get(vendedor.id) || []).length > 0 ? (
+                          (linksByVendedor.get(vendedor.id) || []).map((l) => {
+                            const cc = getCentroCusto(l.centro_custo_id);
+                            return cc?.codigo ? (
+                              <CompanyTag key={l.id} codigo={cc.codigo} />
+                            ) : null;
+                          })
                         ) : (
                           <span className="text-xs text-muted-foreground">-</span>
-                        );
-                      })()}
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{getFornecedorDisplay(vendedor.fornecedor_id)}</TableCell>
-                    <TableCell>{formatCurrency(vendedor.meta)}</TableCell>
-                    <TableCell>{vendedor.percentual_comissao}%</TableCell>
+                    <TableCell>
+                      {formatCurrency(
+                        (linksByVendedor.get(vendedor.id) || []).reduce((acc, l) => acc + Number(l.meta || 0), 0)
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(linksByVendedor.get(vendedor.id) || []).length > 1
+                        ? 'Múltipla'
+                        : `${(linksByVendedor.get(vendedor.id) || [])[0]?.percentual_comissao ?? 0}%`}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={vendedor.status === "ativo" ? "default" : "secondary"}
@@ -365,15 +466,6 @@ export default function Vendedores() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="centro_custo">Centro de Custo</Label>
-                <CentroCustoSelect
-                  value={formData.centro_custo}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, centro_custo: value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="fornecedor_id">Fornecedor Vinculado *</Label>
                 <SearchableSelect
                   options={fornecedores.map((f) => ({
@@ -390,26 +482,92 @@ export default function Vendedores() {
                   Vinculado ao lançamento da comissão no contas a pagar
                 </p>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="meta">Meta Mensal (R$)</Label>
-                <CurrencyInput
-                  value={formData.meta}
-                  onChange={(value) => setFormData({ ...formData, meta: value })}
-                  placeholder="0,00"
-                />
+                <Label>Nível/Status</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.status === 'ativo' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, status: 'ativo' })}
+                  >
+                    Ativo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.status === 'inativo' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, status: 'inativo' })}
+                  >
+                    Inativo
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="comissao">Percentual de Comissão (%)</Label>
-                <CurrencyInput
-                  value={formData.percentual_comissao}
-                  onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      percentual_comissao: value,
-                    })
-                  }
-                  placeholder="0,00"
-                />
+
+              <div className="space-y-3">
+                <div>
+                  <Label>Centros de Custo do vendedor *</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Marque os centros que este vendedor atende e defina Meta/Comissão por centro.
+                  </p>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
+                  {centrosCusto.map((cc) => {
+                    const current = formCentros[cc.id] || { selected: false, meta: 0, percentual_comissao: 0 };
+                    return (
+                      <div key={cc.id} className="rounded-md border p-3 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{cc.codigo} - {cc.descricao}</div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant={current.selected ? 'default' : 'outline'}
+                            onClick={() =>
+                              setFormCentros((prev) => ({
+                                ...prev,
+                                [cc.id]: { ...current, selected: !current.selected },
+                              }))
+                            }
+                          >
+                            {current.selected ? 'Selecionado' : 'Selecionar'}
+                          </Button>
+                        </div>
+
+                        {current.selected && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label>Meta Mensal (R$)</Label>
+                              <CurrencyInput
+                                value={current.meta}
+                                onChange={(value) =>
+                                  setFormCentros((prev) => ({
+                                    ...prev,
+                                    [cc.id]: { ...current, meta: value },
+                                  }))
+                                }
+                                placeholder="0,00"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Comissão (%)</Label>
+                              <CurrencyInput
+                                value={current.percentual_comissao}
+                                onChange={(value) =>
+                                  setFormCentros((prev) => ({
+                                    ...prev,
+                                    [cc.id]: { ...current, percentual_comissao: value },
+                                  }))
+                                }
+                                placeholder="0,00"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <DialogFooter>

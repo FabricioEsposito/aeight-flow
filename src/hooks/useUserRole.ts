@@ -154,7 +154,8 @@ export function useUserRole() {
           canEditCadastro: false,
           canPerformBaixas: false,
           canApproveFinanceiroRequests: false,
-          canApproveCommissions: true,
+          // Aprovação de comissão: somente Admin + Finanças
+          canApproveCommissions: false,
           needsApprovalForFinanceiroEdits: false,
         };
       
