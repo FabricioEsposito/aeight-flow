@@ -157,6 +157,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   const favoriteItems = allVisibleItems.filter(item => isFavorite(item.url));
 
+  const salespersonItems = useMemo(() => {
+    if (role !== 'salesperson') return [];
+    const comercialGroup = filteredNavigationGroups.find(g => g.name === 'Comercial');
+    return comercialGroup?.items ?? [];
+  }, [filteredNavigationGroups, role]);
+
   const handleNavigation = () => {
     onNavigate?.();
   };
@@ -249,28 +255,39 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
               </div>
             )}
 
-            {/* Grouped Navigation */}
-            {filteredNavigationGroups.map((group) => (
-              <Collapsible 
-                key={group.name} 
-                open={openGroups[group.name]} 
-                onOpenChange={() => toggleGroup(group.name)}
-                className="mb-3"
-              >
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider">
-                  <span>{group.name}</span>
-                  <ChevronDown className={cn(
-                    "w-4 h-4 transition-transform duration-200",
-                    openGroups[group.name] && "rotate-180"
-                  )} />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1 animate-accordion-down">
-                  <nav className="space-y-1">
-                    {group.items.map((item) => renderNavItem(item))}
-                  </nav>
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
+            {/* Navigation */}
+            {role === 'salesperson' ? (
+              <div className="mb-3">
+                <nav className="space-y-1">
+                  {salespersonItems.map((item) => renderNavItem(item))}
+                </nav>
+              </div>
+            ) : (
+              <>
+                {/* Grouped Navigation */}
+                {filteredNavigationGroups.map((group) => (
+                  <Collapsible
+                    key={group.name}
+                    open={openGroups[group.name]}
+                    onOpenChange={() => toggleGroup(group.name)}
+                    className="mb-3"
+                  >
+                    <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider">
+                      <span>{group.name}</span>
+                      <ChevronDown
+                        className={cn(
+                          "w-4 h-4 transition-transform duration-200",
+                          openGroups[group.name] && "rotate-180"
+                        )}
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-1 animate-accordion-down">
+                      <nav className="space-y-1">{group.items.map((item) => renderNavItem(item))}</nav>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+              </>
+            )}
 
             {/* Standalone Items (Solicitações, Usuários) */}
             {filteredStandaloneItems.filter(item => item.url !== "/").length > 0 && (
