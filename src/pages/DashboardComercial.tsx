@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LabelList } from "recharts";
 import { TrendingUp, Users, Target, DollarSign } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
@@ -46,6 +46,14 @@ interface CentroCusto {
 interface VendaCliente {
   nome: string;
   valor: number;
+}
+
+interface VendaCentroCusto {
+  id: string;
+  codigo: string;
+  descricao: string;
+  valor: number;
+  percentual: number;
 }
 
 interface DateRange {
@@ -203,9 +211,10 @@ export default function DashboardComercial() {
     }
   };
 
-  const { vendasPorVendedor, vendasPorCliente, totalVendas, totalMeta, vendedorDestaque, ticketMedio, quantidadeContratos } = useMemo(() => {
+  const { vendasPorVendedor, vendasPorCliente, vendasPorCentroCusto, totalVendas, totalMeta, vendedorDestaque, ticketMedio, quantidadeContratos } = useMemo(() => {
     const vendedorMap = new Map<string, VendaVendedor>();
     const clienteMap = new Map<string, VendaCliente>();
+    const centroMap = new Map<string, number>();
 
     // Inicializa vendedores
     vendedores.forEach((v) => {
@@ -222,6 +231,14 @@ export default function DashboardComercial() {
 
     contratos.forEach((contrato) => {
       total += contrato.valor_total;
+
+      // Vendas por centro de custo (p/ vendedores e também útil para gestores)
+      if (contrato.centro_custo) {
+        centroMap.set(
+          contrato.centro_custo,
+          (centroMap.get(contrato.centro_custo) || 0) + contrato.valor_total
+        );
+      }
 
       // Vendas por vendedor
       if (contrato.vendedor_responsavel) {
@@ -255,6 +272,21 @@ export default function DashboardComercial() {
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 10);
 
+    const vendasCC: VendaCentroCusto[] = Array.from(centroMap.entries())
+      .map(([ccId, valor]) => {
+        const cc = centrosCusto.find((c) => c.id === ccId);
+        const codigo = cc?.codigo || ccId;
+        const descricao = cc?.descricao || "";
+        return {
+          id: ccId,
+          codigo,
+          descricao,
+          valor,
+          percentual: total > 0 ? (valor / total) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.valor - a.valor);
+
     const totalMetaCalc = vendedores.reduce((acc, v) => acc + v.meta, 0);
     const destaque = vendasVendedor[0];
     const qtdContratos = contratos.length;
@@ -263,13 +295,14 @@ export default function DashboardComercial() {
     return {
       vendasPorVendedor: vendasVendedor,
       vendasPorCliente: vendasCliente,
+      vendasPorCentroCusto: vendasCC,
       totalVendas: total,
       totalMeta: totalMetaCalc,
       vendedorDestaque: destaque,
       ticketMedio: ticketMedioCalc,
       quantidadeContratos: qtdContratos,
     };
-  }, [vendedores, contratos]);
+  }, [vendedores, contratos, centrosCusto]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", {
@@ -399,43 +432,70 @@ export default function DashboardComercial() {
                     labelFormatter={(label) => label}
                   />
                   <Legend />
-                  <Bar dataKey="valor" name="Vendas" fill="#10b981" />
-                  <Bar dataKey="meta" name="Meta" fill="#3b82f6" />
+                  <Bar dataKey="valor" name="Vendas" fill="#10b981">
+                    {isSalesperson && (
+                      <LabelList
+                        dataKey="valor"
+                        position="right"
+                        formatter={(v: number) => formatCurrency(v)}
+                      />
+                    )}
+                  </Bar>
+                  <Bar dataKey="meta" name="Meta" fill="#3b82f6">
+                    {isSalesperson && (
+                      <LabelList
+                        dataKey="meta"
+                        position="right"
+                        formatter={(v: number) => formatCurrency(v)}
+                      />
+                    )}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* Percentual de Venda por Vendedor */}
+          {/* Percentual (gestor: por vendedor | vendedor: por centro de custo) */}
           <Card>
             <CardHeader>
-              <CardTitle>Percentual de Vendas por Vendedor</CardTitle>
+              <CardTitle>
+                {isSalesperson ? "Percentual de Vendas por Centro de Custo" : "Percentual de Vendas por Vendedor"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={vendasPorVendedor.filter((v) => v.valor > 0)}
+                    data={(isSalesperson ? vendasPorCentroCusto : vendasPorVendedor)
+                      .filter((v: any) => (v?.valor || 0) > 0)
+                      .map((v: any) => ({
+                        ...v,
+                        name: isSalesperson ? `${v.codigo}` : v.nome,
+                      }))}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
+                    label={({ name, percent }) => `${truncateLabel(name, 14)}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={90}
                     dataKey="valor"
                   >
-                    {vendasPorVendedor.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
+                    {(isSalesperson ? vendasPorCentroCusto : vendasPorVendedor).map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 </PieChart>
               </ResponsiveContainer>
+              {isSalesperson && vendasPorCentroCusto.length > 0 && (
+                <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                  {vendasPorCentroCusto.slice(0, 5).map((cc) => (
+                    <div key={cc.id} className="flex items-center justify-between gap-3">
+                      <span className="truncate">{cc.codigo} - {cc.descricao}</span>
+                      <span className="shrink-0">{cc.percentual.toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -456,9 +516,17 @@ export default function DashboardComercial() {
                     interval={0}
                     tickFormatter={(v) => truncateLabel(v, 14)}
                   />
-                  <YAxis tickFormatter={(v) => formatCurrency(v)} />
+                  <YAxis width={90} tickFormatter={(v) => formatCurrency(Number(v))} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="valor" name="Vendas" fill="#f59e0b" />
+                  <Bar dataKey="valor" name="Vendas" fill="#f59e0b">
+                    {isSalesperson && (
+                      <LabelList
+                        dataKey="valor"
+                        position="top"
+                        formatter={(v: number) => formatCurrency(v)}
+                      />
+                    )}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
