@@ -14,7 +14,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, X, Clock, FileText, CheckSquare, Building2, User, CreditCard, Receipt, Calendar, DollarSign, Banknote } from 'lucide-react';
-import { CompanyDot } from '@/components/centro-custos/CompanyBadge';
+import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 
 interface LancamentoDetalhes {
   id: string;
@@ -701,10 +701,7 @@ export default function Solicitacoes() {
                 </Badge>
                 {getStatusBadge(solicitacao.status)}
                 {lancamento?.centro_custo_info && (
-                  <div className="flex items-center gap-1.5">
-                    <CompanyDot codigo={lancamento.centro_custo_info.codigo} size="md" />
-                    <span className="text-xs font-medium">{lancamento.centro_custo_info.codigo}</span>
-                  </div>
+                  <CompanyTag codigo={lancamento.centro_custo_info.codigo} />
                 )}
               </div>
 

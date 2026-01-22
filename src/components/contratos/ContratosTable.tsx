@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -246,9 +247,11 @@ export function ContratosTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm" title={contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
-                    {contrato.centro_custo_info 
-                      ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}`
-                      : contrato.centro_custo || '-'}
+                    {contrato.centro_custo_info ? (
+                      <CompanyTag codigo={contrato.centro_custo_info.codigo} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getImportanciaBadgeVariant(contrato.importancia_cliente_fornecedor)} className="text-xs">

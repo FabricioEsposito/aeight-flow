@@ -389,7 +389,7 @@ export default function Contratos() {
 
           <CentroCustoFilterSelect
             value={filterCentroCusto}
-            onValueChange={setFilterCentroCusto}
+            onValueChange={(v) => setFilterCentroCusto(v === 'todos' ? '' : v)}
             placeholder="Centro de Custo"
             className="w-56"
           />

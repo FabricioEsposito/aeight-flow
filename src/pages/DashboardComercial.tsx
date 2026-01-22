@@ -6,7 +6,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { TrendingUp, Users, Target, DollarSign } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
-import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
+import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
+import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -295,14 +296,12 @@ export default function DashboardComercial() {
               customRange={customDateRange}
             />
             {!isSalesperson && (
-              <div className="w-[250px]">
-                <CentroCustoSelect
-                  value={selectedCentroCusto}
-                  onValueChange={setSelectedCentroCusto}
-                  placeholder="Todos os centros de custo"
-                  showAllOption
-                />
-              </div>
+              <CentroCustoFilterSelect
+                value={selectedCentroCusto}
+                onValueChange={(v) => setSelectedCentroCusto(v === 'todos' ? '' : v)}
+                placeholder="Centro de Custo"
+                className="w-[250px]"
+              />
             )}
           </div>
         </div>
@@ -464,13 +463,16 @@ export default function DashboardComercial() {
                     {vendasPorVendedor.map((v) => {
                       const percentMeta = v.meta > 0 ? (v.valor / v.meta) * 100 : 0;
                       const centroCusto = centrosCusto.find((c) => c.id === v.centro_custo);
-                      const centroCustoLabel = centroCusto 
-                        ? `${centroCusto.codigo} - ${centroCusto.descricao}` 
-                        : v.centro_custo || "-";
                       return (
                         <tr key={v.nome} className="border-b">
                           <td className="py-2 px-4">{v.nome}</td>
-                          <td className="py-2 px-4 text-muted-foreground">{centroCustoLabel}</td>
+                          <td className="py-2 px-4">
+                            {centroCusto?.codigo ? (
+                              <CompanyTag codigo={centroCusto.codigo} />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </td>
                           <td className="text-right py-2 px-4">{formatCurrency(v.valor)}</td>
                           <td className="text-right py-2 px-4">{formatCurrency(v.meta)}</td>
                           <td className="text-right py-2 px-4">
