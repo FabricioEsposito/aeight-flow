@@ -36,9 +36,8 @@ export function ContaBancariaMultiSelect({
     }
   }, [open]);
 
-  const filteredContas = contas.filter(conta =>
-    conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conta.banco.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredContas = contas.filter((conta) =>
+    conta.descricao.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleToggle = (id: string) => {
@@ -147,10 +146,9 @@ export function ContaBancariaMultiSelect({
                 )}>
                   {selectedIds.includes(conta.id) && <Check className="h-3 w-3" />}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{conta.descricao}</p>
-                  <p className="text-xs text-muted-foreground truncate">{conta.banco}</p>
-                </div>
+                 <div className="flex-1 min-w-0">
+                   <p className="text-sm font-medium truncate">{conta.descricao}</p>
+                 </div>
               </div>
             ))
           )}
