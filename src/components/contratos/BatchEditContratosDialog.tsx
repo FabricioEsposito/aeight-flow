@@ -112,6 +112,7 @@ export function BatchEditContratosDialog({
         return;
       }
 
+      // 1. Atualizar os contratos
       const { error } = await supabase
         .from('contratos')
         .update(updates)
@@ -119,9 +120,50 @@ export function BatchEditContratosDialog({
 
       if (error) throw error;
 
+      // 2. Buscar as parcelas vinculadas a esses contratos
+      const { data: parcelas } = await supabase
+        .from('parcelas_contrato')
+        .select('id, contrato_id')
+        .in('contrato_id', selectedIds);
+
+      if (parcelas && parcelas.length > 0) {
+        const parcelaIds = parcelas.map(p => p.id);
+
+        // 3. Atualizar parcelas_contrato com conta_bancaria_id se alterado
+        if (updateContaBancaria && contaBancariaId) {
+          await supabase
+            .from('parcelas_contrato')
+            .update({ conta_bancaria_id: contaBancariaId })
+            .in('id', parcelaIds);
+        }
+
+        // 4. Preparar atualizações para contas_receber e contas_pagar
+        const contasUpdates: Record<string, any> = {};
+        if (updateContaBancaria && contaBancariaId) {
+          contasUpdates.conta_bancaria_id = contaBancariaId;
+        }
+        if (updateCentroCusto) {
+          contasUpdates.centro_custo = centroCusto || null;
+        }
+
+        if (Object.keys(contasUpdates).length > 0) {
+          // 5. Atualizar contas_receber vinculadas às parcelas
+          await supabase
+            .from('contas_receber')
+            .update(contasUpdates)
+            .in('parcela_id', parcelaIds);
+
+          // 6. Atualizar contas_pagar vinculadas às parcelas
+          await supabase
+            .from('contas_pagar')
+            .update(contasUpdates)
+            .in('parcela_id', parcelaIds);
+        }
+      }
+
       toast({
         title: 'Sucesso',
-        description: `${selectedIds.length} contrato(s) atualizado(s) com sucesso!`,
+        description: `${selectedIds.length} contrato(s) e lançamentos relacionados atualizados com sucesso!`,
       });
 
       onSuccess();

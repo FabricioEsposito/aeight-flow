@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Calendar, CheckCircle, Copy, X, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, CheckCircle, Copy, X, Trash2, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,12 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ContaBancaria {
+  id: string;
+  descricao: string;
+}
 
 interface BatchActionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedCount: number;
-  actionType: 'change-date' | 'mark-paid' | 'clone' | 'delete' | null;
+  actionType: 'change-date' | 'mark-paid' | 'clone' | 'delete' | 'change-bank-account' | null;
   onConfirm: (data: any) => void;
   tipo?: 'entrada' | 'saida';
   allPaid?: boolean;
@@ -39,6 +45,23 @@ export function BatchActionsDialog({
 }: BatchActionsDialogProps) {
   const [newDate, setNewDate] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
+  const [contaBancariaId, setContaBancariaId] = useState('');
+  const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
+
+  useEffect(() => {
+    if (open && actionType === 'change-bank-account') {
+      fetchContasBancarias();
+    }
+  }, [open, actionType]);
+
+  const fetchContasBancarias = async () => {
+    const { data } = await supabase
+      .from('contas_bancarias')
+      .select('id, descricao')
+      .eq('status', 'ativo')
+      .order('descricao');
+    setContasBancarias(data || []);
+  };
 
   const getTitle = () => {
     switch (actionType) {
@@ -53,6 +76,8 @@ export function BatchActionsDialog({
         return 'Clonar Lançamentos';
       case 'delete':
         return 'Excluir Lançamentos';
+      case 'change-bank-account':
+        return 'Alterar Conta Bancária';
       default:
         return 'Ação em Lote';
     }
@@ -71,6 +96,8 @@ export function BatchActionsDialog({
         return `Deseja clonar ${selectedCount} lançamento(s) selecionado(s)?`;
       case 'delete':
         return `Tem certeza que deseja excluir ${selectedCount} lançamento(s)? Esta ação não pode ser desfeita.`;
+      case 'change-bank-account':
+        return `Alterar a conta bancária de ${selectedCount} lançamento(s) selecionado(s). As parcelas vinculadas a contratos também serão atualizadas.`;
       default:
         return '';
     }
@@ -81,11 +108,14 @@ export function BatchActionsDialog({
       onConfirm({ newDate });
     } else if (actionType === 'mark-paid') {
       onConfirm({ paymentDate });
+    } else if (actionType === 'change-bank-account') {
+      onConfirm({ contaBancariaId });
     } else {
       onConfirm({});
     }
     setNewDate('');
     setPaymentDate('');
+    setContaBancariaId('');
     onOpenChange(false);
   };
 
@@ -123,6 +153,24 @@ export function BatchActionsDialog({
             </div>
           )}
 
+          {actionType === 'change-bank-account' && (
+            <div className="space-y-2">
+              <Label htmlFor="conta-bancaria">Nova Conta Bancária</Label>
+              <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta bancária" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contasBancarias.map((conta) => (
+                    <SelectItem key={conta.id} value={conta.id}>
+                      {conta.descricao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {actionType === 'delete' && (
             <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30">
               <p className="text-sm text-destructive font-medium">
@@ -141,7 +189,8 @@ export function BatchActionsDialog({
             variant={actionType === 'delete' ? 'destructive' : 'default'}
             disabled={
               (actionType === 'change-date' && !newDate) ||
-              (actionType === 'mark-paid' && !allPaid && !paymentDate)
+              (actionType === 'mark-paid' && !allPaid && !paymentDate) ||
+              (actionType === 'change-bank-account' && !contaBancariaId)
             }
           >
             {actionType === 'delete' ? 'Excluir' : 'Confirmar'}
