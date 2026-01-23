@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2 } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -87,7 +87,7 @@ export default function Extrato() {
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
-  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | null>(null);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | 'change-bank-account' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
@@ -1114,6 +1114,29 @@ export default function Extrato() {
             variant: "destructive",
           });
         }
+      } else if (batchActionType === 'change-bank-account' && data?.contaBancariaId) {
+        // Atualizar conta bancária em lote
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          
+          // Atualizar o lançamento
+          await supabase
+            .from(table)
+            .update({ conta_bancaria_id: data.contaBancariaId })
+            .eq('id', lanc.id);
+          
+          // Se tiver parcela_id, atualiza também a parcela do contrato
+          if (lanc.parcela_id) {
+            await supabase
+              .from('parcelas_contrato')
+              .update({ conta_bancaria_id: data.contaBancariaId })
+              .eq('id', lanc.parcela_id);
+          }
+        }
+        toast({
+          title: "Sucesso",
+          description: `Conta bancária alterada para ${selectedLancamentos.length} lançamento(s)!`,
+        });
       }
       
       setSelectedIds(new Set());
@@ -1555,6 +1578,17 @@ export default function Extrato() {
                 >
                   <Copy className="w-4 h-4 mr-2" />
                   Clonar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('change-bank-account');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  <Landmark className="w-4 h-4 mr-2" />
+                  Alterar Conta
                 </Button>
                 {isAdmin && (
                   <Button
