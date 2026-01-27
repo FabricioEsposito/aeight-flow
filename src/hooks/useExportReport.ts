@@ -9,12 +9,19 @@ interface ExportColumn {
   type?: 'text' | 'number' | 'date' | 'currency';
 }
 
+interface SubtotalItem {
+  label: string;
+  value: number;
+  type?: 'positive' | 'negative' | 'neutral';
+}
+
 interface ExportOptions {
   title: string;
   filename: string;
   columns: ExportColumn[];
   data: any[];
   dateRange?: string;
+  subtotals?: SubtotalItem[];
 }
 
 export const useExportReport = () => {
@@ -61,7 +68,7 @@ export const useExportReport = () => {
     return isNaN(date.getTime()) ? null : date;
   };
 
-  const exportToPDF = ({ title, filename, columns, data, dateRange }: ExportOptions) => {
+  const exportToPDF = ({ title, filename, columns, data, dateRange, subtotals }: ExportOptions) => {
     try {
       // Orientação paisagem para melhor visualização
       const doc = new jsPDF('landscape');
@@ -102,6 +109,40 @@ export const useExportReport = () => {
           fillColor: [245, 245, 245] 
         },
       });
+      
+      // Adicionar subtotais se fornecidos
+      if (subtotals && subtotals.length > 0) {
+        const finalY = (doc as any).lastAutoTable?.finalY || 42;
+        let yPosition = finalY + 10;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Resumo do Período:', 14, yPosition);
+        yPosition += 8;
+        
+        doc.setFont('helvetica', 'normal');
+        subtotals.forEach((subtotal) => {
+          const formattedValue = new Intl.NumberFormat('pt-BR', { 
+            style: 'currency', 
+            currency: 'BRL' 
+          }).format(subtotal.value);
+          
+          // Definir cor baseada no tipo
+          if (subtotal.type === 'positive') {
+            doc.setTextColor(34, 197, 94); // green
+          } else if (subtotal.type === 'negative') {
+            doc.setTextColor(239, 68, 68); // red
+          } else {
+            doc.setTextColor(0, 0, 0); // black
+          }
+          
+          doc.text(`${subtotal.label}: ${formattedValue}`, 14, yPosition);
+          yPosition += 6;
+        });
+        
+        // Reset color
+        doc.setTextColor(0, 0, 0);
+      }
       
       doc.save(`${filename}.pdf`);
       
