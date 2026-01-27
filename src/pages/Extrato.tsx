@@ -195,12 +195,29 @@ export default function Extrato() {
 
   const handleExportPDF = () => {
     const dadosComSaldos = calcularDadosComSaldos();
+    
+    // Calcular subtotais de entradas e saídas
+    const totalEntradas = filteredLancamentos
+      .filter(l => l.tipo === 'entrada')
+      .reduce((acc, l) => acc + l.valor, 0);
+    
+    const totalSaidas = filteredLancamentos
+      .filter(l => l.tipo === 'saida')
+      .reduce((acc, l) => acc + l.valor, 0);
+    
+    const saldoPeriodo = totalEntradas - totalSaidas;
+    
     exportToPDF({
       title: 'Relatório de Extrato e Conciliação',
       filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
       columns: exportColumns,
       data: dadosComSaldos,
       dateRange: getDateRangeLabel(),
+      subtotals: [
+        { label: 'Total de Entradas', value: totalEntradas, type: 'positive' },
+        { label: 'Total de Saídas', value: totalSaidas, type: 'negative' },
+        { label: 'Saldo do Período', value: saldoPeriodo, type: saldoPeriodo >= 0 ? 'positive' : 'negative' },
+      ],
     });
   };
 
