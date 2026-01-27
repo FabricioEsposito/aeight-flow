@@ -97,17 +97,29 @@ export const useExportReport = () => {
         body: tableData,
         startY: 42,
         styles: { 
-          fontSize: 8,
-          cellPadding: 2,
+          fontSize: 7,
+          cellPadding: 1.5,
+          overflow: 'linebreak',
         },
         headStyles: { 
           fillColor: [59, 130, 246],
           textColor: 255,
           fontStyle: 'bold',
+          fontSize: 7,
         },
         alternateRowStyles: { 
           fillColor: [245, 245, 245] 
         },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 'auto' },
+          3: { cellWidth: 'auto' },
+          4: { cellWidth: 'auto' },
+          5: { cellWidth: 'auto' },
+        },
+        margin: { left: 10, right: 10 },
+        tableWidth: 'auto',
       });
       
       // Adicionar subtotais se fornecidos

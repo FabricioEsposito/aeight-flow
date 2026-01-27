@@ -121,7 +121,28 @@ export default function Extrato() {
     return `${dateRange.start} - ${dateRange.end}`;
   };
 
-  const exportColumns = [
+  // Colunas compactas para PDF
+  const exportColumnsPDF = [
+    { header: 'Vencimento', accessor: (row: LancamentoExtrato) => row.data_vencimento, type: 'date' as const },
+    { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'E' : 'S' },
+    { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
+    { header: 'Descrição', accessor: 'descricao' },
+    { header: 'C. Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
+    { header: 'Conta', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
+    { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
+    { header: 'Status', accessor: (row: LancamentoExtrato) => {
+      const status = getDisplayStatus(row);
+      if (status === 'recebido') return 'Rec.';
+      if (status === 'pago') return 'Pago';
+      if (status === 'vencido') return 'Venc.';
+      return 'Dia';
+    }},
+    { header: 'Saldo Real.', accessor: 'saldo_realizado', type: 'currency' as const },
+    { header: 'Saldo Prev.', accessor: 'saldo_previsto', type: 'currency' as const },
+  ];
+
+  // Colunas completas para Excel
+  const exportColumnsExcel = [
     { header: 'Data Vencimento', accessor: (row: LancamentoExtrato) => row.data_vencimento, type: 'date' as const },
     { header: 'Data Competência', accessor: (row: LancamentoExtrato) => row.data_competencia, type: 'date' as const },
     { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => row.data_recebimento || row.data_pagamento || '', type: 'date' as const },
@@ -210,7 +231,7 @@ export default function Extrato() {
     exportToPDF({
       title: 'Relatório de Extrato e Conciliação',
       filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
-      columns: exportColumns,
+      columns: exportColumnsPDF,
       data: dadosComSaldos,
       dateRange: getDateRangeLabel(),
       subtotals: [
@@ -226,7 +247,7 @@ export default function Extrato() {
     exportToExcel({
       title: 'Extrato e Conciliação',
       filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
-      columns: exportColumns,
+      columns: exportColumnsExcel,
       data: dadosComSaldos,
       dateRange: getDateRangeLabel(),
     });
