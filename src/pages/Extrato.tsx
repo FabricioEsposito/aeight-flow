@@ -128,7 +128,14 @@ export default function Extrato() {
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
     { header: 'Descrição', accessor: 'descricao' },
     { header: 'C. Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
-    { header: 'Conta', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
+    { header: 'Conta', accessor: (row: LancamentoExtrato) => {
+      // Exibe apenas a descrição da conta, removendo o nome do banco
+      const fullName = row.conta_bancaria_nome || '-';
+      if (fullName === '-') return '-';
+      // Formato esperado: "BANCO XYZ - Descrição da Conta"
+      const parts = fullName.split(' - ');
+      return parts.length > 1 ? parts.slice(1).join(' - ') : fullName;
+    }},
     { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
       const status = getDisplayStatus(row);
