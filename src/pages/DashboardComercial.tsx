@@ -207,25 +207,22 @@ export default function DashboardComercial() {
         };
       });
 
-      // Fetch contratos - filter for salesperson role
+      // NOVA LÓGICA: Buscar vendas baseadas em PARCELAS (contas_receber) no período
+      // Em vez de filtrar por data de criação do contrato, filtramos pelas parcelas
+      // que têm data_competencia no período selecionado
+      
+      // 1. Buscar todos os contratos de venda (sem filtro de data)
       let contratosQuery = supabase
         .from("contratos")
         .select("id, vendedor_responsavel, valor_total, cliente_id, created_at, centro_custo, clientes(razao_social, nome_fantasia)")
         .eq("tipo_contrato", "venda");
 
-      // Salesperson: ensure we fetch both the new format (vendedor_responsavel = vendedor.id)
-      // and legacy records where vendedor_responsavel may have been stored as the vendor name.
+      // Salesperson: filter by vendedor
       if (isSalesperson && userVendedorId) {
         const legacyName = (vendedoresRes.data?.[0]?.nome || "").trim();
         contratosQuery = legacyName
           ? contratosQuery.or(`vendedor_responsavel.eq.${userVendedorId},vendedor_responsavel.eq.${legacyName}`)
           : contratosQuery.eq("vendedor_responsavel", userVendedorId);
-      }
-
-      if (dateRange) {
-        const startStr = format(dateRange.start, "yyyy-MM-dd");
-        const endStr = format(dateRange.end, "yyyy-MM-dd");
-        contratosQuery = contratosQuery.gte("created_at", startStr).lte("created_at", endStr + "T23:59:59");
       }
 
       if (selectedCentroCusto && !isSalesperson) {
@@ -237,9 +234,70 @@ export default function DashboardComercial() {
       if (vendedoresRes.error) throw vendedoresRes.error;
       if (contratosRes.error) throw contratosRes.error;
 
+      // 2. Buscar parcelas dos contratos filtradas pela data de competência
+      const contratoIds = (contratosRes.data || []).map((c: any) => c.id);
+      let parcelasData: any[] = [];
+      
+      if (contratoIds.length > 0) {
+        // Buscar parcelas vinculadas aos contratos
+        const { data: parcelas } = await supabase
+          .from("parcelas_contrato")
+          .select("id, contrato_id, valor")
+          .in("contrato_id", contratoIds);
+
+        const parcelaIds = (parcelas || []).map((p: any) => p.id);
+
+        if (parcelaIds.length > 0) {
+          // Buscar contas a receber dessas parcelas filtradas por data_competencia
+          let contasReceberQuery = supabase
+            .from("contas_receber")
+            .select("id, parcela_id, valor, data_competencia, cliente_id")
+            .in("parcela_id", parcelaIds);
+
+          if (dateRange) {
+            const startStr = format(dateRange.start, "yyyy-MM-dd");
+            const endStr = format(dateRange.end, "yyyy-MM-dd");
+            contasReceberQuery = contasReceberQuery
+              .gte("data_competencia", startStr)
+              .lte("data_competencia", endStr);
+          }
+
+          const { data: contasReceber } = await contasReceberQuery;
+
+          // Mapear parcelas para seus contratos
+          const parcelaToContrato = new Map((parcelas || []).map((p: any) => [p.id, p.contrato_id]));
+          
+          // Agrupar valores por contrato baseado nas parcelas do período
+          const contratoValoresPeriodo = new Map<string, number>();
+          (contasReceber || []).forEach((cr: any) => {
+            const contratoId = parcelaToContrato.get(cr.parcela_id);
+            if (contratoId) {
+              contratoValoresPeriodo.set(
+                contratoId,
+                (contratoValoresPeriodo.get(contratoId) || 0) + cr.valor
+              );
+            }
+          });
+
+          // Criar lista de "contratos virtuais" representando vendas do período
+          parcelasData = Array.from(contratoValoresPeriodo.entries()).map(([contratoId, valorPeriodo]) => {
+            const contrato = contratosRes.data?.find((c: any) => c.id === contratoId);
+            return {
+              id: contratoId,
+              vendedor_responsavel: contrato?.vendedor_responsavel,
+              valor_total: valorPeriodo, // Usar valor das parcelas do período
+              cliente_id: contrato?.cliente_id,
+              created_at: contrato?.created_at,
+              centro_custo: contrato?.centro_custo,
+              clientes: contrato?.clientes,
+            };
+          });
+        }
+      }
+
       setCentrosCusto(centrosCustoRes.data || []);
       setVendedores(enrichedVendedores);
-      setContratos(contratosRes.data || []);
+      setContratos(parcelasData); // Usar dados baseados em parcelas do período
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
