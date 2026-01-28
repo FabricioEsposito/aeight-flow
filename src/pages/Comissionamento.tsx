@@ -14,12 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, Send, Eye, RotateCcw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Check, X, Send, Eye, RotateCcw, Trophy } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
+
+const META_BATIDA_COMISSAO = 4; // Percentual de comissão para vendas com meta batida
 
 interface Vendedor {
   id: string;
@@ -88,6 +91,9 @@ export default function Comissionamento() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [userVendedorId, setUserVendedorId] = useState<string | null>(null);
+  
+  // Meta batida tracking - IDs das parcelas marcadas como meta batida
+  const [metaBatidaIds, setMetaBatidaIds] = useState<Set<string>>(new Set());
   
   // Filters for solicitações
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
@@ -379,19 +385,48 @@ export default function Comissionamento() {
       setLoadingParcelas(false);
     }
   };
+  // Toggle meta batida para uma parcela
+  const toggleMetaBatida = (parcelaId: string) => {
+    setMetaBatidaIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(parcelaId)) {
+        newSet.delete(parcelaId);
+      } else {
+        newSet.add(parcelaId);
+      }
+      return newSet;
+    });
+  };
+
+  // Calcular comissão considerando meta batida
   const calcularComissao = useMemo(() => {
     const vendedor = vendedores.find((v) => v.id === selectedVendedor);
-    if (!vendedor) return { total: 0, comissao: 0, percentual: 0 };
+    if (!vendedor) return { total: 0, comissao: 0, percentual: 0, comissaoMetaBatida: 0 };
 
     const total = parcelasPagas.reduce((acc, p) => acc + p.valor, 0);
-    const comissao = total * (vendedor.percentual_comissao / 100);
+    
+    // Calcular comissão considerando meta batida (4%) vs comissão padrão
+    let comissao = 0;
+    let comissaoMetaBatida = 0;
+    
+    parcelasPagas.forEach(p => {
+      if (metaBatidaIds.has(p.id)) {
+        // Meta batida: 4% fixo
+        comissaoMetaBatida += p.valor * (META_BATIDA_COMISSAO / 100);
+        comissao += p.valor * (META_BATIDA_COMISSAO / 100);
+      } else {
+        // Comissão padrão do vendedor por centro de custo
+        comissao += p.valor_comissao;
+      }
+    });
 
     return {
       total,
       comissao,
       percentual: vendedor.percentual_comissao,
+      comissaoMetaBatida,
     };
-  }, [parcelasPagas, selectedVendedor, vendedores]);
+  }, [parcelasPagas, selectedVendedor, vendedores, metaBatidaIds]);
 
   const handleSolicitarAprovacao = async () => {
     if (!selectedVendedor || !user) return;
@@ -807,33 +842,60 @@ export default function Comissionamento() {
                       <TableHead className="text-right">Valor</TableHead>
                       <TableHead className="text-right">% Comissão</TableHead>
                       <TableHead className="text-right">Valor Comissão</TableHead>
+                      <TableHead className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Trophy className="h-4 w-4 text-amber-500" />
+                          <span>Meta Batida</span>
+                        </div>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {parcelasPagas.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell>{p.cliente}</TableCell>
-                        <TableCell>{p.contrato_numero}</TableCell>
-                        <TableCell>
-                          {p.centro_custo_codigo ? (
-                            <div className="flex items-center gap-2">
-                              <CompanyTag codigo={p.centro_custo_codigo} />
-                              <span className="text-sm text-muted-foreground">
-                                {p.centro_custo_codigo} - {p.centro_custo_descricao}
-                              </span>
+                    {parcelasPagas.map((p) => {
+                      const isMetaBatida = metaBatidaIds.has(p.id);
+                      const percentualEfetivo = isMetaBatida ? META_BATIDA_COMISSAO : p.percentual_comissao;
+                      const valorComissaoEfetivo = isMetaBatida ? p.valor * (META_BATIDA_COMISSAO / 100) : p.valor_comissao;
+                      
+                      return (
+                        <TableRow key={p.id} className={isMetaBatida ? "bg-amber-500/5" : ""}>
+                          <TableCell>{p.cliente}</TableCell>
+                          <TableCell>{p.contrato_numero}</TableCell>
+                          <TableCell>
+                            {p.centro_custo_codigo ? (
+                              <div className="flex items-center gap-2">
+                                <CompanyTag codigo={p.centro_custo_codigo} />
+                                <span className="text-sm text-muted-foreground">
+                                  {p.centro_custo_codigo} - {p.centro_custo_descricao}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={isMetaBatida ? "text-amber-600 font-medium" : ""}>
+                              {percentualEfetivo.toFixed(2)}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-primary">
+                            {formatCurrency(valorComissaoEfetivo)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center">
+                              <Checkbox
+                                checked={isMetaBatida}
+                                onCheckedChange={() => toggleMetaBatida(p.id)}
+                                className={isMetaBatida ? "border-amber-500 data-[state=checked]:bg-amber-500 data-[state=checked]:text-white" : ""}
+                              />
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
-                        <TableCell className="text-right">{p.percentual_comissao.toFixed(2)}%</TableCell>
-                        <TableCell className="text-right font-medium text-primary">{formatCurrency(p.valor_comissao)}</TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
