@@ -413,7 +413,12 @@ export default function Extrato() {
       const pagarCombinado = [...(dataPagarPendentes || []), ...(dataPagarPagos || [])];
 
       // Filtrar parcelas de contratos inativos - Contas a Receber
+      // IMPORTANTE: Lançamentos já PAGOS devem sempre aparecer, pois já foram efetivados
+      // e afetam o saldo bancário. Só filtramos pendentes de contratos inativos.
       const dataReceberFiltrado = receberCombinado.filter((r: any) => {
+        // Lançamentos pagos sempre aparecem - já foram efetivados
+        if (r.status === 'pago') return true;
+        
         const contrato = r.parcelas_contrato?.contratos;
         if (!contrato) return true;
         if (contrato.status === 'ativo') {
@@ -477,7 +482,12 @@ export default function Extrato() {
       }));
 
       // Filtrar parcelas de contratos inativos - Contas a Pagar
+      // IMPORTANTE: Lançamentos já PAGOS devem sempre aparecer, pois já foram efetivados
+      // e afetam o saldo bancário. Só filtramos pendentes de contratos inativos.
       const dataPagarFiltrado = pagarCombinado.filter((p: any) => {
+        // Lançamentos pagos sempre aparecem - já foram efetivados
+        if (p.status === 'pago') return true;
+        
         const contrato = p.parcelas_contrato?.contratos;
         if (!contrato) return true;
         if (contrato.status === 'ativo') {
