@@ -1,13 +1,12 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   TrendingUp, 
   TrendingDown, 
   Calculator, 
@@ -42,6 +41,9 @@ import {
   DRECalculated,
   ValuationConfig,
   DEFAULT_VALUATION_CONFIG,
+  AjustesDRE,
+  AjusteItem,
+  AJUSTES_INICIAIS,
   calcularDRE,
   aplicarAjustes,
   calcularValuation,
@@ -65,14 +67,8 @@ export function DRESimulationAnalysis({
   selectedCentroCusto = 'todos',
   onCentroCustoChange,
 }: DRESimulationAnalysisProps) {
-  // Ajustes percentuais
-  const [ajustes, setAjustes] = useState({
-    receitaPercent: 0,
-    cmvPercent: 0,
-    impostosPercent: 0,
-    emprestimosPercent: 0,
-    despesasFinanceirasPercent: 0,
-  });
+  // Ajustes com valor e percentual
+  const [ajustes, setAjustes] = useState<AjustesDRE>(AJUSTES_INICIAIS);
 
   // Configuração de valuation
   const [valuationConfig, setValuationConfig] = useState<ValuationConfig>(DEFAULT_VALUATION_CONFIG);
@@ -135,18 +131,29 @@ export function DRESimulationAnalysis({
   ], [dreAtualCalculado, dreSimuladoCalculado]);
 
   // Handlers
-  const handleAjusteChange = (campo: keyof typeof ajustes, valor: number) => {
-    setAjustes(prev => ({ ...prev, [campo]: valor }));
+  const handleAjusteValorChange = (campo: keyof AjustesDRE, valor: number) => {
+    setAjustes(prev => ({ 
+      ...prev, 
+      [campo]: { ...prev[campo], valor } 
+    }));
+  };
+
+  const handleAjustePercentualChange = (campo: keyof AjustesDRE, percentual: number) => {
+    setAjustes(prev => ({ 
+      ...prev, 
+      [campo]: { ...prev[campo], percentual } 
+    }));
+  };
+
+  const parseInputValue = (value: string): number => {
+    // Suporta vírgula como separador decimal
+    const normalized = value.replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return isNaN(parsed) ? 0 : parsed;
   };
 
   const handleLimpar = () => {
-    setAjustes({
-      receitaPercent: 0,
-      cmvPercent: 0,
-      impostosPercent: 0,
-      emprestimosPercent: 0,
-      despesasFinanceirasPercent: 0,
-    });
+    setAjustes(AJUSTES_INICIAIS);
     setAiAnalysis('');
     setAnalysisError('');
   };
@@ -241,109 +248,73 @@ export function DRESimulationAnalysis({
               Ajustes de Cenário
             </CardTitle>
             <CardDescription>
-              Ajuste os percentuais para simular diferentes cenários
+              Insira valores ou percentuais para simular diferentes cenários
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Receita */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Receita</Label>
-                <Badge variant={ajustes.receitaPercent >= 0 ? 'default' : 'destructive'}>
-                  {ajustes.receitaPercent > 0 ? '+' : ''}{ajustes.receitaPercent}%
-                </Badge>
-              </div>
-              <Slider
-                value={[ajustes.receitaPercent]}
-                onValueChange={([v]) => handleAjusteChange('receitaPercent', v)}
-                min={-50}
-                max={50}
-                step={1}
-              />
-              <p className="text-xs text-muted-foreground">
-                Atual: {formatarMoeda(dreAtual.receita)} → Simulado: {formatarMoeda(valoresSimulados.receita)}
-              </p>
+          <CardContent className="space-y-4">
+            {/* Header da tabela */}
+            <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground border-b pb-2">
+              <div>Linha</div>
+              <div className="text-right">Valor (R$)</div>
+              <div className="text-right">Percentual (%)</div>
+              <div className="text-right">Simulado</div>
             </div>
+
+            {/* Receita */}
+            <AjusteRow
+              label="Receita"
+              valorOriginal={dreAtual.receita}
+              valorSimulado={valoresSimulados.receita}
+              ajuste={ajustes.receita}
+              onValorChange={(v) => handleAjusteValorChange('receita', v)}
+              onPercentualChange={(v) => handleAjustePercentualChange('receita', v)}
+              parseInputValue={parseInputValue}
+              isPositive
+            />
 
             {/* CMV */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>CMV (Custos Variáveis)</Label>
-                <Badge variant={ajustes.cmvPercent <= 0 ? 'default' : 'destructive'}>
-                  {ajustes.cmvPercent > 0 ? '+' : ''}{ajustes.cmvPercent}%
-                </Badge>
-              </div>
-              <Slider
-                value={[ajustes.cmvPercent]}
-                onValueChange={([v]) => handleAjusteChange('cmvPercent', v)}
-                min={-50}
-                max={50}
-                step={1}
-              />
-              <p className="text-xs text-muted-foreground">
-                Atual: {formatarMoeda(dreAtual.cmv)} → Simulado: {formatarMoeda(valoresSimulados.cmv)}
-              </p>
-            </div>
+            <AjusteRow
+              label="CMV (Custos Variáveis)"
+              valorOriginal={dreAtual.cmv}
+              valorSimulado={valoresSimulados.cmv}
+              ajuste={ajustes.cmv}
+              onValorChange={(v) => handleAjusteValorChange('cmv', v)}
+              onPercentualChange={(v) => handleAjustePercentualChange('cmv', v)}
+              parseInputValue={parseInputValue}
+            />
 
             {/* Impostos */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Impostos</Label>
-                <Badge variant={ajustes.impostosPercent <= 0 ? 'default' : 'destructive'}>
-                  {ajustes.impostosPercent > 0 ? '+' : ''}{ajustes.impostosPercent}%
-                </Badge>
-              </div>
-              <Slider
-                value={[ajustes.impostosPercent]}
-                onValueChange={([v]) => handleAjusteChange('impostosPercent', v)}
-                min={-50}
-                max={50}
-                step={1}
-              />
-              <p className="text-xs text-muted-foreground">
-                Atual: {formatarMoeda(dreAtual.impostos)} → Simulado: {formatarMoeda(valoresSimulados.impostos)}
-              </p>
-            </div>
+            <AjusteRow
+              label="Impostos"
+              valorOriginal={dreAtual.impostos}
+              valorSimulado={valoresSimulados.impostos}
+              ajuste={ajustes.impostos}
+              onValorChange={(v) => handleAjusteValorChange('impostos', v)}
+              onPercentualChange={(v) => handleAjustePercentualChange('impostos', v)}
+              parseInputValue={parseInputValue}
+            />
 
             {/* Empréstimos */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Empréstimos</Label>
-                <Badge variant={ajustes.emprestimosPercent <= 0 ? 'default' : 'destructive'}>
-                  {ajustes.emprestimosPercent > 0 ? '+' : ''}{ajustes.emprestimosPercent}%
-                </Badge>
-              </div>
-              <Slider
-                value={[ajustes.emprestimosPercent]}
-                onValueChange={([v]) => handleAjusteChange('emprestimosPercent', v)}
-                min={-50}
-                max={50}
-                step={1}
-              />
-              <p className="text-xs text-muted-foreground">
-                Atual: {formatarMoeda(dreAtual.emprestimos)} → Simulado: {formatarMoeda(valoresSimulados.emprestimos)}
-              </p>
-            </div>
+            <AjusteRow
+              label="Empréstimos"
+              valorOriginal={dreAtual.emprestimos}
+              valorSimulado={valoresSimulados.emprestimos}
+              ajuste={ajustes.emprestimos}
+              onValorChange={(v) => handleAjusteValorChange('emprestimos', v)}
+              onPercentualChange={(v) => handleAjustePercentualChange('emprestimos', v)}
+              parseInputValue={parseInputValue}
+            />
 
             {/* Despesas Financeiras */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Despesas Financeiras</Label>
-                <Badge variant={ajustes.despesasFinanceirasPercent <= 0 ? 'default' : 'destructive'}>
-                  {ajustes.despesasFinanceirasPercent > 0 ? '+' : ''}{ajustes.despesasFinanceirasPercent}%
-                </Badge>
-              </div>
-              <Slider
-                value={[ajustes.despesasFinanceirasPercent]}
-                onValueChange={([v]) => handleAjusteChange('despesasFinanceirasPercent', v)}
-                min={-50}
-                max={50}
-                step={1}
-              />
-              <p className="text-xs text-muted-foreground">
-                Atual: {formatarMoeda(dreAtual.despesasFinanceiras)} → Simulado: {formatarMoeda(valoresSimulados.despesasFinanceiras)}
-              </p>
-            </div>
+            <AjusteRow
+              label="Desp. Financeiras"
+              valorOriginal={dreAtual.despesasFinanceiras}
+              valorSimulado={valoresSimulados.despesasFinanceiras}
+              ajuste={ajustes.despesasFinanceiras}
+              onValorChange={(v) => handleAjusteValorChange('despesasFinanceiras', v)}
+              onPercentualChange={(v) => handleAjustePercentualChange('despesasFinanceiras', v)}
+              parseInputValue={parseInputValue}
+            />
           </CardContent>
         </Card>
 
@@ -791,6 +762,83 @@ export function DRESimulationAnalysis({
   );
 }
 
+// Componente auxiliar para linha de ajuste
+interface AjusteRowProps {
+  label: string;
+  valorOriginal: number;
+  valorSimulado: number;
+  ajuste: AjusteItem;
+  onValorChange: (valor: number) => void;
+  onPercentualChange: (percentual: number) => void;
+  parseInputValue: (value: string) => number;
+  isPositive?: boolean;
+}
+
+function AjusteRow({
+  label,
+  valorOriginal,
+  valorSimulado,
+  ajuste,
+  onValorChange,
+  onPercentualChange,
+  parseInputValue,
+  isPositive = false,
+}: AjusteRowProps) {
+  const temAjuste = ajuste.valor !== 0 || ajuste.percentual !== 0;
+  const variacao = valorOriginal !== 0 
+    ? ((valorSimulado - valorOriginal) / Math.abs(valorOriginal)) * 100 
+    : 0;
+  
+  const isPositivo = isPositive ? variacao > 0 : variacao < 0;
+  const isNegativo = isPositive ? variacao < 0 : variacao > 0;
+
+  return (
+    <div className="grid grid-cols-4 gap-2 items-center py-2 border-b border-border/50 last:border-0">
+      <div className="flex flex-col">
+        <Label className="text-sm font-medium">{label}</Label>
+        <span className="text-xs text-muted-foreground">
+          Atual: {formatarMoeda(valorOriginal)}
+        </span>
+      </div>
+      <div className="relative">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">R$</span>
+        <Input
+          type="text"
+          value={ajuste.valor === 0 ? '' : ajuste.valor.toString().replace('.', ',')}
+          onChange={(e) => onValorChange(parseInputValue(e.target.value))}
+          placeholder="0,00"
+          className="pl-7 text-right h-9 text-sm"
+        />
+      </div>
+      <div className="relative">
+        <Input
+          type="text"
+          value={ajuste.percentual === 0 ? '' : ajuste.percentual.toString().replace('.', ',')}
+          onChange={(e) => onPercentualChange(parseInputValue(e.target.value))}
+          placeholder="0"
+          className="pr-6 text-right h-9 text-sm"
+        />
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">%</span>
+      </div>
+      <div className="text-right">
+        <span className={`text-sm font-medium ${
+          temAjuste ? (isPositivo ? 'text-green-600' : isNegativo ? 'text-destructive' : '') : 'text-muted-foreground'
+        }`}>
+          {formatarMoeda(valorSimulado)}
+        </span>
+        {temAjuste && (
+          <Badge 
+            variant={isPositivo ? 'default' : isNegativo ? 'destructive' : 'secondary'}
+            className="ml-2 text-xs"
+          >
+            {variacao > 0 ? '+' : ''}{variacao.toFixed(1)}%
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Componente auxiliar para linhas do resultado
 interface ResultRowProps {
   label: string;
@@ -832,7 +880,7 @@ function ResultRow({
         </span>
         <span className="text-muted-foreground">→</span>
         <span className={`w-32 text-right ${
-          isPositivo ? 'text-green-600' : isNegativo ? 'text-red-600' : ''
+          isPositivo ? 'text-green-600' : isNegativo ? 'text-destructive' : ''
         }`}>
           {formatarMoeda(valorSimulado)}
           {percentualSimulado !== undefined && (
