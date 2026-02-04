@@ -7,7 +7,8 @@ import {
   CalendarDays,
   Wallet,
   LineChart as LineChartIcon,
-  BarChart3
+  BarChart3,
+  Calculator
 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,8 @@ import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRa
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { DREAnalysis } from "./DREAnalysis";
+import { DRESimulationAnalysis } from "./DRESimulationAnalysis";
+import { DREValues } from "@/lib/valuation-utils";
 import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
 import { ReguaCobranca } from "./ReguaCobranca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,7 +97,15 @@ export function Dashboard() {
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
   
   // Controle de visualização
-  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca'>('faturamento');
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao'>('faturamento');
+  const [dreValoresParaSimulacao, setDreValoresParaSimulacao] = useState<DREValues>({
+    receita: 0,
+    cmv: 0,
+    despesasAdm: 0,
+    impostos: 0,
+    emprestimos: 0,
+    despesasFinanceiras: 0,
+  });
 
   // Obter cores do tema do centro de custo selecionado
   const companyTheme = useMemo(() => {
@@ -122,6 +133,99 @@ export function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [datePreset, customRange, selectedCentroCusto, selectedContaBancaria]);
+
+  // Buscar dados do DRE para simulação quando acessar a aba
+  useEffect(() => {
+    if (analiseAtiva === 'simulacao') {
+      fetchDREDataForSimulation();
+    }
+  }, [analiseAtiva, datePreset, customRange, selectedCentroCusto]);
+
+  const fetchDREDataForSimulation = async () => {
+    try {
+      const dateRange = getDateRange();
+      
+      // Buscar planos de contas
+      const { data: planosContas } = await supabase
+        .from('plano_contas')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo');
+
+      if (!planosContas) return;
+
+      const getAccountIds = (codigoPrefix: string) => {
+        return planosContas
+          .filter(p => p.codigo.startsWith(codigoPrefix))
+          .map(p => p.id);
+      };
+
+      // Buscar receitas
+      let receitasQuery = supabase
+        .from('contas_receber')
+        .select('valor, plano_conta_id');
+
+      if (dateRange) {
+        receitasQuery = receitasQuery
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
+      }
+
+      if (selectedCentroCusto !== 'todos') {
+        receitasQuery = receitasQuery.eq('centro_custo', selectedCentroCusto);
+      }
+
+      const { data: receitas } = await receitasQuery;
+
+      // Buscar despesas
+      let despesasQuery = supabase
+        .from('contas_pagar')
+        .select('valor, plano_conta_id');
+
+      if (dateRange) {
+        despesasQuery = despesasQuery
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
+      }
+
+      if (selectedCentroCusto !== 'todos') {
+        despesasQuery = despesasQuery.eq('centro_custo', selectedCentroCusto);
+      }
+
+      const { data: despesas } = await despesasQuery;
+
+      // Calcular totais por categoria
+      const receitaIds = getAccountIds('1.1');
+      const cmvIds = getAccountIds('2.1');
+      const despAdmIds = getAccountIds('3.1');
+      const impostosIds = getAccountIds('4.1');
+      const despFinIds = getAccountIds('5.1');
+      const emprestimosIds = getAccountIds('6.1');
+
+      const calcularTotal = (dados: any[], ids: string[]) => {
+        return dados
+          ?.filter(d => d.plano_conta_id && ids.includes(d.plano_conta_id))
+          .reduce((sum, d) => sum + Number(d.valor), 0) || 0;
+      };
+
+      const receitaTotal = calcularTotal(receitas || [], receitaIds);
+      const cmvTotal = calcularTotal(despesas || [], cmvIds);
+      const despAdmTotal = calcularTotal(despesas || [], despAdmIds);
+      const impostosTotal = calcularTotal(despesas || [], impostosIds);
+      const despFinTotal = calcularTotal(despesas || [], despFinIds);
+      const emprestimosTotal = calcularTotal(despesas || [], emprestimosIds);
+
+      setDreValoresParaSimulacao({
+        receita: receitaTotal,
+        cmv: cmvTotal,
+        despesasAdm: despAdmTotal,
+        impostos: impostosTotal,
+        emprestimos: emprestimosTotal,
+        despesasFinanceiras: despFinTotal,
+      });
+    } catch (error) {
+      console.error('Erro ao buscar dados do DRE para simulação:', error);
+    }
+  };
 
   // Função auxiliar formatDateLocal agora é importada de fluxo-caixa-utils
 
@@ -611,6 +715,17 @@ export function Dashboard() {
                 <AlertTriangle className="w-4 h-4" />
                 Cobrança
               </button>
+              <button
+                onClick={() => setAnaliseAtiva('simulacao')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'simulacao'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Calculator className="w-4 h-4" />
+                Simulação
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4" />
@@ -630,7 +745,7 @@ export function Dashboard() {
             customRange={customRange}
           />
 
-          {analiseAtiva !== 'caixa' && (
+          {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && (
             <CentroCustoFilterSelect
               value={selectedCentroCusto}
               onValueChange={setSelectedCentroCusto}
@@ -1091,6 +1206,14 @@ export function Dashboard() {
               centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
             />
           </div>
+        )}
+
+        {/* Simulação DRE */}
+        {analiseAtiva === 'simulacao' && (
+          <DRESimulationAnalysis 
+            dreAtual={dreValoresParaSimulacao}
+            isLoading={isLoading}
+          />
         )}
       </div>
     </div>
