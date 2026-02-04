@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -800,14 +801,12 @@ function AjusteRow({
           Atual: {formatarMoeda(valorOriginal)}
         </span>
       </div>
-      <div className="relative">
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">R$</span>
-        <Input
-          type="text"
-          value={ajuste.valor === 0 ? '' : ajuste.valor.toString().replace('.', ',')}
-          onChange={(e) => onValorChange(parseInputValue(e.target.value))}
+      <div>
+        <CurrencyInput
+          value={ajuste.valor}
+          onChange={onValorChange}
           placeholder="0,00"
-          className="pl-7 text-right h-9 text-sm"
+          className="h-9 text-sm"
         />
       </div>
       <div className="relative">
