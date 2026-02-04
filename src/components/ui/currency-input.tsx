@@ -1,41 +1,54 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 
-// Formata número para o padrão brasileiro: 1.000,00
+// Formata número para o padrão brasileiro: 1.000,00 (suporta negativos)
 export function formatBrazilianCurrency(value: number): string {
   if (isNaN(value) || value === 0) return '';
   
-  return value.toLocaleString('pt-BR', {
+  const isNegative = value < 0;
+  const absValue = Math.abs(value);
+  
+  const formatted = absValue.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  
+  return isNegative ? `-${formatted}` : formatted;
 }
 
-// Parse valor brasileiro para número
+// Parse valor brasileiro para número (suporta negativos)
 export function parseBrazilianCurrency(value: string): number {
   if (!value) return 0;
+  // Verifica se é negativo
+  const isNegative = value.includes('-');
   // Remove pontos (separador de milhar) e substitui vírgula por ponto
-  const cleaned = value.replace(/\./g, '').replace(',', '.');
+  const cleaned = value.replace(/\./g, '').replace(',', '.').replace('-', '');
   const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
+  if (isNaN(parsed)) return 0;
+  return isNegative ? -parsed : parsed;
 }
 
-// Formata valor como moeda brasileira enquanto digita (apenas números)
+// Formata valor como moeda brasileira enquanto digita (suporta negativos)
 function formatAsCurrency(value: string): string {
+  // Verifica se é negativo
+  const isNegative = value.includes('-');
+  
   // Remove tudo que não é número
   const numbers = value.replace(/\D/g, '');
   
-  if (!numbers) return '';
+  if (!numbers) return isNegative ? '-' : '';
   
   // Converte para centavos e depois para reais
   const cents = parseInt(numbers, 10);
   const reais = cents / 100;
   
   // Formata como moeda brasileira
-  return reais.toLocaleString('pt-BR', {
+  const formatted = reais.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  
+  return isNegative ? `-${formatted}` : formatted;
 }
 
 interface CurrencyInputProps {
