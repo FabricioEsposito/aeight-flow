@@ -101,25 +101,49 @@ export function calcularDRE(values: DREValues): DRECalculated {
 }
 
 /**
- * Aplica ajustes percentuais aos valores do DRE
+ * Interface para ajustes com valor e percentual
+ */
+export interface AjusteItem {
+  valor: number; // Valor absoluto a adicionar/subtrair
+  percentual: number; // Percentual a adicionar/subtrair
+}
+
+export interface AjustesDRE {
+  receita: AjusteItem;
+  cmv: AjusteItem;
+  impostos: AjusteItem;
+  emprestimos: AjusteItem;
+  despesasFinanceiras: AjusteItem;
+}
+
+export const AJUSTES_INICIAIS: AjustesDRE = {
+  receita: { valor: 0, percentual: 0 },
+  cmv: { valor: 0, percentual: 0 },
+  impostos: { valor: 0, percentual: 0 },
+  emprestimos: { valor: 0, percentual: 0 },
+  despesasFinanceiras: { valor: 0, percentual: 0 },
+};
+
+/**
+ * Aplica ajustes de valor e percentual aos valores do DRE
+ * Fórmula: NovoValor = (ValorOriginal * (1 + percentual/100)) + valor
  */
 export function aplicarAjustes(
   valoresOriginais: DREValues,
-  ajustes: {
-    receitaPercent: number;
-    cmvPercent: number;
-    impostosPercent: number;
-    emprestimosPercent: number;
-    despesasFinanceirasPercent: number;
-  }
+  ajustes: AjustesDRE
 ): DREValues {
+  const aplicar = (original: number, ajuste: AjusteItem) => {
+    const comPercentual = original * (1 + ajuste.percentual / 100);
+    return comPercentual + ajuste.valor;
+  };
+
   return {
-    receita: valoresOriginais.receita * (1 + ajustes.receitaPercent / 100),
-    cmv: valoresOriginais.cmv * (1 + ajustes.cmvPercent / 100),
+    receita: aplicar(valoresOriginais.receita, ajustes.receita),
+    cmv: aplicar(valoresOriginais.cmv, ajustes.cmv),
     despesasAdm: valoresOriginais.despesasAdm, // Não ajustável no simulador
-    impostos: valoresOriginais.impostos * (1 + ajustes.impostosPercent / 100),
-    emprestimos: valoresOriginais.emprestimos * (1 + ajustes.emprestimosPercent / 100),
-    despesasFinanceiras: valoresOriginais.despesasFinanceiras * (1 + ajustes.despesasFinanceirasPercent / 100),
+    impostos: aplicar(valoresOriginais.impostos, ajustes.impostos),
+    emprestimos: aplicar(valoresOriginais.emprestimos, ajustes.emprestimos),
+    despesasFinanceiras: aplicar(valoresOriginais.despesasFinanceiras, ajustes.despesasFinanceiras),
   };
 }
 
