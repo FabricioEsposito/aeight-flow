@@ -1213,6 +1213,8 @@ export function Dashboard() {
           <DRESimulationAnalysis 
             dreAtual={dreValoresParaSimulacao}
             isLoading={isLoading}
+            selectedCentroCusto={selectedCentroCusto}
+            onCentroCustoChange={setSelectedCentroCusto}
           />
         )}
       </div>

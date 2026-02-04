@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,8 @@ import {
   CheckCircle,
   Loader2,
   BarChart3,
-  DollarSign
+  DollarSign,
+  Building2
 } from 'lucide-react';
 import { 
   ComposedChart, 
@@ -49,13 +50,21 @@ import {
   formatarMoeda,
   formatarPercentual,
 } from '@/lib/valuation-utils';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 
 interface DRESimulationAnalysisProps {
   dreAtual: DREValues;
   isLoading?: boolean;
+  selectedCentroCusto?: string;
+  onCentroCustoChange?: (value: string) => void;
 }
 
-export function DRESimulationAnalysis({ dreAtual, isLoading = false }: DRESimulationAnalysisProps) {
+export function DRESimulationAnalysis({ 
+  dreAtual, 
+  isLoading = false,
+  selectedCentroCusto = 'todos',
+  onCentroCustoChange,
+}: DRESimulationAnalysisProps) {
   // Ajustes percentuais
   const [ajustes, setAjustes] = useState({
     receitaPercent: 0,
@@ -200,17 +209,27 @@ export function DRESimulationAnalysis({ dreAtual, isLoading = false }: DRESimula
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Simulação DRE & Valuation</h2>
           <p className="text-muted-foreground">
             Simule cenários e analise o impacto no resultado da empresa
           </p>
         </div>
-        <Button variant="outline" onClick={handleLimpar}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Limpar
-        </Button>
+        <div className="flex items-center gap-3">
+          {onCentroCustoChange && (
+            <CentroCustoFilterSelect
+              value={selectedCentroCusto}
+              onValueChange={onCentroCustoChange}
+              placeholder="Centro de Custo"
+              className="w-[220px]"
+            />
+          )}
+          <Button variant="outline" onClick={handleLimpar}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Limpar
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
