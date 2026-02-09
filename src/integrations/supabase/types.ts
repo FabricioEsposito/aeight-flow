@@ -353,6 +353,8 @@ export type Database = {
       }
       contratos: {
         Row: {
+          ajuste_ipca: boolean | null
+          aviso_previo_dias: number | null
           centro_custo: string | null
           cliente_id: string | null
           cofins_percentual: number | null
@@ -382,6 +384,7 @@ export type Database = {
           plano_contas_id: string
           quantidade: number
           recorrente: boolean | null
+          renovacao_automatica: boolean | null
           servicos: Json | null
           status: string | null
           tipo_contrato: string
@@ -393,6 +396,8 @@ export type Database = {
           vendedor_responsavel: string | null
         }
         Insert: {
+          ajuste_ipca?: boolean | null
+          aviso_previo_dias?: number | null
           centro_custo?: string | null
           cliente_id?: string | null
           cofins_percentual?: number | null
@@ -422,6 +427,7 @@ export type Database = {
           plano_contas_id: string
           quantidade?: number
           recorrente?: boolean | null
+          renovacao_automatica?: boolean | null
           servicos?: Json | null
           status?: string | null
           tipo_contrato: string
@@ -433,6 +439,8 @@ export type Database = {
           vendedor_responsavel?: string | null
         }
         Update: {
+          ajuste_ipca?: boolean | null
+          aviso_previo_dias?: number | null
           centro_custo?: string | null
           cliente_id?: string | null
           cofins_percentual?: number | null
@@ -462,6 +470,7 @@ export type Database = {
           plano_contas_id?: string
           quantidade?: number
           recorrente?: boolean | null
+          renovacao_automatica?: boolean | null
           servicos?: Json | null
           status?: string | null
           tipo_contrato?: string

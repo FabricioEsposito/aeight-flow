@@ -4,6 +4,7 @@ import { ArrowLeft, Save, MoreVertical, X, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -61,6 +62,9 @@ export default function EditarContratoCompleto() {
   const [observacoesFaturamento, setObservacoesFaturamento] = useState('');
   const [importanciaClienteFornecedor, setImportanciaClienteFornecedor] = useState<'importante' | 'mediano' | 'nao_importante'>('mediano');
   const [contasBancarias, setContasBancarias] = useState<any[]>([]);
+  const [avisoPrevioDias, setAvisoPrevioDias] = useState(0);
+  const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
+  const [ajusteIpca, setAjusteIpca] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -123,6 +127,9 @@ export default function EditarContratoCompleto() {
       setLinkContrato(data.link_contrato || '');
       setObservacoesFaturamento(data.observacoes_faturamento || '');
       setImportanciaClienteFornecedor(data.importancia_cliente_fornecedor || 'mediano');
+      setAvisoPrevioDias(data.aviso_previo_dias || 0);
+      setRenovacaoAutomatica(data.renovacao_automatica || false);
+      setAjusteIpca(data.ajuste_ipca || false);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -183,6 +190,9 @@ export default function EditarContratoCompleto() {
           link_contrato: linkContrato,
           observacoes_faturamento: observacoesFaturamento || null,
           importancia_cliente_fornecedor: importanciaClienteFornecedor,
+          aviso_previo_dias: avisoPrevioDias,
+          renovacao_automatica: renovacaoAutomatica,
+          ajuste_ipca: ajusteIpca,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
@@ -504,6 +514,51 @@ export default function EditarContratoCompleto() {
               placeholder="Observações que serão consideradas no faturamento..."
             />
           </div>
+
+          {/* Campos adicionais para contratos de venda */}
+          {tipoContrato === 'venda' && (
+            <div className="border-t pt-4 space-y-4">
+              <h3 className="font-semibold text-sm">Condições do Contrato</h3>
+              
+              <div className="space-y-2">
+                <Label>Aviso Prévio (dias)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={90}
+                  value={avisoPrevioDias}
+                  onChange={(e) => {
+                    const val = Math.min(90, Math.max(0, Number(e.target.value)));
+                    setAvisoPrevioDias(val);
+                  }}
+                  placeholder="0 a 90 dias"
+                />
+                <p className="text-xs text-muted-foreground">Máximo de 90 dias</p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-renovacao-automatica"
+                  checked={renovacaoAutomatica}
+                  onCheckedChange={(checked) => setRenovacaoAutomatica(checked === true)}
+                />
+                <Label htmlFor="edit-renovacao-automatica" className="cursor-pointer">
+                  Renovação automática a cada 12 meses
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-ajuste-ipca"
+                  checked={ajusteIpca}
+                  onCheckedChange={(checked) => setAjusteIpca(checked === true)}
+                />
+                <Label htmlFor="edit-ajuste-ipca" className="cursor-pointer">
+                  Ajuste pelo IPCA após 12 meses de contrato
+                </Label>
+              </div>
+            </div>
+          )}
 
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">Valor Total Calculado:</p>
