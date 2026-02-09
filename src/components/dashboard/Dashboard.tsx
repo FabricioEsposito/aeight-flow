@@ -663,7 +663,7 @@ export function Dashboard() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 border rounded-lg p-1 bg-muted/50">
               <button
-                onClick={() => setAnaliseAtiva('faturamento')}
+                onClick={() => { setAnaliseAtiva('faturamento'); setDatePreset('este-mes'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'faturamento'
                     ? 'bg-background text-foreground shadow-sm'
@@ -674,7 +674,7 @@ export function Dashboard() {
                 Faturamento
               </button>
               <button
-                onClick={() => setAnaliseAtiva('caixa')}
+                onClick={() => { setAnaliseAtiva('caixa'); setDatePreset('este-mes'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'caixa'
                     ? 'bg-background text-foreground shadow-sm'
@@ -685,7 +685,7 @@ export function Dashboard() {
                 Caixa
               </button>
               <button
-                onClick={() => setAnaliseAtiva('dre')}
+                onClick={() => { setAnaliseAtiva('dre'); setDatePreset('este-mes'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'dre'
                     ? 'bg-background text-foreground shadow-sm'
@@ -696,7 +696,7 @@ export function Dashboard() {
                 DRE
               </button>
               <button
-                onClick={() => setAnaliseAtiva('credito')}
+                onClick={() => { setAnaliseAtiva('credito'); setDatePreset('todo-periodo'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'credito'
                     ? 'bg-background text-foreground shadow-sm'
@@ -707,7 +707,7 @@ export function Dashboard() {
                 Crédito
               </button>
               <button
-                onClick={() => setAnaliseAtiva('cobranca')}
+                onClick={() => { setAnaliseAtiva('cobranca'); setDatePreset('todo-periodo'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'cobranca'
                     ? 'bg-background text-foreground shadow-sm'
@@ -718,7 +718,7 @@ export function Dashboard() {
                 Cobrança
               </button>
               <button
-                onClick={() => setAnaliseAtiva('simulacao')}
+                onClick={() => { setAnaliseAtiva('simulacao'); setDatePreset('este-mes'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'simulacao'
                     ? 'bg-background text-foreground shadow-sm'
@@ -729,7 +729,7 @@ export function Dashboard() {
                 Simulação
               </button>
               <button
-                onClick={() => setAnaliseAtiva('contratos')}
+                onClick={() => { setAnaliseAtiva('contratos'); setDatePreset('todo-periodo'); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   analiseAtiva === 'contratos'
                     ? 'bg-background text-foreground shadow-sm'
