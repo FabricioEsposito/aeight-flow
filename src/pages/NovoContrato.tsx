@@ -177,8 +177,8 @@ export default function NovoContrato() {
       setNumeroContrato(data.numero_contrato);
       setClienteId(data.cliente_id || '');
       setFornecedorId(data.fornecedor_id || '');
-      setDataInicio(data.data_inicio ? new Date(data.data_inicio) : new Date());
-      setDataTermino(data.data_fim ? new Date(data.data_fim) : null);
+      setDataInicio(data.data_inicio ? new Date(data.data_inicio + 'T00:00:00') : new Date());
+      setDataTermino(data.data_fim ? new Date(data.data_fim + 'T00:00:00') : null);
       setTipoTermino(data.data_fim ? 'periodo' : 'recorrente');
       setPeriodoRecorrencia(data.periodo_recorrencia || 'mensal');
       setPlanoContasId(data.plano_contas_id);

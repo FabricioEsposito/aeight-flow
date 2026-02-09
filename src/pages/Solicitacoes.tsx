@@ -857,7 +857,7 @@ export default function Solicitacoes() {
                     <div className="flex justify-between text-sm py-2 border-b bg-orange-50 -mx-3 px-3">
                       <span className="text-muted-foreground">Data de Vencimento:</span>
                       <span className="font-medium text-orange-600">
-                        {format(new Date(solicitacao.data_vencimento_atual), 'dd/MM/yyyy')} → {format(new Date(solicitacao.data_vencimento_solicitada), 'dd/MM/yyyy')}
+                        {format(new Date(solicitacao.data_vencimento_atual + 'T00:00:00'), 'dd/MM/yyyy')} → {format(new Date(solicitacao.data_vencimento_solicitada + 'T00:00:00'), 'dd/MM/yyyy')}
                       </span>
                     </div>
                   )}
@@ -1068,7 +1068,7 @@ export default function Solicitacoes() {
                       <div className="mt-4 space-y-2 text-sm">
                         {confirmDialog.solicitacao.data_vencimento_atual !== confirmDialog.solicitacao.data_vencimento_solicitada && (
                           <p>
-                            <strong>Data de Vencimento:</strong> {format(new Date(confirmDialog.solicitacao.data_vencimento_atual), 'dd/MM/yyyy')} → {format(new Date(confirmDialog.solicitacao.data_vencimento_solicitada), 'dd/MM/yyyy')}
+                            <strong>Data de Vencimento:</strong> {format(new Date(confirmDialog.solicitacao.data_vencimento_atual + 'T00:00:00'), 'dd/MM/yyyy')} → {format(new Date(confirmDialog.solicitacao.data_vencimento_solicitada + 'T00:00:00'), 'dd/MM/yyyy')}
                           </p>
                         )}
                         {confirmDialog.solicitacao.juros_atual !== confirmDialog.solicitacao.juros_solicitado && (

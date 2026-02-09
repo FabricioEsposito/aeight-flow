@@ -101,8 +101,8 @@ export default function EditarContrato() {
         .single();
       
       if (primeiraParcelaData && data.data_inicio) {
-        const dataInicio = new Date(data.data_inicio);
-        const dataVenc = new Date(primeiraParcelaData.data_vencimento);
+        const dataInicio = new Date(data.data_inicio + 'T00:00:00');
+        const dataVenc = new Date(primeiraParcelaData.data_vencimento + 'T00:00:00');
         const diffTime = Math.abs(dataVenc.getTime() - dataInicio.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         setDiaVencimento(diffDays);
@@ -173,7 +173,7 @@ export default function EditarContrato() {
 
       // Calcular data de competência baseada no número da parcela e recorrência
       const contrato = parcela.contratos;
-      const dataInicio = new Date(contrato.data_inicio);
+      const dataInicio = new Date(contrato.data_inicio + 'T00:00:00');
       let dataCompetencia = new Date(dataInicio);
       
       if (contrato.recorrente && contrato.periodo_recorrencia) {
