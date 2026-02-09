@@ -8,7 +8,8 @@ import {
   Wallet,
   LineChart as LineChartIcon,
   BarChart3,
-  Calculator
+  Calculator,
+  FileText
 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { DRESimulationAnalysis } from "./DRESimulationAnalysis";
 import { DREValues } from "@/lib/valuation-utils";
 import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
 import { ReguaCobranca } from "./ReguaCobranca";
+import { GestaoContratosAnalysis } from "./GestaoContratosAnalysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContaBancariaMultiSelect } from "@/components/financeiro/ContaBancariaMultiSelect";
 import { calcularFluxoCaixa, prepararMovimentacoes, formatDateLocal } from "@/lib/fluxo-caixa-utils";
@@ -97,7 +99,7 @@ export function Dashboard() {
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
   
   // Controle de visualização
-  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao'>('faturamento');
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao' | 'contratos'>('faturamento');
   const [dreValoresParaSimulacao, setDreValoresParaSimulacao] = useState<DREValues>({
     receita: 0,
     cmv: 0,
@@ -726,6 +728,17 @@ export function Dashboard() {
                 <Calculator className="w-4 h-4" />
                 Simulação
               </button>
+              <button
+                onClick={() => setAnaliseAtiva('contratos')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'contratos'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Contratos
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4" />
@@ -745,7 +758,7 @@ export function Dashboard() {
             customRange={customRange}
           />
 
-          {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && (
+          {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && analiseAtiva !== 'contratos' && (
             <CentroCustoFilterSelect
               value={selectedCentroCusto}
               onValueChange={setSelectedCentroCusto}
@@ -854,6 +867,20 @@ export function Dashboard() {
             companyTheme={companyTheme}
           />
         </div>
+      ) : analiseAtiva === 'contratos' ? (
+        <>
+          <div className="flex flex-wrap gap-4 -mt-4">
+            <CentroCustoFilterSelect
+              value={selectedCentroCusto}
+              onValueChange={setSelectedCentroCusto}
+              className="w-[250px]"
+            />
+          </div>
+          <GestaoContratosAnalysis
+            selectedCentroCusto={selectedCentroCusto}
+            companyTheme={companyTheme}
+          />
+        </>
       ) : null}
 
       {/* Charts */}
