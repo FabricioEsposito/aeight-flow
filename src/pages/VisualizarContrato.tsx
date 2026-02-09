@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Calendar, DollarSign, User, Building2 } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, DollarSign, User, Building2, RefreshCw, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -236,6 +236,35 @@ export default function VisualizarContrato() {
                       Visualizar Documento
                     </a>
                   </p>
+                </div>
+              </>
+            )}
+            {/* Condições do Contrato - apenas venda */}
+            {contrato.tipo_contrato === 'venda' && (contrato.aviso_previo_dias > 0 || contrato.renovacao_automatica || contrato.ajuste_ipca) && (
+              <>
+                <Separator />
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Condições do Contrato</label>
+                  <div className="mt-2 space-y-2">
+                    {contrato.aviso_previo_dias > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm">Aviso prévio: <span className="font-medium">{contrato.aviso_previo_dias} dias</span></p>
+                      </div>
+                    )}
+                    {contrato.renovacao_automatica && (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm">Renovação automática a cada 12 meses</p>
+                      </div>
+                    )}
+                    {contrato.ajuste_ipca && (
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm">Ajuste pelo IPCA após 12 meses</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}

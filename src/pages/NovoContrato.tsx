@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, X, TrendingUp } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -103,6 +104,11 @@ export default function NovoContrato() {
   // Percentual de investimento em mídia (para centro de custo 003_Cryah e serviço MKTD004)
   const [percentualInvestimentoMidia, setPercentualInvestimentoMidia] = useState(0);
 
+  // Novos campos de contrato
+  const [avisoPrevioDias, setAvisoPrevioDias] = useState(0);
+  const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
+  const [ajusteIpca, setAjusteIpca] = useState(false);
+
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
   
@@ -195,6 +201,9 @@ export default function NovoContrato() {
       setLinkContrato(data.link_contrato || '');
       setPercentualInvestimentoMidia(data.percentual_investimento_midia || 0);
       setObservacoesFaturamento(data.observacoes_faturamento || '');
+      setAvisoPrevioDias(data.aviso_previo_dias || 0);
+      setRenovacaoAutomatica(data.renovacao_automatica || false);
+      setAjusteIpca(data.ajuste_ipca || false);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -451,7 +460,10 @@ export default function NovoContrato() {
         link_contrato: linkContrato,
         percentual_investimento_midia: percentualInvestimentoMidia,
         observacoes_faturamento: observacoesFaturamento || null,
-        status: 'ativo'
+        status: 'ativo',
+        aviso_previo_dias: avisoPrevioDias,
+        renovacao_automatica: renovacaoAutomatica,
+        ajuste_ipca: ajusteIpca,
       };
 
       let contratoId = id;
@@ -1176,6 +1188,51 @@ export default function NovoContrato() {
                   rows={3}
                 />
               </div>
+
+              {/* Campos adicionais para contratos de venda */}
+              {tipoContrato === 'venda' && (
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="font-semibold text-sm">Condições do Contrato</h3>
+                  
+                  <div className="space-y-2">
+                    <Label>Aviso Prévio (dias)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={avisoPrevioDias}
+                      onChange={(e) => {
+                        const val = Math.min(90, Math.max(0, Number(e.target.value)));
+                        setAvisoPrevioDias(val);
+                      }}
+                      placeholder="0 a 90 dias"
+                    />
+                    <p className="text-xs text-muted-foreground">Máximo de 90 dias</p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="renovacao-automatica"
+                      checked={renovacaoAutomatica}
+                      onCheckedChange={(checked) => setRenovacaoAutomatica(checked === true)}
+                    />
+                    <Label htmlFor="renovacao-automatica" className="cursor-pointer">
+                      Renovação automática a cada 12 meses
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="ajuste-ipca"
+                      checked={ajusteIpca}
+                      onCheckedChange={(checked) => setAjusteIpca(checked === true)}
+                    />
+                    <Label htmlFor="ajuste-ipca" className="cursor-pointer">
+                      Ajuste pelo IPCA após 12 meses de contrato
+                    </Label>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
