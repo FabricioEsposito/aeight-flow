@@ -44,7 +44,8 @@ export function GestaoContratosAnalysis({ selectedCentroCusto, companyTheme }: G
 
       let query = supabase
         .from("contratos")
-        .select("id, status, data_inicio, valor_total, centro_custo");
+        .select("id, status, data_inicio, valor_total, centro_custo")
+        .eq("tipo_contrato", "venda");
 
       if (selectedCentroCusto !== "todos") {
         query = query.eq("centro_custo", selectedCentroCusto);
