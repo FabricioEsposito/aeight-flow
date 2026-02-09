@@ -15,7 +15,7 @@ interface CompanyThemeColors {
 }
 
 interface IPCAReajusteContratosProps {
-  selectedCentroCusto: string;
+  selectedCentroCusto: string[];
   companyTheme: CompanyThemeColors | null;
 }
 
@@ -95,8 +95,8 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
         .eq("status", "ativo")
         .eq("ajuste_ipca", true);
 
-      if (selectedCentroCusto !== "todos") {
-        query = query.eq("centro_custo", selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        query = query.in("centro_custo", selectedCentroCusto);
       }
 
       const { data, error } = await query;

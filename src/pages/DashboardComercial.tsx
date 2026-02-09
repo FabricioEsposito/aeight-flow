@@ -81,7 +81,7 @@ export default function DashboardComercial() {
   const [loading, setLoading] = useState(true);
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>("");
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Fetch user's vendedor_id from profile
@@ -168,16 +168,16 @@ export default function DashboardComercial() {
       let vendedoresQuery = (supabase as any).from("vendedores").select("*").eq("status", "ativo").eq("is_merged", false);
       if (isSalesperson && userVendedorId) {
         vendedoresQuery = vendedoresQuery.eq("id", userVendedorId);
-      } else if (selectedCentroCusto) {
-        // Find vendedor IDs linked to this centro_custo
+      } else if (selectedCentroCusto.length > 0) {
+        // Find vendedor IDs linked to these centro_custos
         const vendedorIdsForCenter = (vendedoresCentros || [])
-          .filter((vc: any) => vc.centro_custo_id === selectedCentroCusto)
+          .filter((vc: any) => selectedCentroCusto.includes(vc.centro_custo_id))
           .map((vc: any) => vc.vendedor_id);
         if (vendedorIdsForCenter.length > 0) {
           vendedoresQuery = vendedoresQuery.in("id", vendedorIdsForCenter);
         } else {
           // Fallback to legacy centro_custo field
-          vendedoresQuery = vendedoresQuery.eq("centro_custo", selectedCentroCusto);
+          vendedoresQuery = vendedoresQuery.in("centro_custo", selectedCentroCusto);
         }
       }
       const vendedoresRes = await vendedoresQuery;
@@ -225,8 +225,8 @@ export default function DashboardComercial() {
           : contratosQuery.eq("vendedor_responsavel", userVendedorId);
       }
 
-      if (selectedCentroCusto && !isSalesperson) {
-        contratosQuery = contratosQuery.eq("centro_custo", selectedCentroCusto);
+      if (selectedCentroCusto.length > 0 && !isSalesperson) {
+        contratosQuery = contratosQuery.in("centro_custo", selectedCentroCusto);
       }
 
       const contratosRes = await contratosQuery;
@@ -442,7 +442,7 @@ export default function DashboardComercial() {
             {!isSalesperson && (
               <CentroCustoFilterSelect
                 value={selectedCentroCusto}
-                onValueChange={(v) => setSelectedCentroCusto(v === 'todos' ? '' : v)}
+                onValueChange={setSelectedCentroCusto}
                 placeholder="Centro de Custo"
                 className="w-[250px]"
               />

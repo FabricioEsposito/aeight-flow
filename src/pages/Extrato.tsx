@@ -76,7 +76,7 @@ export default function Extrato() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [centroCustoFilter, setCentroCustoFilter] = useState<string>('todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
   const [categoriaFilter, setCategoriaFilter] = useState<string>('todos');
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
@@ -1283,8 +1283,8 @@ export default function Extrato() {
                         (lanc.conta_bancaria_id && contaBancariaFilter.includes(lanc.conta_bancaria_id));
 
     let matchesCentroCusto = true;
-    if (centroCustoFilter !== 'todos') {
-      matchesCentroCusto = lanc.centro_custo === centroCustoFilter;
+    if (centroCustoFilter.length > 0) {
+      matchesCentroCusto = !!lanc.centro_custo && centroCustoFilter.includes(lanc.centro_custo);
     }
 
     let matchesCategoria = true;

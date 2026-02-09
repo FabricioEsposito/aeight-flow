@@ -84,7 +84,7 @@ export default function ContasReceber() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [centroCustoFilter, setCentroCustoFilter] = useState<string>('todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
   const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
@@ -492,8 +492,8 @@ export default function ContasReceber() {
     }
 
     let matchesCentroCusto = true;
-    if (centroCustoFilter !== 'todos') {
-      matchesCentroCusto = conta.centro_custo === centroCustoFilter;
+    if (centroCustoFilter.length > 0) {
+      matchesCentroCusto = !!conta.centro_custo && centroCustoFilter.includes(conta.centro_custo);
     }
 
     return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria && matchesCentroCusto;

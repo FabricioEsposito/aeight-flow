@@ -58,14 +58,14 @@ import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilt
 interface DRESimulationAnalysisProps {
   dreAtual: DREValues;
   isLoading?: boolean;
-  selectedCentroCusto?: string;
-  onCentroCustoChange?: (value: string) => void;
+  selectedCentroCusto?: string[];
+  onCentroCustoChange?: (value: string[]) => void;
 }
 
 export function DRESimulationAnalysis({ 
   dreAtual, 
   isLoading = false,
-  selectedCentroCusto = 'todos',
+  selectedCentroCusto = [],
   onCentroCustoChange,
 }: DRESimulationAnalysisProps) {
   // Ajustes com valor e percentual
