@@ -76,6 +76,7 @@ export default function Extrato() {
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [centroCustoFilter, setCentroCustoFilter] = useState<string>('todos');
+  const [categoriaFilter, setCategoriaFilter] = useState<string>('todos');
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
   
@@ -1285,6 +1286,11 @@ export default function Extrato() {
       matchesCentroCusto = lanc.centro_custo === centroCustoFilter;
     }
 
+    let matchesCategoria = true;
+    if (categoriaFilter !== 'todos') {
+      matchesCategoria = lanc.plano_conta_id === categoriaFilter;
+    }
+
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange) {
@@ -1307,7 +1313,7 @@ export default function Extrato() {
       }
     }
 
-    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesDate;
+    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria && matchesDate;
   }).sort((a, b) => {
     // Ordenar por data de movimento em ordem crescente (menor para maior)
     const getMovementDate = (lanc: LancamentoExtrato) => {
@@ -1548,6 +1554,22 @@ export default function Extrato() {
             onValueChange={setCentroCustoFilter}
             placeholder="Centro de Custo"
           />
+
+          <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50 max-h-[300px]">
+              <SelectItem value="todos">Todas as Categorias</SelectItem>
+              {planoContas
+                .sort((a, b) => a.codigo.localeCompare(b.codigo))
+                .map((plano) => (
+                  <SelectItem key={plano.id} value={plano.id}>
+                    {plano.codigo} - {plano.descricao}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
