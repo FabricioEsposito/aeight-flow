@@ -14,7 +14,7 @@ import Fornecedores from "./pages/Fornecedores";
 import Contratos from "./pages/Contratos";
 import NovoContrato from "./pages/NovoContrato";
 import VisualizarContrato from "./pages/VisualizarContrato";
-import EditarContrato from "./pages/EditarContrato";
+// EditarContrato was merged into EditarContratoCompleto
 import Servicos from "./pages/Servicos";
 import ContasBancarias from "./pages/ContasBancarias";
 import PlanoContas from "./pages/PlanoContas";
@@ -52,8 +52,7 @@ const App = () => (
                 <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
                 <Route path="/contratos/novo" element={<ProtectedRoute><NovoContrato /></ProtectedRoute>} />
                 <Route path="/contratos/:id" element={<ProtectedRoute><VisualizarContrato /></ProtectedRoute>} />
-                <Route path="/contratos/:id/edit" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
-                <Route path="/contratos/:id/edit-completo" element={<ProtectedRoute><EditarContratoCompleto /></ProtectedRoute>} />
+                <Route path="/contratos/:id/edit" element={<ProtectedRoute><EditarContratoCompleto /></ProtectedRoute>} />
                 <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
                 <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
                 <Route path="/plano-contas" element={<ProtectedRoute><PlanoContas /></ProtectedRoute>} />
