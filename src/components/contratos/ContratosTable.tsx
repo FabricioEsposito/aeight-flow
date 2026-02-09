@@ -98,7 +98,7 @@ export function ContratosTable({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
   const formatCnpjCpf = (value: string) => {
