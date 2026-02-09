@@ -3,6 +3,7 @@ import { FileText, Receipt, CheckCircle, XCircle, TrendingDown } from "lucide-re
 import { StatsCard } from "./StatsCard";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IPCAReajusteContratos } from "./IPCAReajusteContratos";
 
 interface CompanyThemeColors {
   primaryColor: string;
@@ -111,6 +112,7 @@ export function GestaoContratosAnalysis({ selectedCentroCusto, companyTheme }: G
   }
 
   return (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
       <StatsCard
         title="LTV (Life Time Value)"
@@ -150,5 +152,11 @@ export function GestaoContratosAnalysis({ selectedCentroCusto, companyTheme }: G
         companyTheme={companyTheme}
       />
     </div>
+
+    <IPCAReajusteContratos
+      selectedCentroCusto={selectedCentroCusto}
+      companyTheme={companyTheme}
+    />
+    </>
   );
 }
