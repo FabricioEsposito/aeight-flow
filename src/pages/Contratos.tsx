@@ -57,7 +57,7 @@ export default function Contratos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
   const [filterGoLive, setFilterGoLive] = useState<string>('todos');
-  const [filterCentroCusto, setFilterCentroCusto] = useState<string>('');
+  const [filterCentroCusto, setFilterCentroCusto] = useState<string[]>([]);
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
   const [currentPage, setCurrentPage] = useState(1);
@@ -310,7 +310,7 @@ export default function Contratos() {
       (filterGoLive === 'com-go-live' && contrato.tem_go_live) ||
       (filterGoLive === 'sem-go-live' && !contrato.tem_go_live);
 
-    const matchesCentroCusto = !filterCentroCusto || contrato.centro_custo === filterCentroCusto;
+    const matchesCentroCusto = filterCentroCusto.length === 0 || (!!contrato.centro_custo && filterCentroCusto.includes(contrato.centro_custo));
 
     let matchesDate = true;
     const dateRange = getDateRange();
@@ -389,7 +389,7 @@ export default function Contratos() {
 
           <CentroCustoFilterSelect
             value={filterCentroCusto}
-            onValueChange={(v) => setFilterCentroCusto(v === 'todos' ? '' : v)}
+            onValueChange={setFilterCentroCusto}
             placeholder="Centro de Custo"
             className="w-56"
           />

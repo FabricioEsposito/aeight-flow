@@ -72,7 +72,7 @@ export default function ControleFaturamento() {
   const [selectedFaturamento, setSelectedFaturamento] = useState<Faturamento | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('');
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -381,7 +381,7 @@ export default function ControleFaturamento() {
       return true;
     })();
 
-    const matchesCentroCusto = !selectedCentroCusto || f.centro_custo === selectedCentroCusto;
+    const matchesCentroCusto = selectedCentroCusto.length === 0 || (!!f.centro_custo && selectedCentroCusto.includes(f.centro_custo));
     
     return matchesSearch && matchesStatus && matchesCentroCusto;
   }).sort((a, b) => {

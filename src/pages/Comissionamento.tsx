@@ -98,7 +98,7 @@ export default function Comissionamento() {
   // Filters for solicitações
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>("");
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
   
   // Dialogs
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -202,8 +202,8 @@ export default function Comissionamento() {
         .eq("status", "ativo")
         .order("nome");
 
-      if (selectedCentroCusto) {
-        query = query.eq("centro_custo", selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        query = query.in("centro_custo", selectedCentroCusto);
       }
 
       const { data, error } = await query;
@@ -251,9 +251,9 @@ export default function Comissionamento() {
         })) || [];
 
         // Filter by centro de custo if selected
-        if (selectedCentroCusto) {
+        if (selectedCentroCusto.length > 0) {
           solicitacoesComVendedor = solicitacoesComVendedor.filter(
-            (s) => s.vendedor?.centro_custo === selectedCentroCusto
+            (s) => s.vendedor?.centro_custo && selectedCentroCusto.includes(s.vendedor.centro_custo)
           );
         }
 
@@ -774,7 +774,7 @@ export default function Comissionamento() {
             <div className="w-[250px]">
               <CentroCustoFilterSelect
                 value={selectedCentroCusto}
-                onValueChange={(v) => setSelectedCentroCusto(v === 'todos' ? '' : v)}
+                onValueChange={setSelectedCentroCusto}
                 placeholder="Centro de Custo"
                 className="w-full"
               />

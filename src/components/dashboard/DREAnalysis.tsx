@@ -39,7 +39,7 @@ interface DREData {
 
 interface DREAnalysisProps {
   dateRange: { from: Date; to: Date } | null;
-  centroCusto?: string;
+  centroCusto?: string[];
 }
 
 export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
@@ -97,8 +97,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           .lte('data_competencia', toDate);
       }
 
-      if (centroCusto && centroCusto !== 'todos') {
-        receitasQuery = receitasQuery.eq('centro_custo', centroCusto);
+      if (centroCusto && centroCusto.length > 0) {
+        receitasQuery = receitasQuery.in('centro_custo', centroCusto);
       }
 
       const { data: receitas } = await receitasQuery;
@@ -117,8 +117,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           .lte('data_competencia', toDate);
       }
 
-      if (centroCusto && centroCusto !== 'todos') {
-        despesasQuery = despesasQuery.eq('centro_custo', centroCusto);
+      if (centroCusto && centroCusto.length > 0) {
+        despesasQuery = despesasQuery.in('centro_custo', centroCusto);
       }
 
       const { data: despesas } = await despesasQuery;

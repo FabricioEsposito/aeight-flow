@@ -53,7 +53,7 @@ interface ParcelaVencida {
 interface ReguaCobrancaProps {
   dataInicio: string;
   dataFim: string;
-  centroCusto?: string;
+  centroCusto?: string[];
 }
 
 const NIVEIS_ATRASO = [
@@ -146,9 +146,9 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
           .lte('data_vencimento', dataFim);
       }
 
-      if (centroCusto && centroCusto !== 'todos') {
-        queryReceitaContratos = queryReceitaContratos.eq('centro_custo', centroCusto);
-        queryReceitaAvulsos = queryReceitaAvulsos.eq('centro_custo', centroCusto);
+      if (centroCusto && centroCusto.length > 0) {
+        queryReceitaContratos = queryReceitaContratos.in('centro_custo', centroCusto);
+        queryReceitaAvulsos = queryReceitaAvulsos.in('centro_custo', centroCusto);
       }
 
       const [{ data: receitaContratosData }, { data: receitaAvulsosData }] = await Promise.all([
@@ -191,9 +191,9 @@ export function ReguaCobranca({ dataInicio, dataFim, centroCusto }: ReguaCobranc
           .lte('data_vencimento', dataFim);
       }
 
-      if (centroCusto && centroCusto !== 'todos') {
-        queryContratos = queryContratos.eq('centro_custo', centroCusto);
-        queryAvulsos = queryAvulsos.eq('centro_custo', centroCusto);
+      if (centroCusto && centroCusto.length > 0) {
+        queryContratos = queryContratos.in('centro_custo', centroCusto);
+        queryAvulsos = queryAvulsos.in('centro_custo', centroCusto);
       }
 
       const [resultContratos, resultAvulsos] = await Promise.all([

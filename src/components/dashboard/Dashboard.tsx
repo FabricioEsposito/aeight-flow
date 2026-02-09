@@ -93,7 +93,7 @@ export function Dashboard() {
   // Filtros
   const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('todos');
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
   const [selectedContaBancaria, setSelectedContaBancaria] = useState<string[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
@@ -111,11 +111,10 @@ export function Dashboard() {
 
   // Obter cores do tema do centro de custo selecionado
   const companyTheme = useMemo(() => {
-    if (selectedCentroCusto === 'todos') {
-      return null; // Cores neutras
+    if (selectedCentroCusto.length !== 1) {
+      return null; // Cores neutras quando nenhum ou múltiplos selecionados
     }
-    // Buscar o código do centro de custo pelo ID
-    const centroCusto = centrosCusto.find(cc => cc.id === selectedCentroCusto);
+    const centroCusto = centrosCusto.find(cc => cc.id === selectedCentroCusto[0]);
     if (centroCusto) {
       return getCompanyTheme(centroCusto.codigo);
     }
@@ -172,8 +171,8 @@ export function Dashboard() {
           .lte('data_competencia', dateRange.to);
       }
 
-      if (selectedCentroCusto !== 'todos') {
-        receitasQuery = receitasQuery.eq('centro_custo', selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        receitasQuery = receitasQuery.in('centro_custo', selectedCentroCusto);
       }
 
       const { data: receitas } = await receitasQuery;
@@ -189,8 +188,8 @@ export function Dashboard() {
           .lte('data_competencia', dateRange.to);
       }
 
-      if (selectedCentroCusto !== 'todos') {
-        despesasQuery = despesasQuery.eq('centro_custo', selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        despesasQuery = despesasQuery.in('centro_custo', selectedCentroCusto);
       }
 
       const { data: despesas } = await despesasQuery;
@@ -317,8 +316,8 @@ export function Dashboard() {
           .lte('data_competencia', dateRange.to);
       }
       
-      if (selectedCentroCusto !== 'todos') {
-        contasReceberQuery = contasReceberQuery.eq('centro_custo', selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        contasReceberQuery = contasReceberQuery.in('centro_custo', selectedCentroCusto);
       }
 
       const { data: contasReceber } = await contasReceberQuery;
@@ -356,8 +355,8 @@ export function Dashboard() {
           .lte('data_competencia', dateRange.to);
       }
       
-      if (selectedCentroCusto !== 'todos') {
-        contasPagarQuery = contasPagarQuery.eq('centro_custo', selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        contasPagarQuery = contasPagarQuery.in('centro_custo', selectedCentroCusto);
       }
 
       const { data: contasPagar } = await contasPagarQuery;
@@ -1207,7 +1206,7 @@ export function Dashboard() {
                 to: new Date(range.to)
               };
             })()}
-            centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
+            centroCusto={selectedCentroCusto.length > 0 ? selectedCentroCusto : undefined}
           />
         )}
 
@@ -1230,7 +1229,7 @@ export function Dashboard() {
                 const range = getDateRange();
                 return range?.to || '';
               })()}
-              centroCusto={selectedCentroCusto !== 'todos' ? selectedCentroCusto : undefined}
+              centroCusto={selectedCentroCusto.length > 0 ? selectedCentroCusto : undefined}
             />
           </div>
         )}

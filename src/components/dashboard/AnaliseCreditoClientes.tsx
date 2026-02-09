@@ -32,7 +32,7 @@ export function AnaliseCreditoClientes() {
   const [loading, setLoading] = useState(true);
   const [totalReceita, setTotalReceita] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string>('todos');
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   
   // Dialog state
@@ -74,8 +74,8 @@ export function AnaliseCreditoClientes() {
         .eq('status', 'pendente')
         .not('parcela_id', 'is', null);
 
-      if (selectedCentroCusto && selectedCentroCusto !== 'todos') {
-        query = query.eq('centro_custo', selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        query = query.in('centro_custo', selectedCentroCusto);
       }
 
       const { data, error } = await query;

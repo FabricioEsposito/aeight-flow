@@ -11,7 +11,7 @@ interface CompanyThemeColors {
 }
 
 interface GestaoContratosAnalysisProps {
-  selectedCentroCusto: string;
+  selectedCentroCusto: string[];
   companyTheme: CompanyThemeColors | null;
 }
 
@@ -48,8 +48,8 @@ export function GestaoContratosAnalysis({ selectedCentroCusto, companyTheme }: G
         .select("id, status, data_inicio, valor_total, centro_custo")
         .eq("tipo_contrato", "venda");
 
-      if (selectedCentroCusto !== "todos") {
-        query = query.eq("centro_custo", selectedCentroCusto);
+      if (selectedCentroCusto.length > 0) {
+        query = query.in("centro_custo", selectedCentroCusto);
       }
 
       const { data: contratos, error } = await query;
