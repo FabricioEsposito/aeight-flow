@@ -101,8 +101,8 @@ export default function EditarContratoCompleto() {
       setTipoContrato(data.tipo_contrato as 'venda' | 'compra');
       setClienteId(data.cliente_id || '');
       setFornecedorId(data.fornecedor_id || '');
-      setDataInicio(data.data_inicio ? new Date(data.data_inicio) : null);
-      setDataFim(data.data_fim ? new Date(data.data_fim) : null);
+      setDataInicio(data.data_inicio ? new Date(data.data_inicio + 'T00:00:00') : null);
+      setDataFim(data.data_fim ? new Date(data.data_fim + 'T00:00:00') : null);
       setRecorrente(data.recorrente || false);
       setPeriodoRecorrencia(data.periodo_recorrencia || '');
       setPlanoContasId(data.plano_contas_id || '');

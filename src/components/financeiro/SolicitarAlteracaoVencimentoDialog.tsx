@@ -104,7 +104,7 @@ export function SolicitarAlteracaoVencimentoDialog({
           <div className="space-y-2">
             <Label>Data de Vencimento Atual</Label>
             <div className="text-sm text-muted-foreground">
-              {format(new Date(dataVencimentoAtual), "dd/MM/yyyy", { locale: ptBR })}
+              {format(new Date(dataVencimentoAtual + 'T00:00:00'), "dd/MM/yyyy", { locale: ptBR })}
             </div>
           </div>
 
