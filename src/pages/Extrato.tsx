@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -1555,21 +1556,23 @@ export default function Extrato() {
             placeholder="Centro de Custo"
           />
 
-          <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent className="bg-background z-50 max-h-[300px]">
-              <SelectItem value="todos">Todas as Categorias</SelectItem>
-              {planoContas
+          <SearchableSelect
+            value={categoriaFilter}
+            onValueChange={setCategoriaFilter}
+            options={[
+              { value: 'todos', label: 'Todas as Categorias' },
+              ...planoContas
                 .sort((a, b) => a.codigo.localeCompare(b.codigo))
-                .map((plano) => (
-                  <SelectItem key={plano.id} value={plano.id}>
-                    {plano.codigo} - {plano.descricao}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+                .map((plano) => ({
+                  value: plano.id,
+                  label: `${plano.codigo} - ${plano.descricao}`,
+                })),
+            ]}
+            placeholder="Categoria"
+            searchPlaceholder="Buscar categoria..."
+            emptyMessage="Nenhuma categoria encontrada."
+            className="w-[200px]"
+          />
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
