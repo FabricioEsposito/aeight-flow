@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ export interface CentroCusto {
 }
 
 export default function CentroCustos() {
+  useClearFiltersOnAreaChange('centroCustos');
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

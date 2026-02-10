@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Plus, Search, Filter, Edit, Trash2, Eye, MoreVertical, XCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ interface Fornecedor {
 }
 
 export default function Fornecedores() {
+  useClearFiltersOnAreaChange('fornecedores');
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

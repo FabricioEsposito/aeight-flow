@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Plus, Search, Edit, Trash2, Settings, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ interface CentroCusto {
 }
 
 export default function Servicos() {
+  useClearFiltersOnAreaChange('servicos');
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);

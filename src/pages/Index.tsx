@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useClearFiltersOnAreaChange } from "@/hooks/useSessionState";
 
 const Index = () => {
+  useClearFiltersOnAreaChange('dashboard');
   const navigate = useNavigate();
   const { role, loading, isCommercialManager, isSalesperson } = useUserRole();
 

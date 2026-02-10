@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Plus, Search, Edit, Trash2, MoreVertical, XCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ interface Cliente {
 }
 
 export default function Clientes() {
+  useClearFiltersOnAreaChange('clientes');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

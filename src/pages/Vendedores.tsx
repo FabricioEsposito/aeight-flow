@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ interface Fornecedor {
 }
 
 export default function Vendedores() {
+  useClearFiltersOnAreaChange('vendedores');
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);

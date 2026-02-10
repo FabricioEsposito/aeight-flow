@@ -97,9 +97,9 @@ export default function Comissionamento() {
   const [metaBatidaIds, setMetaBatidaIds] = useState<Set<string>>(new Set());
   
   // Filters for solicitações
-  const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("comissao-datePreset", "este-mes");
-  const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("comissao-customDateRange", { from: undefined, to: undefined });
-  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>("comissao-centroCusto", []);
+  const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("comissao", "datePreset", "este-mes");
+  const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("comissao", "customDateRange", { from: undefined, to: undefined });
+  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>("comissao", "centroCusto", []);
   
   // Dialogs
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
