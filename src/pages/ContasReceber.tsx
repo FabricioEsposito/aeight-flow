@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { Plus, Search, TrendingUp, Calendar, DollarSign, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,13 +83,13 @@ export default function ContasReceber() {
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
-  const [dateFilterType, setDateFilterType] = useState<DateFilterType>('vencimento');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
-  const [contaBancariaFilter, setContaBancariaFilter] = useState<string>('todas');
+  const [searchTerm, setSearchTerm] = useSessionState('contasReceber-search', '');
+  const [statusFilter, setStatusFilter] = useSessionState('contasReceber-status', 'todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useSessionState<string[]>('contasReceber-centroCusto', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('contasReceber-datePreset', 'hoje');
+  const [dateFilterType, setDateFilterType] = useSessionState<DateFilterType>('contasReceber-dateFilterType', 'vencimento');
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('contasReceber-customDateRange', undefined as any);
+  const [contaBancariaFilter, setContaBancariaFilter] = useSessionState('contasReceber-contaBancaria', 'todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [solicitarAjusteDialogOpen, setSolicitarAjusteDialogOpen] = useState(false);

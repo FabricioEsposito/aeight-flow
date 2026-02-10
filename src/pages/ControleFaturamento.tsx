@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { Search, Eye, ChevronDown, ChevronRight, Download, MoreVertical, Edit, ExternalLink, Mail, FileCheck, FileX } from 'lucide-react';
 import { useExportReport } from '@/hooks/useExportReport';
 import { useBillingEmails } from '@/hooks/useBillingEmails';
@@ -60,10 +61,10 @@ interface Faturamento {
 export default function ControleFaturamento() {
   const [faturamentos, setFaturamentos] = useState<Faturamento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+  const [searchTerm, setSearchTerm] = useSessionState('faturamento-search', '');
+  const [statusFilter, setStatusFilter] = useSessionState('faturamento-status', 'todos');
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('faturamento-datePreset', 'este-mes');
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('faturamento-customDateRange', {
     from: undefined,
     to: undefined,
   });
@@ -72,7 +73,7 @@ export default function ControleFaturamento() {
   const [selectedFaturamento, setSelectedFaturamento] = useState<Faturamento | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
+  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('faturamento-centroCusto', []);
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
