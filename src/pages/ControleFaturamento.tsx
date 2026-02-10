@@ -61,10 +61,10 @@ interface Faturamento {
 export default function ControleFaturamento() {
   const [faturamentos, setFaturamentos] = useState<Faturamento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useSessionState('faturamento-search', '');
-  const [statusFilter, setStatusFilter] = useSessionState('faturamento-status', 'todos');
-  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('faturamento-datePreset', 'este-mes');
-  const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('faturamento-customDateRange', {
+  const [searchTerm, setSearchTerm] = useSessionState<string>('faturamento', 'search', '');
+  const [statusFilter, setStatusFilter] = useSessionState<string>('faturamento', 'status', 'todos');
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('faturamento', 'datePreset', 'este-mes');
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('faturamento', 'customDateRange', {
     from: undefined,
     to: undefined,
   });
@@ -73,7 +73,7 @@ export default function ControleFaturamento() {
   const [selectedFaturamento, setSelectedFaturamento] = useState<Faturamento | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('faturamento-centroCusto', []);
+  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('faturamento', 'centroCusto', []);
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);

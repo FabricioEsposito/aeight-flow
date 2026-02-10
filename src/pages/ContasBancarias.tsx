@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Plus, Search, Edit, Trash2, CreditCard, Wallet, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ interface ContaBancaria {
 }
 
 export default function ContasBancarias() {
+  useClearFiltersOnAreaChange('contasBancarias');
   const [contas, setContas] = useState<ContaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

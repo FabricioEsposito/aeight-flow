@@ -71,16 +71,16 @@ export default function ContasPagar() {
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useSessionState('contasPagar-search', '');
-  const [statusFilter, setStatusFilter] = useSessionState('contasPagar-status', 'todos');
-  const [centroCustoFilter, setCentroCustoFilter] = useSessionState<string[]>('contasPagar-centroCusto', []);
-  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('contasPagar-datePreset', 'hoje');
-  const [dateFilterType, setDateFilterType] = useSessionState<DateFilterType>('contasPagar-dateFilterType', 'vencimento');
+  const [searchTerm, setSearchTerm] = useSessionState<string>('contasPagar', 'search', '');
+  const [statusFilter, setStatusFilter] = useSessionState<string>('contasPagar', 'status', 'todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useSessionState<string[]>('contasPagar', 'centroCusto', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('contasPagar', 'datePreset', 'hoje');
+  const [dateFilterType, setDateFilterType] = useSessionState<DateFilterType>('contasPagar', 'dateFilterType', 'vencimento');
   const [customDateRange, setCustomDateRange] = useSessionState<{
     from: Date | undefined;
     to: Date | undefined;
-  }>('contasPagar-customDateRange', undefined as any);
-  const [contaBancariaFilter, setContaBancariaFilter] = useSessionState('contasPagar-contaBancaria', 'todas');
+  }>('contasPagar', 'customDateRange', undefined as any);
+  const [contaBancariaFilter, setContaBancariaFilter] = useSessionState<string>('contasPagar', 'contaBancaria', 'todas');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [solicitarAjusteDialogOpen, setSolicitarAjusteDialogOpen] = useState(false);

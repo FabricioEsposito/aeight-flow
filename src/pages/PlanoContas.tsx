@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Plus, Edit, Trash2, TreePine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ interface PlanoConta {
 }
 
 export default function PlanoContas() {
+  useClearFiltersOnAreaChange('planoContas');
   const [contas, setContas] = useState<PlanoConta[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);

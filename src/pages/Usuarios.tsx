@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -79,6 +80,7 @@ const getRoleBadgeVariant = (role: AppRole): "default" | "secondary" | "outline"
 };
 
 export default function Usuarios() {
+  useClearFiltersOnAreaChange('usuarios');
   const [openEdit, setOpenEdit] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [toggleStatusUserId, setToggleStatusUserId] = useState<string | null>(null);

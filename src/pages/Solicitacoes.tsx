@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useClearFiltersOnAreaChange } from '@/hooks/useSessionState';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,7 @@ interface SolicitacaoAjuste {
 
 export default function Solicitacoes() {
   const { user } = useAuth();
+  useClearFiltersOnAreaChange('solicitacoes');
   const { isAdmin } = useUserRole();
   const { toast } = useToast();
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAjuste[]>([]);

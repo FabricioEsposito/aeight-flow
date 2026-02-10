@@ -80,9 +80,9 @@ export default function DashboardComercial() {
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [userVendedorId, setUserVendedorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("dashComercial-datePreset", "este-mes");
-  const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("dashComercial-customDateRange", { from: undefined, to: undefined });
-  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>("dashComercial-centroCusto", []);
+  const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("dashComercial", "datePreset", "este-mes");
+  const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("dashComercial", "customDateRange", { from: undefined, to: undefined });
+  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>("dashComercial", "centroCusto", []);
   const { toast } = useToast();
 
   // Fetch user's vendedor_id from profile
