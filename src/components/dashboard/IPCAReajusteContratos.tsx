@@ -309,7 +309,7 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contratosVisiveis.map((c) => (
+                  {contratosVisiveis.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="text-xs font-medium">{c.numero_contrato}</TableCell>
                         <TableCell className="text-xs">{c.cliente_nome}</TableCell>
@@ -329,6 +329,14 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                         <TableCell className="text-xs text-right">{c.meses_vigencia}</TableCell>
                       </TableRow>
                     ))}
+                    <TableRow className="bg-muted/50 font-semibold border-t-2">
+                      <TableCell colSpan={3} className="text-xs font-bold">Subtotal</TableCell>
+                      <TableCell className="text-xs text-right font-bold">
+                        {formatCurrency(contratosVisiveis.reduce((sum, c) => sum + c.valor_total, 0))}
+                      </TableCell>
+                      <TableCell />
+                      <TableCell />
+                    </TableRow>
                   </TableBody>
                 </Table>
               </div>
@@ -359,7 +367,7 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {simulacoesVisiveis.map((s) => (
+                  {simulacoesVisiveis.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="text-xs font-medium">{s.numero_contrato}</TableCell>
                         <TableCell className="text-xs">{s.cliente_nome}</TableCell>
@@ -408,6 +416,20 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                         </TableCell>
                       </TableRow>
                     ))}
+                    <TableRow className="bg-muted/50 font-semibold border-t-2">
+                      <TableCell colSpan={3} className="text-xs font-bold">Subtotal</TableCell>
+                      <TableCell className="text-xs text-right font-bold">
+                        {formatCurrency(simulacoesVisiveis.reduce((sum, s) => sum + s.valor_total, 0))}
+                      </TableCell>
+                      <TableCell />
+                      <TableCell className="text-xs text-right font-bold text-green-600">
+                        {formatCurrency(simulacoesVisiveis.reduce((sum, s) => sum + s.valor_reajustado, 0))}
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-bold text-green-600">
+                        +{formatCurrency(simulacoesVisiveis.reduce((sum, s) => sum + s.diferenca, 0))}
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
                   </TableBody>
                 </Table>
               </div>
