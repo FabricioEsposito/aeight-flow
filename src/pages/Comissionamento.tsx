@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSessionState } from '@/hooks/useSessionState';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,9 +97,9 @@ export default function Comissionamento() {
   const [metaBatidaIds, setMetaBatidaIds] = useState<Set<string>>(new Set());
   
   // Filters for solicitações
-  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("este-mes");
-  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [selectedCentroCusto, setSelectedCentroCusto] = useState<string[]>([]);
+  const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("comissao-datePreset", "este-mes");
+  const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("comissao-customDateRange", { from: undefined, to: undefined });
+  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>("comissao-centroCusto", []);
   
   // Dialogs
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);

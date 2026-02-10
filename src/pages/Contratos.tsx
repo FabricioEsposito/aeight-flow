@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,12 +55,12 @@ export default function Contratos() {
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('todos');
-  const [filterGoLive, setFilterGoLive] = useState<string>('todos');
-  const [filterCentroCusto, setFilterCentroCusto] = useState<string[]>([]);
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [searchTerm, setSearchTerm] = useSessionState('contratos-search', '');
+  const [filterType, setFilterType] = useSessionState('contratos-type', 'todos');
+  const [filterGoLive, setFilterGoLive] = useSessionState('contratos-goLive', 'todos');
+  const [filterCentroCusto, setFilterCentroCusto] = useSessionState<string[]>('contratos-centroCusto', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('contratos-datePreset', 'todo-periodo');
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('contratos-customDateRange', undefined as any);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,15 +74,15 @@ export default function Extrato() {
   const [movimentacoesAnteriores, setMovimentacoesAnteriores] = useState<Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }>>([]);
   const [pendentesAnteriores, setPendentesAnteriores] = useState<Array<{ valor: number; data_movimento: string; tipo: 'entrada' | 'saida'; status: 'pendente'; conta_bancaria_id: string | null }>>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tipoFilter, setTipoFilter] = useState<string>('todos');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
-  const [categoriaFilter, setCategoriaFilter] = useState<string>('todos');
-  const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
-  const [datePreset, setDatePreset] = useState<DateRangePreset>('hoje');
+  const [searchTerm, setSearchTerm] = useSessionState('extrato-search', '');
+  const [tipoFilter, setTipoFilter] = useSessionState('extrato-tipo', 'todos');
+  const [statusFilter, setStatusFilter] = useSessionState('extrato-status', 'todos');
+  const [centroCustoFilter, setCentroCustoFilter] = useSessionState<string[]>('extrato-centroCusto', []);
+  const [categoriaFilter, setCategoriaFilter] = useSessionState('extrato-categoria', 'todos');
+  const [contaBancariaFilter, setContaBancariaFilter] = useSessionState<string[]>('extrato-contaBancaria', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('extrato-datePreset', 'hoje');
   
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>();
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('extrato-customDateRange', undefined as any);
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
