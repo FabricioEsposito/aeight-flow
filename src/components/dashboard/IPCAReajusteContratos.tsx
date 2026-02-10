@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -296,9 +296,9 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-auto max-h-96">
+              <div className="overflow-auto max-h-96 relative">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow>
                       <TableHead className="text-xs">Contrato</TableHead>
                       <TableHead className="text-xs">Cliente</TableHead>
@@ -329,7 +329,9 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                         <TableCell className="text-xs text-right">{c.meses_vigencia}</TableCell>
                       </TableRow>
                     ))}
-                    <TableRow className="bg-muted/50 font-semibold border-t-2">
+                  </TableBody>
+                  <TableFooter className="sticky bottom-0 z-10 bg-muted/90 backdrop-blur-sm">
+                    <TableRow className="font-semibold border-t-2">
                       <TableCell colSpan={3} className="text-xs font-bold">Subtotal</TableCell>
                       <TableCell className="text-xs text-right font-bold">
                         {formatCurrency(contratosVisiveis.reduce((sum, c) => sum + c.valor_total, 0))}
@@ -337,7 +339,7 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                       <TableCell />
                       <TableCell />
                     </TableRow>
-                  </TableBody>
+                  </TableFooter>
                 </Table>
               </div>
             </CardContent>
@@ -352,9 +354,9 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-auto max-h-96">
+              <div className="overflow-auto max-h-96 relative">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow>
                       <TableHead className="text-xs">Contrato</TableHead>
                       <TableHead className="text-xs">Cliente</TableHead>
@@ -416,7 +418,9 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                         </TableCell>
                       </TableRow>
                     ))}
-                    <TableRow className="bg-muted/50 font-semibold border-t-2">
+                  </TableBody>
+                  <TableFooter className="sticky bottom-0 z-10 bg-muted/90 backdrop-blur-sm">
+                    <TableRow className="font-semibold border-t-2">
                       <TableCell colSpan={3} className="text-xs font-bold">Subtotal</TableCell>
                       <TableCell className="text-xs text-right font-bold">
                         {formatCurrency(simulacoesVisiveis.reduce((sum, s) => sum + s.valor_total, 0))}
@@ -430,7 +434,7 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
                       </TableCell>
                       <TableCell />
                     </TableRow>
-                  </TableBody>
+                  </TableFooter>
                 </Table>
               </div>
             </CardContent>
