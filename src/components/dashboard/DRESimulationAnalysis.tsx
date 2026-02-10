@@ -147,8 +147,10 @@ export function DRESimulationAnalysis({
   };
 
   const parseInputValue = (value: string): number => {
-    // Suporta vírgula como separador decimal
+    // Suporta vírgula como separador decimal e valores negativos
     const normalized = value.replace(',', '.');
+    // Permite string vazia, apenas '-' ou '-,' durante digitação
+    if (normalized === '' || normalized === '-' || normalized === '-.') return 0;
     const parsed = parseFloat(normalized);
     return isNaN(parsed) ? 0 : parsed;
   };
@@ -281,6 +283,17 @@ export function DRESimulationAnalysis({
               ajuste={ajustes.cmv}
               onValorChange={(v) => handleAjusteValorChange('cmv', v)}
               onPercentualChange={(v) => handleAjustePercentualChange('cmv', v)}
+              parseInputValue={parseInputValue}
+            />
+
+            {/* Despesas Administrativas */}
+            <AjusteRow
+              label="Desp. Administrativas"
+              valorOriginal={dreAtual.despesasAdm}
+              valorSimulado={valoresSimulados.despesasAdm}
+              ajuste={ajustes.despesasAdm}
+              onValorChange={(v) => handleAjusteValorChange('despesasAdm', v)}
+              onPercentualChange={(v) => handleAjustePercentualChange('despesasAdm', v)}
               parseInputValue={parseInputValue}
             />
 
@@ -763,6 +776,46 @@ export function DRESimulationAnalysis({
   );
 }
 
+// Componente auxiliar para input de percentual com suporte a valores negativos
+function PercentualInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [localValue, setLocalValue] = useState(value === 0 ? '' : value.toString().replace('.', ','));
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (raw !== '' && !/^-?[\d]*[,.]?[\d]*$/.test(raw)) return;
+    setLocalValue(raw);
+    
+    if (raw === '' || raw === '-' || raw === '-,' || raw === '-.') {
+      onChange(0);
+      return;
+    }
+    const normalized = raw.replace(',', '.');
+    const parsed = parseFloat(normalized);
+    if (!isNaN(parsed)) onChange(parsed);
+  };
+
+  // Sync on external reset
+  const externalStr = value === 0 ? '' : value.toString().replace('.', ',');
+  if (value === 0 && localValue !== '' && localValue !== '-' && localValue !== '-,' && localValue !== '-.') {
+    if (localValue !== externalStr) {
+      setTimeout(() => setLocalValue(''), 0);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        value={localValue}
+        onChange={handleChange}
+        placeholder="0"
+        className="pr-6 text-right h-9 text-sm"
+      />
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">%</span>
+    </div>
+  );
+}
+
 // Componente auxiliar para linha de ajuste
 interface AjusteRowProps {
   label: string;
@@ -771,7 +824,7 @@ interface AjusteRowProps {
   ajuste: AjusteItem;
   onValorChange: (valor: number) => void;
   onPercentualChange: (percentual: number) => void;
-  parseInputValue: (value: string) => number;
+  parseInputValue?: (value: string) => number;
   isPositive?: boolean;
 }
 
@@ -782,7 +835,6 @@ function AjusteRow({
   ajuste,
   onValorChange,
   onPercentualChange,
-  parseInputValue,
   isPositive = false,
 }: AjusteRowProps) {
   const temAjuste = ajuste.valor !== 0 || ajuste.percentual !== 0;
@@ -809,16 +861,10 @@ function AjusteRow({
           className="h-9 text-sm"
         />
       </div>
-      <div className="relative">
-        <Input
-          type="text"
-          value={ajuste.percentual === 0 ? '' : ajuste.percentual.toString().replace('.', ',')}
-          onChange={(e) => onPercentualChange(parseInputValue(e.target.value))}
-          placeholder="0"
-          className="pr-6 text-right h-9 text-sm"
-        />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">%</span>
-      </div>
+      <PercentualInput
+        value={ajuste.percentual}
+        onChange={onPercentualChange}
+      />
       <div className="text-right">
         <span className={`text-sm font-medium ${
           temAjuste ? (isPositivo ? 'text-green-600' : isNegativo ? 'text-destructive' : '') : 'text-muted-foreground'

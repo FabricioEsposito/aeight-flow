@@ -111,6 +111,7 @@ export interface AjusteItem {
 export interface AjustesDRE {
   receita: AjusteItem;
   cmv: AjusteItem;
+  despesasAdm: AjusteItem;
   impostos: AjusteItem;
   emprestimos: AjusteItem;
   despesasFinanceiras: AjusteItem;
@@ -119,6 +120,7 @@ export interface AjustesDRE {
 export const AJUSTES_INICIAIS: AjustesDRE = {
   receita: { valor: 0, percentual: 0 },
   cmv: { valor: 0, percentual: 0 },
+  despesasAdm: { valor: 0, percentual: 0 },
   impostos: { valor: 0, percentual: 0 },
   emprestimos: { valor: 0, percentual: 0 },
   despesasFinanceiras: { valor: 0, percentual: 0 },
@@ -140,7 +142,7 @@ export function aplicarAjustes(
   return {
     receita: aplicar(valoresOriginais.receita, ajustes.receita),
     cmv: aplicar(valoresOriginais.cmv, ajustes.cmv),
-    despesasAdm: valoresOriginais.despesasAdm, // Não ajustável no simulador
+    despesasAdm: aplicar(valoresOriginais.despesasAdm, ajustes.despesasAdm),
     impostos: aplicar(valoresOriginais.impostos, ajustes.impostos),
     emprestimos: aplicar(valoresOriginais.emprestimos, ajustes.emprestimos),
     despesasFinanceiras: aplicar(valoresOriginais.despesasFinanceiras, ajustes.despesasFinanceiras),
