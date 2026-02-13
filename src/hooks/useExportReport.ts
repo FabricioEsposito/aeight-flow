@@ -63,8 +63,9 @@ export const useExportReport = () => {
       const [day, month, year] = parts;
       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     }
-    // Tenta parse de formato ISO
-    const date = new Date(value);
+    // Tenta parse de formato ISO - adiciona T00:00:00 para evitar problemas de timezone
+    const isoValue = value.includes('T') ? value : value + 'T00:00:00';
+    const date = new Date(isoValue);
     return isNaN(date.getTime()) ? null : date;
   };
 
@@ -126,6 +127,14 @@ export const useExportReport = () => {
       if (subtotals && subtotals.length > 0) {
         const finalY = (doc as any).lastAutoTable?.finalY || 42;
         let yPosition = finalY + 10;
+        
+        // Verificar se há espaço suficiente na página, senão adicionar nova página
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const spaceNeeded = 10 + 8 + (subtotals.length * 6) + 10;
+        if (yPosition + spaceNeeded > pageHeight - 10) {
+          doc.addPage();
+          yPosition = 20;
+        }
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
