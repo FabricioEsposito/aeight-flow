@@ -1317,7 +1317,12 @@ export default function Extrato() {
 
     return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria && matchesDate;
   }).sort((a, b) => {
-    // Ordenar por data de movimento em ordem crescente (menor para maior)
+    // Primeiro: pagos/recebidos antes de pendentes
+    const isPagoA = a.status === 'pago' ? 0 : 1;
+    const isPagoB = b.status === 'pago' ? 0 : 1;
+    if (isPagoA !== isPagoB) return isPagoA - isPagoB;
+    
+    // Depois: ordenar por data de movimento em ordem crescente
     const getMovementDate = (lanc: LancamentoExtrato) => {
       return lanc.data_recebimento || lanc.data_pagamento || lanc.data_vencimento;
     };
