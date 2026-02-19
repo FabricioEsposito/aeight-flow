@@ -11,7 +11,7 @@ interface DetalheItem {
   codigo: string;
   descricao: string;
   valor: number;
-  items: Array<{ nome: string; valor: number }>;
+  items: Array<{ nome: string; valor: number; centroCusto?: string }>;
 }
 
 interface DREData {
@@ -63,9 +63,28 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     setExpandedSections(newExpanded);
   };
 
+  const [centrosCustoNomes, setCentrosCustoNomes] = useState<string[]>([]);
+
   const fetchDREData = async () => {
     try {
       setIsLoading(true);
+
+      // Buscar nomes dos centros de custo selecionados
+      if (centroCusto && centroCusto.length > 0) {
+        const { data: ccs } = await supabase
+          .from('centros_custo')
+          .select('descricao')
+          .in('id', centroCusto);
+        setCentrosCustoNomes(ccs?.map(c => c.descricao) || []);
+      } else {
+        setCentrosCustoNomes([]);
+      }
+
+      // Buscar todos centros de custo para mapear IDs -> nomes
+      const { data: allCentrosCusto } = await supabase
+        .from('centros_custo')
+        .select('id, descricao');
+      const ccMap = new Map((allCentrosCusto || []).map(c => [c.id, c.descricao]));
 
       // Buscar planos de contas para mapear IDs
       const { data: planosContas } = await supabase
@@ -88,7 +107,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência)
       let receitasQuery = supabase
         .from('contas_receber')
-        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), clientes(razao_social)');
+        .select('valor, plano_conta_id, descricao, centro_custo, plano_contas(codigo, descricao), clientes(razao_social)');
 
       if (dateRange) {
         // Usar formato de data local para evitar problemas de timezone
@@ -108,7 +127,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar despesas (regime de competência)
       let despesasQuery = supabase
         .from('contas_pagar')
-        .select('valor, plano_conta_id, descricao, plano_contas(codigo, descricao), fornecedores(razao_social)');
+        .select('valor, plano_conta_id, descricao, centro_custo, plano_contas(codigo, descricao), fornecedores(razao_social)');
 
       if (dateRange) {
         // Usar formato de data local para evitar problemas de timezone
@@ -132,7 +151,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         planosContas: any[],
         tipo: 'receita' | 'despesa'
       ): { detalhes: DetalheItem[]; total: number } => {
-        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, number>; total: number }>();
+        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, { valor: number; centroCusto?: string }>; total: number }>();
         let total = 0;
 
         lancamentos?.forEach(l => {
@@ -144,6 +163,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             const nome = tipo === 'receita' 
               ? (l.clientes?.razao_social || 'Cliente não informado')
               : (l.fornecedores?.razao_social || 'Fornecedor não informado');
+            const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
 
             if (!grouped.has(l.plano_conta_id)) {
               grouped.set(l.plano_conta_id, {
@@ -156,8 +176,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
             const group = grouped.get(l.plano_conta_id)!;
             group.total += Number(l.valor);
-            const currentValue = group.items.get(nome) || 0;
-            group.items.set(nome, currentValue + Number(l.valor));
+            // Use nome+centroCusto as key to separate by cost center
+            const itemKey = ccNome ? `${nome}|||${ccNome}` : nome;
+            const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome };
+            current.valor += Number(l.valor);
+            group.items.set(itemKey, current);
           }
         });
 
@@ -166,7 +189,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           descricao: g.descricao,
           valor: g.total,
           items: Array.from(g.items.entries())
-            .map(([nome, valor]) => ({ nome, valor }))
+            .map(([key, item]) => ({ 
+              nome: key.includes('|||') ? key.split('|||')[0] : key, 
+              valor: item.valor, 
+              centroCusto: item.centroCusto 
+            }))
             .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
         })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
 
@@ -409,6 +436,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     periodo: dateRange
       ? `${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
       : 'Todo o período',
+    centrosCusto: centrosCustoNomes.length > 0 ? centrosCustoNomes : null,
   } : null;
 
   return (

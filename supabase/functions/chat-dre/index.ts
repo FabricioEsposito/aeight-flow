@@ -24,9 +24,10 @@ serve(async (req) => {
       for (const d of detalhes) {
         text += `  • ${d.codigo} ${d.descricao}: R$ ${fmt(d.valor)}\n`;
         if (d.items && d.items.length > 0) {
-          const sorted = [...d.items].sort((a: any, b: any) => b.valor - a.valor);
+          const sorted = [...d.items].sort((a: any, b: any) => Math.abs(b.valor) - Math.abs(a.valor));
           for (const item of sorted) {
-            text += `      - ${item.nome}: R$ ${fmt(item.valor)}\n`;
+            const ccInfo = item.centroCusto ? ` [Centro de Custo: ${item.centroCusto}]` : '';
+            text += `      - ${item.nome}: R$ ${fmt(item.valor)}${ccInfo}\n`;
           }
         }
       }
@@ -48,6 +49,7 @@ serve(async (req) => {
 - Provisão CSLL e IRRF (34%): R$ ${fmt(dreData.provisaoCsllIrrf)}
 - Resultado do Exercício: R$ ${fmt(dreData.resultadoExercicio)}
 ${dreData.periodo ? `- Período: ${dreData.periodo}` : ''}
+${dreData.centrosCusto ? `- ⚠️ FILTRO ATIVO - Centros de Custo selecionados: ${dreData.centrosCusto.join(', ')}` : '- Centros de Custo: Todos (sem filtro)'}
 ${formatDetalhes(dreData.receitaDetalhes, 'RECEITAS (por cliente)')}
 ${formatDetalhes(dreData.cmvDetalhes, 'CMV - CUSTOS VARIÁVEIS (por fornecedor)')}
 ${formatDetalhes(dreData.despAdmDetalhes, 'DESPESAS ADMINISTRATIVAS (por fornecedor)')}
@@ -58,7 +60,7 @@ ${formatDetalhes(dreData.despFinanceirasDetalhes, 'DESPESAS FINANCEIRAS (por for
 
     const systemPrompt = `Você é um analista financeiro sênior especializado em empresas brasileiras. Você está analisando o DRE (Demonstrativo de Resultados do Exercício) de uma empresa.
 
-Você tem acesso tanto ao resumo geral quanto ao detalhamento completo por cliente e fornecedor de cada categoria do DRE.
+Você tem acesso tanto ao resumo geral quanto ao detalhamento completo por cliente e fornecedor de cada categoria do DRE. Cada item pode incluir o Centro de Custo (empresa) ao qual pertence.
 
 ${dreContext}
 
@@ -74,7 +76,12 @@ Suas responsabilidades:
 9. Fornecer insights acionáveis e práticos
 10. Usar linguagem clara e objetiva, adequada para gestores brasileiros
 
-IMPORTANTE: Você TEM acesso aos dados detalhados por cliente e fornecedor. Use-os sempre que relevante na análise.
+IMPORTANTE SOBRE CENTROS DE CUSTO:
+- Os dados podem estar filtrados por centro de custo (empresa). Verifique o campo "Centros de Custo selecionados" nos dados.
+- Quando há um filtro de centro de custo ativo, TODOS os dados apresentados já são exclusivamente daquele(s) centro(s) de custo. Os clientes e fornecedores listados já são apenas os que pertencem ao centro de custo filtrado.
+- Se o usuário perguntar "qual cliente faturou mais pela b8one" e o filtro de centro de custo b8one está ativo, responda com base nos dados apresentados, pois eles JÁ estão filtrados para b8one.
+- Se NÃO houver filtro de centro de custo, cada item pode ter a indicação [Centro de Custo: nome] para identificar a qual empresa pertence.
+- Quando o usuário mencionar um centro de custo específico, filtre mentalmente os itens pelo centro de custo indicado entre colchetes.
 
 Responda sempre em português brasileiro. Seja direto e use formatação com marcadores quando apropriado.`;
 
