@@ -100,7 +100,7 @@ export default function Extrato() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
+  const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string; nivel: number }>>([]);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
@@ -318,7 +318,7 @@ export default function Extrato() {
       // Buscar plano de contas para lookup
       const { data: planoContasData } = await supabase
         .from('plano_contas')
-        .select('id, codigo, descricao');
+        .select('id, codigo, descricao, nivel');
       
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
@@ -1568,6 +1568,7 @@ export default function Extrato() {
             options={[
               { value: 'todos', label: 'Todas as Categorias' },
               ...planoContas
+                .filter((plano) => plano.nivel === 3)
                 .sort((a, b) => a.codigo.localeCompare(b.codigo))
                 .map((plano) => ({
                   value: plano.id,
