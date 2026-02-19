@@ -16,35 +16,65 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const fmt = (v: number) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    const formatDetalhes = (detalhes: any[], label: string) => {
+      if (!detalhes || detalhes.length === 0) return '';
+      let text = `\n📋 DETALHAMENTO - ${label}:\n`;
+      for (const d of detalhes) {
+        text += `  • ${d.codigo} ${d.descricao}: R$ ${fmt(d.valor)}\n`;
+        if (d.items && d.items.length > 0) {
+          const sorted = [...d.items].sort((a: any, b: any) => b.valor - a.valor);
+          for (const item of sorted) {
+            text += `      - ${item.nome}: R$ ${fmt(item.valor)}\n`;
+          }
+        }
+      }
+      return text;
+    };
+
+    let dreContext = 'Dados do DRE não disponíveis.';
+    if (dreData) {
+      dreContext = `📊 DADOS RESUMIDOS DO DRE:
+- Receita Total: R$ ${fmt(dreData.receita)}
+- CMV (Custo Variável): R$ ${fmt(dreData.cmv)}
+- Margem de Contribuição: ${Number(dreData.margemContribuicao).toFixed(2)}%
+- Despesas Administrativas (Custo Fixo): R$ ${fmt(dreData.despAdm)}
+- EBITDA: R$ ${fmt(dreData.ebtida)}
+- Impostos: R$ ${fmt(dreData.impostos)}
+- Empréstimos: R$ ${fmt(dreData.emprestimos)}
+- Despesas Financeiras: R$ ${fmt(dreData.despFinanceiras)}
+- EBIT (Lucro antes do IR): R$ ${fmt(dreData.ebit)}
+- Provisão CSLL e IRRF (34%): R$ ${fmt(dreData.provisaoCsllIrrf)}
+- Resultado do Exercício: R$ ${fmt(dreData.resultadoExercicio)}
+${dreData.periodo ? `- Período: ${dreData.periodo}` : ''}
+${formatDetalhes(dreData.receitaDetalhes, 'RECEITAS (por cliente)')}
+${formatDetalhes(dreData.cmvDetalhes, 'CMV - CUSTOS VARIÁVEIS (por fornecedor)')}
+${formatDetalhes(dreData.despAdmDetalhes, 'DESPESAS ADMINISTRATIVAS (por fornecedor)')}
+${formatDetalhes(dreData.impostosDetalhes, 'IMPOSTOS (por fornecedor)')}
+${formatDetalhes(dreData.emprestimosDetalhes, 'EMPRÉSTIMOS (por fornecedor)')}
+${formatDetalhes(dreData.despFinanceirasDetalhes, 'DESPESAS FINANCEIRAS (por fornecedor)')}`;
+    }
+
     const systemPrompt = `Você é um analista financeiro sênior especializado em empresas brasileiras. Você está analisando o DRE (Demonstrativo de Resultados do Exercício) de uma empresa.
 
-Aqui estão os dados financeiros atuais do DRE:
+Você tem acesso tanto ao resumo geral quanto ao detalhamento completo por cliente e fornecedor de cada categoria do DRE.
 
-${dreData ? `
-📊 DADOS DO DRE:
-- Receita Total: R$ ${Number(dreData.receita).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- CMV (Custo Variável): R$ ${Number(dreData.cmv).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Margem de Contribuição: ${Number(dreData.margemContribuicao).toFixed(2)}%
-- Despesas Administrativas (Custo Fixo): R$ ${Number(dreData.despAdm).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- EBITDA: R$ ${Number(dreData.ebtida).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Impostos: R$ ${Number(dreData.impostos).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Empréstimos: R$ ${Number(dreData.emprestimos).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Despesas Financeiras: R$ ${Number(dreData.despFinanceiras).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- EBIT (Lucro antes do IR): R$ ${Number(dreData.ebit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Provisão CSLL e IRRF (34%): R$ ${Number(dreData.provisaoCsllIrrf).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Resultado do Exercício: R$ ${Number(dreData.resultadoExercicio).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-${dreData.periodo ? `- Período: ${dreData.periodo}` : ''}
-` : 'Dados do DRE não disponíveis.'}
+${dreContext}
 
 Suas responsabilidades:
-1. Analisar os números do DRE e identificar pontos fortes e fracos
-2. Recomendar onde investir mais recursos
-3. Identificar áreas com custos elevados que precisam de atenção
-4. Sugerir estratégias para melhorar margens e resultados
-5. Avaliar a saúde financeira geral do negócio
-6. Usar linguagem clara e objetiva, adequada para gestores brasileiros
-7. Sempre basear suas análises nos dados fornecidos
-8. Fornecer insights acionáveis e práticos
+1. Analisar os números do DRE em profundidade, incluindo detalhamento por cliente e fornecedor
+2. Quando perguntado sobre clientes, usar os dados detalhados de receita para identificar o cliente com maior/menor receita, concentração de receita, etc.
+3. Quando perguntado sobre custos, detalhar quais fornecedores representam os maiores gastos em cada categoria
+4. Recomendar onde investir mais recursos com base nos dados granulares
+5. Identificar concentração de receita em poucos clientes (risco) e sugerir diversificação
+6. Identificar fornecedores com custos elevados e sugerir renegociação ou alternativas
+7. Avaliar a saúde financeira geral do negócio
+8. Sempre basear suas análises nos dados fornecidos - NUNCA diga que não tem dados detalhados, pois você tem o detalhamento completo por cliente e fornecedor
+9. Fornecer insights acionáveis e práticos
+10. Usar linguagem clara e objetiva, adequada para gestores brasileiros
+
+IMPORTANTE: Você TEM acesso aos dados detalhados por cliente e fornecedor. Use-os sempre que relevante na análise.
 
 Responda sempre em português brasileiro. Seja direto e use formatação com marcadores quando apropriado.`;
 
