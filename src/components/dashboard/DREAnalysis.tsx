@@ -165,8 +165,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           codigo: g.codigo,
           descricao: g.descricao,
           valor: g.total,
-          items: Array.from(g.items.entries()).map(([nome, valor]) => ({ nome, valor }))
-        }));
+          items: Array.from(g.items.entries())
+            .map(([nome, valor]) => ({ nome, valor }))
+            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+        })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
 
         return { detalhes, total };
       };
