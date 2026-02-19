@@ -542,6 +542,8 @@ export default function EditarContratoCompleto() {
                 valor: parcela.valor,
                 valor_original: parcela.valor,
                 centro_custo: centroCustoId,
+                plano_conta_id: planoContasId || null,
+                conta_bancaria_id: contaBancariaId || null,
               })
               .eq('parcela_id', parcela.id);
           } else {
@@ -552,6 +554,8 @@ export default function EditarContratoCompleto() {
                 valor: parcela.valor,
                 valor_original: parcela.valor,
                 centro_custo: centroCustoId,
+                plano_conta_id: planoContasId || null,
+                conta_bancaria_id: contaBancariaId || null,
               })
               .eq('parcela_id', parcela.id);
           }
