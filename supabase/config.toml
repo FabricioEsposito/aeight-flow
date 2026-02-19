@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.analyze-dre-simulation]
 verify_jwt = false
+
+[functions.chat-dre]
+verify_jwt = false

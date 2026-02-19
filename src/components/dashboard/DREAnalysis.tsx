@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { DREChatDialog } from "./DREChatDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,6 +47,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [dreData, setDreData] = useState<DREData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     fetchDREData();
@@ -384,16 +386,40 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     );
   };
 
+  const chatDreData = dreData ? {
+    receita: dreData.receita,
+    cmv: dreData.cmv,
+    margemContribuicao: dreData.margemContribuicao,
+    despAdm: dreData.despAdm,
+    ebtida: dreData.ebtida,
+    impostos: dreData.impostos,
+    emprestimos: dreData.emprestimos,
+    despFinanceiras: dreData.despFinanceiras,
+    ebit: dreData.ebit,
+    provisaoCsllIrrf: dreData.provisaoCsllIrrf,
+    resultadoExercicio: dreData.resultadoExercicio,
+    periodo: dateRange
+      ? `${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
+      : 'Todo o período',
+  } : null;
+
   return (
+    <>
     <Card>
-      <CardHeader>
-        <CardTitle>DRE Gerencial (Competência)</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {dateRange 
-            ? `Período: ${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
-            : 'Todo o período'
-          }
-        </p>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>DRE Gerencial (Competência)</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {dateRange 
+              ? `Período: ${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
+              : 'Todo o período'
+            }
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setChatOpen(true)} className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          Consultar IA
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg overflow-hidden">
@@ -444,5 +470,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         </div>
       </CardContent>
     </Card>
+    <DREChatDialog open={chatOpen} onOpenChange={setChatOpen} dreData={chatDreData} />
+    </>
   );
 }
