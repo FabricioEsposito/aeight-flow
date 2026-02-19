@@ -1,51 +1,57 @@
 
 
-# Adicionar Centro de Custos nas Tabelas de Reajuste IPCA
+# Chat com IA na area do DRE
 
-## Contexto
-A tabela de contratos na pagina /contratos ja possui a coluna "Centro Custos". Esta alteracao se refere as duas novas tabelas de reajuste IPCA que serao criadas na aba "Contratos" do Dashboard.
+## Objetivo
+Criar um chat interativo com IA integrado a aba de DRE no Dashboard. O chat recebera automaticamente os dados financeiros do DRE atual como contexto e permitira ao usuario fazer perguntas sobre o negocio, receber orientacoes sobre investimentos, identificar areas de melhoria e obter recomendacoes estrategicas.
 
-## Alteracao no plano original
+## Como vai funcionar
 
-No componente `src/components/dashboard/IPCAReajusteContratos.tsx` (a ser criado), ambas as tabelas incluirao a coluna "Centro de Custos":
+1. Um botao "Consultar IA" abrira um painel de chat ao lado do DRE
+2. A IA ja recebera automaticamente todos os dados do DRE como contexto (receita, custos, margens, EBITDA, etc.)
+3. O usuario podera perguntar livremente, por exemplo:
+   - "Onde devo investir mais dinheiro?"
+   - "Quais areas estao com custo alto?"
+   - "Como posso melhorar minha margem?"
+   - "Meu resultado esta saudavel?"
+4. As respostas serao exibidas em tempo real com streaming (token por token)
 
-### Tabela 1 - Contratos para Reajuste IPCA
-Colunas atualizadas:
-- Numero Contrato
-- Cliente
-- **Centro de Custos** (usando o componente `CompanyTag` ja existente)
-- Valor Atual
-- Data Inicio
-- Meses de Vigencia
+## Implementacao Tecnica
 
-### Tabela 2 - Simulacao de Reajuste
-Colunas atualizadas:
-- Numero Contrato
-- Cliente
-- **Centro de Custos** (usando `CompanyTag`)
-- Valor Atual
-- IPCA Acumulado 12m (%)
-- Valor Reajustado
-- Diferenca
-- Acoes (Aprovar / Manter)
+### 1. Nova Edge Function: `chat-dre`
+- Recebera os dados do DRE como contexto + historico de mensagens do usuario
+- System prompt configurado como analista financeiro especializado em empresas brasileiras
+- Usara o Lovable AI Gateway com modelo `google/gemini-3-flash-preview`
+- Suportara streaming SSE para respostas em tempo real
+- Tratamento de erros 429 (rate limit) e 402 (creditos)
 
-## Detalhes tecnicos
+### 2. Novo Componente: `DREChatDialog.tsx`
+- Dialog/Sheet lateral que abre sobre o DRE
+- Campo de input para digitar perguntas
+- Historico de mensagens (usuario e IA)
+- Renderizacao de respostas com markdown (`react-markdown` nao esta instalado, sera usado formatacao basica com whitespace pre-wrap)
+- Indicador de loading durante streaming
+- Os dados do DRE sao enviados automaticamente como contexto na primeira mensagem
 
-- Buscar os dados de `centros_custo` pelo campo `centro_custo` do contrato (mesmo padrao usado em `ContratosTable.tsx`)
-- Utilizar o componente `CompanyTag` de `@/components/centro-custos/CompanyBadge` para exibir o centro de custo com o mesmo visual padrao do sistema
-- A query de contratos incluira um lookup nos centros de custo para obter codigo e descricao
+### 3. Integracao no `DREAnalysis.tsx`
+- Adicionar botao "Consultar IA" no header do card do DRE
+- Passar os dados calculados do DRE para o componente de chat
 
-```text
-Layout atualizado:
+### Arquivos a criar/modificar
 
-+-----------------------------------------------+------------------------------------------------+
-| Contratos para Reajuste IPCA                   | Simulacao de Reajuste IPCA                     |
-|-----------------------------------------------|------------------------------------------------|
-| Contrato | Cliente | CC    | Valor  | Inicio  | Contrato | Cliente | CC    | Atual | Reaj | Acao|
-| CT-001   | Emp A   | CC-01 | 5.000  | 01/2025 | CT-001   | Emp A   | CC-01 | 5.000 | 5.228| [v] |
-| CT-003   | Emp C   | CC-02 | 8.000  | 01/2025 | CT-003   | Emp C   | CC-02 | 8.000 | 8.364| [v] |
-+-----------------------------------------------+------------------------------------------------+
-```
+| Arquivo | Acao |
+|---------|------|
+| `supabase/functions/chat-dre/index.ts` | Criar - Edge function com streaming |
+| `supabase/config.toml` | Modificar - Registrar nova funcao |
+| `src/components/dashboard/DREChatDialog.tsx` | Criar - Componente de chat |
+| `src/components/dashboard/DREAnalysis.tsx` | Modificar - Adicionar botao e integrar chat |
 
-Esta alteracao sera incorporada na implementacao completa do componente IPCAReajusteContratos junto com a edge function ipca-lookup e a integracao no GestaoContratosAnalysis.
+### Fluxo de dados
+
+1. `DREAnalysis` calcula os dados financeiros
+2. Usuario clica em "Consultar IA"
+3. `DREChatDialog` abre com os dados do DRE pre-carregados
+4. Ao enviar mensagem, o frontend faz streaming via SSE para `chat-dre`
+5. A edge function envia os dados do DRE como system prompt + mensagens do usuario para o Lovable AI Gateway
+6. Tokens sao renderizados em tempo real no chat
 
