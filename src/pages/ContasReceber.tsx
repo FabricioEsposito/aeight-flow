@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSessionState } from '@/hooks/useSessionState';
 import { Plus, Search, TrendingUp, Calendar, DollarSign, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
+import { CompanyTag, CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
@@ -25,6 +25,7 @@ import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
+import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,8 @@ interface ContaReceber {
   conta_bancaria_id?: string;
   plano_conta_id?: string;
   centro_custo?: string;
+  centros_custo_rateio?: CentroCustoRateioItem[];
+  parcela_id?: string | null;
   clientes?: {
     razao_social: string;
     nome_fantasia: string | null;
@@ -104,6 +107,21 @@ export default function ContasReceber() {
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
   const { exportToPDF, exportToExcel } = useExportReport();
+
+  // Fetch rateio de centros de custo
+  const parcelaIdsReceber = useMemo(() => contas.map(c => (c as any).parcela_id), [contas]);
+  const { rateioMap: rateioMapReceber } = useCentroCustoRateio(parcelaIdsReceber);
+
+  const contasEnriquecidas = useMemo(() => {
+    if (rateioMapReceber.size === 0) return contas;
+    return contas.map(c => {
+      const pid = (c as any).parcela_id;
+      if (pid && rateioMapReceber.has(pid)) {
+        return { ...c, centros_custo_rateio: rateioMapReceber.get(pid) };
+      }
+      return c;
+    });
+  }, [contas, rateioMapReceber]);
 
   const getDateRangeLabel = () => {
     const dateRange = getDateRange();
@@ -450,7 +468,7 @@ export default function ContasReceber() {
     }
   };
 
-  const filteredContas = contas.filter(conta => {
+  const filteredContas = contasEnriquecidas.filter(conta => {
     const clienteNome = conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '';
     const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
@@ -494,7 +512,11 @@ export default function ContasReceber() {
 
     let matchesCentroCusto = true;
     if (centroCustoFilter.length > 0) {
-      matchesCentroCusto = !!conta.centro_custo && centroCustoFilter.includes(conta.centro_custo);
+      if (conta.centros_custo_rateio && conta.centros_custo_rateio.length > 0) {
+        matchesCentroCusto = conta.centros_custo_rateio.some(r => centroCustoFilter.includes(r.centro_custo_id));
+      } else {
+        matchesCentroCusto = !!conta.centro_custo && centroCustoFilter.includes(conta.centro_custo);
+      }
     }
 
     return matchesSearch && matchesStatus && matchesDate && matchesContaBancaria && matchesCentroCusto;
@@ -740,7 +762,13 @@ export default function ContasReceber() {
                     <span className="text-sm">{conta.descricao}</span>
                   </TableCell>
                   <TableCell>
-                    {conta.centro_custo ? (
+                    {conta.centros_custo_rateio && conta.centros_custo_rateio.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {conta.centros_custo_rateio.map((r, idx) => (
+                          <CompanyTagWithPercent key={idx} codigo={r.codigo} percentual={r.percentual} />
+                        ))}
+                      </div>
+                    ) : conta.centro_custo ? (
                       (() => {
                         const cc = centrosCusto.find(c => c.id === conta.centro_custo);
                         if (cc) {
