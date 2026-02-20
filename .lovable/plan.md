@@ -1,57 +1,42 @@
 
-
-# Chat com IA na area do DRE
+# Editar Valor do Lancamento no Extrato com Propagacao para Parcela do Contrato
 
 ## Objetivo
-Criar um chat interativo com IA integrado a aba de DRE no Dashboard. O chat recebera automaticamente os dados financeiros do DRE atual como contexto e permitira ao usuario fazer perguntas sobre o negocio, receber orientacoes sobre investimentos, identificar areas de melhoria e obter recomendacoes estrategicas.
+Permitir que o usuario edite o **valor original** de um lancamento diretamente na tela de Extrato, e que essa alteracao seja propagada automaticamente para a **parcela do contrato** (`parcelas_contrato`) vinculada, mantendo consistencia em todas as areas do sistema.
 
-## Como vai funcionar
+## O que muda
 
-1. Um botao "Consultar IA" abrira um painel de chat ao lado do DRE
-2. A IA ja recebera automaticamente todos os dados do DRE como contexto (receita, custos, margens, EBITDA, etc.)
-3. O usuario podera perguntar livremente, por exemplo:
-   - "Onde devo investir mais dinheiro?"
-   - "Quais areas estao com custo alto?"
-   - "Como posso melhorar minha margem?"
-   - "Meu resultado esta saudavel?"
-4. As respostas serao exibidas em tempo real com streaming (token por token)
+### 1. Componente `EditParcelaDialog.tsx` - Adicionar campo de Valor Original editavel
+- Atualmente o valor original e exibido apenas como texto (somente leitura) na area de resumo
+- Sera adicionado um campo `CurrencyInput` editavel para o **Valor Original**
+- O calculo do valor total continuara funcionando: `Valor Total = Valor Original + Juros + Multa - Desconto`
+- O `initialData` da interface passara a receber o valor original editavel
 
-## Implementacao Tecnica
-
-### 1. Nova Edge Function: `chat-dre`
-- Recebera os dados do DRE como contexto + historico de mensagens do usuario
-- System prompt configurado como analista financeiro especializado em empresas brasileiras
-- Usara o Lovable AI Gateway com modelo `google/gemini-3-flash-preview`
-- Suportara streaming SSE para respostas em tempo real
-- Tratamento de erros 429 (rate limit) e 402 (creditos)
-
-### 2. Novo Componente: `DREChatDialog.tsx`
-- Dialog/Sheet lateral que abre sobre o DRE
-- Campo de input para digitar perguntas
-- Historico de mensagens (usuario e IA)
-- Renderizacao de respostas com markdown (`react-markdown` nao esta instalado, sera usado formatacao basica com whitespace pre-wrap)
-- Indicador de loading durante streaming
-- Os dados do DRE sao enviados automaticamente como contexto na primeira mensagem
-
-### 3. Integracao no `DREAnalysis.tsx`
-- Adicionar botao "Consultar IA" no header do card do DRE
-- Passar os dados calculados do DRE para o componente de chat
-
-### Arquivos a criar/modificar
-
-| Arquivo | Acao |
-|---------|------|
-| `supabase/functions/chat-dre/index.ts` | Criar - Edge function com streaming |
-| `supabase/config.toml` | Modificar - Registrar nova funcao |
-| `src/components/dashboard/DREChatDialog.tsx` | Criar - Componente de chat |
-| `src/components/dashboard/DREAnalysis.tsx` | Modificar - Adicionar botao e integrar chat |
+### 2. Pagina `Extrato.tsx` - Propagar alteracao para `parcelas_contrato`
+- Na funcao `handleSaveEdit`, apos salvar a alteracao em `contas_receber` ou `contas_pagar`, verificar se o lancamento tem `parcela_id`
+- Se tiver, atualizar tambem o campo `valor` na tabela `parcelas_contrato` com o novo valor original
+- Isso garante que o contrato reflita o valor correto da parcela
 
 ### Fluxo de dados
 
-1. `DREAnalysis` calcula os dados financeiros
-2. Usuario clica em "Consultar IA"
-3. `DREChatDialog` abre com os dados do DRE pre-carregados
-4. Ao enviar mensagem, o frontend faz streaming via SSE para `chat-dre`
-5. A edge function envia os dados do DRE como system prompt + mensagens do usuario para o Lovable AI Gateway
-6. Tokens sao renderizados em tempo real no chat
+1. Usuario abre o dialog de edicao no Extrato
+2. Edita o **Valor Original** (e opcionalmente juros/multa/desconto)
+3. O sistema salva na tabela `contas_receber` ou `contas_pagar`:
+   - `valor_original` = novo valor original
+   - `valor` = valor total calculado (original + juros + multa - desconto)
+4. Se o lancamento estiver vinculado a um contrato (`parcela_id` nao nulo):
+   - Atualiza `parcelas_contrato.valor` com o novo valor original
+5. Todas as telas (Extrato, Contas a Receber/Pagar, Contrato) ficam sincronizadas
 
+## Detalhes Tecnicos
+
+### Arquivo: `src/components/financeiro/EditParcelaDialog.tsx`
+- Adicionar estado `valorOriginal` editavel (em vez de derivar de `initialData`)
+- Substituir a exibicao de texto do valor original por um `CurrencyInput`
+- Recalcular `valorTotal` dinamicamente quando `valorOriginal` mudar
+
+### Arquivo: `src/pages/Extrato.tsx`
+- Na funcao `handleSaveEdit` (linha ~887):
+  - Incluir `valor_original: data.valor_original` no `updateData`
+  - Apos o update principal, verificar se `selectedLancamento.parcela_id` existe
+  - Se sim, executar update em `parcelas_contrato` com `valor = data.valor_original`
