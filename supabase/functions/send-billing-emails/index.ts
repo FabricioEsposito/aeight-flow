@@ -303,7 +303,7 @@ serve(async (req: Request): Promise<Response> => {
         data_competencia: conta.data_competencia,
         data_vencimento: conta.data_vencimento,
         valor: conta.valor,
-        valor_bruto: contrato?.valor_bruto || conta.valor,
+        valor_bruto: conta.valor,
         cliente_id: cliente.id,
         cliente_nome: cliente.nome_fantasia || cliente.razao_social,
         cliente_emails: (cliente.email || []).filter((e: string) => e && e.trim() !== ""),
