@@ -233,6 +233,7 @@ serve(async (req: Request): Promise<Response> => {
         clientes(id, razao_social, nome_fantasia, email),
         parcelas_contrato(
           contrato_id,
+          valor,
           contratos(
             numero_contrato,
             servicos,
@@ -283,7 +284,9 @@ serve(async (req: Request): Promise<Response> => {
         continue;
       }
 
-      const contrato = (conta.parcelas_contrato as any)?.contratos;
+      const parcelaContrato = conta.parcelas_contrato as any;
+      const contrato = parcelaContrato?.contratos;
+      const parcelaBruto = parcelaContrato?.valor || conta.valor;
       
       let servicoNome = "";
       if (contrato?.servicos && Array.isArray(contrato.servicos) && contrato.servicos.length > 0) {
@@ -303,7 +306,7 @@ serve(async (req: Request): Promise<Response> => {
         data_competencia: conta.data_competencia,
         data_vencimento: conta.data_vencimento,
         valor: conta.valor,
-        valor_bruto: conta.valor,
+        valor_bruto: parcelaBruto,
         cliente_id: cliente.id,
         cliente_nome: cliente.nome_fantasia || cliente.razao_social,
         cliente_emails: (cliente.email || []).filter((e: string) => e && e.trim() !== ""),
