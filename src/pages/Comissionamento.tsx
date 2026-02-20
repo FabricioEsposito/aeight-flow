@@ -236,17 +236,16 @@ export default function Comissionamento() {
 
   const fetchSolicitacoes = async () => {
     try {
-      const dateRange = getDateRange();
+      const { mes, ano } = getReferencePeriod();
       
       let query = supabase
         .from("solicitacoes_comissao")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (dateRange) {
-        const startStr = format(dateRange.start, "yyyy-MM-dd");
-        const endStr = format(dateRange.end, "yyyy-MM-dd");
-        query = query.gte("created_at", startStr).lte("created_at", endStr + "T23:59:59");
+      // Filtrar por mês/ano de referência em vez de created_at
+      if (dateRangePreset !== 'todo-periodo') {
+        query = query.eq("mes_referencia", mes).eq("ano_referencia", ano);
       }
 
       const { data, error } = await query;
