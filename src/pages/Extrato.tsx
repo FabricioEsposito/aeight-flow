@@ -876,7 +876,11 @@ export default function Extrato() {
       return;
     }
 
-    setSelectedLancamento(data);
+    // Garantir que valor_original tenha o valor correto (fallback para valor)
+    setSelectedLancamento({
+      ...data,
+      valor_original: data.valor_original ?? data.valor,
+    });
     if (isAdmin) {
       setEditDialogOpen(true);
     } else {

@@ -90,7 +90,7 @@ export function EditParcelaDialog({
   // Sync valorOriginal from initialData
   useEffect(() => {
     if (initialData && open) {
-      setValorOriginal(initialData.valor_original || 0);
+      setValorOriginal(initialData.valor_original ?? 0);
     }
   }, [initialData, open]);
 
