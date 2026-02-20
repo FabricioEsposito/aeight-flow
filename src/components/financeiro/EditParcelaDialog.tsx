@@ -85,7 +85,15 @@ export function EditParcelaDialog({
     }
   }, [initialData, open]);
 
-  const valorOriginal = initialData?.valor_original || 0;
+  const [valorOriginal, setValorOriginal] = useState<number>(0);
+
+  // Sync valorOriginal from initialData
+  useEffect(() => {
+    if (initialData && open) {
+      setValorOriginal(initialData.valor_original || 0);
+    }
+  }, [initialData, open]);
+
   const valorTotal = valorOriginal + juros + multa - desconto;
 
   const handleSave = () => {
@@ -223,6 +231,15 @@ export function EditParcelaDialog({
                   placeholder="0,00"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Valor Original (R$)</Label>
+              <CurrencyInput
+                value={valorOriginal}
+                onChange={setValorOriginal}
+                placeholder="0,00"
+              />
             </div>
 
             <div className="bg-muted p-4 rounded-lg space-y-2">
