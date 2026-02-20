@@ -582,7 +582,8 @@ export default function Comissionamento() {
         .eq("vendedor_id", selectedVendedor)
         .eq("mes_referencia", mes)
         .eq("ano_referencia", ano)
-        .single();
+        .in("status", ["pendente", "aprovado"])
+        .maybeSingle();
 
       if (existing) {
         toast({
