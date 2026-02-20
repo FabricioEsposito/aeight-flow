@@ -14,7 +14,7 @@ import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { ServicosMultiSelect } from '@/components/contratos/ServicosMultiSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
-import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
 import { ParcelamentoCustomizado, ParcelaCustomizada } from '@/components/contratos/ParcelamentoCustomizado';
 import { DiaVencimentoSelect } from '@/components/contratos/DiaVencimentoSelect';
@@ -60,6 +60,7 @@ export default function NovoContrato() {
   // Classificação
   const [planoContasId, setPlanoContasId] = useState('');
   const [vendedorId, setVendedorId] = useState('');
+  const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [centroCusto, setCentroCusto] = useState('');
   const prevCentroCustoRef = useRef<string>('');
 
@@ -571,6 +572,27 @@ export default function NovoContrato() {
         if (pagarError) throw pagarError;
       }
 
+      // Save contratos_centros_custo
+      if (centroCustoRateio.length > 0 && contratoId) {
+        // Delete existing if editing
+        if (id) {
+          await supabase.from('contratos_centros_custo').delete().eq('contrato_id', contratoId);
+        }
+        
+        const rateioData = centroCustoRateio.map(item => ({
+          contrato_id: contratoId,
+          centro_custo_id: item.centro_custo_id,
+          percentual: item.percentual,
+          valor: valorTotal * item.percentual / 100,
+        }));
+        
+        const { error: rateioError } = await supabase
+          .from('contratos_centros_custo')
+          .insert(rateioData);
+        
+        if (rateioError) throw rateioError;
+      }
+
       toast({
         title: "Sucesso",
         description: id ? "Contrato atualizado com sucesso!" : "Contrato criado com sucesso!",
@@ -802,13 +824,15 @@ export default function NovoContrato() {
               <CardTitle>Centro de custo</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <Label>Centro de custo</Label>
-                <CentroCustoSelect 
-                  value={centroCusto}
-                  onValueChange={setCentroCusto}
-                />
-              </div>
+              <CentroCustoRateio
+                value={centroCustoRateio}
+                onChange={(items) => {
+                  setCentroCustoRateio(items);
+                  // Keep legacy field with first CC
+                  setCentroCusto(items.length > 0 ? items[0].centro_custo_id : '');
+                }}
+                valorTotal={calcularValorTotal()}
+              />
             </CardContent>
           </Card>
 

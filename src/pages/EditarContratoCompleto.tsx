@@ -32,7 +32,7 @@ import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
-import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { DateInput } from '@/components/ui/date-input';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,6 +60,7 @@ export default function EditarContratoCompleto() {
   const [periodoRecorrencia, setPeriodoRecorrencia] = useState('');
   const [planoContasId, setPlanoContasId] = useState('');
   const [centroCustoId, setCentroCustoId] = useState('');
+  const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [vendedorId, setVendedorId] = useState('');
   const prevCentroCustoRef = useRef<string>('');
   const [descricaoServico, setDescricaoServico] = useState('');
@@ -88,8 +89,26 @@ export default function EditarContratoCompleto() {
       fetchContrato();
       fetchContasBancarias();
       fetchParcelas();
+      fetchCentroCustoRateio();
     }
   }, [id]);
+
+  const fetchCentroCustoRateio = async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from('contratos_centros_custo')
+      .select('centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+      .eq('contrato_id', id);
+    
+    if (data && data.length > 0) {
+      setCentroCustoRateio(data.map((r: any) => ({
+        centro_custo_id: r.centro_custo_id,
+        codigo: r.centros_custo?.codigo || '',
+        descricao: r.centros_custo?.descricao || '',
+        percentual: r.percentual,
+      })));
+    }
+  };
 
   // When changing centro de custo, force reselect vendor
   useEffect(() => {
@@ -562,6 +581,21 @@ export default function EditarContratoCompleto() {
         }
       }
 
+      // Save contratos_centros_custo
+      if (centroCustoRateio.length > 0) {
+        await supabase.from('contratos_centros_custo').delete().eq('contrato_id', id);
+        
+        const valorTotal = calcularValorTotal();
+        const rateioData = centroCustoRateio.map(item => ({
+          contrato_id: id,
+          centro_custo_id: item.centro_custo_id,
+          percentual: item.percentual,
+          valor: valorTotal * item.percentual / 100,
+        }));
+        
+        await supabase.from('contratos_centros_custo').insert(rateioData);
+      }
+
       toast({
         title: "Sucesso",
         description: "Contrato atualizado com sucesso!",
@@ -719,10 +753,13 @@ export default function EditarContratoCompleto() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Centro de Custo</Label>
-              <CentroCustoSelect
-                value={centroCustoId}
-                onValueChange={setCentroCustoId}
+              <CentroCustoRateio
+                value={centroCustoRateio}
+                onChange={(items) => {
+                  setCentroCustoRateio(items);
+                  setCentroCustoId(items.length > 0 ? items[0].centro_custo_id : '');
+                }}
+                valorTotal={calcularValorTotal()}
               />
             </div>
           </div>

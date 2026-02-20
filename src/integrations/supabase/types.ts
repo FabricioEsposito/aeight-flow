@@ -588,6 +588,51 @@ export type Database = {
           },
         ]
       }
+      contratos_centros_custo: {
+        Row: {
+          centro_custo_id: string
+          contrato_id: string
+          created_at: string
+          id: string
+          percentual: number
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          centro_custo_id: string
+          contrato_id: string
+          created_at?: string
+          id?: string
+          percentual?: number
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          centro_custo_id?: string
+          contrato_id?: string
+          created_at?: string
+          id?: string
+          percentual?: number
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_centros_custo_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_centros_custo_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           cliente_id: string

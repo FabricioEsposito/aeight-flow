@@ -92,3 +92,33 @@ export function CompanyTag({ codigo, className }: CompanyTagProps) {
     </span>
   );
 }
+
+interface CompanyTagWithPercentProps {
+  codigo: string;
+  percentual: number;
+  className?: string;
+}
+
+export function CompanyTagWithPercent({ codigo, percentual, className }: CompanyTagWithPercentProps) {
+  const theme = getCompanyTheme(codigo);
+  
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium",
+        className
+      )}
+      style={{
+        backgroundColor: theme.lightColor,
+        color: theme.primaryColor,
+      }}
+    >
+      <span 
+        className="w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ backgroundColor: theme.primaryColor }}
+      />
+      <span className="truncate">{theme.name}</span>
+      <span className="opacity-70 shrink-0">{percentual}%</span>
+    </span>
+  );
+}

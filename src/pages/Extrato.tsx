@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
+import { CompanyTag, CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -34,6 +34,7 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
+import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
 
 interface LancamentoExtrato {
   id: string;
@@ -52,6 +53,7 @@ interface LancamentoExtrato {
   importancia_contrato?: string;
   centro_custo?: string;
   centro_custo_nome?: string;
+  centros_custo_rateio?: CentroCustoRateioItem[];
   plano_conta_id?: string;
   plano_conta_descricao?: string;
   conta_bancaria_id?: string;
@@ -105,6 +107,21 @@ export default function Extrato() {
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
   const { exportToPDF, exportToExcel } = useExportReport();
+
+  // Fetch rateio de centros de custo para lançamentos com parcela_id
+  const parcelaIds = useMemo(() => lancamentos.map(l => l.parcela_id), [lancamentos]);
+  const { rateioMap } = useCentroCustoRateio(parcelaIds);
+
+  // Enrich lancamentos with rateio data
+  const lancamentosEnriquecidos = useMemo(() => {
+    if (rateioMap.size === 0) return lancamentos;
+    return lancamentos.map(l => {
+      if (l.parcela_id && rateioMap.has(l.parcela_id)) {
+        return { ...l, centros_custo_rateio: rateioMap.get(l.parcela_id) };
+      }
+      return l;
+    });
+  }, [lancamentos, rateioMap]);
 
   const formatCurrencyExport = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -1283,7 +1300,7 @@ export default function Extrato() {
     return 'em dia';
   };
 
-  const filteredLancamentos = lancamentos.filter(lanc => {
+  const filteredLancamentos = lancamentosEnriquecidos.filter(lanc => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
       lanc.descricao.toLowerCase().includes(searchLower) ||
@@ -1302,7 +1319,12 @@ export default function Extrato() {
 
     let matchesCentroCusto = true;
     if (centroCustoFilter.length > 0) {
-      matchesCentroCusto = !!lanc.centro_custo && centroCustoFilter.includes(lanc.centro_custo);
+      // Check rateio first, then fallback to legacy centro_custo
+      if (lanc.centros_custo_rateio && lanc.centros_custo_rateio.length > 0) {
+        matchesCentroCusto = lanc.centros_custo_rateio.some(r => centroCustoFilter.includes(r.centro_custo_id));
+      } else {
+        matchesCentroCusto = !!lanc.centro_custo && centroCustoFilter.includes(lanc.centro_custo);
+      }
     }
 
     let matchesCategoria = true;
@@ -1906,7 +1928,13 @@ export default function Extrato() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {lanc.centro_custo_nome ? (
+                      {lanc.centros_custo_rateio && lanc.centros_custo_rateio.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {lanc.centros_custo_rateio.map((r, idx) => (
+                            <CompanyTagWithPercent key={idx} codigo={r.codigo} percentual={r.percentual} />
+                          ))}
+                        </div>
+                      ) : lanc.centro_custo_nome ? (
                         <CompanyTag codigo={lanc.centro_custo_nome.split(' - ')[0] || lanc.centro_custo_nome} />
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
