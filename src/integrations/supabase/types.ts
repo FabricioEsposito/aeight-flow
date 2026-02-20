@@ -101,6 +101,82 @@ export type Database = {
         }
         Relationships: []
       }
+      comissao_extraordinaria: {
+        Row: {
+          ano_referencia: number
+          created_at: string
+          created_by: string | null
+          descricao: string
+          id: string
+          mes_referencia: number
+          updated_at: string
+          valor: number
+          vendedor_id: string
+        }
+        Insert: {
+          ano_referencia: number
+          created_at?: string
+          created_by?: string | null
+          descricao: string
+          id?: string
+          mes_referencia: number
+          updated_at?: string
+          valor?: number
+          vendedor_id: string
+        }
+        Update: {
+          ano_referencia?: number
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          id?: string
+          mes_referencia?: number
+          updated_at?: string
+          valor?: number
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissao_extraordinaria_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comissao_meta_batida: {
+        Row: {
+          conta_receber_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          vendedor_id: string
+        }
+        Insert: {
+          conta_receber_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          vendedor_id: string
+        }
+        Update: {
+          conta_receber_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissao_meta_batida_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contas_bancarias: {
         Row: {
           banco: string
