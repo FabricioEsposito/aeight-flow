@@ -1,42 +1,82 @@
 
-# Editar Valor do Lancamento no Extrato com Propagacao para Parcela do Contrato
 
-## Objetivo
-Permitir que o usuario edite o **valor original** de um lancamento diretamente na tela de Extrato, e que essa alteracao seja propagada automaticamente para a **parcela do contrato** (`parcelas_contrato`) vinculada, mantendo consistencia em todas as areas do sistema.
+# Exibicao Unificada de Lancamentos com Multiplos Centros de Custo
+
+## Resumo
+Manter um unico lancamento financeiro por parcela com o valor cheio (ex: R$ 10.000), e exibir todos os centros de custo vinculados ao contrato na coluna de centro de custo. O rateio percentual so sera aplicado virtualmente no DRE.
+
+## Como funciona hoje
+- Cada lancamento em `contas_receber` / `contas_pagar` tem um unico campo `centro_custo` (UUID)
+- A coluna de centro de custo exibe um unico `CompanyTag`
 
 ## O que muda
 
-### 1. Componente `EditParcelaDialog.tsx` - Adicionar campo de Valor Original editavel
-- Atualmente o valor original e exibido apenas como texto (somente leitura) na area de resumo
-- Sera adicionado um campo `CurrencyInput` editavel para o **Valor Original**
-- O calculo do valor total continuara funcionando: `Valor Total = Valor Original + Juros + Multa - Desconto`
-- O `initialData` da interface passara a receber o valor original editavel
+### 1. Criacao de Lancamentos (NovoContrato / EditarContrato)
+- Cada parcela continua gerando **um unico** lancamento financeiro com o valor cheio
+- O campo `centro_custo` do lancamento pode ser preenchido com o primeiro centro de custo do rateio (ou ficar nulo)
+- A informacao completa de rateio fica na tabela `contratos_centros_custo` (ja planejada)
 
-### 2. Pagina `Extrato.tsx` - Propagar alteracao para `parcelas_contrato`
-- Na funcao `handleSaveEdit`, apos salvar a alteracao em `contas_receber` ou `contas_pagar`, verificar se o lancamento tem `parcela_id`
-- Se tiver, atualizar tambem o campo `valor` na tabela `parcelas_contrato` com o novo valor original
-- Isso garante que o contrato reflita o valor correto da parcela
+### 2. Exibicao nas telas de Contas a Receber, Contas a Pagar e Extrato
+- Ao carregar os lancamentos, buscar tambem os dados de `contratos_centros_custo` via `parcela_id -> parcelas_contrato -> contrato_id`
+- Na coluna de Centro de Custo, exibir **multiplos CompanyTags** quando houver mais de um CC
+- Formato visual: dois chips lado a lado, ex: `[b8one 50%] [Lomadee 50%]`
+- Para lancamentos avulsos (sem parcela/contrato), continua exibindo o CC simples
 
-### Fluxo de dados
+### 3. Filtro de Centro de Custo
+- O filtro multi-select de centro de custo deve considerar que um lancamento pode pertencer a multiplos CCs
+- Se o usuario filtrar por "b8one", lancamentos que tenham b8one em qualquer percentual do rateio devem aparecer
+- O valor exibido continua sendo o valor cheio (R$ 10.000)
 
-1. Usuario abre o dialog de edicao no Extrato
-2. Edita o **Valor Original** (e opcionalmente juros/multa/desconto)
-3. O sistema salva na tabela `contas_receber` ou `contas_pagar`:
-   - `valor_original` = novo valor original
-   - `valor` = valor total calculado (original + juros + multa - desconto)
-4. Se o lancamento estiver vinculado a um contrato (`parcela_id` nao nulo):
-   - Atualiza `parcelas_contrato.valor` com o novo valor original
-5. Todas as telas (Extrato, Contas a Receber/Pagar, Contrato) ficam sincronizadas
+### 4. Filtro de Conta Bancaria
+- Sem alteracao - o lancamento ja esta vinculado a uma unica conta bancaria
+- Aparece o valor cheio normalmente
+
+### 5. DRE (nao faz parte desta tarefa, ja planejado anteriormente)
+- O DRE fara o split virtual usando os percentuais de `contratos_centros_custo`
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/components/financeiro/EditParcelaDialog.tsx`
-- Adicionar estado `valorOriginal` editavel (em vez de derivar de `initialData`)
-- Substituir a exibicao de texto do valor original por um `CurrencyInput`
-- Recalcular `valorTotal` dinamicamente quando `valorOriginal` mudar
+### Busca de dados de rateio
+Nas paginas `Extrato.tsx`, `ContasReceber.tsx` e `ContasPagar.tsx`:
+- Apos carregar os lancamentos, coletar todos os `parcela_id` nao nulos
+- Buscar `parcelas_contrato` com seus `contrato_id`
+- Buscar `contratos_centros_custo` com `centro_custo_id` expandido para obter `codigo` e `descricao`
+- Montar um mapa: `parcela_id -> [{centro_custo_codigo, percentual}]`
+- Enriquecer cada lancamento com o array de centros de custo
 
-### Arquivo: `src/pages/Extrato.tsx`
-- Na funcao `handleSaveEdit` (linha ~887):
-  - Incluir `valor_original: data.valor_original` no `updateData`
-  - Apos o update principal, verificar se `selectedLancamento.parcela_id` existe
-  - Se sim, executar update em `parcelas_contrato` com `valor = data.valor_original`
+### Interface do lancamento (atualizar tipos)
+```text
+interface CentroCustoRateio {
+  codigo: string;
+  descricao: string;
+  percentual: number;
+}
+
+// Adicionar aos tipos de lancamento:
+centros_custo_rateio?: CentroCustoRateio[];
+```
+
+### Renderizacao da coluna Centro de Custo
+- Se `centros_custo_rateio` existe e tem itens: exibir multiplos `CompanyTag` com percentual
+- Senao: fallback para o `centro_custo` simples (comportamento atual)
+
+### Filtro de Centro de Custo (ajuste)
+- Verificar se o CC filtrado esta em `centros_custo_rateio` (qualquer item do array) OU no campo `centro_custo` legado
+
+### Arquivos modificados
+- **src/pages/Extrato.tsx**: buscar rateio, enriquecer lancamentos, ajustar coluna CC e filtro
+- **src/pages/ContasReceber.tsx**: mesma logica de busca e exibicao
+- **src/pages/ContasPagar.tsx**: mesma logica de busca e exibicao
+- **src/components/centro-custos/CompanyBadge.tsx**: possivelmente adicionar variante compacta com percentual
+
+### Fluxo visual
+```text
+Parcela: R$ 10.000,00
+Conta Bancaria: Banco X
+Centro de Custo: [b8one 50%] [Lomadee 50%]
+
+DRE (separado):
+  b8one -> R$ 5.000
+  Lomadee -> R$ 5.000
+```
+
