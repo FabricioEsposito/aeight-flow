@@ -15,8 +15,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, X, Send, Eye, RotateCcw, Trophy } from "lucide-react";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { Check, X, Send, Eye, RotateCcw, Trophy, Plus, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
@@ -62,6 +64,15 @@ interface ParcelaPaga {
   valor_comissao: number;
 }
 
+interface ComissaoExtraordinaria {
+  id: string;
+  vendedor_id: string;
+  descricao: string;
+  valor: number;
+  mes_referencia: number;
+  ano_referencia: number;
+}
+
 interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
@@ -93,8 +104,13 @@ export default function Comissionamento() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [userVendedorId, setUserVendedorId] = useState<string | null>(null);
   
-  // Meta batida tracking - IDs das parcelas marcadas como meta batida
+  // Meta batida tracking - IDs das parcelas marcadas como meta batida (persistido no banco)
   const [metaBatidaIds, setMetaBatidaIds] = useState<Set<string>>(new Set());
+  
+  // Comissões extraordinárias
+  const [extraordinarias, setExtraordinarias] = useState<ComissaoExtraordinaria[]>([]);
+  const [novaExtraDesc, setNovaExtraDesc] = useState("");
+  const [novaExtraValor, setNovaExtraValor] = useState(0);
   
   // Filters for solicitações
   const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("comissao", "datePreset", "este-mes");
@@ -158,6 +174,8 @@ export default function Comissionamento() {
   useEffect(() => {
     if (selectedVendedor) {
       fetchParcelasPagas();
+      fetchMetaBatidaIds();
+      fetchExtraordinarias();
     }
   }, [selectedVendedor, dateRangePreset, customDateRange]);
 
@@ -266,6 +284,41 @@ export default function Comissionamento() {
       console.error("Erro ao carregar solicitações:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Buscar flags de meta batida do banco de dados
+  const fetchMetaBatidaIds = async () => {
+    if (!selectedVendedor) return;
+    try {
+      const { data, error } = await (supabase as any)
+        .from("comissao_meta_batida")
+        .select("conta_receber_id")
+        .eq("vendedor_id", selectedVendedor);
+
+      if (error) throw error;
+      setMetaBatidaIds(new Set((data || []).map((d: any) => d.conta_receber_id)));
+    } catch (error) {
+      console.error("Erro ao carregar meta batida:", error);
+    }
+  };
+
+  // Buscar comissões extraordinárias do banco
+  const fetchExtraordinarias = async () => {
+    if (!selectedVendedor) return;
+    const { mes, ano } = getReferencePeriod();
+    try {
+      const { data, error } = await (supabase as any)
+        .from("comissao_extraordinaria")
+        .select("*")
+        .eq("vendedor_id", selectedVendedor)
+        .eq("mes_referencia", mes)
+        .eq("ano_referencia", ano);
+
+      if (error) throw error;
+      setExtraordinarias(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar extraordinárias:", error);
     }
   };
 
@@ -386,23 +439,106 @@ export default function Comissionamento() {
       setLoadingParcelas(false);
     }
   };
-  // Toggle meta batida para uma parcela
-  const toggleMetaBatida = (parcelaId: string) => {
-    setMetaBatidaIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(parcelaId)) {
-        newSet.delete(parcelaId);
+
+  // Toggle meta batida para uma parcela - persiste no banco
+  const toggleMetaBatida = async (parcelaId: string) => {
+    const isCurrentlySet = metaBatidaIds.has(parcelaId);
+    
+    try {
+      if (isCurrentlySet) {
+        // Remover do banco
+        await (supabase as any)
+          .from("comissao_meta_batida")
+          .delete()
+          .eq("conta_receber_id", parcelaId)
+          .eq("vendedor_id", selectedVendedor);
+        
+        setMetaBatidaIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(parcelaId);
+          return newSet;
+        });
       } else {
-        newSet.add(parcelaId);
+        // Inserir no banco
+        await (supabase as any)
+          .from("comissao_meta_batida")
+          .insert({
+            conta_receber_id: parcelaId,
+            vendedor_id: selectedVendedor,
+            created_by: user?.id,
+          });
+        
+        setMetaBatidaIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(parcelaId);
+          return newSet;
+        });
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error("Erro ao atualizar meta batida:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a flag de meta batida.",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Calcular comissão considerando meta batida
+  // Adicionar comissão extraordinária
+  const handleAddExtraordinaria = async () => {
+    if (!selectedVendedor || !novaExtraDesc.trim() || novaExtraValor <= 0) {
+      toast({
+        title: "Atenção",
+        description: "Preencha a descrição e o valor da comissão extraordinária.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { mes, ano } = getReferencePeriod();
+
+    try {
+      await (supabase as any)
+        .from("comissao_extraordinaria")
+        .insert({
+          vendedor_id: selectedVendedor,
+          descricao: novaExtraDesc.trim(),
+          valor: novaExtraValor,
+          mes_referencia: mes,
+          ano_referencia: ano,
+          created_by: user?.id,
+        });
+
+      setNovaExtraDesc("");
+      setNovaExtraValor(0);
+      fetchExtraordinarias();
+      toast({ title: "Sucesso", description: "Comissão extraordinária adicionada." });
+    } catch (error) {
+      console.error("Erro ao adicionar extraordinária:", error);
+      toast({ title: "Erro", description: "Não foi possível adicionar.", variant: "destructive" });
+    }
+  };
+
+  // Remover comissão extraordinária
+  const handleRemoveExtraordinaria = async (id: string) => {
+    try {
+      await (supabase as any)
+        .from("comissao_extraordinaria")
+        .delete()
+        .eq("id", id);
+
+      fetchExtraordinarias();
+      toast({ title: "Sucesso", description: "Comissão extraordinária removida." });
+    } catch (error) {
+      console.error("Erro ao remover extraordinária:", error);
+      toast({ title: "Erro", description: "Não foi possível remover.", variant: "destructive" });
+    }
+  };
+
+  // Calcular comissão considerando meta batida e extraordinárias
   const calcularComissao = useMemo(() => {
     const vendedor = vendedores.find((v) => v.id === selectedVendedor);
-    if (!vendedor) return { total: 0, comissao: 0, percentual: 0, comissaoMetaBatida: 0 };
+    if (!vendedor) return { total: 0, comissao: 0, percentual: 0, comissaoMetaBatida: 0, totalExtraordinarias: 0 };
 
     const total = parcelasPagas.reduce((acc, p) => acc + p.valor, 0);
     
@@ -421,13 +557,18 @@ export default function Comissionamento() {
       }
     });
 
+    // Somar extraordinárias
+    const totalExtraordinarias = extraordinarias.reduce((acc, e) => acc + e.valor, 0);
+    comissao += totalExtraordinarias;
+
     return {
       total,
       comissao,
       percentual: vendedor.percentual_comissao,
       comissaoMetaBatida,
+      totalExtraordinarias,
     };
-  }, [parcelasPagas, selectedVendedor, vendedores, metaBatidaIds]);
+  }, [parcelasPagas, selectedVendedor, vendedores, metaBatidaIds, extraordinarias]);
 
   const handleSolicitarAprovacao = async () => {
     if (!selectedVendedor || !user) return;
@@ -802,7 +943,7 @@ export default function Comissionamento() {
             <CardTitle>Calcular Comissão</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-sm text-muted-foreground">Total Recebido</div>
@@ -817,7 +958,15 @@ export default function Comissionamento() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Valor da Comissão</div>
+                  <div className="text-sm text-muted-foreground">Extraordinárias</div>
+                  <div className="text-2xl font-bold text-amber-600">
+                    {formatCurrency(calcularComissao.totalExtraordinarias)}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground">Valor da Comissão (Total)</div>
                   <div className="text-2xl font-bold text-green-600">
                     {formatCurrency(calcularComissao.comissao)}
                   </div>
@@ -905,6 +1054,65 @@ export default function Comissionamento() {
                 Nenhuma parcela recebida neste período para o vendedor selecionado.
               </p>
             )}
+
+            {/* Comissões Extraordinárias */}
+            <div className="space-y-3">
+              <h4 className="font-medium">Comissões Extraordinárias</h4>
+              
+              {extraordinarias.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center w-[60px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {extraordinarias.map((e) => (
+                      <TableRow key={e.id} className="bg-amber-500/5">
+                        <TableCell>{e.descricao}</TableCell>
+                        <TableCell className="text-right font-medium text-amber-600">
+                          {formatCurrency(e.valor)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveExtraordinaria(e.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              <div className="flex items-end gap-3">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <Input
+                    value={novaExtraDesc}
+                    onChange={(e) => setNovaExtraDesc(e.target.value)}
+                    placeholder="Ex: Bônus por performance especial"
+                  />
+                </div>
+                <div className="w-[180px] space-y-1">
+                  <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                  <CurrencyInput
+                    value={novaExtraValor}
+                    onChange={setNovaExtraValor}
+                    placeholder="0,00"
+                  />
+                </div>
+                <Button onClick={handleAddExtraordinaria} size="icon" className="shrink-0">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
             {calcularComissao.total > 0 && (
               <div className="flex justify-end">
