@@ -900,6 +900,7 @@ export default function Extrato() {
         multa: data.multa,
         desconto: data.desconto,
         valor: data.valor_total,
+        valor_original: data.valor_original,
       };
       
       // Adicionar link_nf e link_boleto apenas para contas a pagar
@@ -914,6 +915,18 @@ export default function Extrato() {
         .eq('id', data.id);
 
       if (error) throw error;
+
+      // Propagar alteração do valor original para parcelas_contrato
+      if (selectedLancamento.parcela_id && data.valor_original) {
+        const { error: parcelaError } = await supabase
+          .from('parcelas_contrato')
+          .update({ valor: data.valor_original })
+          .eq('id', selectedLancamento.parcela_id);
+
+        if (parcelaError) {
+          console.error('Erro ao atualizar parcela do contrato:', parcelaError);
+        }
+      }
 
       toast({
         title: "Sucesso",
