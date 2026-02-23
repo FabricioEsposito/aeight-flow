@@ -30,6 +30,12 @@ interface ValuationData {
   multiploEbitda: number;
 }
 
+interface BUDREData {
+  codigo: string;
+  descricao: string;
+  dre: DREData;
+}
+
 interface SimulationRequest {
   dreAtual: DREData;
   dreSimulado: DREData;
@@ -43,37 +49,30 @@ interface SimulationRequest {
   breakevenAtual: BreakevenData;
   breakevenSimulado: BreakevenData;
   valuation: ValuationData;
+  drePerBU?: BUDREData[];
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Parse request body
     const body: SimulationRequest = await req.json();
-    console.log('Received simulation request:', JSON.stringify(body, null, 2));
+    const { dreAtual, dreSimulado, ajustes, breakevenAtual, breakevenSimulado, valuation, drePerBU } = body;
 
-    const { dreAtual, dreSimulado, ajustes, breakevenAtual, breakevenSimulado, valuation } = body;
-
-    // Format currency helper
     const formatMoeda = (valor: number) => {
       return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
 
-    // Calculate variations
     const variacaoReceita = dreAtual.receita > 0 
       ? ((dreSimulado.receita - dreAtual.receita) / dreAtual.receita * 100).toFixed(1) 
       : '0';
@@ -84,10 +83,33 @@ Deno.serve(async (req) => {
       ? ((dreSimulado.resultado - dreAtual.resultado) / Math.abs(dreAtual.resultado) * 100).toFixed(1) 
       : '0';
 
-    // Build prompt for AI
-    const prompt = `Você é um analista financeiro especializado em empresas brasileiras. Analise os seguintes dados do DRE (Demonstrativo de Resultados do Exercício) simulado e forneça insights estratégicos.
+    // Build per-BU section
+    let buSection = '';
+    if (drePerBU && drePerBU.length > 0) {
+      buSection = `\n\nDETALHAMENTO POR UNIDADE DE NEGÓCIO (BU / Centro de Custo):
+Cada centro de custo representa uma BU (Business Unit) dentro do grupo de empresas. Analise cada uma individualmente.
+`;
+      for (const bu of drePerBU) {
+        const margemPct = bu.dre.receita > 0 ? (bu.dre.margemContribuicaoPercentual).toFixed(2) : '0.00';
+        buSection += `
+--- BU: ${bu.codigo} - ${bu.descricao} ---
+- Receita: ${formatMoeda(bu.dre.receita)}
+- CMV: ${formatMoeda(bu.dre.cmv)}
+- Margem de Contribuição: ${margemPct}%
+- Desp. Administrativas: ${formatMoeda(bu.dre.despesasAdm)}
+- EBITDA: ${formatMoeda(bu.dre.ebitda)}
+- Impostos: ${formatMoeda(bu.dre.impostos)}
+- Empréstimos: ${formatMoeda(bu.dre.emprestimos)}
+- Desp. Financeiras: ${formatMoeda(bu.dre.despesasFinanceiras)}
+- EBIT: ${formatMoeda(bu.dre.ebit)}
+- Resultado: ${formatMoeda(bu.dre.resultado)}
+`;
+      }
+    }
 
-CENÁRIO ATUAL:
+    const prompt = `Você é um analista financeiro especializado em empresas brasileiras e grupos empresariais multi-BU. Analise os seguintes dados do DRE (Demonstrativo de Resultados do Exercício) simulado e forneça insights estratégicos.
+
+CENÁRIO ATUAL (CONSOLIDADO):
 - Receita: ${formatMoeda(dreAtual.receita)}
 - CMV (Custos Variáveis): ${formatMoeda(dreAtual.cmv)}
 - Margem de Contribuição: ${dreAtual.margemContribuicaoPercentual.toFixed(2)}%
@@ -108,7 +130,7 @@ AJUSTES APLICADOS NO CENÁRIO SIMULADO:
 - Empréstimos: ${ajustes.emprestimosPercent > 0 ? '+' : ''}${ajustes.emprestimosPercent}%
 - Despesas Financeiras: ${ajustes.despesasFinanceirasPercent > 0 ? '+' : ''}${ajustes.despesasFinanceirasPercent}%
 
-CENÁRIO SIMULADO:
+CENÁRIO SIMULADO (CONSOLIDADO):
 - Receita: ${formatMoeda(dreSimulado.receita)} (${variacaoReceita}%)
 - CMV: ${formatMoeda(dreSimulado.cmv)}
 - Margem de Contribuição: ${dreSimulado.margemContribuicaoPercentual.toFixed(2)}%
@@ -120,29 +142,26 @@ CENÁRIO SIMULADO:
 VALUATION DO CENÁRIO SIMULADO:
 - DCF (Fluxo de Caixa Descontado): ${formatMoeda(valuation.dcf)}
 - Múltiplo de EBITDA (6x): ${formatMoeda(valuation.multiploEbitda)}
+${buSection}
 
 Por favor, forneça uma análise estruturada em português brasileiro com os seguintes tópicos:
 
-1. **OBSERVAÇÕES** (3-5 pontos importantes sobre os resultados da simulação)
-2. **RISCOS** (2-3 potenciais riscos identificados no cenário simulado)
-3. **OPORTUNIDADES** (2-3 oportunidades de melhoria)
-4. **RECOMENDAÇÕES** (3-5 caminhos estratégicos a seguir para tomada de decisão)
+1. **VISÃO CONSOLIDADA** (3-5 observações sobre o resultado geral do grupo)
+2. **ANÁLISE POR BU (UNIDADE DE NEGÓCIO)** (para cada BU com movimentação, comente: performance, margem, contribuição para o grupo, pontos de atenção. Identifique quais BUs são lucrativas e quais estão com resultado negativo, qual BU tem melhor margem, qual gera mais receita)
+3. **RISCOS** (2-3 riscos identificados, mencionando quais BUs são mais vulneráveis)
+4. **OPORTUNIDADES** (2-3 oportunidades, indicando em quais BUs focar)
+5. **RECOMENDAÇÕES ESTRATÉGICAS** (3-5 recomendações concretas, incluindo ações específicas por BU quando aplicável, como realocação de custos, investimentos prioritários, etc.)
 
-Seja objetivo, prático e focado em ações concretas que a empresa pode tomar.`;
+Seja objetivo, prático e focado em ações concretas. Trate cada BU como uma empresa independente dentro do grupo.`;
 
-    // Get LOVABLE_API_KEY
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
-      console.error('LOVABLE_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Calling Lovable AI Gateway...');
-
-    // Call Lovable AI Gateway
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -158,13 +177,27 @@ Seja objetivo, prático e focado em ações concretas que a empresa pode tomar.`
           },
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 4000,
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI Gateway error:', errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Tente novamente em alguns segundos.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Créditos de IA esgotados. Adicione créditos ao workspace.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: 'AI service error', details: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -172,8 +205,6 @@ Seja objetivo, prático e focado em ações concretas que a empresa pode tomar.`
     }
 
     const aiResult = await aiResponse.json();
-    console.log('AI response received successfully');
-
     const analysisText = aiResult.choices?.[0]?.message?.content || 'Análise não disponível';
 
     return new Response(
