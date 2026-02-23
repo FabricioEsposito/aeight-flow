@@ -390,6 +390,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
   if (!dreData) return null;
 
+  const calcAV = (value: number | string): string | null => {
+    if (typeof value !== 'number' || !dreData || dreData.receita === 0) return null;
+    return `${((value / dreData.receita) * 100).toFixed(1)}%`;
+  };
+
   const renderLine = (
     label: string,
     value: number | string,
@@ -402,11 +407,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     const isExpanded = detailsKey ? expandedSections.has(detailsKey) : false;
     const showValue = typeof value === 'number';
     const displayValue = showValue ? formatCurrency(Math.abs(value)) : value;
+    const av = showValue ? calcAV(value as number) : null;
 
     return (
       <div className={cn("border-b border-border", indent && "ml-8")}>
-        <div className="flex justify-between items-center py-3 px-4 hover:bg-muted/50">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center py-3 px-4 hover:bg-muted/50">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             {hasDetails && detailsKey && (
               <Button
                 variant="ghost"
@@ -424,15 +430,21 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               {label}
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            {showValue && isNegative && <span className="text-destructive">-</span>}
-            <span className={cn(
-              isTotal && "font-bold",
-              isNegative ? "text-destructive" : value !== '-' && "text-foreground"
-            )}>
-              {displayValue}
-            </span>
-            {showValue && isNegative && <span className="text-destructive">-</span>}
+          <div className="flex items-center gap-2">
+            {av && (
+              <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                {av}
+              </span>
+            )}
+            <div className="flex items-center gap-1 w-36 justify-end shrink-0">
+              {showValue && isNegative && <span className="text-destructive">-</span>}
+              <span className={cn(
+                isTotal && "font-bold",
+                isNegative ? "text-destructive" : value !== '-' && "text-foreground"
+              )}>
+                {displayValue}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -451,8 +463,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           return (
             <div key={index}>
               {/* Linha da subcategoria */}
-              <div className="flex justify-between items-center py-2 px-4 ml-12 text-sm border-b border-border/50">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center py-2 px-4 ml-12 text-sm border-b border-border/50">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   {item.items.length > 0 && (
                     <Button
                       variant="ghost"
@@ -467,14 +479,19 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                     {item.codigo} {item.descricao}
                   </span>
                 </div>
-                <span className="font-medium">{formatCurrency(item.valor)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                    {calcAV(item.valor) || ''}
+                  </span>
+                  <span className="font-medium w-36 text-right shrink-0">{formatCurrency(item.valor)}</span>
+                </div>
               </div>
 
               {/* Detalhes por fornecedor/cliente */}
               {isSubExpanded && item.items.length > 0 && (
                 <div className="bg-muted/20">
                   {item.items.map((subItem, subIndex) => (
-                    <div key={subIndex} className="flex justify-between items-center py-2 px-4 ml-24 text-sm gap-2">
+                    <div key={subIndex} className="flex items-center py-2 px-4 ml-24 text-sm gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className="text-muted-foreground truncate">{subItem.nome}</span>
                         {subItem.rateio && subItem.rateio.length > 1 && (
@@ -485,7 +502,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                           </div>
                         )}
                       </div>
-                      <span className="shrink-0">{formatCurrency(subItem.valor)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                          {calcAV(subItem.valor) || ''}
+                        </span>
+                        <span className="shrink-0 w-36 text-right">{formatCurrency(subItem.valor)}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -542,9 +564,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       <CardContent>
         <div className="border rounded-lg overflow-hidden">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground flex justify-between items-center py-3 px-4 font-bold">
-            <span>DRE Gerencial (Competência)</span>
-            <span>{dateRange ? `${dateRange.from.toLocaleDateString('pt-BR', { month: 'short' })}/${dateRange.from.getFullYear()}` : 'Todo período'}</span>
+          <div className="bg-primary text-primary-foreground flex items-center py-3 px-4 font-bold">
+            <span className="flex-1">DRE Gerencial (Competência)</span>
+            <span className="text-xs w-16 text-right shrink-0 opacity-80">AV%</span>
+            <span className="w-36 text-right shrink-0">{dateRange ? `${dateRange.from.toLocaleDateString('pt-BR', { month: 'short' })}/${dateRange.from.getFullYear()}` : 'Todo período'}</span>
           </div>
 
           {/* Receita */}
