@@ -160,10 +160,10 @@ export function Dashboard() {
           .map(p => p.id);
       };
 
-      // Buscar receitas
+      // Buscar receitas - SEM filtro de centro_custo (será feito via rateio)
       let receitasQuery = supabase
         .from('contas_receber')
-        .select('valor, plano_conta_id');
+        .select('id, valor, plano_conta_id, centro_custo, parcela_id');
 
       if (dateRange) {
         receitasQuery = receitasQuery
@@ -171,16 +171,12 @@ export function Dashboard() {
           .lte('data_competencia', dateRange.to);
       }
 
-      if (selectedCentroCusto.length > 0) {
-        receitasQuery = receitasQuery.in('centro_custo', selectedCentroCusto);
-      }
-
       const { data: receitas } = await receitasQuery;
 
-      // Buscar despesas
+      // Buscar despesas - SEM filtro de centro_custo (será feito via rateio)
       let despesasQuery = supabase
         .from('contas_pagar')
-        .select('valor, plano_conta_id');
+        .select('id, valor, plano_conta_id, centro_custo, parcela_id');
 
       if (dateRange) {
         despesasQuery = despesasQuery
@@ -188,13 +184,67 @@ export function Dashboard() {
           .lte('data_competencia', dateRange.to);
       }
 
-      if (selectedCentroCusto.length > 0) {
-        despesasQuery = despesasQuery.in('centro_custo', selectedCentroCusto);
-      }
-
       const { data: despesas } = await despesasQuery;
 
-      // Calcular totais por categoria
+      // Build rateio map: parcela_id -> { centro_custo_id, percentual }[]
+      const allLancamentos = [...(receitas || []), ...(despesas || [])];
+      const parcelaIds = [...new Set(allLancamentos.map(l => l.parcela_id).filter(Boolean))] as string[];
+      
+      let rateioMap = new Map<string, Array<{ centro_custo_id: string; percentual: number }>>();
+      
+      if (parcelaIds.length > 0) {
+        const { data: parcelas } = await supabase
+          .from('parcelas_contrato')
+          .select('id, contrato_id')
+          .in('id', parcelaIds);
+
+        if (parcelas && parcelas.length > 0) {
+          const contratoIds = [...new Set(parcelas.map(p => p.contrato_id).filter(Boolean))] as string[];
+          
+          if (contratoIds.length > 0) {
+            const { data: rateios } = await supabase
+              .from('contratos_centros_custo')
+              .select('contrato_id, centro_custo_id, percentual')
+              .in('contrato_id', contratoIds);
+
+            if (rateios && rateios.length > 0) {
+              const contratoRateioMap = new Map<string, Array<{ centro_custo_id: string; percentual: number }>>();
+              for (const r of rateios) {
+                const existing = contratoRateioMap.get(r.contrato_id) || [];
+                existing.push({ centro_custo_id: r.centro_custo_id, percentual: r.percentual });
+                contratoRateioMap.set(r.contrato_id, existing);
+              }
+
+              for (const parcela of parcelas) {
+                if (parcela.contrato_id && contratoRateioMap.has(parcela.contrato_id)) {
+                  rateioMap.set(parcela.id, contratoRateioMap.get(parcela.contrato_id)!);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Helper: get effective value considering rateio and cost center filter
+      const getEffectiveValue = (l: any): number => {
+        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : null;
+        
+        if (selectedCentroCusto.length > 0) {
+          if (rateio && rateio.length > 0) {
+            const matchingRateios = rateio.filter(r => selectedCentroCusto.includes(r.centro_custo_id));
+            if (matchingRateios.length === 0) return 0;
+            const totalPercent = matchingRateios.reduce((sum, r) => sum + r.percentual, 0);
+            return Number(l.valor) * (totalPercent / 100);
+          } else {
+            if (!l.centro_custo || !selectedCentroCusto.includes(l.centro_custo)) return 0;
+            return Number(l.valor);
+          }
+        }
+        
+        return Number(l.valor);
+      };
+
+      // Calcular totais por categoria com rateio
       const receitaIds = getAccountIds('1.1');
       const cmvIds = getAccountIds('2.1');
       const despAdmIds = getAccountIds('3.1');
@@ -205,7 +255,7 @@ export function Dashboard() {
       const calcularTotal = (dados: any[], ids: string[]) => {
         return dados
           ?.filter(d => d.plano_conta_id && ids.includes(d.plano_conta_id))
-          .reduce((sum, d) => sum + Number(d.valor), 0) || 0;
+          .reduce((sum, d) => sum + getEffectiveValue(d), 0) || 0;
       };
 
       const receitaTotal = calcularTotal(receitas || [], receitaIds);
