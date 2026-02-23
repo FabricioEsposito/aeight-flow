@@ -6,12 +6,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CompanyTagWithPercent } from "@/components/centro-custos/CompanyBadge";
+
+interface RateioInfo {
+  codigo: string;
+  descricao: string;
+  percentual: number;
+  centro_custo_id: string;
+}
 
 interface DetalheItem {
   codigo: string;
   descricao: string;
   valor: number;
-  items: Array<{ nome: string; valor: number; centroCusto?: string }>;
+  items: Array<{ nome: string; valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
 }
 
 interface DREData {
@@ -80,11 +88,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         setCentrosCustoNomes([]);
       }
 
-      // Buscar todos centros de custo para mapear IDs -> nomes
+      // Buscar todos centros de custo para mapear IDs -> nomes/codigos
       const { data: allCentrosCusto } = await supabase
         .from('centros_custo')
-        .select('id, descricao');
+        .select('id, codigo, descricao');
       const ccMap = new Map((allCentrosCusto || []).map(c => [c.id, c.descricao]));
+      const ccFullMap = new Map((allCentrosCusto || []).map(c => [c.id, c]));
 
       // Buscar planos de contas para mapear IDs
       const { data: planosContas } = await supabase
@@ -104,13 +113,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           .map(p => p.id);
       };
 
-      // Buscar receitas (regime de competência)
+      // Buscar receitas (regime de competência) - SEM filtro de centro_custo
       let receitasQuery = supabase
         .from('contas_receber')
-        .select('valor, plano_conta_id, descricao, centro_custo, plano_contas(codigo, descricao), clientes(razao_social)');
+        .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), clientes(razao_social)');
 
       if (dateRange) {
-        // Usar formato de data local para evitar problemas de timezone
         const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
         const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         receitasQuery = receitasQuery
@@ -118,19 +126,15 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           .lte('data_competencia', toDate);
       }
 
-      if (centroCusto && centroCusto.length > 0) {
-        receitasQuery = receitasQuery.in('centro_custo', centroCusto);
-      }
-
+      // Não filtrar por centro_custo diretamente - será feito via rateio
       const { data: receitas } = await receitasQuery;
 
-      // Buscar despesas (regime de competência)
+      // Buscar despesas (regime de competência) - SEM filtro de centro_custo
       let despesasQuery = supabase
         .from('contas_pagar')
-        .select('valor, plano_conta_id, descricao, centro_custo, plano_contas(codigo, descricao), fornecedores(razao_social)');
+        .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)');
 
       if (dateRange) {
-        // Usar formato de data local para evitar problemas de timezone
         const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
         const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         despesasQuery = despesasQuery
@@ -138,25 +142,94 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           .lte('data_competencia', toDate);
       }
 
-      if (centroCusto && centroCusto.length > 0) {
-        despesasQuery = despesasQuery.in('centro_custo', centroCusto);
-      }
-
       const { data: despesas } = await despesasQuery;
 
-      // Função auxiliar para agrupar detalhes
+      // Build rateio map: parcela_id -> RateioInfo[]
+      const allLancamentos = [...(receitas || []), ...(despesas || [])];
+      const parcelaIds = [...new Set(allLancamentos.map(l => l.parcela_id).filter(Boolean))] as string[];
+      
+      let rateioMap = new Map<string, RateioInfo[]>();
+      
+      if (parcelaIds.length > 0) {
+        // Get contrato_id for each parcela
+        const { data: parcelas } = await supabase
+          .from('parcelas_contrato')
+          .select('id, contrato_id')
+          .in('id', parcelaIds);
+
+        if (parcelas && parcelas.length > 0) {
+          const contratoIds = [...new Set(parcelas.map(p => p.contrato_id).filter(Boolean))] as string[];
+          
+          if (contratoIds.length > 0) {
+            const { data: rateios } = await supabase
+              .from('contratos_centros_custo')
+              .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+              .in('contrato_id', contratoIds);
+
+            if (rateios && rateios.length > 0) {
+              const contratoRateioMap = new Map<string, RateioInfo[]>();
+              for (const r of rateios) {
+                const cc = r.centros_custo as any;
+                if (!cc) continue;
+                const item: RateioInfo = {
+                  codigo: cc.codigo,
+                  descricao: cc.descricao,
+                  percentual: r.percentual,
+                  centro_custo_id: r.centro_custo_id,
+                };
+                const existing = contratoRateioMap.get(r.contrato_id) || [];
+                existing.push(item);
+                contratoRateioMap.set(r.contrato_id, existing);
+              }
+
+              for (const parcela of parcelas) {
+                if (parcela.contrato_id && contratoRateioMap.has(parcela.contrato_id)) {
+                  rateioMap.set(parcela.id, contratoRateioMap.get(parcela.contrato_id)!);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Helper: get the effective value for a lancamento considering rateio and cost center filter
+      const getEffectiveValue = (l: any): { valor: number; rateio?: RateioInfo[] } | null => {
+        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : null;
+        
+        if (centroCusto && centroCusto.length > 0) {
+          if (rateio && rateio.length > 0) {
+            // Has rateio - apply proportional value for matching cost centers
+            const matchingRateios = rateio.filter(r => centroCusto.includes(r.centro_custo_id));
+            if (matchingRateios.length === 0) return null; // Not in selected cost centers
+            const totalPercent = matchingRateios.reduce((sum, r) => sum + r.percentual, 0);
+            return { valor: Number(l.valor) * (totalPercent / 100), rateio };
+          } else {
+            // No rateio - use direct centro_custo field
+            if (!l.centro_custo || !centroCusto.includes(l.centro_custo)) return null;
+            return { valor: Number(l.valor) };
+          }
+        }
+        
+        // No filter - full value
+        return { valor: Number(l.valor), rateio: rateio || undefined };
+      };
+
+      // Função auxiliar para agrupar detalhes com suporte a rateio
       const agruparDetalhes = (
         lancamentos: any[],
         accountIds: string[],
         planosContas: any[],
         tipo: 'receita' | 'despesa'
       ): { detalhes: DetalheItem[]; total: number } => {
-        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, { valor: number; centroCusto?: string }>; total: number }>();
+        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>; total: number }>();
         let total = 0;
 
         lancamentos?.forEach(l => {
           if (l.plano_conta_id && accountIds.includes(l.plano_conta_id)) {
-            total += Number(l.valor);
+            const effective = getEffectiveValue(l);
+            if (!effective) return; // Filtered out
+            
+            total += effective.valor;
             const plano = planosContas.find(p => p.id === l.plano_conta_id);
             const codigo = plano?.codigo || '';
             const descricao = plano?.descricao || l.descricao;
@@ -175,11 +248,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             }
 
             const group = grouped.get(l.plano_conta_id)!;
-            group.total += Number(l.valor);
-            // Use nome+centroCusto as key to separate by cost center
+            group.total += effective.valor;
             const itemKey = ccNome ? `${nome}|||${ccNome}` : nome;
-            const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome };
-            current.valor += Number(l.valor);
+            const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome, rateio: effective.rateio };
+            current.valor += effective.valor;
             group.items.set(itemKey, current);
           }
         });
@@ -192,7 +264,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             .map(([key, item]) => ({ 
               nome: key.includes('|||') ? key.split('|||')[0] : key, 
               valor: item.valor, 
-              centroCusto: item.centroCusto 
+              centroCusto: item.centroCusto,
+              rateio: item.rateio,
             }))
             .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
         })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
@@ -401,9 +474,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               {isSubExpanded && item.items.length > 0 && (
                 <div className="bg-muted/20">
                   {item.items.map((subItem, subIndex) => (
-                    <div key={subIndex} className="flex justify-between items-center py-2 px-4 ml-24 text-sm">
-                      <span className="text-muted-foreground">{subItem.nome}</span>
-                      <span>{formatCurrency(subItem.valor)}</span>
+                    <div key={subIndex} className="flex justify-between items-center py-2 px-4 ml-24 text-sm gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-muted-foreground truncate">{subItem.nome}</span>
+                        {subItem.rateio && subItem.rateio.length > 1 && (
+                          <div className="flex flex-wrap gap-1 shrink-0">
+                            {subItem.rateio.map((r, rIdx) => (
+                              <CompanyTagWithPercent key={rIdx} codigo={r.codigo} percentual={r.percentual} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span className="shrink-0">{formatCurrency(subItem.valor)}</span>
                     </div>
                   ))}
                 </div>
