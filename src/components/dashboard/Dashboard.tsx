@@ -108,6 +108,7 @@ export function Dashboard() {
     emprestimos: 0,
     despesasFinanceiras: 0,
   });
+  const [drePerBU, setDrePerBU] = useState<Array<{ codigo: string; descricao: string; dre: DREValues }>>([]);
 
   // Obter cores do tema do centro de custo selecionado
   const companyTheme = useMemo(() => {
@@ -273,6 +274,50 @@ export function Dashboard() {
         emprestimos: emprestimosTotal,
         despesasFinanceiras: despFinTotal,
       });
+
+      // Calcular DRE por BU (centro de custo)
+      const { data: allCC } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao')
+        .eq('status', 'ativo');
+
+      if (allCC && allCC.length > 0) {
+        const getEffectiveValueForCC = (l: any, ccId: string): number => {
+          const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : null;
+          if (rateio && rateio.length > 0) {
+            const match = rateio.find(r => r.centro_custo_id === ccId);
+            if (!match) return 0;
+            return Number(l.valor) * (match.percentual / 100);
+          } else {
+            if (l.centro_custo === ccId) return Number(l.valor);
+            return 0;
+          }
+        };
+
+        const calcularTotalCC = (dados: any[], ids: string[], ccId: string) => {
+          return dados
+            ?.filter(d => d.plano_conta_id && ids.includes(d.plano_conta_id))
+            .reduce((sum, d) => sum + getEffectiveValueForCC(d, ccId), 0) || 0;
+        };
+
+        const buData = allCC.map(cc => ({
+          codigo: cc.codigo,
+          descricao: cc.descricao,
+          dre: {
+            receita: calcularTotalCC(receitas || [], receitaIds, cc.id),
+            cmv: calcularTotalCC(despesas || [], cmvIds, cc.id),
+            despesasAdm: calcularTotalCC(despesas || [], despAdmIds, cc.id),
+            impostos: calcularTotalCC(despesas || [], impostosIds, cc.id),
+            emprestimos: calcularTotalCC(despesas || [], emprestimosIds, cc.id),
+            despesasFinanceiras: calcularTotalCC(despesas || [], despFinIds, cc.id),
+          }
+        })).filter(bu => 
+          bu.dre.receita !== 0 || bu.dre.cmv !== 0 || bu.dre.despesasAdm !== 0 ||
+          bu.dre.impostos !== 0 || bu.dre.emprestimos !== 0 || bu.dre.despesasFinanceiras !== 0
+        );
+
+        setDrePerBU(buData);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do DRE para simulação:', error);
     }
@@ -1291,6 +1336,7 @@ export function Dashboard() {
             isLoading={isLoading}
             selectedCentroCusto={selectedCentroCusto}
             onCentroCustoChange={setSelectedCentroCusto}
+            drePerBU={drePerBU}
           />
         )}
       </div>

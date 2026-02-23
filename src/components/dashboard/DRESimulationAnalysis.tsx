@@ -55,11 +55,18 @@ import {
 } from '@/lib/valuation-utils';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 
+interface BUDREData {
+  codigo: string;
+  descricao: string;
+  dre: DREValues;
+}
+
 interface DRESimulationAnalysisProps {
   dreAtual: DREValues;
   isLoading?: boolean;
   selectedCentroCusto?: string[];
   onCentroCustoChange?: (value: string[]) => void;
+  drePerBU?: BUDREData[];
 }
 
 export function DRESimulationAnalysis({ 
@@ -67,6 +74,7 @@ export function DRESimulationAnalysis({
   isLoading = false,
   selectedCentroCusto = [],
   onCentroCustoChange,
+  drePerBU = [],
 }: DRESimulationAnalysisProps) {
   // Ajustes com valor e percentual
   const [ajustes, setAjustes] = useState<AjustesDRE>(AJUSTES_INICIAIS);
@@ -184,6 +192,11 @@ export function DRESimulationAnalysis({
             dcf: valuation.dcf,
             multiploEbitda: valuation.multiploEbitda,
           },
+          drePerBU: drePerBU.map(bu => ({
+            codigo: bu.codigo,
+            descricao: bu.descricao,
+            dre: calcularDRE(bu.dre),
+          })),
         },
       });
 
