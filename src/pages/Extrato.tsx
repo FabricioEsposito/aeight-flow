@@ -68,6 +68,8 @@ interface LancamentoExtrato {
   link_nf?: string | null;
   link_boleto?: string | null;
   observacoes?: string | null;
+  folha_status?: string | null;
+  is_folha_funcionario?: boolean;
 }
 
 export default function Extrato() {
@@ -398,7 +400,7 @@ export default function Extrato() {
         .select(`
           *,
           fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
         `)
         .neq('status', 'pago')
         .order('data_vencimento', { ascending: true });
@@ -416,7 +418,7 @@ export default function Extrato() {
         .select(`
           *,
           fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
         `)
         .eq('status', 'pago')
         .order('data_pagamento', { ascending: true });
@@ -553,6 +555,7 @@ export default function Extrato() {
           link_nf: p.link_nf,
           link_boleto: p.link_boleto,
           observacoes: p.observacoes,
+          is_folha_funcionario: p.parcelas_contrato?.contratos?.is_folha_funcionario || false,
         };
 
         if (p.parcelas_contrato?.contratos?.servicos && Array.isArray(p.parcelas_contrato.contratos.servicos) && p.parcelas_contrato.contratos.servicos.length > 0) {
@@ -639,6 +642,36 @@ export default function Extrato() {
       const todosLancamentos = [...receberComServicos, ...pagarComServicos].sort(
         (a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
       );
+
+      // Buscar status da folha de pagamento para lançamentos de contratos de funcionário
+      const parcelaIdsFolha = todosLancamentos
+        .filter((l: any) => l.is_folha_funcionario && l.parcela_id)
+        .map((l: any) => l.parcela_id);
+
+      if (parcelaIdsFolha.length > 0) {
+        const { data: folhaData } = await supabase
+          .from('folha_pagamento')
+          .select('parcela_id, status')
+          .in('parcela_id', parcelaIdsFolha);
+
+        if (folhaData && folhaData.length > 0) {
+          const folhaMap = new Map(folhaData.map(f => [f.parcela_id, f.status]));
+          todosLancamentos.forEach((l: any) => {
+            if (l.is_folha_funcionario && l.parcela_id && folhaMap.has(l.parcela_id)) {
+              l.folha_status = folhaMap.get(l.parcela_id);
+            } else if (l.is_folha_funcionario) {
+              l.folha_status = 'pendente_rh';
+            }
+          });
+        } else {
+          // Marcar todos como pendente_rh se não há registros na folha
+          todosLancamentos.forEach((l: any) => {
+            if (l.is_folha_funcionario) {
+              l.folha_status = 'pendente_rh';
+            }
+          });
+        }
+      }
 
       setLancamentos(todosLancamentos);
     } catch (error) {
@@ -1966,6 +1999,19 @@ export default function Extrato() {
                               </div>
                             </TooltipContent>
                           </Tooltip>
+                        )}
+                        {lanc.is_folha_funcionario && (
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 cursor-help ${
+                            lanc.folha_status === 'aprovado' 
+                              ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' 
+                              : lanc.folha_status === 'processado'
+                              ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+                              : 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+                          }`}>
+                            {lanc.folha_status === 'aprovado' ? 'RH ✓' : 
+                             lanc.folha_status === 'processado' ? 'RH ✓' :
+                             'RH Pend.'}
+                          </Badge>
                         )}
                       </div>
                     </TableCell>
