@@ -633,6 +633,89 @@ export type Database = {
           },
         ]
       }
+      controle_beneficios: {
+        Row: {
+          ano_referencia: number
+          conta_pagar_id: string | null
+          contrato_id: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          fornecedor_id: string
+          id: string
+          mes_referencia: number
+          observacoes: string | null
+          parcela_id: string | null
+          status: string
+          tipo_beneficio: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ano_referencia: number
+          conta_pagar_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          fornecedor_id: string
+          id?: string
+          mes_referencia: number
+          observacoes?: string | null
+          parcela_id?: string | null
+          status?: string
+          tipo_beneficio?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          ano_referencia?: number
+          conta_pagar_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          fornecedor_id?: string
+          id?: string
+          mes_referencia?: number
+          observacoes?: string | null
+          parcela_id?: string | null
+          status?: string
+          tipo_beneficio?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controle_beneficios_conta_pagar_id_fkey"
+            columns: ["conta_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "contas_pagar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controle_beneficios_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controle_beneficios_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controle_beneficios_parcela_id_fkey"
+            columns: ["parcela_id"]
+            isOneToOne: false
+            referencedRelation: "parcelas_contrato"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           cliente_id: string
@@ -670,6 +753,146 @@ export type Database = {
             columns: ["conta_receber_id"]
             isOneToOne: false
             referencedRelation: "contas_receber"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folha_pagamento: {
+        Row: {
+          ano_referencia: number
+          cofins_percentual: number
+          cofins_valor: number
+          conta_pagar_id: string | null
+          contrato_id: string | null
+          created_at: string
+          created_by: string | null
+          csll_percentual: number
+          csll_valor: number
+          fgts_percentual: number
+          fgts_valor: number
+          fornecedor_id: string
+          id: string
+          inss_percentual: number
+          inss_valor: number
+          irrf_percentual: number
+          irrf_pj_percentual: number
+          irrf_pj_valor: number
+          irrf_valor: number
+          iss_percentual: number
+          iss_valor: number
+          mes_referencia: number
+          observacoes: string | null
+          outros_descontos: number
+          outros_proventos: number
+          parcela_id: string | null
+          pis_percentual: number
+          pis_valor: number
+          salario_base: number
+          status: string
+          tipo_vinculo: string
+          updated_at: string
+          vale_transporte_desconto: number
+          valor_liquido: number
+        }
+        Insert: {
+          ano_referencia: number
+          cofins_percentual?: number
+          cofins_valor?: number
+          conta_pagar_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          csll_percentual?: number
+          csll_valor?: number
+          fgts_percentual?: number
+          fgts_valor?: number
+          fornecedor_id: string
+          id?: string
+          inss_percentual?: number
+          inss_valor?: number
+          irrf_percentual?: number
+          irrf_pj_percentual?: number
+          irrf_pj_valor?: number
+          irrf_valor?: number
+          iss_percentual?: number
+          iss_valor?: number
+          mes_referencia: number
+          observacoes?: string | null
+          outros_descontos?: number
+          outros_proventos?: number
+          parcela_id?: string | null
+          pis_percentual?: number
+          pis_valor?: number
+          salario_base?: number
+          status?: string
+          tipo_vinculo?: string
+          updated_at?: string
+          vale_transporte_desconto?: number
+          valor_liquido?: number
+        }
+        Update: {
+          ano_referencia?: number
+          cofins_percentual?: number
+          cofins_valor?: number
+          conta_pagar_id?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          csll_percentual?: number
+          csll_valor?: number
+          fgts_percentual?: number
+          fgts_valor?: number
+          fornecedor_id?: string
+          id?: string
+          inss_percentual?: number
+          inss_valor?: number
+          irrf_percentual?: number
+          irrf_pj_percentual?: number
+          irrf_pj_valor?: number
+          irrf_valor?: number
+          iss_percentual?: number
+          iss_valor?: number
+          mes_referencia?: number
+          observacoes?: string | null
+          outros_descontos?: number
+          outros_proventos?: number
+          parcela_id?: string | null
+          pis_percentual?: number
+          pis_valor?: number
+          salario_base?: number
+          status?: string
+          tipo_vinculo?: string
+          updated_at?: string
+          vale_transporte_desconto?: number
+          valor_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folha_pagamento_conta_pagar_id_fkey"
+            columns: ["conta_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "contas_pagar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folha_pagamento_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folha_pagamento_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folha_pagamento_parcela_id_fkey"
+            columns: ["parcela_id"]
+            isOneToOne: false
+            referencedRelation: "parcelas_contrato"
             referencedColumns: ["id"]
           },
         ]

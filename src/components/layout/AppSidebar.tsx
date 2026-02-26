@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ShoppingCart,
   DollarSign,
-  UserCheck
+  UserCheck,
+  Briefcase
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +63,12 @@ const allNavigationGroups: NavGroup[] = [
     ]
   },
   {
+    name: "RH",
+    items: [
+      { title: "Recursos Humanos", url: "/rh", icon: Briefcase },
+    ]
+  },
+  {
     name: "Financeiro",
     items: [
       { title: "Controle de Faturamento", url: "/controle-faturamento", icon: Receipt },
@@ -95,6 +102,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "Cadastro": false,
     "Comercial": false,
+    "RH": false,
     "Financeiro": false
   });
 
@@ -105,6 +113,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         // Filter group visibility
         if (group.name === "Cadastro" && !permissions.canAccessCadastro) return null;
         if (group.name === "Comercial" && !permissions.canAccessComercial) return null;
+        if (group.name === "RH" && !permissions.canAccessRH) return null;
         if (group.name === "Financeiro" && !permissions.canAccessFinanceiro) return null;
 
         // For salesperson, only show Dashboard Comercial and Comissionamento

@@ -16,6 +16,7 @@ const permissionMessages: Record<PermissionKey, string> = {
   canAccessCadastro: 'Você não tem permissão para acessar a área de Cadastros.',
   canAccessComercial: 'Você não tem permissão para acessar a área Comercial.',
   canAccessFinanceiro: 'Você não tem permissão para acessar a área Financeira.',
+  canAccessRH: 'Você não tem permissão para acessar a área de RH.',
   canAccessUsuarios: 'Você não tem permissão para gerenciar usuários.',
   canAccessSolicitacoes: 'Você não tem permissão para acessar as Solicitações.',
   canEditFinanceiro: 'Você não tem permissão para editar dados financeiros. Entre em contato com o administrador ou gerente financeiro.',

@@ -10,6 +10,7 @@ export interface RolePermissions {
   canAccessCadastro: boolean;
   canAccessComercial: boolean;
   canAccessFinanceiro: boolean;
+  canAccessRH: boolean;
   canAccessUsuarios: boolean;
   canAccessSolicitacoes: boolean;
   
@@ -76,6 +77,7 @@ export function useUserRole() {
       canAccessCadastro: false,
       canAccessComercial: false,
       canAccessFinanceiro: false,
+      canAccessRH: false,
       canAccessUsuarios: false,
       canAccessSolicitacoes: false,
       canEditFinanceiro: false,
@@ -96,6 +98,7 @@ export function useUserRole() {
           canAccessCadastro: true,
           canAccessComercial: true,
           canAccessFinanceiro: true,
+          canAccessRH: true,
           canAccessUsuarios: true,
           canAccessSolicitacoes: true,
           canEditFinanceiro: true,
@@ -113,6 +116,7 @@ export function useUserRole() {
           canAccessCadastro: true,
           canAccessComercial: true,
           canAccessFinanceiro: true,
+          canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: true,
           canEditFinanceiro: true,
@@ -130,6 +134,7 @@ export function useUserRole() {
           canAccessCadastro: true,
           canAccessComercial: false,
           canAccessFinanceiro: true,
+          canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: true,
           canEditFinanceiro: false, // needs approval for general edits
@@ -147,6 +152,7 @@ export function useUserRole() {
           canAccessCadastro: false,
           canAccessComercial: true,
           canAccessFinanceiro: false,
+          canAccessRH: false,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
           canEditFinanceiro: false,
@@ -165,6 +171,7 @@ export function useUserRole() {
           canAccessCadastro: false,
           canAccessComercial: true, // only dashboard and commission
           canAccessFinanceiro: false,
+          canAccessRH: false,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
           canEditFinanceiro: false,
