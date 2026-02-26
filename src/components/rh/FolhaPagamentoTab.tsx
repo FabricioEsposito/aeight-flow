@@ -19,6 +19,7 @@ export interface FolhaParcelaRecord {
   contrato_id: string;
   fornecedor_id: string;
   fornecedor_razao_social: string;
+  fornecedor_nome_fantasia: string | null;
   fornecedor_cnpj: string;
   data_vencimento: string;
   data_competencia: string | null;
@@ -81,7 +82,7 @@ export function FolhaPagamentoTab() {
           id, valor, data_vencimento, status, contrato_id,
           contratos!inner (
             id, fornecedor_id, is_folha_funcionario,
-            fornecedores (razao_social, cnpj_cpf)
+            fornecedores (razao_social, nome_fantasia, cnpj_cpf)
           )
         `)
         .eq('contratos.is_folha_funcionario', true)
@@ -157,6 +158,7 @@ export function FolhaPagamentoTab() {
           contrato_id: p.contrato_id,
           fornecedor_id: contrato?.fornecedor_id || '',
           fornecedor_razao_social: fornecedor?.razao_social || 'N/A',
+          fornecedor_nome_fantasia: fornecedor?.nome_fantasia || null,
           fornecedor_cnpj: fornecedor?.cnpj_cpf || 'N/A',
           data_vencimento: p.data_vencimento,
           data_competencia: cp?.data_competencia || null,
@@ -220,6 +222,7 @@ export function FolhaPagamentoTab() {
 
   const filteredRecords = records.filter(r => {
     const matchesSearch = r.fornecedor_razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.fornecedor_nome_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.fornecedor_cnpj.includes(searchTerm);
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
     const matchesCentroCusto = selectedCentroCusto.length === 0 ||
@@ -279,7 +282,8 @@ export function FolhaPagamentoTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Competência</TableHead>
-              <TableHead>Funcionário</TableHead>
+              <TableHead>Razão Social</TableHead>
+              <TableHead>Nome Fantasia</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Centro de Custo</TableHead>
@@ -294,11 +298,11 @@ export function FolhaPagamentoTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                   Nenhum registro encontrado. Marque contratos de compra como "Funcionário" para que suas parcelas apareçam aqui.
                 </TableCell>
               </TableRow>
@@ -310,6 +314,7 @@ export function FolhaPagamentoTab() {
                   <TableRow key={r.parcela_id}>
                     <TableCell>{competencia}</TableCell>
                     <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
+                    <TableCell className="text-sm">{r.fornecedor_nome_fantasia || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
                     <TableCell>
                       <Badge variant={r.tipo_vinculo === 'CLT' ? 'default' : 'secondary'}>
