@@ -1,0 +1,1 @@
+ALTER TABLE contratos ADD COLUMN is_beneficio_funcionario boolean DEFAULT false;

@@ -450,6 +450,7 @@ export type Database = {
             | Database["public"]["Enums"]["importancia_nivel"]
             | null
           irrf_percentual: number | null
+          is_beneficio_funcionario: boolean | null
           link_contrato: string | null
           numero_contrato: string
           observacoes_faturamento: string | null
@@ -493,6 +494,7 @@ export type Database = {
             | Database["public"]["Enums"]["importancia_nivel"]
             | null
           irrf_percentual?: number | null
+          is_beneficio_funcionario?: boolean | null
           link_contrato?: string | null
           numero_contrato: string
           observacoes_faturamento?: string | null
@@ -536,6 +538,7 @@ export type Database = {
             | Database["public"]["Enums"]["importancia_nivel"]
             | null
           irrf_percentual?: number | null
+          is_beneficio_funcionario?: boolean | null
           link_contrato?: string | null
           numero_contrato?: string
           observacoes_faturamento?: string | null
