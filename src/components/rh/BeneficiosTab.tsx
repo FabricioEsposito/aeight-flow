@@ -1,0 +1,299 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TablePagination } from '@/components/ui/table-pagination';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { EditBeneficioDialog } from './EditBeneficioDialog';
+import { useSessionState } from '@/hooks/useSessionState';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+interface BeneficioRecord {
+  id: string;
+  fornecedor_id: string;
+  fornecedor_razao_social: string;
+  fornecedor_cnpj: string;
+  contrato_id: string | null;
+  parcela_id: string | null;
+  conta_pagar_id: string | null;
+  mes_referencia: number;
+  ano_referencia: number;
+  tipo_beneficio: string;
+  descricao: string | null;
+  valor: number;
+  observacoes: string | null;
+  status: string;
+}
+
+const meses = [
+  { value: '1', label: 'Janeiro' },
+  { value: '2', label: 'Fevereiro' },
+  { value: '3', label: 'Março' },
+  { value: '4', label: 'Abril' },
+  { value: '5', label: 'Maio' },
+  { value: '6', label: 'Junho' },
+  { value: '7', label: 'Julho' },
+  { value: '8', label: 'Agosto' },
+  { value: '9', label: 'Setembro' },
+  { value: '10', label: 'Outubro' },
+  { value: '11', label: 'Novembro' },
+  { value: '12', label: 'Dezembro' },
+];
+
+const tiposBeneficio = ['VR', 'VA', 'VT', 'Plano de Saude', 'Plano Odontologico', 'Seguro de Vida', 'Outros'];
+
+export function BeneficiosTab() {
+  const [records, setRecords] = useState<BeneficioRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useSessionState<string>('beneficios', 'search', '');
+  const [tipoBeneficioFilter, setTipoBeneficioFilter] = useSessionState<string>('beneficios', 'tipo', 'todos');
+  const [statusFilter, setStatusFilter] = useSessionState<string>('beneficios', 'status', 'todos');
+  const [mesFilter, setMesFilter] = useSessionState<string>('beneficios', 'mes', String(new Date().getMonth() + 1));
+  const [anoFilter, setAnoFilter] = useSessionState<string>('beneficios', 'ano', String(new Date().getFullYear()));
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<BeneficioRecord | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<BeneficioRecord | null>(null);
+  const { toast } = useToast();
+
+  const fetchRecords = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('controle_beneficios')
+        .select('*, fornecedores:fornecedor_id (razao_social, cnpj_cpf)')
+        .eq('mes_referencia', parseInt(mesFilter))
+        .eq('ano_referencia', parseInt(anoFilter))
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formatted: BeneficioRecord[] = (data || []).map((item: any) => ({
+        id: item.id,
+        fornecedor_id: item.fornecedor_id,
+        fornecedor_razao_social: item.fornecedores?.razao_social || 'N/A',
+        fornecedor_cnpj: item.fornecedores?.cnpj_cpf || 'N/A',
+        contrato_id: item.contrato_id,
+        parcela_id: item.parcela_id,
+        conta_pagar_id: item.conta_pagar_id,
+        mes_referencia: item.mes_referencia,
+        ano_referencia: item.ano_referencia,
+        tipo_beneficio: item.tipo_beneficio,
+        descricao: item.descricao,
+        valor: Number(item.valor),
+        observacoes: item.observacoes,
+        status: item.status,
+      }));
+
+      setRecords(formatted);
+    } catch (error) {
+      console.error('Erro ao buscar benefícios:', error);
+      toast({ title: 'Erro', description: 'Não foi possível carregar os benefícios.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, [mesFilter, anoFilter]);
+
+  const handleDelete = async () => {
+    if (!recordToDelete) return;
+    try {
+      const { error } = await supabase.from('controle_beneficios').delete().eq('id', recordToDelete.id);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: 'Benefício excluído.' });
+      fetchRecords();
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Não foi possível excluir.', variant: 'destructive' });
+    } finally {
+      setDeleteDialogOpen(false);
+      setRecordToDelete(null);
+    }
+  };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const formatCnpj = (value: string) => {
+    if (!value) return 'N/A';
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length === 14) return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    if (cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    return value;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'aprovado': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Aprovado</Badge>;
+      case 'processado': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Processado</Badge>;
+      default: return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pendente</Badge>;
+    }
+  };
+
+  const filteredRecords = records.filter(r => {
+    const matchesSearch = r.fornecedor_razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.fornecedor_cnpj.includes(searchTerm);
+    const matchesTipo = tipoBeneficioFilter === 'todos' || r.tipo_beneficio === tipoBeneficioFilter;
+    const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
+    return matchesSearch && matchesTipo && matchesStatus;
+  });
+
+  const totalItems = filteredRecords.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - 2 + i));
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por fornecedor ou CNPJ/CPF..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <Select value={mesFilter} onValueChange={setMesFilter}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Mês" /></SelectTrigger>
+            <SelectContent>
+              {meses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={anoFilter} onValueChange={setAnoFilter}>
+            <SelectTrigger className="w-[100px]"><SelectValue placeholder="Ano" /></SelectTrigger>
+            <SelectContent>
+              {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={tipoBeneficioFilter} onValueChange={setTipoBeneficioFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo Benefício" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              {tiposBeneficio.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="aprovado">Aprovado</SelectItem>
+              <SelectItem value="processado">Processado</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => { setSelectedRecord(null); setIsCreating(true); setEditDialogOpen(true); }}>
+            <Plus className="w-4 h-4 mr-2" /> Novo Benefício
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Competência</TableHead>
+              <TableHead>Fornecedor</TableHead>
+              <TableHead>CNPJ/CPF</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+              </TableRow>
+            ) : paginatedRecords.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell>
+              </TableRow>
+            ) : (
+              paginatedRecords.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{String(r.mes_referencia).padStart(2, '0')}/{r.ano_referencia}</TableCell>
+                  <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
+                  <TableCell><Badge variant="outline">{r.tipo_beneficio}</Badge></TableCell>
+                  <TableCell className="text-sm">{r.descricao || '-'}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
+                  <TableCell>{getStatusBadge(r.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-1 justify-end">
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setIsCreating(false); setEditDialogOpen(true); }}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setRecordToDelete(r); setDeleteDialogOpen(true); }}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
+      </Card>
+
+      <EditBeneficioDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        record={isCreating ? null : selectedRecord}
+        defaultMes={parseInt(mesFilter)}
+        defaultAno={parseInt(anoFilter)}
+        onSaved={fetchRecords}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir benefício</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este registro de benefício? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
