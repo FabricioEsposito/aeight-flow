@@ -129,10 +129,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   }, [salarioBase, tipoVinculo, inssPercentual, fgtsPercentual, irrfPercentual, issPercentual, pisPercentual, cofinsPercentual, csllPercentual, irrfPjPercentual]);
 
   const calcularValorLiquido = () => {
-    if (tipoVinculo === 'CLT') {
-      return salarioBase + outrosProventos - inssValor - irrfValor - vtDesconto - outrosDescontos;
-    }
-    return salarioBase - issValor - pisValor - cofinsValor - csllValor - irrfPjValor;
+    return salarioBase + outrosProventos - outrosDescontos;
   };
 
   const valorLiquido = calcularValorLiquido();
@@ -234,96 +231,17 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
 
           <Separator />
 
-          {tipoVinculo === 'CLT' ? (
-            <>
-              <h4 className="font-semibold text-sm text-muted-foreground">Encargos e Descontos CLT</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>INSS (%)</Label>
-                  <Input type="number" step="0.01" value={inssPercentual} onChange={(e) => setInssPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>INSS (R$)</Label>
-                  <CurrencyInput value={inssValor} onChange={setInssValor} />
-                </div>
-                <div>
-                  <Label>FGTS (%)</Label>
-                  <Input type="number" step="0.01" value={fgtsPercentual} onChange={(e) => setFgtsPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>FGTS (R$)</Label>
-                  <CurrencyInput value={fgtsValor} onChange={setFgtsValor} />
-                </div>
-                <div>
-                  <Label>IRRF (%)</Label>
-                  <Input type="number" step="0.01" value={irrfPercentual} onChange={(e) => setIrrfPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>IRRF (R$)</Label>
-                  <CurrencyInput value={irrfValor} onChange={setIrrfValor} />
-                </div>
-                <div>
-                  <Label>Vale Transporte (Desconto)</Label>
-                  <CurrencyInput value={vtDesconto} onChange={setVtDesconto} />
-                </div>
-                <div>
-                  <Label>Outros Descontos</Label>
-                  <CurrencyInput value={outrosDescontos} onChange={setOutrosDescontos} />
-                </div>
-                <div>
-                  <Label>Outros Proventos</Label>
-                  <CurrencyInput value={outrosProventos} onChange={setOutrosProventos} />
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <h4 className="font-semibold text-sm text-muted-foreground">Impostos PJ</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>ISS (%)</Label>
-                  <Input type="number" step="0.01" value={issPercentual} onChange={(e) => setIssPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>ISS (R$)</Label>
-                  <CurrencyInput value={issValor} onChange={setIssValor} />
-                </div>
-                <div>
-                  <Label>PIS (%)</Label>
-                  <Input type="number" step="0.01" value={pisPercentual} onChange={(e) => setPisPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>PIS (R$)</Label>
-                  <CurrencyInput value={pisValor} onChange={setPisValor} />
-                </div>
-                <div>
-                  <Label>COFINS (%)</Label>
-                  <Input type="number" step="0.01" value={cofinsPercentual} onChange={(e) => setCofinsPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>COFINS (R$)</Label>
-                  <CurrencyInput value={cofinsValor} onChange={setCofinsValor} />
-                </div>
-                <div>
-                  <Label>CSLL (%)</Label>
-                  <Input type="number" step="0.01" value={csllPercentual} onChange={(e) => setCsllPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>CSLL (R$)</Label>
-                  <CurrencyInput value={csllValor} onChange={setCsllValor} />
-                </div>
-                <div>
-                  <Label>IRRF (%)</Label>
-                  <Input type="number" step="0.01" value={irrfPjPercentual} onChange={(e) => setIrrfPjPercentual(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>IRRF (R$)</Label>
-                  <CurrencyInput value={irrfPjValor} onChange={setIrrfPjValor} />
-                </div>
-              </div>
-            </>
-          )}
-
+          <h4 className="font-semibold text-sm text-muted-foreground">Ajustes</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Outros Proventos</Label>
+              <CurrencyInput value={outrosProventos} onChange={setOutrosProventos} />
+            </div>
+            <div>
+              <Label>Outros Descontos</Label>
+              <CurrencyInput value={outrosDescontos} onChange={setOutrosDescontos} />
+            </div>
+          </div>
           <Separator />
 
           <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
