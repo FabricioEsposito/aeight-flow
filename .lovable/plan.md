@@ -1,149 +1,110 @@
 
-# Plano: Area de RH com abas de Folha de Pagamento e Beneficios
+
+# Plano: Beneficios baseados em Contratos com flag + ajuste de valor e centro de custo por parcela
 
 ## Resumo
-Criar uma unica pagina "/rh" com duas abas: **Folha de Pagamento** e **Beneficios**. A pagina segue o padrao do Controle de Faturamento, com tabelas de controle e lancamento de valores vinculados a fornecedores. Ao ajustar valores, o sistema propaga para contas a pagar.
+Aplicar na aba de Beneficios a mesma logica planejada para a Folha de Pagamento: adicionar uma flag `is_beneficio_funcionario` nos contratos. Contratos com essa flag aparecem automaticamente na aba de Beneficios, listando suas parcelas. O RH podera ajustar o valor e o percentual de rateio de centro de custo diretamente por parcela, impactando o DRE.
 
 ---
 
-## 1. Banco de Dados - Novas Tabelas
+## 1. Banco de Dados
 
-### Tabela `folha_pagamento`
-Controle mensal por funcionario (fornecedor CLT ou PJ):
+### Novo campo na tabela `contratos`:
+```text
+ALTER TABLE contratos ADD COLUMN is_beneficio_funcionario boolean DEFAULT false;
+```
+- `false` = contrato normal
+- `true` = contrato de beneficio para funcionarios, aparece na aba Beneficios do RH
 
-| Coluna | Tipo | Notas |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| fornecedor_id | uuid FK | Referencia fornecedores |
-| contrato_id | uuid | Nullable, referencia contratos |
-| parcela_id | uuid | Nullable, referencia parcelas_contrato |
-| conta_pagar_id | uuid | Nullable, referencia contas_pagar |
-| mes_referencia | integer | 1-12 |
-| ano_referencia | integer | ex: 2026 |
-| tipo_vinculo | varchar | 'CLT' ou 'PJ' |
-| salario_base | numeric | default 0 |
-| **Campos CLT** | | |
-| inss_percentual / inss_valor | numeric | default 0 |
-| fgts_percentual / fgts_valor | numeric | default 0 |
-| irrf_percentual / irrf_valor | numeric | default 0 |
-| vale_transporte_desconto | numeric | default 0 |
-| outros_descontos | numeric | default 0 |
-| outros_proventos | numeric | default 0 |
-| **Campos PJ** | | |
-| iss_percentual / iss_valor | numeric | default 0 |
-| pis_percentual / pis_valor | numeric | default 0 |
-| cofins_percentual / cofins_valor | numeric | default 0 |
-| csll_percentual / csll_valor | numeric | default 0 |
-| irrf_pj_percentual / irrf_pj_valor | numeric | default 0 |
-| **Comuns** | | |
-| valor_liquido | numeric | default 0 |
-| observacoes | text | nullable |
-| status | varchar | 'pendente', 'aprovado', 'processado' |
-| created_at / updated_at | timestamptz | |
-| created_by | uuid | nullable |
-
-### Tabela `controle_beneficios`
-Controle mensal de beneficios por fornecedor:
-
-| Coluna | Tipo | Notas |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| fornecedor_id | uuid FK | Referencia fornecedores |
-| contrato_id | uuid | Nullable |
-| parcela_id | uuid | Nullable |
-| conta_pagar_id | uuid | Nullable |
-| mes_referencia | integer | |
-| ano_referencia | integer | |
-| tipo_beneficio | varchar | 'VR', 'VA', 'VT', 'Plano de Saude', 'Plano Odontologico', 'Seguro de Vida', 'Outros' |
-| descricao | text | nullable |
-| valor | numeric | default 0 |
-| observacoes | text | nullable |
-| status | varchar | 'pendente', 'aprovado', 'processado' |
-| created_at / updated_at | timestamptz | |
-| created_by | uuid | nullable |
-
-### RLS
-Mesmo padrao das tabelas financeiras:
-- SELECT: todos autenticados
-- INSERT: todos autenticados
-- UPDATE: admin + finance_manager
-- DELETE: admin
+Junto com o `tipo_funcionario` (CLT/PJ) ja planejado para a Folha, os contratos agora terao duas flags independentes para as duas abas do RH.
 
 ---
 
-## 2. Nova Pagina com Abas
+## 2. Reescrever BeneficiosTab
 
-### `src/pages/RecursosHumanos.tsx`
-Pagina unica usando o componente `Tabs` do Radix com duas abas:
+**Arquivo:** `src/components/rh/BeneficiosTab.tsx`
 
-**Aba "Folha de Pagamento":**
-- Filtros: mes/ano, tipo vinculo (CLT/PJ/Todos), busca por fornecedor, status, centro de custo
-- Tabela: Competencia | Funcionario (fornecedor) | CNPJ/CPF | Tipo (CLT/PJ) | Salario Base | Impostos/Descontos | Valor Liquido | Status | Acoes
-- Botao editar abre dialog com campos dinamicos conforme tipo CLT ou PJ
-- Ao salvar, propaga valor para `contas_pagar` via `conta_pagar_id`
+### Nova logica de listagem:
+- Buscar `parcelas_contrato` onde o contrato tem `is_beneficio_funcionario = true`
+- JOIN com `contratos` (para fornecedor_id, centro_custo, plano_contas_id)
+- JOIN com `fornecedores` (razao_social, cnpj_cpf)
+- JOIN com `contas_pagar` via parcela_id (para status de pagamento, data_competencia, data_pagamento)
+- JOIN com `centros_custo` e `contratos_centros_custo` (para rateio)
 
-**Aba "Beneficios":**
-- Filtros: mes/ano, fornecedor, tipo beneficio, status
-- Tabela: Competencia | Fornecedor | Tipo | Descricao | Valor | Status | Acoes
-- Edicao simples, propaga para contas a pagar
+### Colunas detalhadas:
+| Coluna | Fonte |
+|--------|-------|
+| Competencia (mes/ano) | data_vencimento da parcela |
+| Fornecedor | fornecedores.razao_social |
+| CNPJ/CPF | fornecedores.cnpj_cpf |
+| Tipo Beneficio | controle_beneficios.tipo_beneficio (se existir registro vinculado) |
+| Centro de Custo | contratos_centros_custo (com percentuais) |
+| Data Competencia | contas_pagar.data_competencia |
+| Data Vencimento | parcelas_contrato.data_vencimento |
+| Valor | parcelas_contrato.valor |
+| Status | "Pago" / "Vencido" / "Em Aberto" (calculado) |
+| Acoes | Editar (ajustar valor e centro de custo) |
 
----
+### Filtros:
+- Mes/Ano (por data_vencimento)
+- Status (Pago/Em Aberto/Vencido/Todos)
+- Centro de custo (multi-select)
+- Busca por nome do fornecedor
 
-## 3. Componentes Auxiliares
-
-- `src/components/rh/FolhaPagamentoTab.tsx` - Conteudo da aba Folha
-- `src/components/rh/BeneficiosTab.tsx` - Conteudo da aba Beneficios
-- `src/components/rh/EditFolhaDialog.tsx` - Dialog de edicao com campos CLT/PJ dinamicos
-- `src/components/rh/EditBeneficioDialog.tsx` - Dialog de edicao de beneficio
-
----
-
-## 4. Navegacao e Permissoes
-
-- Novo grupo **"RH"** no sidebar (`AppSidebar.tsx`) com item unico: "Recursos Humanos" -> `/rh`
-- Nova permissao `canAccessRH` no `useUserRole.ts`: acessivel para admin, finance_manager e finance_analyst
-- Nova rota `/rh` no `App.tsx`
-- Adicionar "RH" ao estado `openGroups` do sidebar
-
----
-
-## 5. Integracao com Contas a Pagar
-
-Quando o RH edita um valor na folha ou beneficio:
-1. Atualiza o registro na tabela `folha_pagamento` ou `controle_beneficios`
-2. Se `conta_pagar_id` existe, atualiza `contas_pagar.valor` com o novo valor liquido
-3. Se `parcela_id` existe, atualiza `parcelas_contrato.valor` tambem
-
-Isso garante que o Extrato e Contas a Pagar refletem automaticamente os ajustes do RH.
+### Remover:
+- Botao "Novo Beneficio" (parcelas vem dos contratos)
+- Botao excluir (gerenciado via contrato)
 
 ---
 
-## 6. Fluxo do Usuario
+## 3. Adaptar EditBeneficioDialog
+
+**Arquivo:** `src/components/rh/EditBeneficioDialog.tsx`
+
+O dialog sera adaptado para receber dados da parcela e do contrato. Ao editar:
+- Permite ajustar o **valor** da parcela
+- Permite ajustar o **percentual de rateio de centro de custo** (editando `contratos_centros_custo` para aquela parcela/contrato)
+- Permite definir/alterar o tipo de beneficio (VR, VA, VT, etc.) salvando em `controle_beneficios`
+
+Ao salvar:
+1. Atualiza `parcelas_contrato.valor`
+2. Atualiza `contas_pagar.valor` (se houver conta vinculada)
+3. Atualiza/cria registro em `controle_beneficios` para metadados (tipo, descricao)
+4. Atualiza percentuais em `contratos_centros_custo` se alterados (impactando DRE)
+
+---
+
+## 4. Formularios de Contrato
+
+**Arquivos:** `EditarContratoCompleto.tsx` e `NovoContrato.tsx`
+
+Adicionar um checkbox **"Beneficio para Funcionarios"** visivel quando `tipoContrato === 'compra'`. Salva no campo `is_beneficio_funcionario` do contrato.
+
+---
+
+## 5. Arquivos a criar/modificar
+
+**Migration SQL:** 1 arquivo
+- `ALTER TABLE contratos ADD COLUMN is_beneficio_funcionario boolean DEFAULT false`
+
+**Modificar:**
+- `src/components/rh/BeneficiosTab.tsx` - Reescrever para buscar parcelas de contratos com flag
+- `src/components/rh/EditBeneficioDialog.tsx` - Adaptar para editar valor da parcela + rateio centro de custo
+- `src/pages/EditarContratoCompleto.tsx` - Adicionar checkbox is_beneficio_funcionario
+- `src/pages/NovoContrato.tsx` - Adicionar checkbox is_beneficio_funcionario
+
+---
+
+## 6. Fluxo do usuario
 
 ```text
-1. Fornecedor ja cadastrado (ex: "Joao Silva" tipo PJ ou "Maria" tipo CLT)
-2. Contrato de compra criado com parcelas mensais
-3. RH acessa menu RH -> Recursos Humanos
-4. Na aba "Folha de Pagamento", ve parcelas do mes
-5. Edita valores (salario, impostos, descontos)
-6. Sistema salva e propaga para contas a pagar
-7. Na aba "Beneficios", gerencia VR, VA, planos
+1. Cadastrar fornecedor de beneficio (ex: "Sodexo" ou "Unimed")
+2. Criar contrato de compra, marcar "Beneficio para Funcionarios"
+3. Parcelas mensais sao geradas automaticamente
+4. RH acessa aba Beneficios, filtra por mes/ano
+5. Ve todas as parcelas dos contratos de beneficio
+6. Edita uma parcela: ajusta valor e percentual de centro de custo
+7. Sistema propaga valor para contas a pagar e rateio para DRE
 8. Financeiro ve valores atualizados no Extrato
 ```
 
----
-
-## 7. Arquivos a criar/modificar
-
-**Criar:**
-- `src/pages/RecursosHumanos.tsx`
-- `src/components/rh/FolhaPagamentoTab.tsx`
-- `src/components/rh/BeneficiosTab.tsx`
-- `src/components/rh/EditFolhaDialog.tsx`
-- `src/components/rh/EditBeneficioDialog.tsx`
-- Migration SQL (tabelas + RLS)
-
-**Modificar:**
-- `src/App.tsx` - rota `/rh`
-- `src/components/layout/AppSidebar.tsx` - grupo RH
-- `src/hooks/useUserRole.ts` - permissao `canAccessRH`
