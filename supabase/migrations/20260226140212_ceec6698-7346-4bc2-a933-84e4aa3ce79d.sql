@@ -1,0 +1,1 @@
+ALTER TABLE contratos ADD COLUMN is_folha_funcionario boolean DEFAULT false;

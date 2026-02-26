@@ -451,6 +451,7 @@ export type Database = {
             | null
           irrf_percentual: number | null
           is_beneficio_funcionario: boolean | null
+          is_folha_funcionario: boolean | null
           link_contrato: string | null
           numero_contrato: string
           observacoes_faturamento: string | null
@@ -495,6 +496,7 @@ export type Database = {
             | null
           irrf_percentual?: number | null
           is_beneficio_funcionario?: boolean | null
+          is_folha_funcionario?: boolean | null
           link_contrato?: string | null
           numero_contrato: string
           observacoes_faturamento?: string | null
@@ -539,6 +541,7 @@ export type Database = {
             | null
           irrf_percentual?: number | null
           is_beneficio_funcionario?: boolean | null
+          is_folha_funcionario?: boolean | null
           link_contrato?: string | null
           numero_contrato?: string
           observacoes_faturamento?: string | null

@@ -110,6 +110,7 @@ export default function NovoContrato() {
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
+  const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
 
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
@@ -207,6 +208,7 @@ export default function NovoContrato() {
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
+      setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -468,6 +470,7 @@ export default function NovoContrato() {
         renovacao_automatica: renovacaoAutomatica,
         ajuste_ipca: ajusteIpca,
         is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
+        is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
       };
 
       let contratoId = id;
@@ -1264,6 +1267,16 @@ export default function NovoContrato() {
               {tipoContrato === 'compra' && (
                 <div className="border-t pt-4 space-y-4">
                   <h3 className="font-semibold text-sm">Classificação RH</h3>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="folha-funcionario"
+                      checked={isFolhaFuncionario}
+                      onCheckedChange={(checked) => setIsFolhaFuncionario(checked === true)}
+                    />
+                    <Label htmlFor="folha-funcionario" className="cursor-pointer">
+                      Funcionário (aparece na aba Folha de Pagamento do RH)
+                    </Label>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="beneficio-funcionario"

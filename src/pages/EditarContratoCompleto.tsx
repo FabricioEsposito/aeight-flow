@@ -83,6 +83,7 @@ export default function EditarContratoCompleto() {
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
+  const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
   const [parcelas, setParcelas] = useState<any[]>([]);
 
   useEffect(() => {
@@ -176,6 +177,7 @@ export default function EditarContratoCompleto() {
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
+      setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
 
       // Calculate dia vencimento from first parcela
       const { data: primeiraParcelaData } = await supabase
@@ -537,6 +539,7 @@ export default function EditarContratoCompleto() {
           renovacao_automatica: renovacaoAutomatica,
           ajuste_ipca: ajusteIpca,
           is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
+          is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
@@ -928,6 +931,16 @@ export default function EditarContratoCompleto() {
           {tipoContrato === 'compra' && (
             <div className="border-t pt-4 space-y-4">
               <h3 className="font-semibold text-sm">Classificação RH</h3>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-folha-funcionario"
+                  checked={isFolhaFuncionario}
+                  onCheckedChange={(checked) => setIsFolhaFuncionario(checked === true)}
+                />
+                <Label htmlFor="edit-folha-funcionario" className="cursor-pointer">
+                  Funcionário (aparece na aba Folha de Pagamento do RH)
+                </Label>
+              </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="edit-beneficio-funcionario"
