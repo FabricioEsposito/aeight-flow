@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -9,35 +9,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TablePagination } from '@/components/ui/table-pagination';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 import { EditBeneficioDialog } from './EditBeneficioDialog';
 import { useSessionState } from '@/hooks/useSessionState';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 
-interface BeneficioRecord {
-  id: string;
+interface BeneficioParcelaRecord {
+  parcela_id: string;
+  contrato_id: string;
   fornecedor_id: string;
   fornecedor_razao_social: string;
   fornecedor_cnpj: string;
-  contrato_id: string | null;
-  parcela_id: string | null;
-  conta_pagar_id: string | null;
-  mes_referencia: number;
-  ano_referencia: number;
   tipo_beneficio: string;
-  descricao: string | null;
+  data_vencimento: string;
+  data_competencia: string | null;
   valor: number;
-  observacoes: string | null;
   status: string;
+  centros_custo: Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>;
+  conta_pagar_id: string | null;
+  beneficio_id: string | null;
 }
 
 const meses = [
@@ -55,53 +44,124 @@ const meses = [
   { value: '12', label: 'Dezembro' },
 ];
 
-const tiposBeneficio = ['VR', 'VA', 'VT', 'Plano de Saude', 'Plano Odontologico', 'Seguro de Vida', 'Outros'];
-
 export function BeneficiosTab() {
-  const [records, setRecords] = useState<BeneficioRecord[]>([]);
+  const [records, setRecords] = useState<BeneficioParcelaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('beneficios', 'search', '');
-  const [tipoBeneficioFilter, setTipoBeneficioFilter] = useSessionState<string>('beneficios', 'tipo', 'todos');
   const [statusFilter, setStatusFilter] = useSessionState<string>('beneficios', 'status', 'todos');
   const [mesFilter, setMesFilter] = useSessionState<string>('beneficios', 'mes', String(new Date().getMonth() + 1));
   const [anoFilter, setAnoFilter] = useSessionState<string>('beneficios', 'ano', String(new Date().getFullYear()));
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<BeneficioRecord | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [recordToDelete, setRecordToDelete] = useState<BeneficioRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<BeneficioParcelaRecord | null>(null);
   const { toast } = useToast();
 
   const fetchRecords = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      const mes = parseInt(mesFilter);
+      const ano = parseInt(anoFilter);
+      const startDate = `${ano}-${String(mes).padStart(2, '0')}-01`;
+      const endDate = mes === 12
+        ? `${ano + 1}-01-01`
+        : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+
+      // 1. Get parcelas from contracts with is_beneficio_funcionario = true
+      const { data: parcelas, error: parcelasError } = await supabase
+        .from('parcelas_contrato')
+        .select(`
+          id, valor, data_vencimento, status, contrato_id,
+          contratos!inner (
+            id, fornecedor_id, is_beneficio_funcionario,
+            fornecedores (razao_social, cnpj_cpf)
+          )
+        `)
+        .eq('contratos.is_beneficio_funcionario', true)
+        .gte('data_vencimento', startDate)
+        .lt('data_vencimento', endDate)
+        .order('data_vencimento');
+
+      if (parcelasError) throw parcelasError;
+      if (!parcelas || parcelas.length === 0) {
+        setRecords([]);
+        return;
+      }
+
+      const contratoIds = [...new Set(parcelas.map((p: any) => p.contrato_id))];
+      const parcelaIds = parcelas.map((p: any) => p.id);
+
+      // 2. Fetch centros de custo rateio for contracts
+      const { data: rateios } = await supabase
+        .from('contratos_centros_custo')
+        .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id (codigo, descricao)')
+        .in('contrato_id', contratoIds);
+
+      // 3. Fetch contas_pagar linked to these parcelas
+      const { data: contasPagar } = await supabase
+        .from('contas_pagar')
+        .select('id, parcela_id, status, data_competencia, data_pagamento')
+        .in('parcela_id', parcelaIds);
+
+      // 4. Fetch controle_beneficios for tipo_beneficio
+      const { data: beneficios } = await supabase
         .from('controle_beneficios')
-        .select('*, fornecedores:fornecedor_id (razao_social, cnpj_cpf)')
-        .eq('mes_referencia', parseInt(mesFilter))
-        .eq('ano_referencia', parseInt(anoFilter))
-        .order('created_at', { ascending: false });
+        .select('id, parcela_id, tipo_beneficio')
+        .in('parcela_id', parcelaIds);
 
-      if (error) throw error;
+      const rateioMap = new Map<string, Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>>();
+      (rateios || []).forEach((r: any) => {
+        if (!rateioMap.has(r.contrato_id)) rateioMap.set(r.contrato_id, []);
+        rateioMap.get(r.contrato_id)!.push({
+          centro_custo_id: r.centro_custo_id,
+          codigo: r.centros_custo?.codigo || '',
+          descricao: r.centros_custo?.descricao || '',
+          percentual: r.percentual,
+        });
+      });
 
-      const formatted: BeneficioRecord[] = (data || []).map((item: any) => ({
-        id: item.id,
-        fornecedor_id: item.fornecedor_id,
-        fornecedor_razao_social: item.fornecedores?.razao_social || 'N/A',
-        fornecedor_cnpj: item.fornecedores?.cnpj_cpf || 'N/A',
-        contrato_id: item.contrato_id,
-        parcela_id: item.parcela_id,
-        conta_pagar_id: item.conta_pagar_id,
-        mes_referencia: item.mes_referencia,
-        ano_referencia: item.ano_referencia,
-        tipo_beneficio: item.tipo_beneficio,
-        descricao: item.descricao,
-        valor: Number(item.valor),
-        observacoes: item.observacoes,
-        status: item.status,
-      }));
+      const contaPagarMap = new Map<string, any>();
+      (contasPagar || []).forEach((cp: any) => {
+        if (cp.parcela_id) contaPagarMap.set(cp.parcela_id, cp);
+      });
+
+      const beneficioMap = new Map<string, any>();
+      (beneficios || []).forEach((b: any) => {
+        if (b.parcela_id) beneficioMap.set(b.parcela_id, b);
+      });
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const formatted: BeneficioParcelaRecord[] = parcelas.map((p: any) => {
+        const contrato = p.contratos;
+        const fornecedor = contrato?.fornecedores;
+        const cp = contaPagarMap.get(p.id);
+        const beneficio = beneficioMap.get(p.id);
+
+        let status = 'em_aberto';
+        if (cp?.status === 'pago') {
+          status = 'pago';
+        } else if (p.data_vencimento < today && cp?.status !== 'pago') {
+          status = 'vencido';
+        }
+
+        return {
+          parcela_id: p.id,
+          contrato_id: p.contrato_id,
+          fornecedor_id: contrato?.fornecedor_id || '',
+          fornecedor_razao_social: fornecedor?.razao_social || 'N/A',
+          fornecedor_cnpj: fornecedor?.cnpj_cpf || 'N/A',
+          tipo_beneficio: beneficio?.tipo_beneficio || 'Outros',
+          data_vencimento: p.data_vencimento,
+          data_competencia: cp?.data_competencia || null,
+          valor: Number(p.valor),
+          status,
+          centros_custo: rateioMap.get(p.contrato_id) || [],
+          conta_pagar_id: cp?.id || null,
+          beneficio_id: beneficio?.id || null,
+        };
+      });
 
       setRecords(formatted);
     } catch (error) {
@@ -116,21 +176,6 @@ export function BeneficiosTab() {
     fetchRecords();
   }, [mesFilter, anoFilter]);
 
-  const handleDelete = async () => {
-    if (!recordToDelete) return;
-    try {
-      const { error } = await supabase.from('controle_beneficios').delete().eq('id', recordToDelete.id);
-      if (error) throw error;
-      toast({ title: 'Sucesso', description: 'Benefício excluído.' });
-      fetchRecords();
-    } catch (error) {
-      toast({ title: 'Erro', description: 'Não foi possível excluir.', variant: 'destructive' });
-    } finally {
-      setDeleteDialogOpen(false);
-      setRecordToDelete(null);
-    }
-  };
-
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -142,20 +187,25 @@ export function BeneficiosTab() {
     return value;
   };
 
+  const formatDate = (date: string | null) => {
+    if (!date) return '-';
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'aprovado': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Aprovado</Badge>;
-      case 'processado': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Processado</Badge>;
-      default: return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pendente</Badge>;
+      case 'pago': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Pago</Badge>;
+      case 'vencido': return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Vencido</Badge>;
+      default: return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Em Aberto</Badge>;
     }
   };
 
   const filteredRecords = records.filter(r => {
     const matchesSearch = r.fornecedor_razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.fornecedor_cnpj.includes(searchTerm);
-    const matchesTipo = tipoBeneficioFilter === 'todos' || r.tipo_beneficio === tipoBeneficioFilter;
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
-    return matchesSearch && matchesTipo && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   const totalItems = filteredRecords.length;
@@ -192,25 +242,15 @@ export function BeneficiosTab() {
               {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={tipoBeneficioFilter} onValueChange={setTipoBeneficioFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo Benefício" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              {tiposBeneficio.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="aprovado">Aprovado</SelectItem>
-              <SelectItem value="processado">Processado</SelectItem>
+              <SelectItem value="em_aberto">Em Aberto</SelectItem>
+              <SelectItem value="pago">Pago</SelectItem>
+              <SelectItem value="vencido">Vencido</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => { setSelectedRecord(null); setIsCreating(true); setEditDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> Novo Benefício
-          </Button>
         </div>
       </Card>
 
@@ -222,7 +262,9 @@ export function BeneficiosTab() {
               <TableHead>Fornecedor</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Descrição</TableHead>
+              <TableHead>Centro de Custo</TableHead>
+              <TableHead>Data Competência</TableHead>
+              <TableHead>Data Vencimento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -231,34 +273,47 @@ export function BeneficiosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell>
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  Nenhum benefício encontrado. Marque contratos de compra como "Benefício para Funcionários" para que suas parcelas apareçam aqui.
+                </TableCell>
               </TableRow>
             ) : (
-              paginatedRecords.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{String(r.mes_referencia).padStart(2, '0')}/{r.ano_referencia}</TableCell>
-                  <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
-                  <TableCell><Badge variant="outline">{r.tipo_beneficio}</Badge></TableCell>
-                  <TableCell className="text-sm">{r.descricao || '-'}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
-                  <TableCell>{getStatusBadge(r.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setIsCreating(false); setEditDialogOpen(true); }}>
+              paginatedRecords.map((r) => {
+                const vencDate = new Date(r.data_vencimento + 'T00:00:00');
+                const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
+                return (
+                  <TableRow key={r.parcela_id}>
+                    <TableCell>{competencia}</TableCell>
+                    <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
+                    <TableCell><Badge variant="outline">{r.tipo_beneficio}</Badge></TableCell>
+                    <TableCell>
+                      {r.centros_custo.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {r.centros_custo.map(cc => (
+                            <CompanyTagWithPercent key={cc.centro_custo_id} codigo={cc.codigo} percentual={cc.percentual} />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">{formatDate(r.data_competencia)}</TableCell>
+                    <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
+                    <TableCell>{getStatusBadge(r.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setEditDialogOpen(true); }}>
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setRecordToDelete(r); setDeleteDialogOpen(true); }}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -274,26 +329,9 @@ export function BeneficiosTab() {
       <EditBeneficioDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        record={isCreating ? null : selectedRecord}
-        defaultMes={parseInt(mesFilter)}
-        defaultAno={parseInt(anoFilter)}
+        record={selectedRecord}
         onSaved={fetchRecords}
       />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir benefício</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este registro de benefício? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

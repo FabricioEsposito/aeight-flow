@@ -109,6 +109,7 @@ export default function NovoContrato() {
   const [avisoPrevioDias, setAvisoPrevioDias] = useState(0);
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
+  const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
 
   // Serviços disponíveis
   const [servicos, setServicos] = useState<any[]>([]);
@@ -205,6 +206,7 @@ export default function NovoContrato() {
       setAvisoPrevioDias(data.aviso_previo_dias || 0);
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
+      setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
       toast({
@@ -465,6 +467,7 @@ export default function NovoContrato() {
         aviso_previo_dias: avisoPrevioDias,
         renovacao_automatica: renovacaoAutomatica,
         ajuste_ipca: ajusteIpca,
+        is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
       };
 
       let contratoId = id;
@@ -1253,6 +1256,22 @@ export default function NovoContrato() {
                     />
                     <Label htmlFor="ajuste-ipca" className="cursor-pointer">
                       Ajuste pelo IPCA após 12 meses de contrato
+                    </Label>
+                  </div>
+                </div>
+              )}
+
+              {tipoContrato === 'compra' && (
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="font-semibold text-sm">Classificação RH</h3>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="beneficio-funcionario"
+                      checked={isBeneficioFuncionario}
+                      onCheckedChange={(checked) => setIsBeneficioFuncionario(checked === true)}
+                    />
+                    <Label htmlFor="beneficio-funcionario" className="cursor-pointer">
+                      Benefício para Funcionários (aparece na aba Benefícios do RH)
                     </Label>
                   </div>
                 </div>

@@ -1,96 +1,138 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 
 const tiposBeneficio = ['VR', 'VA', 'VT', 'Plano de Saude', 'Plano Odontologico', 'Seguro de Vida', 'Outros'];
+
+interface BeneficioParcelaRecord {
+  parcela_id: string;
+  contrato_id: string;
+  fornecedor_id: string;
+  fornecedor_razao_social: string;
+  valor: number;
+  tipo_beneficio: string;
+  centros_custo: Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>;
+  conta_pagar_id: string | null;
+  beneficio_id: string | null;
+}
 
 interface EditBeneficioDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  record: any | null;
-  defaultMes: number;
-  defaultAno: number;
+  record: BeneficioParcelaRecord | null;
   onSaved: () => void;
 }
 
-export function EditBeneficioDialog({ open, onOpenChange, record, defaultMes, defaultAno, onSaved }: EditBeneficioDialogProps) {
-  const [fornecedorId, setFornecedorId] = useState('');
+export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: EditBeneficioDialogProps) {
   const [tipoBeneficio, setTipoBeneficio] = useState('Outros');
-  const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState(0);
-  const [mesReferencia, setMesReferencia] = useState(defaultMes);
-  const [anoReferencia, setAnoReferencia] = useState(defaultAno);
   const [observacoes, setObservacoes] = useState('');
-  const [status, setStatus] = useState('pendente');
+  const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
   useEffect(() => {
-    if (record) {
-      setFornecedorId(record.fornecedor_id);
-      setTipoBeneficio(record.tipo_beneficio);
-      setDescricao(record.descricao || '');
+    if (record && open) {
+      setTipoBeneficio(record.tipo_beneficio || 'Outros');
       setValor(record.valor);
-      setMesReferencia(record.mes_referencia);
-      setAnoReferencia(record.ano_referencia);
-      setObservacoes(record.observacoes || '');
-      setStatus(record.status);
-    } else {
-      setFornecedorId('');
-      setTipoBeneficio('Outros');
-      setDescricao('');
-      setValor(0);
-      setMesReferencia(defaultMes);
-      setAnoReferencia(defaultAno);
       setObservacoes('');
-      setStatus('pendente');
+      setCentroCustoRateio(
+        record.centros_custo.map(cc => ({
+          centro_custo_id: cc.centro_custo_id,
+          codigo: cc.codigo,
+          descricao: cc.descricao,
+          percentual: cc.percentual,
+        }))
+      );
     }
-  }, [record, defaultMes, defaultAno, open]);
+  }, [record, open]);
 
   const handleSave = async () => {
-    if (!fornecedorId) {
-      toast({ title: 'Erro', description: 'Selecione um fornecedor.', variant: 'destructive' });
-      return;
+    if (!record) return;
+
+    // Validate rateio
+    if (centroCustoRateio.length > 0) {
+      const total = centroCustoRateio.reduce((acc, item) => acc + item.percentual, 0);
+      if (Math.abs(total - 100) > 0.01) {
+        toast({ title: 'Erro', description: 'A soma dos percentuais de centro de custo deve ser 100%.', variant: 'destructive' });
+        return;
+      }
     }
 
     setSaving(true);
     try {
-      const payload = {
-        fornecedor_id: fornecedorId,
-        tipo_beneficio: tipoBeneficio,
-        descricao: descricao || null,
-        valor,
-        mes_referencia: mesReferencia,
-        ano_referencia: anoReferencia,
-        observacoes: observacoes || null,
-        status,
-      };
+      // 1. Update parcela valor
+      const { error: parcelaError } = await supabase
+        .from('parcelas_contrato')
+        .update({ valor })
+        .eq('id', record.parcela_id);
+      if (parcelaError) throw parcelaError;
 
-      if (record) {
-        const { error } = await supabase.from('controle_beneficios').update(payload).eq('id', record.id);
-        if (error) throw error;
-        if (record.conta_pagar_id) {
-          await supabase.from('contas_pagar').update({ valor }).eq('id', record.conta_pagar_id);
-        }
-        if (record.parcela_id) {
-          await supabase.from('parcelas_contrato').update({ valor }).eq('id', record.parcela_id);
-        }
-      } else {
-        const { error } = await supabase.from('controle_beneficios').insert({ ...payload, created_by: user?.id });
-        if (error) throw error;
+      // 2. Update contas_pagar valor if linked
+      if (record.conta_pagar_id) {
+        await supabase
+          .from('contas_pagar')
+          .update({ valor })
+          .eq('id', record.conta_pagar_id);
       }
 
-      toast({ title: 'Sucesso', description: record ? 'Benefício atualizado.' : 'Benefício criado.' });
+      // 3. Upsert controle_beneficios
+      const vencDate = new Date(); // We use current month/year for reference
+      const beneficioPayload: any = {
+        fornecedor_id: record.fornecedor_id,
+        contrato_id: record.contrato_id,
+        parcela_id: record.parcela_id,
+        conta_pagar_id: record.conta_pagar_id,
+        tipo_beneficio: tipoBeneficio,
+        valor,
+        observacoes: observacoes || null,
+        mes_referencia: vencDate.getMonth() + 1,
+        ano_referencia: vencDate.getFullYear(),
+      };
+
+      if (record.beneficio_id) {
+        await supabase
+          .from('controle_beneficios')
+          .update(beneficioPayload)
+          .eq('id', record.beneficio_id);
+      } else {
+        await supabase
+          .from('controle_beneficios')
+          .insert({ ...beneficioPayload, created_by: user?.id });
+      }
+
+      // 4. Update centro de custo rateio for the contract
+      // Delete existing
+      await supabase
+        .from('contratos_centros_custo')
+        .delete()
+        .eq('contrato_id', record.contrato_id);
+
+      // Insert new rateio
+      if (centroCustoRateio.length > 0) {
+        const rateioInserts = centroCustoRateio.map(item => ({
+          contrato_id: record.contrato_id,
+          centro_custo_id: item.centro_custo_id,
+          percentual: item.percentual,
+          valor: valor * item.percentual / 100,
+        }));
+
+        const { error: rateioError } = await supabase
+          .from('contratos_centros_custo')
+          .insert(rateioInserts);
+        if (rateioError) throw rateioError;
+      }
+
+      toast({ title: 'Sucesso', description: 'Benefício atualizado com sucesso.' });
       onSaved();
       onOpenChange(false);
     } catch (error: any) {
@@ -101,19 +143,16 @@ export function EditBeneficioDialog({ open, onOpenChange, record, defaultMes, de
     }
   };
 
+  if (!record) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{record ? 'Editar Benefício' : 'Novo Benefício'}</DialogTitle>
+          <DialogTitle>Editar Benefício - {record.fornecedor_razao_social}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <Label>Fornecedor *</Label>
-            <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tipo de Benefício</Label>
@@ -125,44 +164,17 @@ export function EditBeneficioDialog({ open, onOpenChange, record, defaultMes, de
               </Select>
             </div>
             <div>
-              <Label>Valor</Label>
+              <Label>Valor da Parcela</Label>
               <CurrencyInput value={valor} onChange={setValor} />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Mês</Label>
-              <Select value={String(mesReferencia)} onValueChange={(v) => setMesReferencia(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                    <SelectItem key={m} value={String(m)}>{String(m).padStart(2, '0')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Ano</Label>
-              <Input type="number" value={anoReferencia} onChange={(e) => setAnoReferencia(parseInt(e.target.value) || defaultAno)} />
-            </div>
-          </div>
-
           <div>
-            <Label>Descrição</Label>
-            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do benefício..." />
-          </div>
-
-          <div>
-            <Label>Status</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="aprovado">Aprovado</SelectItem>
-                <SelectItem value="processado">Processado</SelectItem>
-              </SelectContent>
-            </Select>
+            <CentroCustoRateio
+              value={centroCustoRateio}
+              onChange={setCentroCustoRateio}
+              valorTotal={valor}
+            />
           </div>
 
           <div>
@@ -174,7 +186,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, defaultMes, de
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Salvando...' : record ? 'Salvar Alterações' : 'Criar Benefício'}
+            {saving ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </DialogFooter>
       </DialogContent>
