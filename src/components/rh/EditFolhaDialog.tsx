@@ -9,23 +9,20 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
 
 interface EditFolhaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  record: any | null;
+  record: FolhaParcelaRecord | null;
   defaultMes: number;
   defaultAno: number;
   onSaved: () => void;
 }
 
 export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaultAno, onSaved }: EditFolhaDialogProps) {
-  const [fornecedorId, setFornecedorId] = useState('');
   const [tipoVinculo, setTipoVinculo] = useState('PJ');
-  const [mesReferencia, setMesReferencia] = useState(defaultMes);
-  const [anoReferencia, setAnoReferencia] = useState(defaultAno);
   const [salarioBase, setSalarioBase] = useState(0);
   const [inssPercentual, setInssPercentual] = useState(0);
   const [inssValor, setInssValor] = useState(0);
@@ -53,52 +50,69 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   const { user } = useAuth();
 
   useEffect(() => {
-    if (record) {
-      setFornecedorId(record.fornecedor_id);
-      setTipoVinculo(record.tipo_vinculo);
-      setMesReferencia(record.mes_referencia);
-      setAnoReferencia(record.ano_referencia);
-      setSalarioBase(record.salario_base);
-      setInssPercentual(record.inss_percentual);
-      setInssValor(record.inss_valor);
-      setFgtsPercentual(record.fgts_percentual);
-      setFgtsValor(record.fgts_valor);
-      setIrrfPercentual(record.irrf_percentual);
-      setIrrfValor(record.irrf_valor);
-      setVtDesconto(record.vale_transporte_desconto);
-      setOutrosDescontos(record.outros_descontos);
-      setOutrosProventos(record.outros_proventos);
-      setIssPercentual(record.iss_percentual);
-      setIssValor(record.iss_valor);
-      setPisPercentual(record.pis_percentual);
-      setPisValor(record.pis_valor);
-      setCofinsPercentual(record.cofins_percentual);
-      setCofinsValor(record.cofins_valor);
-      setCsllPercentual(record.csll_percentual);
-      setCsllValor(record.csll_valor);
-      setIrrfPjPercentual(record.irrf_pj_percentual);
-      setIrrfPjValor(record.irrf_pj_valor);
-      setObservacoes(record.observacoes || '');
-      setStatus(record.status);
+    if (!open) return;
+    
+    if (record?.folha_id) {
+      // Load full folha data from DB
+      loadFolhaData(record.folha_id);
+    } else if (record) {
+      // New folha for this parcela - default from parcela valor
+      resetForm();
+      setSalarioBase(record.valor);
     } else {
-      setFornecedorId('');
-      setTipoVinculo('PJ');
-      setMesReferencia(defaultMes);
-      setAnoReferencia(defaultAno);
-      setSalarioBase(0);
-      setInssPercentual(0); setInssValor(0);
-      setFgtsPercentual(0); setFgtsValor(0);
-      setIrrfPercentual(0); setIrrfValor(0);
-      setVtDesconto(0); setOutrosDescontos(0); setOutrosProventos(0);
-      setIssPercentual(0); setIssValor(0);
-      setPisPercentual(0); setPisValor(0);
-      setCofinsPercentual(0); setCofinsValor(0);
-      setCsllPercentual(0); setCsllValor(0);
-      setIrrfPjPercentual(0); setIrrfPjValor(0);
-      setObservacoes('');
-      setStatus('pendente');
+      resetForm();
     }
-  }, [record, defaultMes, defaultAno, open]);
+  }, [record, open]);
+
+  const loadFolhaData = async (folhaId: string) => {
+    const { data } = await supabase
+      .from('folha_pagamento')
+      .select('*')
+      .eq('id', folhaId)
+      .single();
+
+    if (data) {
+      setTipoVinculo(data.tipo_vinculo);
+      setSalarioBase(Number(data.salario_base));
+      setInssPercentual(Number(data.inss_percentual));
+      setInssValor(Number(data.inss_valor));
+      setFgtsPercentual(Number(data.fgts_percentual));
+      setFgtsValor(Number(data.fgts_valor));
+      setIrrfPercentual(Number(data.irrf_percentual));
+      setIrrfValor(Number(data.irrf_valor));
+      setVtDesconto(Number(data.vale_transporte_desconto));
+      setOutrosDescontos(Number(data.outros_descontos));
+      setOutrosProventos(Number(data.outros_proventos));
+      setIssPercentual(Number(data.iss_percentual));
+      setIssValor(Number(data.iss_valor));
+      setPisPercentual(Number(data.pis_percentual));
+      setPisValor(Number(data.pis_valor));
+      setCofinsPercentual(Number(data.cofins_percentual));
+      setCofinsValor(Number(data.cofins_valor));
+      setCsllPercentual(Number(data.csll_percentual));
+      setCsllValor(Number(data.csll_valor));
+      setIrrfPjPercentual(Number(data.irrf_pj_percentual));
+      setIrrfPjValor(Number(data.irrf_pj_valor));
+      setObservacoes(data.observacoes || '');
+      setStatus(data.status);
+    }
+  };
+
+  const resetForm = () => {
+    setTipoVinculo('PJ');
+    setSalarioBase(0);
+    setInssPercentual(0); setInssValor(0);
+    setFgtsPercentual(0); setFgtsValor(0);
+    setIrrfPercentual(0); setIrrfValor(0);
+    setVtDesconto(0); setOutrosDescontos(0); setOutrosProventos(0);
+    setIssPercentual(0); setIssValor(0);
+    setPisPercentual(0); setPisValor(0);
+    setCofinsPercentual(0); setCofinsValor(0);
+    setCsllPercentual(0); setCsllValor(0);
+    setIrrfPjPercentual(0); setIrrfPjValor(0);
+    setObservacoes('');
+    setStatus('pendente');
+  };
 
   useEffect(() => {
     if (tipoVinculo === 'CLT') {
@@ -124,17 +138,20 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   const valorLiquido = calcularValorLiquido();
 
   const handleSave = async () => {
-    if (!fornecedorId) {
-      toast({ title: 'Erro', description: 'Selecione um fornecedor.', variant: 'destructive' });
-      return;
-    }
+    if (!record) return;
 
     setSaving(true);
     try {
+      const vencDate = new Date(record.data_vencimento + 'T00:00:00');
+      const mesRef = vencDate.getMonth() + 1;
+      const anoRef = vencDate.getFullYear();
+
       const payload = {
-        fornecedor_id: fornecedorId,
-        mes_referencia: mesReferencia,
-        ano_referencia: anoReferencia,
+        fornecedor_id: record.fornecedor_id,
+        contrato_id: record.contrato_id,
+        parcela_id: record.parcela_id,
+        mes_referencia: mesRef,
+        ano_referencia: anoRef,
         tipo_vinculo: tipoVinculo,
         salario_base: salarioBase,
         inss_percentual: inssPercentual, inss_valor: inssValor,
@@ -153,21 +170,23 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         status,
       };
 
-      if (record) {
-        const { error } = await supabase.from('folha_pagamento').update(payload).eq('id', record.id);
+      if (record.folha_id) {
+        // Update existing folha_pagamento
+        const { error } = await supabase.from('folha_pagamento').update(payload).eq('id', record.folha_id);
         if (error) throw error;
-        if (record.conta_pagar_id) {
-          await supabase.from('contas_pagar').update({ valor: valorLiquido }).eq('id', record.conta_pagar_id);
-        }
-        if (record.parcela_id) {
-          await supabase.from('parcelas_contrato').update({ valor: valorLiquido }).eq('id', record.parcela_id);
-        }
       } else {
+        // Create new folha_pagamento linked to parcela
         const { error } = await supabase.from('folha_pagamento').insert({ ...payload, created_by: user?.id });
         if (error) throw error;
       }
 
-      toast({ title: 'Sucesso', description: record ? 'Registro atualizado.' : 'Registro criado.' });
+      // Propagate valor to parcela and conta_pagar
+      await supabase.from('parcelas_contrato').update({ valor: valorLiquido }).eq('id', record.parcela_id);
+      if (record.conta_pagar_id) {
+        await supabase.from('contas_pagar').update({ valor: valorLiquido }).eq('id', record.conta_pagar_id);
+      }
+
+      toast({ title: 'Sucesso', description: 'Folha de pagamento salva com sucesso.' });
       onSaved();
       onOpenChange(false);
     } catch (error: any) {
@@ -185,16 +204,18 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{record ? 'Editar Folha de Pagamento' : 'Novo Lançamento de Folha'}</DialogTitle>
+          <DialogTitle>
+            {record?.folha_id ? 'Editar Folha de Pagamento' : 'Configurar Folha de Pagamento'}
+          </DialogTitle>
+          {record && (
+            <p className="text-sm text-muted-foreground">
+              Funcionário: {record.fornecedor_razao_social} — Parcela vencimento: {new Date(record.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <Label>Funcionário (Fornecedor) *</Label>
-            <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tipo de Vínculo</Label>
               <Select value={tipoVinculo} onValueChange={setTipoVinculo}>
@@ -206,25 +227,9 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
               </Select>
             </div>
             <div>
-              <Label>Mês</Label>
-              <Select value={String(mesReferencia)} onValueChange={(v) => setMesReferencia(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                    <SelectItem key={m} value={String(m)}>{String(m).padStart(2, '0')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Salário Base</Label>
+              <CurrencyInput value={salarioBase} onChange={setSalarioBase} />
             </div>
-            <div>
-              <Label>Ano</Label>
-              <Input type="number" value={anoReferencia} onChange={(e) => setAnoReferencia(parseInt(e.target.value) || defaultAno)} />
-            </div>
-          </div>
-
-          <div>
-            <Label>Salário Base</Label>
-            <CurrencyInput value={salarioBase} onChange={setSalarioBase} />
           </div>
 
           <Separator />
@@ -347,7 +352,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Salvando...' : record ? 'Salvar Alterações' : 'Criar Lançamento'}
+            {saving ? 'Salvando...' : 'Salvar'}
           </Button>
         </DialogFooter>
       </DialogContent>
