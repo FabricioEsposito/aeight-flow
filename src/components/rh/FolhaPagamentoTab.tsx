@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -9,56 +9,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TablePagination } from '@/components/ui/table-pagination';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 import { EditFolhaDialog } from './EditFolhaDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 
-interface FolhaRecord {
-  id: string;
+export interface FolhaParcelaRecord {
+  parcela_id: string;
+  contrato_id: string;
   fornecedor_id: string;
   fornecedor_razao_social: string;
   fornecedor_cnpj: string;
-  contrato_id: string | null;
-  parcela_id: string | null;
+  data_vencimento: string;
+  data_competencia: string | null;
+  valor: number;
+  status: string;
+  centros_custo: Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>;
   conta_pagar_id: string | null;
-  mes_referencia: number;
-  ano_referencia: number;
+  // folha_pagamento linked data
+  folha_id: string | null;
   tipo_vinculo: string;
   salario_base: number;
-  inss_percentual: number;
-  inss_valor: number;
-  fgts_percentual: number;
-  fgts_valor: number;
-  irrf_percentual: number;
-  irrf_valor: number;
-  vale_transporte_desconto: number;
-  outros_descontos: number;
-  outros_proventos: number;
-  iss_percentual: number;
-  iss_valor: number;
-  pis_percentual: number;
-  pis_valor: number;
-  cofins_percentual: number;
-  cofins_valor: number;
-  csll_percentual: number;
-  csll_valor: number;
-  irrf_pj_percentual: number;
-  irrf_pj_valor: number;
   valor_liquido: number;
-  observacoes: string | null;
-  status: string;
-  centro_custo: string | null;
+  folha_status: string;
 }
 
 const meses = [
@@ -77,10 +50,9 @@ const meses = [
 ];
 
 export function FolhaPagamentoTab() {
-  const [records, setRecords] = useState<FolhaRecord[]>([]);
+  const [records, setRecords] = useState<FolhaParcelaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('folha', 'search', '');
-  const [tipoVinculoFilter, setTipoVinculoFilter] = useSessionState<string>('folha', 'tipoVinculo', 'todos');
   const [statusFilter, setStatusFilter] = useSessionState<string>('folha', 'status', 'todos');
   const [mesFilter, setMesFilter] = useSessionState<string>('folha', 'mes', String(new Date().getMonth() + 1));
   const [anoFilter, setAnoFilter] = useSessionState<string>('folha', 'ano', String(new Date().getFullYear()));
@@ -88,61 +60,117 @@ export function FolhaPagamentoTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<FolhaRecord | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [recordToDelete, setRecordToDelete] = useState<FolhaRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<FolhaParcelaRecord | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const fetchRecords = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      const mes = parseInt(mesFilter);
+      const ano = parseInt(anoFilter);
+      const startDate = `${ano}-${String(mes).padStart(2, '0')}-01`;
+      const endDate = mes === 12
+        ? `${ano + 1}-01-01`
+        : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+
+      // 1. Get parcelas from contracts with is_folha_funcionario = true
+      const { data: parcelas, error: parcelasError } = await supabase
+        .from('parcelas_contrato')
+        .select(`
+          id, valor, data_vencimento, status, contrato_id,
+          contratos!inner (
+            id, fornecedor_id, is_folha_funcionario,
+            fornecedores (razao_social, cnpj_cpf)
+          )
+        `)
+        .eq('contratos.is_folha_funcionario', true)
+        .gte('data_vencimento', startDate)
+        .lt('data_vencimento', endDate)
+        .order('data_vencimento');
+
+      if (parcelasError) throw parcelasError;
+      if (!parcelas || parcelas.length === 0) {
+        setRecords([]);
+        return;
+      }
+
+      const contratoIds = [...new Set(parcelas.map((p: any) => p.contrato_id))];
+      const parcelaIds = parcelas.map((p: any) => p.id);
+
+      // 2. Fetch centros de custo rateio
+      const { data: rateios } = await supabase
+        .from('contratos_centros_custo')
+        .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id (codigo, descricao)')
+        .in('contrato_id', contratoIds);
+
+      // 3. Fetch contas_pagar linked
+      const { data: contasPagar } = await supabase
+        .from('contas_pagar')
+        .select('id, parcela_id, status, data_competencia, data_pagamento')
+        .in('parcela_id', parcelaIds);
+
+      // 4. Fetch folha_pagamento linked to these parcelas
+      const { data: folhas } = await supabase
         .from('folha_pagamento')
-        .select('*, fornecedores:fornecedor_id (razao_social, cnpj_cpf), contratos:contrato_id (centro_custo)')
-        .eq('mes_referencia', parseInt(mesFilter))
-        .eq('ano_referencia', parseInt(anoFilter))
-        .order('created_at', { ascending: false });
+        .select('id, parcela_id, tipo_vinculo, salario_base, valor_liquido, status')
+        .in('parcela_id', parcelaIds);
 
-      if (error) throw error;
+      const rateioMap = new Map<string, Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>>();
+      (rateios || []).forEach((r: any) => {
+        if (!rateioMap.has(r.contrato_id)) rateioMap.set(r.contrato_id, []);
+        rateioMap.get(r.contrato_id)!.push({
+          centro_custo_id: r.centro_custo_id,
+          codigo: r.centros_custo?.codigo || '',
+          descricao: r.centros_custo?.descricao || '',
+          percentual: r.percentual,
+        });
+      });
 
-      const formatted: FolhaRecord[] = (data || []).map((item: any) => ({
-        id: item.id,
-        fornecedor_id: item.fornecedor_id,
-        fornecedor_razao_social: item.fornecedores?.razao_social || 'N/A',
-        fornecedor_cnpj: item.fornecedores?.cnpj_cpf || 'N/A',
-        contrato_id: item.contrato_id,
-        parcela_id: item.parcela_id,
-        conta_pagar_id: item.conta_pagar_id,
-        mes_referencia: item.mes_referencia,
-        ano_referencia: item.ano_referencia,
-        tipo_vinculo: item.tipo_vinculo,
-        salario_base: Number(item.salario_base),
-        inss_percentual: Number(item.inss_percentual),
-        inss_valor: Number(item.inss_valor),
-        fgts_percentual: Number(item.fgts_percentual),
-        fgts_valor: Number(item.fgts_valor),
-        irrf_percentual: Number(item.irrf_percentual),
-        irrf_valor: Number(item.irrf_valor),
-        vale_transporte_desconto: Number(item.vale_transporte_desconto),
-        outros_descontos: Number(item.outros_descontos),
-        outros_proventos: Number(item.outros_proventos),
-        iss_percentual: Number(item.iss_percentual),
-        iss_valor: Number(item.iss_valor),
-        pis_percentual: Number(item.pis_percentual),
-        pis_valor: Number(item.pis_valor),
-        cofins_percentual: Number(item.cofins_percentual),
-        cofins_valor: Number(item.cofins_valor),
-        csll_percentual: Number(item.csll_percentual),
-        csll_valor: Number(item.csll_valor),
-        irrf_pj_percentual: Number(item.irrf_pj_percentual),
-        irrf_pj_valor: Number(item.irrf_pj_valor),
-        valor_liquido: Number(item.valor_liquido),
-        observacoes: item.observacoes,
-        status: item.status,
-        centro_custo: item.contratos?.centro_custo || null,
-      }));
+      const contaPagarMap = new Map<string, any>();
+      (contasPagar || []).forEach((cp: any) => {
+        if (cp.parcela_id) contaPagarMap.set(cp.parcela_id, cp);
+      });
+
+      const folhaMap = new Map<string, any>();
+      (folhas || []).forEach((f: any) => {
+        if (f.parcela_id) folhaMap.set(f.parcela_id, f);
+      });
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const formatted: FolhaParcelaRecord[] = parcelas.map((p: any) => {
+        const contrato = p.contratos;
+        const fornecedor = contrato?.fornecedores;
+        const cp = contaPagarMap.get(p.id);
+        const folha = folhaMap.get(p.id);
+
+        let status = 'em_aberto';
+        if (cp?.status === 'pago') {
+          status = 'pago';
+        } else if (p.data_vencimento < today && cp?.status !== 'pago') {
+          status = 'vencido';
+        }
+
+        return {
+          parcela_id: p.id,
+          contrato_id: p.contrato_id,
+          fornecedor_id: contrato?.fornecedor_id || '',
+          fornecedor_razao_social: fornecedor?.razao_social || 'N/A',
+          fornecedor_cnpj: fornecedor?.cnpj_cpf || 'N/A',
+          data_vencimento: p.data_vencimento,
+          data_competencia: cp?.data_competencia || null,
+          valor: Number(p.valor),
+          status,
+          centros_custo: rateioMap.get(p.contrato_id) || [],
+          conta_pagar_id: cp?.id || null,
+          folha_id: folha?.id || null,
+          tipo_vinculo: folha?.tipo_vinculo || 'PJ',
+          salario_base: Number(folha?.salario_base || p.valor),
+          valor_liquido: Number(folha?.valor_liquido || p.valor),
+          folha_status: folha?.status || 'pendente',
+        };
+      });
 
       setRecords(formatted);
     } catch (error) {
@@ -157,21 +185,6 @@ export function FolhaPagamentoTab() {
     fetchRecords();
   }, [mesFilter, anoFilter]);
 
-  const handleDelete = async () => {
-    if (!recordToDelete) return;
-    try {
-      const { error } = await supabase.from('folha_pagamento').delete().eq('id', recordToDelete.id);
-      if (error) throw error;
-      toast({ title: 'Sucesso', description: 'Registro excluído.' });
-      fetchRecords();
-    } catch (error) {
-      toast({ title: 'Erro', description: 'Não foi possível excluir.', variant: 'destructive' });
-    } finally {
-      setDeleteDialogOpen(false);
-      setRecordToDelete(null);
-    }
-  };
-
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -183,14 +196,21 @@ export function FolhaPagamentoTab() {
     return value;
   };
 
-  const getTotalImpostos = (r: FolhaRecord) => {
-    if (r.tipo_vinculo === 'CLT') {
-      return r.inss_valor + r.fgts_valor + r.irrf_valor + r.vale_transporte_desconto + r.outros_descontos - r.outros_proventos;
-    }
-    return r.iss_valor + r.pis_valor + r.cofins_valor + r.csll_valor + r.irrf_pj_valor;
+  const formatDate = (date: string | null) => {
+    if (!date) return '-';
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y}`;
   };
 
   const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pago': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Pago</Badge>;
+      case 'vencido': return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Vencido</Badge>;
+      default: return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Em Aberto</Badge>;
+    }
+  };
+
+  const getFolhaStatusBadge = (status: string) => {
     switch (status) {
       case 'aprovado': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Aprovado</Badge>;
       case 'processado': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Processado</Badge>;
@@ -201,10 +221,10 @@ export function FolhaPagamentoTab() {
   const filteredRecords = records.filter(r => {
     const matchesSearch = r.fornecedor_razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.fornecedor_cnpj.includes(searchTerm);
-    const matchesTipo = tipoVinculoFilter === 'todos' || r.tipo_vinculo === tipoVinculoFilter;
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
-    const matchesCentroCusto = selectedCentroCusto.length === 0 || (!!r.centro_custo && selectedCentroCusto.includes(r.centro_custo));
-    return matchesSearch && matchesTipo && matchesStatus && matchesCentroCusto;
+    const matchesCentroCusto = selectedCentroCusto.length === 0 ||
+      r.centros_custo.some(cc => selectedCentroCusto.includes(cc.centro_custo_id));
+    return matchesSearch && matchesStatus && matchesCentroCusto;
   });
 
   const totalItems = filteredRecords.length;
@@ -216,7 +236,6 @@ export function FolhaPagamentoTab() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
@@ -242,31 +261,19 @@ export function FolhaPagamentoTab() {
               {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={tipoVinculoFilter} onValueChange={setTipoVinculoFilter}>
-            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="CLT">CLT</SelectItem>
-              <SelectItem value="PJ">PJ</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="aprovado">Aprovado</SelectItem>
-              <SelectItem value="processado">Processado</SelectItem>
+              <SelectItem value="em_aberto">Em Aberto</SelectItem>
+              <SelectItem value="pago">Pago</SelectItem>
+              <SelectItem value="vencido">Vencido</SelectItem>
             </SelectContent>
           </Select>
           <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
-          <Button onClick={() => { setSelectedRecord(null); setIsCreating(true); setEditDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> Novo Lançamento
-          </Button>
         </div>
       </Card>
 
-      {/* Table */}
       <Card>
         <Table>
           <TableHeader>
@@ -275,49 +282,64 @@ export function FolhaPagamentoTab() {
               <TableHead>Funcionário</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Centro de Custo</TableHead>
+              <TableHead>Data Vencimento</TableHead>
               <TableHead className="text-right">Salário Base</TableHead>
-              <TableHead className="text-right">Impostos/Descontos</TableHead>
               <TableHead className="text-right">Valor Líquido</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Status Pgto</TableHead>
+              <TableHead>Status Folha</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                  Nenhum registro encontrado. Marque contratos de compra como "Funcionário" para que suas parcelas apareçam aqui.
+                </TableCell>
               </TableRow>
             ) : (
-              paginatedRecords.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{String(r.mes_referencia).padStart(2, '0')}/{r.ano_referencia}</TableCell>
-                  <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
-                  <TableCell>
-                    <Badge variant={r.tipo_vinculo === 'CLT' ? 'default' : 'secondary'}>
-                      {r.tipo_vinculo}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{formatCurrency(r.salario_base)}</TableCell>
-                  <TableCell className="text-right text-destructive">{formatCurrency(getTotalImpostos(r))}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(r.valor_liquido)}</TableCell>
-                  <TableCell>{getStatusBadge(r.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setIsCreating(false); setEditDialogOpen(true); }}>
+              paginatedRecords.map((r) => {
+                const vencDate = new Date(r.data_vencimento + 'T00:00:00');
+                const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
+                return (
+                  <TableRow key={r.parcela_id}>
+                    <TableCell>{competencia}</TableCell>
+                    <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.tipo_vinculo === 'CLT' ? 'default' : 'secondary'}>
+                        {r.tipo_vinculo}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {r.centros_custo.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {r.centros_custo.map(cc => (
+                            <CompanyTagWithPercent key={cc.centro_custo_id} codigo={cc.codigo} percentual={cc.percentual} />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(r.salario_base)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(r.valor_liquido)}</TableCell>
+                    <TableCell>{getStatusBadge(r.status)}</TableCell>
+                    <TableCell>{getFolhaStatusBadge(r.folha_status)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setEditDialogOpen(true); }}>
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setRecordToDelete(r); setDeleteDialogOpen(true); }}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -333,26 +355,11 @@ export function FolhaPagamentoTab() {
       <EditFolhaDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        record={isCreating ? null : selectedRecord}
+        record={selectedRecord}
         defaultMes={parseInt(mesFilter)}
         defaultAno={parseInt(anoFilter)}
         onSaved={fetchRecords}
       />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir registro</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este registro de folha de pagamento? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
