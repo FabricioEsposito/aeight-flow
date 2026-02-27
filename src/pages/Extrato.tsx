@@ -440,6 +440,8 @@ export default function Extrato() {
       const dataReceberFiltrado = receberCombinado.filter((r: any) => {
         // Lançamentos pagos sempre aparecem - já foram efetivados
         if (r.status === 'pago') return true;
+        // Lançamentos cancelados não aparecem
+        if (r.status === 'cancelado') return false;
         
         const contrato = r.parcelas_contrato?.contratos;
         if (!contrato) return true;
@@ -449,7 +451,9 @@ export default function Extrato() {
           }
           return true;
         }
-        return false;
+        // Contrato inativo: mostrar parcelas pendentes que não foram canceladas
+        // (parcelas anteriores à data de inativação permanecem pendentes)
+        return true;
       });
 
       // Buscar detalhes dos serviços para contas a receber
@@ -509,6 +513,8 @@ export default function Extrato() {
       const dataPagarFiltrado = pagarCombinado.filter((p: any) => {
         // Lançamentos pagos sempre aparecem - já foram efetivados
         if (p.status === 'pago') return true;
+        // Lançamentos cancelados não aparecem
+        if (p.status === 'cancelado') return false;
         
         const contrato = p.parcelas_contrato?.contratos;
         if (!contrato) return true;
@@ -518,7 +524,9 @@ export default function Extrato() {
           }
           return true;
         }
-        return false;
+        // Contrato inativo: mostrar parcelas pendentes que não foram canceladas
+        // (parcelas anteriores à data de inativação permanecem pendentes)
+        return true;
       });
 
       // Buscar detalhes dos serviços para contas a pagar
