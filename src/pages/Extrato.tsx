@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CompanyTag, CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/ui/searchable-select';
+import { CategoriaFilterSelect } from '@/components/financeiro/CategoriaFilterSelect';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,7 +82,7 @@ export default function Extrato() {
   const [tipoFilter, setTipoFilter] = useSessionState<string>('extrato', 'tipo', 'todos');
   const [statusFilter, setStatusFilter] = useSessionState<string>('extrato', 'status', 'todos');
   const [centroCustoFilter, setCentroCustoFilter] = useSessionState<string[]>('extrato', 'centroCusto', []);
-  const [categoriaFilter, setCategoriaFilter] = useSessionState<string>('extrato', 'categoria', 'todos');
+  const [categoriaFilter, setCategoriaFilter] = useSessionState<string[]>('extrato', 'categoria', []);
   const [contaBancariaFilter, setContaBancariaFilter] = useSessionState<string[]>('extrato', 'contaBancaria', []);
   const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('extrato', 'datePreset', 'hoje');
   
@@ -1369,8 +1369,8 @@ export default function Extrato() {
     }
 
     let matchesCategoria = true;
-    if (categoriaFilter !== 'todos') {
-      matchesCategoria = lanc.plano_conta_id === categoriaFilter;
+    if (categoriaFilter.length > 0) {
+      matchesCategoria = !!lanc.plano_conta_id && categoriaFilter.includes(lanc.plano_conta_id);
     }
 
     let matchesDate = true;
@@ -1642,22 +1642,13 @@ export default function Extrato() {
             placeholder="Centro de Custo"
           />
 
-          <SearchableSelect
+          <CategoriaFilterSelect
             value={categoriaFilter}
             onValueChange={setCategoriaFilter}
-            options={[
-              { value: 'todos', label: 'Todas as Categorias' },
-              ...planoContas
-                .filter((plano) => plano.nivel === 3)
-                .sort((a, b) => a.codigo.localeCompare(b.codigo))
-                .map((plano) => ({
-                  value: plano.id,
-                  label: `${plano.codigo} - ${plano.descricao}`,
-                })),
-            ]}
-            placeholder="Categoria"
-            searchPlaceholder="Buscar categoria..."
-            emptyMessage="Nenhuma categoria encontrada."
+            options={planoContas
+              .filter((plano) => plano.nivel === 3)
+              .sort((a, b) => a.codigo.localeCompare(b.codigo))
+            }
             className="w-[200px]"
           />
 
