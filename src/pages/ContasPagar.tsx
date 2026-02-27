@@ -181,6 +181,11 @@ export default function ContasPagar() {
 
       // Filtrar parcelas de contratos inativos
       const contasFiltradasPorContrato = (data || []).filter((item: any) => {
+        // Lançamentos pagos sempre aparecem
+        if (item.status === 'pago') return true;
+        // Lançamentos cancelados não aparecem
+        if (item.status === 'cancelado') return false;
+        
         const contrato = item.parcelas_contrato?.contratos;
         // Se não tem contrato vinculado, mostrar
         if (!contrato) return true;
@@ -192,8 +197,8 @@ export default function ContasPagar() {
           }
           return true;
         }
-        // Se o contrato está inativo, não mostrar
-        return false;
+        // Contrato inativo: mostrar parcelas pendentes não canceladas
+        return true;
       });
 
       // Buscar detalhes dos serviços

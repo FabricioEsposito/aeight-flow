@@ -181,6 +181,8 @@ export default function ControleFaturamento() {
       const dataFiltrado = (data || []).filter((item: any) => {
         // Só mostrar se tem parcela_id (veio de contrato, não de lançamento manual)
         if (!item.parcela_id) return false;
+        // Lançamentos cancelados não aparecem
+        if (item.status === 'cancelado') return false;
         
         const contrato = item.parcelas_contrato?.contratos;
         // Se não tem contrato vinculado, não mostrar
@@ -193,8 +195,8 @@ export default function ControleFaturamento() {
           }
           return true;
         }
-        // Se o contrato está inativo, não mostrar
-        return false;
+        // Contrato inativo: mostrar parcelas pendentes não canceladas
+        return true;
       });
 
       // Buscar detalhes dos serviços
