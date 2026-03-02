@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { Check, X, Send, Eye, RotateCcw, Trophy, Plus, Trash2 } from "lucide-react";
+import { Check, X, Send, Eye, RotateCcw, Trophy, Plus, Trash2, Pencil } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
@@ -125,6 +125,10 @@ export default function Comissionamento() {
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  
+  // Edição inline de percentual de comissão
+  const [editingComissaoId, setEditingComissaoId] = useState<string | null>(null);
+  const [editingComissaoValue, setEditingComissaoValue] = useState<string>("");
 
   const { user } = useAuth();
   const { isAdmin, permissions, role } = useUserRole();
@@ -478,6 +482,79 @@ export default function Comissionamento() {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a flag de meta batida.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Salvar percentual de comissão editado na vendedores_centros_custo
+  const handleSaveComissaoPercentual = async (parcela: ParcelaPaga) => {
+    const novoPercentual = parseFloat(editingComissaoValue.replace(',', '.'));
+    if (isNaN(novoPercentual) || novoPercentual < 0 || novoPercentual > 100) {
+      toast({
+        title: "Valor inválido",
+        description: "O percentual deve ser entre 0 e 100.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Encontrar o contrato para obter o centro de custo
+      const { data: contasReceber } = await supabase
+        .from("contas_receber")
+        .select("parcela_id")
+        .eq("id", parcela.id)
+        .single();
+
+      if (!contasReceber?.parcela_id) throw new Error("Parcela não encontrada");
+
+      const { data: parcelaData } = await supabase
+        .from("parcelas_contrato")
+        .select("contrato_id")
+        .eq("id", contasReceber.parcela_id)
+        .single();
+
+      if (!parcelaData?.contrato_id) throw new Error("Contrato não encontrado");
+
+      const { data: contrato } = await supabase
+        .from("contratos")
+        .select("centro_custo")
+        .eq("id", parcelaData.contrato_id)
+        .single();
+
+      if (contrato?.centro_custo) {
+        // Atualizar vendedores_centros_custo
+        const { error } = await (supabase as any)
+          .from("vendedores_centros_custo")
+          .update({ percentual_comissao: novoPercentual })
+          .eq("vendedor_id", selectedVendedor)
+          .eq("centro_custo_id", contrato.centro_custo);
+
+        if (error) throw error;
+      } else {
+        // Fallback: atualizar percentual global do vendedor
+        const { error } = await supabase
+          .from("vendedores")
+          .update({ percentual_comissao: novoPercentual })
+          .eq("id", selectedVendedor);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Sucesso",
+        description: `Percentual de comissão atualizado para ${novoPercentual}%. Será mantido para os próximos meses.`,
+      });
+
+      setEditingComissaoId(null);
+      // Recarregar parcelas para refletir o novo percentual
+      fetchParcelasPagas();
+    } catch (error) {
+      console.error("Erro ao atualizar percentual:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o percentual de comissão.",
         variant: "destructive",
       });
     }
@@ -1027,9 +1104,42 @@ export default function Comissionamento() {
                           </TableCell>
                           <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
                           <TableCell className="text-right">
-                            <span className={isMetaBatida ? "text-amber-600 font-medium" : ""}>
-                              {percentualEfetivo.toFixed(2)}%
-                            </span>
+                            {editingComissaoId === p.id ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Input
+                                  className="w-[70px] h-7 text-right text-sm"
+                                  value={editingComissaoValue}
+                                  onChange={(e) => setEditingComissaoValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveComissaoPercentual(p);
+                                    if (e.key === 'Escape') setEditingComissaoId(null);
+                                  }}
+                                  autoFocus
+                                />
+                                <span className="text-xs">%</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveComissaoPercentual(p)}>
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingComissaoId(null)}>
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                className={`inline-flex items-center gap-1 hover:underline cursor-pointer ${isMetaBatida ? "text-amber-600 font-medium" : ""}`}
+                                onClick={() => {
+                                  if (!isMetaBatida) {
+                                    setEditingComissaoId(p.id);
+                                    setEditingComissaoValue(percentualEfetivo.toFixed(2));
+                                  }
+                                }}
+                                disabled={isMetaBatida}
+                                title={isMetaBatida ? "Meta batida usa 4% fixo" : "Clique para editar o percentual"}
+                              >
+                                {percentualEfetivo.toFixed(2)}%
+                                {!isMetaBatida && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                              </button>
+                            )}
                           </TableCell>
                           <TableCell className="text-right font-medium text-primary">
                             {formatCurrency(valorComissaoEfetivo)}
