@@ -410,15 +410,31 @@ export default function Comissionamento() {
 
       if (contasError) throw contasError;
 
+      // Buscar overrides de percentual por parcela
+      const contaReceberIds = (contasReceber || []).map(cr => cr.id);
+      const overrideMap = new Map<string, number>();
+      if (contaReceberIds.length > 0) {
+        const { data: overrides } = await (supabase as any)
+          .from("comissao_percentual_override")
+          .select("conta_receber_id, percentual_comissao")
+          .eq("vendedor_id", selectedVendedor)
+          .in("conta_receber_id", contaReceberIds);
+        
+        overrides?.forEach((o: any) => {
+          overrideMap.set(o.conta_receber_id, o.percentual_comissao);
+        });
+      }
+
       const parcelasComDetalhes: ParcelaPaga[] = (contasReceber || []).map((cr) => {
         const parcela = parcelas?.find((p) => p.id === cr.parcela_id);
         const contrato = contratos?.find((c) => c.id === parcela?.contrato_id);
         const centroCusto = contrato?.centro_custo ? centrosCustoMap.get(contrato.centro_custo) : null;
         
-        // Buscar percentual de comissão específico do centro de custo ou usar global
-        const percentual = contrato?.centro_custo 
+        // Prioridade: override individual > centro de custo > global
+        const percentualBase = contrato?.centro_custo 
           ? (comissaoPorCentro.get(contrato.centro_custo) ?? percentualGlobal)
           : percentualGlobal;
+        const percentual = overrideMap.has(cr.id) ? overrideMap.get(cr.id)! : percentualBase;
         
         const valorComissao = cr.valor * (percentual / 100);
         
@@ -487,7 +503,7 @@ export default function Comissionamento() {
     }
   };
 
-  // Salvar percentual de comissão editado na vendedores_centros_custo
+  // Salvar percentual de comissão editado - override individual por parcela
   const handleSaveComissaoPercentual = async (parcela: ParcelaPaga) => {
     const novoPercentual = parseFloat(editingComissaoValue.replace(',', '.'));
     if (isNaN(novoPercentual) || novoPercentual < 0 || novoPercentual > 100) {
@@ -500,51 +516,24 @@ export default function Comissionamento() {
     }
 
     try {
-      // Encontrar o contrato para obter o centro de custo
-      const { data: contasReceber } = await supabase
-        .from("contas_receber")
-        .select("parcela_id")
-        .eq("id", parcela.id)
-        .single();
+      // Upsert na tabela de override individual por parcela (conta_receber)
+      const { error } = await (supabase as any)
+        .from("comissao_percentual_override")
+        .upsert(
+          {
+            conta_receber_id: parcela.id,
+            vendedor_id: selectedVendedor,
+            percentual_comissao: novoPercentual,
+            created_by: user?.id,
+          },
+          { onConflict: "conta_receber_id,vendedor_id" }
+        );
 
-      if (!contasReceber?.parcela_id) throw new Error("Parcela não encontrada");
-
-      const { data: parcelaData } = await supabase
-        .from("parcelas_contrato")
-        .select("contrato_id")
-        .eq("id", contasReceber.parcela_id)
-        .single();
-
-      if (!parcelaData?.contrato_id) throw new Error("Contrato não encontrado");
-
-      const { data: contrato } = await supabase
-        .from("contratos")
-        .select("centro_custo")
-        .eq("id", parcelaData.contrato_id)
-        .single();
-
-      if (contrato?.centro_custo) {
-        // Atualizar vendedores_centros_custo
-        const { error } = await (supabase as any)
-          .from("vendedores_centros_custo")
-          .update({ percentual_comissao: novoPercentual })
-          .eq("vendedor_id", selectedVendedor)
-          .eq("centro_custo_id", contrato.centro_custo);
-
-        if (error) throw error;
-      } else {
-        // Fallback: atualizar percentual global do vendedor
-        const { error } = await supabase
-          .from("vendedores")
-          .update({ percentual_comissao: novoPercentual })
-          .eq("id", selectedVendedor);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: `Percentual de comissão atualizado para ${novoPercentual}%. Será mantido para os próximos meses.`,
+        description: `Percentual de comissão desta venda atualizado para ${novoPercentual}%.`,
       });
 
       setEditingComissaoId(null);
