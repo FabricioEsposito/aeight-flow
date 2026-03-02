@@ -88,9 +88,7 @@ export function VendedorSelect({ value, onChange, disabled, centroCustoId }: Ven
 
   const centrosMap = new Map(centrosCusto.map((cc) => [cc.id, `${cc.codigo} - ${cc.descricao}`] as const));
 
-  const options: SearchableSelectOption[] = vendedores.map((vendedor) => {
-    // Preferimos exibir o centro do contrato (centroCustoId) quando aplicável,
-    // pois o vendedor pode atuar em múltiplos centros no novo modelo.
+  const vendedorOptions: SearchableSelectOption[] = vendedores.map((vendedor) => {
     const ccLabel = centroCustoId
       ? centrosMap.get(centroCustoId)
       : vendedor.centro_custo
@@ -102,10 +100,19 @@ export function VendedorSelect({ value, onChange, disabled, centroCustoId }: Ven
     };
   });
 
+  const options: SearchableSelectOption[] = [
+    { value: '__none__', label: 'Sem vendedor' },
+    ...vendedorOptions,
+  ];
+
+  const handleChange = (val: string) => {
+    onChange(val === '__none__' ? '' : val);
+  };
+
   return (
     <SearchableSelect
-      value={value}
-      onValueChange={onChange}
+      value={value || '__none__'}
+      onValueChange={handleChange}
       options={options}
       placeholder={loading ? "Carregando..." : "Selecione um vendedor"}
       searchPlaceholder="Buscar vendedor..."
