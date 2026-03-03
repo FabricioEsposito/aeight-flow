@@ -1,0 +1,1 @@
+DELETE FROM folha_pagamento WHERE id = '1bdef442-2592-4133-9095-190125c91197';
