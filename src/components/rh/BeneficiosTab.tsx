@@ -14,7 +14,7 @@ import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
-import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
+import { CategoriaFilterSelect } from '@/components/financeiro/CategoriaFilterSelect';
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   startOfYear, endOfYear, subDays, subMonths, format,
@@ -36,6 +36,8 @@ interface BeneficioParcelaRecord {
   centros_custo: Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>;
   conta_pagar_id: string | null;
   beneficio_id: string | null;
+  plano_contas_id: string | null;
+  plano_contas_descricao: string;
 }
 
 
@@ -50,7 +52,8 @@ export function BeneficiosTab() {
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
-  const [dateType, setDateType] = useSessionState<DateFilterType>('beneficios', 'dateType', 'vencimento');
+  const [selectedCategoria, setSelectedCategoria] = useSessionState<string[]>('beneficios', 'categoria', []);
+  const [categoriaOptions, setCategoriaOptions] = useState<Array<{ id: string; codigo: string; descricao: string }>>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -93,8 +96,9 @@ export function BeneficiosTab() {
         .select(`
           id, valor, data_vencimento, status, contrato_id,
           contratos!inner (
-            id, fornecedor_id, is_beneficio_funcionario,
-            fornecedores (razao_social, nome_fantasia, cnpj_cpf)
+            id, fornecedor_id, is_beneficio_funcionario, plano_contas_id,
+            fornecedores (razao_social, nome_fantasia, cnpj_cpf),
+            plano_contas:plano_contas_id (id, codigo, descricao)
           )
         `)
         .eq('contratos.is_beneficio_funcionario', true)
@@ -180,9 +184,20 @@ export function BeneficiosTab() {
           centros_custo: rateioMap.get(p.contrato_id) || [],
           conta_pagar_id: cp?.id || null,
           beneficio_id: beneficio?.id || null,
+          plano_contas_id: contrato?.plano_contas_id || null,
+          plano_contas_descricao: contrato?.plano_contas ? `${contrato.plano_contas.codigo} - ${contrato.plano_contas.descricao}` : '-',
         };
       });
 
+      // Build categoria options
+      const catMap = new Map<string, { id: string; codigo: string; descricao: string }>();
+      formatted.forEach(r => {
+        if (r.plano_contas_id && !catMap.has(r.plano_contas_id)) {
+          const parts = r.plano_contas_descricao.split(' - ');
+          catMap.set(r.plano_contas_id, { id: r.plano_contas_id, codigo: parts[0] || '', descricao: parts.slice(1).join(' - ') || '' });
+        }
+      });
+      setCategoriaOptions(Array.from(catMap.values()));
       setRecords(formatted);
     } catch (error) {
       console.error('Erro ao buscar benefícios:', error);
@@ -194,7 +209,7 @@ export function BeneficiosTab() {
 
   useEffect(() => {
     fetchRecords();
-  }, [datePreset, customDateRange, dateType]);
+  }, [datePreset, customDateRange]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -227,7 +242,8 @@ export function BeneficiosTab() {
       r.fornecedor_cnpj.includes(searchTerm);
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
     const matchesCentroCusto = selectedCentroCusto.length === 0 || r.centros_custo.some(cc => selectedCentroCusto.includes(cc.centro_custo_id));
-    return matchesSearch && matchesStatus && matchesCentroCusto;
+    const matchesCategoria = selectedCategoria.length === 0 || (r.plano_contas_id && selectedCategoria.includes(r.plano_contas_id));
+    return matchesSearch && matchesStatus && matchesCentroCusto && matchesCategoria;
   });
 
   const totalItems = filteredRecords.length;
@@ -250,7 +266,7 @@ export function BeneficiosTab() {
               />
             </div>
           </div>
-          <DateTypeFilter value={dateType} onChange={setDateType} />
+          <CategoriaFilterSelect value={selectedCategoria} onValueChange={setSelectedCategoria} options={categoriaOptions} />
           <DateRangeFilter
             value={datePreset}
             onChange={handleDateRangeChange}
@@ -278,7 +294,7 @@ export function BeneficiosTab() {
               <TableHead>Fornecedor</TableHead>
               <TableHead>Nome Fantasia</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>Categoria</TableHead>
               <TableHead>Centro de Custo</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
@@ -307,7 +323,7 @@ export function BeneficiosTab() {
                     <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
                     <TableCell className="text-sm">{r.fornecedor_nome_fantasia || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
-                    <TableCell><Badge variant="outline">{r.tipo_beneficio}</Badge></TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{r.plano_contas_descricao}</Badge></TableCell>
                     <TableCell>
                       {r.centros_custo.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
