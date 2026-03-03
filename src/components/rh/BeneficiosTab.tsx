@@ -267,7 +267,6 @@ export function BeneficiosTab() {
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Centro de Custo</TableHead>
-              <TableHead>Data Competência</TableHead>
               <TableHead>Data Vencimento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
@@ -277,11 +276,11 @@ export function BeneficiosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Nenhum benefício encontrado. Marque contratos de compra como "Benefício para Funcionários" para que suas parcelas apareçam aqui.
                 </TableCell>
               </TableRow>
@@ -307,7 +306,6 @@ export function BeneficiosTab() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{formatDate(r.data_competencia)}</TableCell>
                     <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
