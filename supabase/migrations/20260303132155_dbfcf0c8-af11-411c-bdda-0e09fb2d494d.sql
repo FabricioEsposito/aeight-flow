@@ -1,0 +1,1 @@
+UPDATE contratos SET is_folha_funcionario = true WHERE plano_contas_id IN ('30a56eb0-cfba-4e09-9f43-bf3cd39873bc', '48feabe9-abfb-4a97-ae66-6821253707d3', 'c1b3c1bf-c014-46f0-baa7-cdea1c3b0ac7', '7000e395-fbcd-471b-85fb-4cce9b613845', '061588ab-eec1-4f6c-b9ad-8ebf3f7a674e') AND (is_folha_funcionario IS NULL OR is_folha_funcionario = false);
