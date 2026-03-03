@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.send-holerite-email]
 verify_jwt = false
+
+[functions.ipca-lookup]
+verify_jwt = false
