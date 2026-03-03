@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit } from 'lucide-react';
+import { Search, Edit, Calendar, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -13,6 +14,20 @@ import { EditFolhaDialog } from './EditFolhaDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
+import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  startOfYear, endOfYear, subDays, subMonths, format,
+  startOfDay, endOfDay
+} from 'date-fns';
 
 export interface FolhaParcelaRecord {
   parcela_id: string;
@@ -27,7 +42,6 @@ export interface FolhaParcelaRecord {
   status: string;
   centros_custo: Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>;
   conta_pagar_id: string | null;
-  // folha_pagamento linked data
   folha_id: string | null;
   tipo_vinculo: string;
   salario_base: number;
@@ -35,45 +49,51 @@ export interface FolhaParcelaRecord {
   folha_status: string;
 }
 
-const meses = [
-  { value: '1', label: 'Janeiro' },
-  { value: '2', label: 'Fevereiro' },
-  { value: '3', label: 'Março' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Maio' },
-  { value: '6', label: 'Junho' },
-  { value: '7', label: 'Julho' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-];
-
 export function FolhaPagamentoTab() {
   const [records, setRecords] = useState<FolhaParcelaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('folha', 'search', '');
   const [statusFilter, setStatusFilter] = useSessionState<string>('folha', 'status', 'todos');
-  const [mesFilter, setMesFilter] = useSessionState<string>('folha', 'mes', String(new Date().getMonth() + 1));
-  const [anoFilter, setAnoFilter] = useSessionState<string>('folha', 'ano', String(new Date().getFullYear()));
   const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('folha', 'centroCusto', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('folha', 'datePreset', 'este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+  const [dateType, setDateType] = useSessionState<DateFilterType>('folha', 'dateType', 'vencimento');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FolhaParcelaRecord | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | null>(null);
   const { toast } = useToast();
+
+  const getDateRange = (): { from: Date; to: Date } | null => {
+    if (datePreset === 'todo-periodo') return null;
+    if (datePreset === 'periodo-personalizado' && customDateRange.from && customDateRange.to) {
+      return { from: startOfDay(customDateRange.from), to: endOfDay(customDateRange.to) };
+    }
+    const today = new Date();
+    switch (datePreset) {
+      case 'hoje': return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana': return { from: startOfWeek(today, { weekStartsOn: 1 }), to: endOfWeek(today, { weekStartsOn: 1 }) };
+      case 'este-mes': return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano': return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias': return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses': return { from: subMonths(today, 12), to: today };
+      default: return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
 
   const fetchRecords = async () => {
     try {
       setLoading(true);
 
-      const mes = parseInt(mesFilter);
-      const ano = parseInt(anoFilter);
-      const startDate = `${ano}-${String(mes).padStart(2, '0')}-01`;
-      const endDate = mes === 12
-        ? `${ano + 1}-01-01`
-        : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+      const range = getDateRange();
+      const startDate = range ? format(range.from, 'yyyy-MM-dd') : '1900-01-01';
+      const endDate = range ? format(range.to, 'yyyy-MM-dd') : '2100-12-31';
 
       // 1. Get parcelas from contracts with is_folha_funcionario = true
       const { data: parcelas, error: parcelasError } = await supabase
@@ -87,7 +107,7 @@ export function FolhaPagamentoTab() {
         `)
         .eq('contratos.is_folha_funcionario', true)
         .gte('data_vencimento', startDate)
-        .lt('data_vencimento', endDate)
+        .lte('data_vencimento', endDate)
         .order('data_vencimento');
 
       if (parcelasError) throw parcelasError;
@@ -174,7 +194,16 @@ export function FolhaPagamentoTab() {
         };
       });
 
-      setRecords(formatted);
+      // Apply date type filter for competencia
+      let filteredByDateType = formatted;
+      if (dateType === 'competencia' && range) {
+        filteredByDateType = formatted.filter(r => {
+          if (!r.data_competencia) return true;
+          return r.data_competencia >= startDate && r.data_competencia <= endDate;
+        });
+      }
+
+      setRecords(filteredByDateType);
     } catch (error) {
       console.error('Erro ao buscar folha:', error);
       toast({ title: 'Erro', description: 'Não foi possível carregar a folha de pagamento.', variant: 'destructive' });
@@ -185,7 +214,7 @@ export function FolhaPagamentoTab() {
 
   useEffect(() => {
     fetchRecords();
-  }, [mesFilter, anoFilter]);
+  }, [datePreset, customDateRange, dateType]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -198,7 +227,7 @@ export function FolhaPagamentoTab() {
     return value;
   };
 
-  const formatDate = (date: string | null) => {
+  const formatDateStr = (date: string | null) => {
     if (!date) return '-';
     const [y, m, d] = date.split('-');
     return `${d}/${m}/${y}`;
@@ -234,8 +263,101 @@ export function FolhaPagamentoTab() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - 2 + i));
+  const allSelected = paginatedRecords.length > 0 && paginatedRecords.every(r => selectedIds.includes(r.parcela_id));
+  const someSelected = selectedIds.length > 0;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !paginatedRecords.find(r => r.parcela_id === id)));
+    } else {
+      const newIds = paginatedRecords.map(r => r.parcela_id);
+      setSelectedIds(prev => [...new Set([...prev, ...newIds])]);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const selectedRecords = filteredRecords.filter(r => selectedIds.includes(r.parcela_id));
+  const allSelectedPaid = selectedRecords.length > 0 && selectedRecords.every(r => r.status === 'pago');
+
+  const handleBatchAction = async (data: any) => {
+    try {
+      if (batchActionType === 'change-date' && data.newDate) {
+        // Update parcelas_contrato
+        for (const id of selectedIds) {
+          await supabase
+            .from('parcelas_contrato')
+            .update({ data_vencimento: data.newDate })
+            .eq('id', id);
+        }
+        // Update contas_pagar
+        const recordsToUpdate = filteredRecords.filter(r => selectedIds.includes(r.parcela_id) && r.conta_pagar_id);
+        for (const r of recordsToUpdate) {
+          await supabase
+            .from('contas_pagar')
+            .update({ data_vencimento: data.newDate, data_competencia: data.newDate })
+            .eq('id', r.conta_pagar_id!);
+        }
+        // Update folha_pagamento
+        const folhaRecords = filteredRecords.filter(r => selectedIds.includes(r.parcela_id) && r.folha_id);
+        const newDateObj = new Date(data.newDate + 'T00:00:00');
+        for (const r of folhaRecords) {
+          await supabase
+            .from('folha_pagamento')
+            .update({
+              mes_referencia: newDateObj.getMonth() + 1,
+              ano_referencia: newDateObj.getFullYear(),
+            })
+            .eq('id', r.folha_id!);
+        }
+        toast({ title: 'Sucesso', description: `Data de vencimento alterada para ${selectedIds.length} registro(s).` });
+      } else if (batchActionType === 'mark-paid') {
+        if (allSelectedPaid) {
+          // Revert to open
+          for (const r of selectedRecords) {
+            if (r.conta_pagar_id) {
+              await supabase
+                .from('contas_pagar')
+                .update({ status: 'pendente', data_pagamento: null })
+                .eq('id', r.conta_pagar_id);
+            }
+            await supabase
+              .from('parcelas_contrato')
+              .update({ status: 'pendente' })
+              .eq('id', r.parcela_id);
+          }
+          toast({ title: 'Sucesso', description: `${selectedIds.length} registro(s) voltaram para em aberto.` });
+        } else {
+          const paymentDate = data.paymentDate || format(new Date(), 'yyyy-MM-dd');
+          for (const r of selectedRecords) {
+            if (r.conta_pagar_id) {
+              await supabase
+                .from('contas_pagar')
+                .update({ status: 'pago', data_pagamento: paymentDate })
+                .eq('id', r.conta_pagar_id);
+            }
+            await supabase
+              .from('parcelas_contrato')
+              .update({ status: 'pago' })
+              .eq('id', r.parcela_id);
+          }
+          toast({ title: 'Sucesso', description: `${selectedIds.length} registro(s) marcados como pago.` });
+        }
+      }
+      setSelectedIds([]);
+      fetchRecords();
+    } catch (error) {
+      console.error('Erro na ação em lote:', error);
+      toast({ title: 'Erro', description: 'Não foi possível executar a ação em lote.', variant: 'destructive' });
+    }
+  };
+
+  const handleDateRangeChange = (preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    if (range) setCustomDateRange(range);
+  };
 
   return (
     <div className="space-y-4">
@@ -252,18 +374,12 @@ export function FolhaPagamentoTab() {
               />
             </div>
           </div>
-          <Select value={mesFilter} onValueChange={setMesFilter}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Mês" /></SelectTrigger>
-            <SelectContent>
-              {meses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={anoFilter} onValueChange={setAnoFilter}>
-            <SelectTrigger className="w-[100px]"><SelectValue placeholder="Ano" /></SelectTrigger>
-            <SelectContent>
-              {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <DateTypeFilter value={dateType} onChange={setDateType} />
+          <DateRangeFilter
+            value={datePreset}
+            onChange={handleDateRangeChange}
+            customRange={customDateRange}
+          />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -275,19 +391,45 @@ export function FolhaPagamentoTab() {
           </Select>
           <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
         </div>
+
+        {someSelected && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+            <span className="text-sm text-muted-foreground">{selectedIds.length} selecionado(s)</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <CheckSquare className="w-4 h-4 mr-2" />
+                  Ações em Lote
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="bg-background">
+                <DropdownMenuItem onClick={() => { setBatchActionType('mark-paid'); setBatchDialogOpen(true); }}>
+                  {allSelectedPaid ? 'Voltar para Em Aberto' : 'Marcar como Pago'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setBatchActionType('change-date'); setBatchDialogOpen(true); }}>
+                  Alterar Data de Vencimento
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>Limpar seleção</Button>
+          </div>
+        )}
       </Card>
 
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
+              </TableHead>
               <TableHead>Competência</TableHead>
+              <TableHead>Data Vencimento</TableHead>
               <TableHead>Razão Social</TableHead>
               <TableHead>Nome Fantasia</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Centro de Custo</TableHead>
-              <TableHead>Data Vencimento</TableHead>
               <TableHead className="text-right">Salário Base</TableHead>
               <TableHead className="text-right">Valor Líquido</TableHead>
               <TableHead>Status Pgto</TableHead>
@@ -298,11 +440,11 @@ export function FolhaPagamentoTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                   Nenhum registro encontrado. Marque contratos de compra como "Funcionário" para que suas parcelas apareçam aqui.
                 </TableCell>
               </TableRow>
@@ -312,7 +454,14 @@ export function FolhaPagamentoTab() {
                 const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
                 return (
                   <TableRow key={r.parcela_id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.includes(r.parcela_id)}
+                        onCheckedChange={() => toggleSelect(r.parcela_id)}
+                      />
+                    </TableCell>
                     <TableCell>{competencia}</TableCell>
+                    <TableCell className="text-sm">{formatDateStr(r.data_vencimento)}</TableCell>
                     <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
                     <TableCell className="text-sm">{r.fornecedor_nome_fantasia || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
@@ -332,7 +481,6 @@ export function FolhaPagamentoTab() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.salario_base)}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(r.valor_liquido)}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
@@ -361,9 +509,19 @@ export function FolhaPagamentoTab() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         record={selectedRecord}
-        defaultMes={parseInt(mesFilter)}
-        defaultAno={parseInt(anoFilter)}
+        defaultMes={new Date().getMonth() + 1}
+        defaultAno={new Date().getFullYear()}
         onSaved={fetchRecords}
+      />
+
+      <BatchActionsDialog
+        open={batchDialogOpen}
+        onOpenChange={setBatchDialogOpen}
+        selectedCount={selectedIds.length}
+        actionType={batchActionType}
+        onConfirm={handleBatchAction}
+        tipo="saida"
+        allPaid={allSelectedPaid}
       />
     </div>
   );
