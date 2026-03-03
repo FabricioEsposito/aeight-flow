@@ -141,10 +141,15 @@ export function RHDashboard() {
     }
   };
 
-  // Filter by cost center
+  // Filter by cost center - also trim the centros_custo array to only selected ones
   const filteredRecords = useMemo(() => {
     if (selectedCentroCusto.length === 0) return records;
-    return records.filter(r => r.centros_custo.some(cc => selectedCentroCusto.includes(cc.id)));
+    return records
+      .filter(r => r.centros_custo.some(cc => selectedCentroCusto.includes(cc.id)))
+      .map(r => ({
+        ...r,
+        centros_custo: r.centros_custo.filter(cc => selectedCentroCusto.includes(cc.id)),
+      }));
   }, [records, selectedCentroCusto]);
 
   // KPIs
