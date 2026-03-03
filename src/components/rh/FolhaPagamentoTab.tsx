@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, CheckSquare } from 'lucide-react';
+import { Search, Edit, CheckSquare, Mail, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -50,7 +50,12 @@ export interface FolhaParcelaRecord {
   folha_status: string;
   plano_contas_id: string | null;
   plano_contas_descricao: string;
+  holerite_url: string | null;
 }
+const SALARIO_CLT_IDS = [
+  '30a56eb0-cfba-4e09-9f43-bf3cd39873bc',
+  'c1b3c1bf-c014-46f0-baa7-cdea1c3b0ac7',
+];
 
 export function FolhaPagamentoTab() {
   const [records, setRecords] = useState<FolhaParcelaRecord[]>([]);
@@ -74,6 +79,7 @@ export function FolhaPagamentoTab() {
   const [batchActionType, setBatchActionType] = useState<'change-date' | 'change-status' | null>(null);
   const [batchNewStatus, setBatchNewStatus] = useState<string>('');
   const [batchDateValue, setBatchDateValue] = useState('');
+  const [sendingHoleriteId, setSendingHoleriteId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const getDateRange = (): { from: Date; to: Date } | null => {
@@ -141,7 +147,7 @@ export function FolhaPagamentoTab() {
       // 4. Fetch folha_pagamento linked to these parcelas
       const { data: folhas } = await supabase
         .from('folha_pagamento')
-        .select('id, parcela_id, tipo_vinculo, salario_base, valor_liquido, status')
+        .select('id, parcela_id, tipo_vinculo, salario_base, valor_liquido, status, holerite_url')
         .in('parcela_id', parcelaIds);
 
       const rateioMap = new Map<string, Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>>();
@@ -200,6 +206,7 @@ export function FolhaPagamentoTab() {
           folha_status: folha?.status || 'pendente',
           plano_contas_id: contrato?.plano_contas_id || null,
           plano_contas_descricao: contrato?.plano_contas ? `${contrato.plano_contas.codigo} - ${contrato.plano_contas.descricao}` : '-',
+          holerite_url: folha?.holerite_url || null,
         };
       });
 
@@ -469,9 +476,46 @@ export function FolhaPagamentoTab() {
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
                     <TableCell>{getFolhaStatusBadge(r.folha_status)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setEditDialogOpen(true); }}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && r.folha_id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={sendingHoleriteId === r.folha_id}
+                            onClick={async () => {
+                              setSendingHoleriteId(r.folha_id);
+                              try {
+                                const { data, error } = await supabase.functions.invoke('send-holerite-email', {
+                                  body: { folha_id: r.folha_id },
+                                });
+                                if (error) throw error;
+                                if (data && !data.success) throw new Error(data.error);
+                                toast({ title: 'Sucesso', description: 'Holerite enviado por e-mail com sucesso.' });
+                              } catch (err: any) {
+                                console.error('Erro ao enviar holerite:', err);
+                                toast({ title: 'Erro', description: err.message || 'Não foi possível enviar o holerite.', variant: 'destructive' });
+                              } finally {
+                                setSendingHoleriteId(null);
+                              }
+                            }}
+                            title="Enviar holerite por e-mail"
+                          >
+                            {sendingHoleriteId === r.folha_id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Mail className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && (
+                          <Button variant="ghost" size="icon" onClick={() => window.open(r.holerite_url!, '_blank')} title="Visualizar holerite">
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => { setSelectedRecord(r); setEditDialogOpen(true); }}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

@@ -812,6 +812,7 @@ export type Database = {
           fgts_percentual: number
           fgts_valor: number
           fornecedor_id: string
+          holerite_url: string | null
           id: string
           inss_percentual: number
           inss_valor: number
@@ -848,6 +849,7 @@ export type Database = {
           fgts_percentual?: number
           fgts_valor?: number
           fornecedor_id: string
+          holerite_url?: string | null
           id?: string
           inss_percentual?: number
           inss_valor?: number
@@ -884,6 +886,7 @@ export type Database = {
           fgts_percentual?: number
           fgts_valor?: number
           fornecedor_id?: string
+          holerite_url?: string | null
           id?: string
           inss_percentual?: number
           inss_valor?: number
