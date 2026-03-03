@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, CheckSquare, Mail, FileText, Loader2 } from 'lucide-react';
+import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { EditFolhaDialog } from './EditFolhaDialog';
+import { EnviarHoleriteDialog } from './EnviarHoleriteDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
@@ -51,6 +52,7 @@ export interface FolhaParcelaRecord {
   plano_contas_id: string | null;
   plano_contas_descricao: string;
   holerite_url: string | null;
+  fornecedor_emails: string[];
 }
 const SALARIO_CLT_IDS = [
   '30a56eb0-cfba-4e09-9f43-bf3cd39873bc',
@@ -80,6 +82,8 @@ export function FolhaPagamentoTab() {
   const [batchNewStatus, setBatchNewStatus] = useState<string>('');
   const [batchDateValue, setBatchDateValue] = useState('');
   const [sendingHoleriteId, setSendingHoleriteId] = useState<string | null>(null);
+  const [batchHoleriteDialogOpen, setBatchHoleriteDialogOpen] = useState(false);
+  const [batchHoleriteSending, setBatchHoleriteSending] = useState(false);
   const { toast } = useToast();
 
   const getDateRange = (): { from: Date; to: Date } | null => {
@@ -114,7 +118,7 @@ export function FolhaPagamentoTab() {
           id, valor, data_vencimento, status, contrato_id,
           contratos!inner (
             id, fornecedor_id, is_folha_funcionario, plano_contas_id,
-            fornecedores (razao_social, nome_fantasia, cnpj_cpf),
+            fornecedores (razao_social, nome_fantasia, cnpj_cpf, email),
             plano_contas:plano_contas_id (id, codigo, descricao)
           )
         `)
@@ -207,6 +211,7 @@ export function FolhaPagamentoTab() {
           plano_contas_id: contrato?.plano_contas_id || null,
           plano_contas_descricao: contrato?.plano_contas ? `${contrato.plano_contas.codigo} - ${contrato.plano_contas.descricao}` : '-',
           holerite_url: folha?.holerite_url || null,
+          fornecedor_emails: (fornecedor?.email || []).filter((e: string) => e && e.trim() !== ''),
         };
       });
 
@@ -401,6 +406,13 @@ export function FolhaPagamentoTab() {
                 <DropdownMenuItem onClick={() => { setBatchActionType('change-date'); setBatchDialogOpen(true); }}>
                   Alterar Data de Vencimento
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setBatchHoleriteDialogOpen(true)}
+                  disabled={selectedRecords.filter(r => r.holerite_url && r.folha_id && r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id)).length === 0}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Enviar Holerites por E-mail
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>Limpar seleção</Button>
@@ -539,6 +551,59 @@ export function FolhaPagamentoTab() {
         defaultMes={new Date().getMonth() + 1}
         defaultAno={new Date().getFullYear()}
         onSaved={fetchRecords}
+      />
+
+      <EnviarHoleriteDialog
+        open={batchHoleriteDialogOpen}
+        onOpenChange={setBatchHoleriteDialogOpen}
+        holerites={selectedRecords
+          .filter(r => r.holerite_url && r.folha_id && r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id))
+          .map(r => {
+            const vencDate = new Date(r.data_vencimento + 'T00:00:00');
+            return {
+              folha_id: r.folha_id!,
+              fornecedor_razao_social: r.fornecedor_razao_social,
+              fornecedor_nome_fantasia: r.fornecedor_nome_fantasia,
+              valor_liquido: r.valor_liquido,
+              competencia: `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`,
+              holerite_url: r.holerite_url!,
+              fornecedor_emails: r.fornecedor_emails || [],
+            };
+          })}
+        isLoading={batchHoleriteSending}
+        onConfirm={async () => {
+          setBatchHoleriteSending(true);
+          try {
+            const eligibleRecords = selectedRecords.filter(
+              r => r.holerite_url && r.folha_id && r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id)
+            );
+            let successCount = 0;
+            let errorCount = 0;
+            for (const r of eligibleRecords) {
+              try {
+                const { data, error } = await supabase.functions.invoke('send-holerite-email', {
+                  body: { folha_id: r.folha_id },
+                });
+                if (error) throw error;
+                if (data && !data.success) throw new Error(data.error);
+                successCount++;
+              } catch {
+                errorCount++;
+              }
+            }
+            if (successCount > 0) {
+              toast({ title: 'Sucesso', description: `${successCount} holerite(s) enviado(s) com sucesso.${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}` });
+            } else {
+              toast({ title: 'Erro', description: 'Nenhum holerite foi enviado.', variant: 'destructive' });
+            }
+            setSelectedIds([]);
+          } catch (err: any) {
+            toast({ title: 'Erro', description: err.message || 'Erro ao enviar holerites.', variant: 'destructive' });
+          } finally {
+            setBatchHoleriteSending(false);
+            setBatchHoleriteDialogOpen(false);
+          }
+        }}
       />
 
       <Dialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
