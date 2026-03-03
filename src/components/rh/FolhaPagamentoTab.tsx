@@ -366,14 +366,8 @@ export function FolhaPagamentoTab() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="bg-background">
-                <DropdownMenuItem onClick={() => { setBatchActionType('change-status'); setBatchNewStatus('aprovado'); setBatchDialogOpen(true); }}>
-                  Aprovar Selecionados
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setBatchActionType('change-status'); setBatchNewStatus('pendente'); setBatchDialogOpen(true); }}>
-                  Voltar para Pendente
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setBatchActionType('change-status'); setBatchNewStatus('processado'); setBatchDialogOpen(true); }}>
-                  Marcar como Processado
+                  Alterar Status da Folha
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setBatchActionType('change-date'); setBatchDialogOpen(true); }}>
                   Alterar Data de Vencimento
@@ -494,8 +488,21 @@ export function FolhaPagamentoTab() {
             <p className="text-sm text-muted-foreground mb-4">
               {batchActionType === 'change-date'
                 ? `Alterar a data de vencimento de ${selectedIds.length} lançamento(s) selecionado(s). As parcelas e contas a pagar vinculadas também serão atualizadas.`
-                : `Alterar o status da folha de ${selectedIds.length} lançamento(s) para "${batchNewStatus}".`}
+                : `Alterar o status da folha de ${selectedIds.length} lançamento(s) selecionado(s).`}
             </p>
+            {batchActionType === 'change-status' && (
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={batchNewStatus} onValueChange={setBatchNewStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="aprovado">Aprovado</SelectItem>
+                    <SelectItem value="processado">Processado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {batchActionType === 'change-date' && (
               <div className="space-y-2">
                 <Label htmlFor="batch-new-date">Nova Data de Vencimento</Label>
@@ -520,7 +527,7 @@ export function FolhaPagamentoTab() {
                 setBatchDialogOpen(false);
                 setBatchDateValue('');
               }}
-              disabled={batchActionType === 'change-date' && !batchDateValue}
+              disabled={(batchActionType === 'change-date' && !batchDateValue) || (batchActionType === 'change-status' && !batchNewStatus)}
             >
               Confirmar
             </Button>
