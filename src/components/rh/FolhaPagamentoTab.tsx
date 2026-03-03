@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Calendar, CheckSquare } from 'lucide-react';
+import { Search, Edit, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +18,6 @@ import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilt
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
-import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +68,9 @@ export function FolhaPagamentoTab() {
   const [selectedRecord, setSelectedRecord] = useState<FolhaParcelaRecord | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
-  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | null>(null);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'change-status' | null>(null);
+  const [batchNewStatus, setBatchNewStatus] = useState<string>('');
+  const [batchDateValue, setBatchDateValue] = useState('');
   const { toast } = useToast();
 
   const getDateRange = (): { from: Date; to: Date } | null => {
@@ -280,73 +283,33 @@ export function FolhaPagamentoTab() {
   };
 
   const selectedRecords = filteredRecords.filter(r => selectedIds.includes(r.parcela_id));
-  const allSelectedPaid = selectedRecords.length > 0 && selectedRecords.every(r => r.status === 'pago');
 
   const handleBatchAction = async (data: any) => {
     try {
       if (batchActionType === 'change-date' && data.newDate) {
-        // Update parcelas_contrato
         for (const id of selectedIds) {
-          await supabase
-            .from('parcelas_contrato')
-            .update({ data_vencimento: data.newDate })
-            .eq('id', id);
+          await supabase.from('parcelas_contrato').update({ data_vencimento: data.newDate }).eq('id', id);
         }
-        // Update contas_pagar
         const recordsToUpdate = filteredRecords.filter(r => selectedIds.includes(r.parcela_id) && r.conta_pagar_id);
         for (const r of recordsToUpdate) {
-          await supabase
-            .from('contas_pagar')
-            .update({ data_vencimento: data.newDate, data_competencia: data.newDate })
-            .eq('id', r.conta_pagar_id!);
+          await supabase.from('contas_pagar').update({ data_vencimento: data.newDate, data_competencia: data.newDate }).eq('id', r.conta_pagar_id!);
         }
-        // Update folha_pagamento
         const folhaRecords = filteredRecords.filter(r => selectedIds.includes(r.parcela_id) && r.folha_id);
         const newDateObj = new Date(data.newDate + 'T00:00:00');
         for (const r of folhaRecords) {
-          await supabase
-            .from('folha_pagamento')
-            .update({
-              mes_referencia: newDateObj.getMonth() + 1,
-              ano_referencia: newDateObj.getFullYear(),
-            })
-            .eq('id', r.folha_id!);
+          await supabase.from('folha_pagamento').update({ mes_referencia: newDateObj.getMonth() + 1, ano_referencia: newDateObj.getFullYear() }).eq('id', r.folha_id!);
         }
         toast({ title: 'Sucesso', description: `Data de vencimento alterada para ${selectedIds.length} registro(s).` });
-      } else if (batchActionType === 'mark-paid') {
-        if (allSelectedPaid) {
-          // Revert to open
-          for (const r of selectedRecords) {
-            if (r.conta_pagar_id) {
-              await supabase
-                .from('contas_pagar')
-                .update({ status: 'pendente', data_pagamento: null })
-                .eq('id', r.conta_pagar_id);
-            }
-            await supabase
-              .from('parcelas_contrato')
-              .update({ status: 'pendente' })
-              .eq('id', r.parcela_id);
+      } else if (batchActionType === 'change-status' && batchNewStatus) {
+        for (const r of selectedRecords) {
+          if (r.folha_id) {
+            await supabase.from('folha_pagamento').update({ status: batchNewStatus }).eq('id', r.folha_id);
           }
-          toast({ title: 'Sucesso', description: `${selectedIds.length} registro(s) voltaram para em aberto.` });
-        } else {
-          const paymentDate = data.paymentDate || format(new Date(), 'yyyy-MM-dd');
-          for (const r of selectedRecords) {
-            if (r.conta_pagar_id) {
-              await supabase
-                .from('contas_pagar')
-                .update({ status: 'pago', data_pagamento: paymentDate })
-                .eq('id', r.conta_pagar_id);
-            }
-            await supabase
-              .from('parcelas_contrato')
-              .update({ status: 'pago' })
-              .eq('id', r.parcela_id);
-          }
-          toast({ title: 'Sucesso', description: `${selectedIds.length} registro(s) marcados como pago.` });
         }
+        toast({ title: 'Sucesso', description: `Status da folha alterado para "${batchNewStatus}" em ${selectedIds.length} registro(s).` });
       }
       setSelectedIds([]);
+      setBatchNewStatus('');
       fetchRecords();
     } catch (error) {
       console.error('Erro na ação em lote:', error);
@@ -403,8 +366,14 @@ export function FolhaPagamentoTab() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="bg-background">
-                <DropdownMenuItem onClick={() => { setBatchActionType('mark-paid'); setBatchDialogOpen(true); }}>
-                  {allSelectedPaid ? 'Voltar para Em Aberto' : 'Marcar como Pago'}
+                <DropdownMenuItem onClick={() => { setBatchActionType('change-status'); setBatchNewStatus('aprovado'); setBatchDialogOpen(true); }}>
+                  Aprovar Selecionados
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setBatchActionType('change-status'); setBatchNewStatus('pendente'); setBatchDialogOpen(true); }}>
+                  Voltar para Pendente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setBatchActionType('change-status'); setBatchNewStatus('processado'); setBatchDialogOpen(true); }}>
+                  Marcar como Processado
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setBatchActionType('change-date'); setBatchDialogOpen(true); }}>
                   Alterar Data de Vencimento
@@ -514,15 +483,50 @@ export function FolhaPagamentoTab() {
         onSaved={fetchRecords}
       />
 
-      <BatchActionsDialog
-        open={batchDialogOpen}
-        onOpenChange={setBatchDialogOpen}
-        selectedCount={selectedIds.length}
-        actionType={batchActionType}
-        onConfirm={handleBatchAction}
-        tipo="saida"
-        allPaid={allSelectedPaid}
-      />
+      <Dialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {batchActionType === 'change-date' ? 'Alterar Data de Vencimento' : `Alterar Status da Folha`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              {batchActionType === 'change-date'
+                ? `Alterar a data de vencimento de ${selectedIds.length} lançamento(s) selecionado(s). As parcelas e contas a pagar vinculadas também serão atualizadas.`
+                : `Alterar o status da folha de ${selectedIds.length} lançamento(s) para "${batchNewStatus}".`}
+            </p>
+            {batchActionType === 'change-date' && (
+              <div className="space-y-2">
+                <Label htmlFor="batch-new-date">Nova Data de Vencimento</Label>
+                <Input
+                  id="batch-new-date"
+                  type="date"
+                  value={batchDateValue}
+                  onChange={(e) => setBatchDateValue(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchDialogOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (batchActionType === 'change-date') {
+                  handleBatchAction({ newDate: batchDateValue });
+                } else {
+                  handleBatchAction({});
+                }
+                setBatchDialogOpen(false);
+                setBatchDateValue('');
+              }}
+              disabled={batchActionType === 'change-date' && !batchDateValue}
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
