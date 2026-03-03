@@ -262,12 +262,12 @@ export function BeneficiosTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Competência</TableHead>
+              <TableHead>Data Vencimento</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead>Nome Fantasia</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Centro de Custo</TableHead>
-              <TableHead>Data Vencimento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -291,6 +291,7 @@ export function BeneficiosTab() {
                 return (
                   <TableRow key={r.parcela_id}>
                     <TableCell>{competencia}</TableCell>
+                    <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
                     <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
                     <TableCell className="text-sm">{r.fornecedor_nome_fantasia || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
@@ -306,7 +307,6 @@ export function BeneficiosTab() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
                     <TableCell className="text-right">
