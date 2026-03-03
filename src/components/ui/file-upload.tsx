@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,13 +29,36 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Generate signed URL when value changes
+  useEffect(() => {
+    if (!value) {
+      setSignedUrl(null);
+      return;
+    }
+    const filePath = extractPathFromUrl(value);
+    if (!filePath) return;
+
+    supabase.storage
+      .from(bucket)
+      .createSignedUrl(filePath, 3600) // 1 hour
+      .then(({ data, error: err }) => {
+        if (err) {
+          console.error('Signed URL error:', err);
+          setSignedUrl(null);
+        } else {
+          setSignedUrl(data.signedUrl);
+        }
+      });
+  }, [value, bucket]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type (suporta accept="application/pdf" e accept=".pdf")
+    // Validate file type
     if (accept) {
       const acceptTokens = accept
         .split(',')
@@ -93,7 +116,8 @@ export function FileUpload({
 
       setProgress(80);
 
-      // Get public URL (+ cache bust para evitar abrir arquivo antigo em cache)
+      // Store a reference path (not a public URL) - we'll generate signed URLs on demand
+      // We still store a full URL for backward compatibility but will use signed URLs to view
       const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
       const url = new URL(urlData.publicUrl);
       url.searchParams.set('v', String(Date.now()));
@@ -106,7 +130,6 @@ export function FileUpload({
     } finally {
       setUploading(false);
       setProgress(0);
-      // Reset input
       if (inputRef.current) {
         inputRef.current.value = '';
       }
@@ -135,7 +158,10 @@ export function FileUpload({
     try {
       const urlObj = new URL(url);
       const pathParts = urlObj.pathname.split(`/storage/v1/object/public/${bucket}/`);
-      return pathParts[1] || null;
+      if (pathParts[1]) return pathParts[1];
+      // Also handle signed URL paths
+      const signedParts = urlObj.pathname.split(`/storage/v1/object/sign/${bucket}/`);
+      return signedParts[1] || null;
     } catch {
       return null;
     }
@@ -150,6 +176,21 @@ export function FileUpload({
       return 'arquivo.pdf';
     } catch {
       return 'arquivo.pdf';
+    }
+  };
+
+  const handleView = async () => {
+    if (signedUrl) {
+      window.open(signedUrl, '_blank');
+    } else if (value) {
+      // Fallback: try generating on the fly
+      const filePath = extractPathFromUrl(value);
+      if (filePath) {
+        const { data } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600);
+        if (data?.signedUrl) {
+          window.open(data.signedUrl, '_blank');
+        }
+      }
     }
   };
 
@@ -188,7 +229,7 @@ export function FileUpload({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => window.open(value, '_blank')}
+              onClick={handleView}
               title="Visualizar"
             >
               <ExternalLink className="h-4 w-4" />
