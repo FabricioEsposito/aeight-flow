@@ -17,7 +17,7 @@ import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
-import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
+import { TipoVinculoFilter } from './TipoVinculoFilter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,7 +61,7 @@ export function FolhaPagamentoTab() {
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
-  const [dateType, setDateType] = useSessionState<DateFilterType>('folha', 'dateType', 'vencimento');
+  const [selectedTipoVinculo, setSelectedTipoVinculo] = useSessionState<string[]>('folha', 'tipoVinculo', []);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -197,16 +197,7 @@ export function FolhaPagamentoTab() {
         };
       });
 
-      // Apply date type filter for competencia
-      let filteredByDateType = formatted;
-      if (dateType === 'competencia' && range) {
-        filteredByDateType = formatted.filter(r => {
-          if (!r.data_competencia) return true;
-          return r.data_competencia >= startDate && r.data_competencia <= endDate;
-        });
-      }
-
-      setRecords(filteredByDateType);
+      setRecords(formatted);
     } catch (error) {
       console.error('Erro ao buscar folha:', error);
       toast({ title: 'Erro', description: 'Não foi possível carregar a folha de pagamento.', variant: 'destructive' });
@@ -217,7 +208,7 @@ export function FolhaPagamentoTab() {
 
   useEffect(() => {
     fetchRecords();
-  }, [datePreset, customDateRange, dateType]);
+  }, [datePreset, customDateRange]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -259,7 +250,8 @@ export function FolhaPagamentoTab() {
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
     const matchesCentroCusto = selectedCentroCusto.length === 0 ||
       r.centros_custo.some(cc => selectedCentroCusto.includes(cc.centro_custo_id));
-    return matchesSearch && matchesStatus && matchesCentroCusto;
+    const matchesTipoVinculo = selectedTipoVinculo.length === 0 || selectedTipoVinculo.includes(r.tipo_vinculo);
+    return matchesSearch && matchesStatus && matchesCentroCusto && matchesTipoVinculo;
   });
 
   const totalItems = filteredRecords.length;
@@ -352,7 +344,7 @@ export function FolhaPagamentoTab() {
               />
             </div>
           </div>
-          <DateTypeFilter value={dateType} onChange={setDateType} />
+          <TipoVinculoFilter value={selectedTipoVinculo} onChange={setSelectedTipoVinculo} />
           <DateRangeFilter
             value={datePreset}
             onChange={handleDateRangeChange}
