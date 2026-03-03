@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +49,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   const [irrfPjPercentual, setIrrfPjPercentual] = useState(0);
   const [irrfPjValor, setIrrfPjValor] = useState(0);
   const [observacoes, setObservacoes] = useState('');
+  const [dataVencimento, setDataVencimento] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState('pendente');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -55,10 +61,11 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
     if (record?.folha_id) {
       // Load full folha data from DB
       loadFolhaData(record.folha_id);
-    } else if (record) {
+      setDataVencimento(new Date(record.data_vencimento + 'T00:00:00'));
       // New folha for this parcela - default from parcela valor
       resetForm();
       setSalarioBase(record.valor);
+      setDataVencimento(new Date(record.data_vencimento + 'T00:00:00'));
     } else {
       resetForm();
     }
@@ -111,6 +118,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
     setCsllPercentual(0); setCsllValor(0);
     setIrrfPjPercentual(0); setIrrfPjValor(0);
     setObservacoes('');
+    setDataVencimento(undefined);
     setStatus('pendente');
   };
 
@@ -139,7 +147,12 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
 
     setSaving(true);
     try {
-      const vencDate = new Date(record.data_vencimento + 'T00:00:00');
+      // Use edited date or original
+      const newDataVencimento = dataVencimento
+        ? `${dataVencimento.getFullYear()}-${String(dataVencimento.getMonth() + 1).padStart(2, '0')}-${String(dataVencimento.getDate()).padStart(2, '0')}`
+        : record.data_vencimento;
+
+      const vencDate = new Date(newDataVencimento + 'T00:00:00');
       const mesRef = vencDate.getMonth() + 1;
       const anoRef = vencDate.getFullYear();
 
@@ -168,19 +181,17 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
       };
 
       if (record.folha_id) {
-        // Update existing folha_pagamento
         const { error } = await supabase.from('folha_pagamento').update(payload).eq('id', record.folha_id);
         if (error) throw error;
       } else {
-        // Create new folha_pagamento linked to parcela
         const { error } = await supabase.from('folha_pagamento').insert({ ...payload, created_by: user?.id });
         if (error) throw error;
       }
 
-      // Propagate valor to parcela and conta_pagar
-      await supabase.from('parcelas_contrato').update({ valor: valorLiquido }).eq('id', record.parcela_id);
+      // Propagate valor and data_vencimento to parcela and conta_pagar
+      await supabase.from('parcelas_contrato').update({ valor: valorLiquido, data_vencimento: newDataVencimento }).eq('id', record.parcela_id);
       if (record.conta_pagar_id) {
-        await supabase.from('contas_pagar').update({ valor: valorLiquido }).eq('id', record.conta_pagar_id);
+        await supabase.from('contas_pagar').update({ valor: valorLiquido, data_vencimento: newDataVencimento, data_competencia: newDataVencimento }).eq('id', record.conta_pagar_id);
       }
 
       toast({ title: 'Sucesso', description: 'Folha de pagamento salva com sucesso.' });
@@ -227,6 +238,33 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
               <Label>Salário Base</Label>
               <CurrencyInput value={salarioBase} onChange={setSalarioBase} />
             </div>
+          </div>
+
+          <div>
+            <Label>Data de Vencimento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dataVencimento && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dataVencimento ? format(dataVencimento, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dataVencimento}
+                  onSelect={setDataVencimento}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <Separator />
