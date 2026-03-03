@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.chat-dre]
 verify_jwt = false
+
+[functions.send-holerite-email]
+verify_jwt = false
