@@ -11,7 +11,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { EditBeneficioDialog } from './EditBeneficioDialog';
 import { useSessionState } from '@/hooks/useSessionState';
+import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
+import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
+import {
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  startOfYear, endOfYear, subDays, subMonths, format,
+  startOfDay, endOfDay
+} from 'date-fns';
 
 interface BeneficioParcelaRecord {
   parcela_id: string;
@@ -30,44 +38,54 @@ interface BeneficioParcelaRecord {
   beneficio_id: string | null;
 }
 
-const meses = [
-  { value: '1', label: 'Janeiro' },
-  { value: '2', label: 'Fevereiro' },
-  { value: '3', label: 'Março' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Maio' },
-  { value: '6', label: 'Junho' },
-  { value: '7', label: 'Julho' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-];
 
 export function BeneficiosTab() {
   const [records, setRecords] = useState<BeneficioParcelaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('beneficios', 'search', '');
   const [statusFilter, setStatusFilter] = useSessionState<string>('beneficios', 'status', 'todos');
-  const [mesFilter, setMesFilter] = useSessionState<string>('beneficios', 'mes', String(new Date().getMonth() + 1));
-  const [anoFilter, setAnoFilter] = useSessionState<string>('beneficios', 'ano', String(new Date().getFullYear()));
+  const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('beneficios', 'centroCusto', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('beneficios', 'datePreset', 'este-mes');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+  const [dateType, setDateType] = useSessionState<DateFilterType>('beneficios', 'dateType', 'vencimento');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<BeneficioParcelaRecord | null>(null);
   const { toast } = useToast();
 
+  const getDateRange = (): { from: Date; to: Date } | null => {
+    if (datePreset === 'todo-periodo') return null;
+    if (datePreset === 'periodo-personalizado' && customDateRange.from && customDateRange.to) {
+      return { from: startOfDay(customDateRange.from), to: endOfDay(customDateRange.to) };
+    }
+    const today = new Date();
+    switch (datePreset) {
+      case 'hoje': return { from: startOfDay(today), to: endOfDay(today) };
+      case 'esta-semana': return { from: startOfWeek(today, { weekStartsOn: 1 }), to: endOfWeek(today, { weekStartsOn: 1 }) };
+      case 'este-mes': return { from: startOfMonth(today), to: endOfMonth(today) };
+      case 'este-ano': return { from: startOfYear(today), to: endOfYear(today) };
+      case 'ultimos-30-dias': return { from: subDays(today, 30), to: today };
+      case 'ultimos-12-meses': return { from: subMonths(today, 12), to: today };
+      default: return { from: startOfMonth(today), to: endOfMonth(today) };
+    }
+  };
+
+  const handleDateRangeChange = (preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    if (range) setCustomDateRange(range);
+  };
+
   const fetchRecords = async () => {
     try {
       setLoading(true);
 
-      const mes = parseInt(mesFilter);
-      const ano = parseInt(anoFilter);
-      const startDate = `${ano}-${String(mes).padStart(2, '0')}-01`;
-      const endDate = mes === 12
-        ? `${ano + 1}-01-01`
-        : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+      const range = getDateRange();
+      const startDate = range ? format(range.from, 'yyyy-MM-dd') : '1900-01-01';
+      const endDate = range ? format(range.to, 'yyyy-MM-dd') : '2100-12-31';
 
       // 1. Get parcelas from contracts with is_beneficio_funcionario = true
       const { data: parcelas, error: parcelasError } = await supabase
@@ -81,7 +99,7 @@ export function BeneficiosTab() {
         `)
         .eq('contratos.is_beneficio_funcionario', true)
         .gte('data_vencimento', startDate)
-        .lt('data_vencimento', endDate)
+        .lte('data_vencimento', endDate)
         .order('data_vencimento');
 
       if (parcelasError) throw parcelasError;
@@ -176,7 +194,7 @@ export function BeneficiosTab() {
 
   useEffect(() => {
     fetchRecords();
-  }, [mesFilter, anoFilter]);
+  }, [datePreset, customDateRange, dateType]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -208,15 +226,14 @@ export function BeneficiosTab() {
       (r.fornecedor_nome_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.fornecedor_cnpj.includes(searchTerm);
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesCentroCusto = selectedCentroCusto.length === 0 || r.centros_custo.some(cc => selectedCentroCusto.includes(cc.centro_custo_id));
+    return matchesSearch && matchesStatus && matchesCentroCusto;
   });
 
   const totalItems = filteredRecords.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - 2 + i));
 
   return (
     <div className="space-y-4">
@@ -233,18 +250,12 @@ export function BeneficiosTab() {
               />
             </div>
           </div>
-          <Select value={mesFilter} onValueChange={setMesFilter}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Mês" /></SelectTrigger>
-            <SelectContent>
-              {meses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={anoFilter} onValueChange={setAnoFilter}>
-            <SelectTrigger className="w-[100px]"><SelectValue placeholder="Ano" /></SelectTrigger>
-            <SelectContent>
-              {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <DateTypeFilter value={dateType} onChange={setDateType} />
+          <DateRangeFilter
+            value={datePreset}
+            onChange={handleDateRangeChange}
+            customRange={customDateRange}
+          />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -254,6 +265,7 @@ export function BeneficiosTab() {
               <SelectItem value="vencido">Vencido</SelectItem>
             </SelectContent>
           </Select>
+          <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
         </div>
       </Card>
 
