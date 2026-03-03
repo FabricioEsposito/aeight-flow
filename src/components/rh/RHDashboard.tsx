@@ -54,8 +54,10 @@ export function RHDashboard() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<ParcelaRecord[]>([]);
   const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('rh-dashboard', 'centroCusto', []);
-  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('rh-dashboard', 'datePreset', 'este-ano');
-  const [customDateRange, setCustomDateRange] = useSessionState<{ from?: string; to?: string }>('rh-dashboard', 'customRange', {});
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('rh-dashboard', 'datePreset', 'periodo-personalizado');
+  const defaultFrom = `${new Date().getFullYear()}-01-01T00:00:00.000Z`;
+  const defaultTo = endOfMonth(new Date()).toISOString();
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from?: string; to?: string }>('rh-dashboard', 'customRange', { from: defaultFrom, to: defaultTo });
 
   const dateRange = useMemo(() => {
     return getDateRange(datePreset, {
