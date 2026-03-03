@@ -304,6 +304,21 @@ export function FolhaPagamentoTab() {
         for (const r of selectedRecords) {
           if (r.folha_id) {
             await supabase.from('folha_pagamento').update({ status: batchNewStatus }).eq('id', r.folha_id);
+          } else {
+            // Create folha_pagamento record if it doesn't exist
+            const vencDate = new Date(r.data_vencimento + 'T00:00:00');
+            await supabase.from('folha_pagamento').insert({
+              parcela_id: r.parcela_id,
+              contrato_id: r.contrato_id,
+              fornecedor_id: r.fornecedor_id,
+              mes_referencia: vencDate.getMonth() + 1,
+              ano_referencia: vencDate.getFullYear(),
+              salario_base: r.salario_base,
+              valor_liquido: r.valor_liquido,
+              tipo_vinculo: r.tipo_vinculo,
+              status: batchNewStatus,
+              conta_pagar_id: r.conta_pagar_id,
+            });
           }
         }
         toast({ title: 'Sucesso', description: `Status da folha alterado para "${batchNewStatus}" em ${selectedIds.length} registro(s).` });
