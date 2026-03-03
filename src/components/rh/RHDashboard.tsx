@@ -22,7 +22,7 @@ interface ParcelaRecord {
   valor: number;
   tipo: 'folha' | 'beneficio';
   plano_contas_descricao: string;
-  centros_custo: Array<{ codigo: string; descricao: string; percentual: number }>;
+  centros_custo: Array<{ id: string; codigo: string; descricao: string; percentual: number }>;
 }
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -103,16 +103,16 @@ export function RHDashboard() {
       // Fetch cost centers for all contracts
       const { data: ccData } = await supabase
         .from('contratos_centros_custo')
-        .select('contrato_id, percentual, centros_custo:centro_custo_id(codigo, descricao)')
+        .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
         .in('contrato_id', contratoIds);
 
-      const ccMap = new Map<string, Array<{ codigo: string; descricao: string; percentual: number }>>();
+      const ccMap = new Map<string, Array<{ id: string; codigo: string; descricao: string; percentual: number }>>();
       if (ccData) {
         for (const cc of ccData) {
           const existing = ccMap.get(cc.contrato_id) || [];
           const info = cc.centros_custo as any;
           if (info) {
-            existing.push({ codigo: info.codigo, descricao: info.descricao, percentual: cc.percentual });
+            existing.push({ id: info.id, codigo: info.codigo, descricao: info.descricao, percentual: cc.percentual });
           }
           ccMap.set(cc.contrato_id, existing);
         }
@@ -144,7 +144,7 @@ export function RHDashboard() {
   // Filter by cost center
   const filteredRecords = useMemo(() => {
     if (selectedCentroCusto.length === 0) return records;
-    return records.filter(r => r.centros_custo.some(cc => selectedCentroCusto.includes(cc.codigo)));
+    return records.filter(r => r.centros_custo.some(cc => selectedCentroCusto.includes(cc.id)));
   }, [records, selectedCentroCusto]);
 
   // KPIs
