@@ -1,123 +1,139 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, DollarSign, TrendingUp, Building2, Loader2 } from 'lucide-react';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { getCompanyTheme } from '@/hooks/useCentroCustoTheme';
 import { useSessionState } from '@/hooks/useSessionState';
+import {
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  startOfYear, endOfYear, subDays, subMonths, format,
+  startOfDay, endOfDay, getMonth, getYear, parseISO
+} from 'date-fns';
 
-interface DashboardData {
-  folha: Array<{
-    fornecedor_id: string;
-    fornecedor_razao_social: string;
-    mes_referencia: number;
-    ano_referencia: number;
-    salario_base: number;
-    valor_liquido: number;
-    tipo_vinculo: string;
-    status: string;
-    centros_custo: Array<{ codigo: string; descricao: string; percentual: number }>;
-  }>;
-  beneficios: Array<{
-    fornecedor_id: string;
-    fornecedor_razao_social: string;
-    mes_referencia: number;
-    ano_referencia: number;
-    valor: number;
-    tipo_beneficio: string;
-    status: string;
-    centros_custo: Array<{ codigo: string; descricao: string; percentual: number }>;
-  }>;
+interface ParcelaRecord {
+  parcela_id: string;
+  contrato_id: string;
+  fornecedor_id: string;
+  data_vencimento: string;
+  valor: number;
+  tipo: 'folha' | 'beneficio';
+  plano_contas_descricao: string;
+  centros_custo: Array<{ codigo: string; descricao: string; percentual: number }>;
 }
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-const CHART_COLORS = ['hsl(var(--primary))', '#FF5722', '#5B2D8B', '#7C6FD0', '#10B981', '#F59E0B'];
+const CHART_COLORS = ['hsl(var(--primary))', '#FF5722', '#5B2D8B', '#7C6FD0', '#10B981', '#F59E0B', '#EF4444', '#06B6D4'];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+function getDateRange(preset: DateRangePreset, customRange?: { from?: Date; to?: Date }): { from: Date; to: Date } | null {
+  const now = new Date();
+  switch (preset) {
+    case 'hoje': return { from: startOfDay(now), to: endOfDay(now) };
+    case 'esta-semana': return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+    case 'este-mes': return { from: startOfMonth(now), to: endOfMonth(now) };
+    case 'este-ano': return { from: startOfYear(now), to: endOfYear(now) };
+    case 'ultimos-30-dias': return { from: subDays(now, 30), to: now };
+    case 'ultimos-12-meses': return { from: subMonths(now, 12), to: now };
+    case 'periodo-personalizado':
+      if (customRange?.from && customRange?.to) return { from: customRange.from, to: customRange.to };
+      return null;
+    case 'todo-periodo': return null;
+    default: return null;
+  }
+}
+
 export function RHDashboard() {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<DashboardData>({ folha: [], beneficios: [] });
-  const [selectedYear, setSelectedYear] = useSessionState<string>('rh-dashboard', 'year', String(new Date().getFullYear()));
+  const [records, setRecords] = useState<ParcelaRecord[]>([]);
   const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('rh-dashboard', 'centroCusto', []);
+  const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('rh-dashboard', 'datePreset', 'este-ano');
+  const [customDateRange, setCustomDateRange] = useSessionState<{ from?: string; to?: string }>('rh-dashboard', 'customRange', {});
+
+  const dateRange = useMemo(() => {
+    return getDateRange(datePreset, {
+      from: customDateRange.from ? new Date(customDateRange.from) : undefined,
+      to: customDateRange.to ? new Date(customDateRange.to) : undefined,
+    });
+  }, [datePreset, customDateRange]);
 
   useEffect(() => {
     fetchData();
-  }, [selectedYear]);
+  }, [dateRange]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const year = parseInt(selectedYear);
+      // Fetch all contracts that are folha or beneficio
+      const { data: contratos } = await supabase
+        .from('contratos')
+        .select('id, is_folha_funcionario, is_beneficio_funcionario, fornecedor_id, plano_contas_id, plano_contas:plano_contas_id(descricao)')
+        .or('is_folha_funcionario.eq.true,is_beneficio_funcionario.eq.true');
 
-      // Fetch folha data
-      const { data: folhaRaw } = await supabase
-        .from('folha_pagamento')
-        .select('fornecedor_id, mes_referencia, ano_referencia, salario_base, valor_liquido, tipo_vinculo, status, contrato_id, fornecedores(razao_social)')
-        .eq('ano_referencia', year);
+      if (!contratos || contratos.length === 0) {
+        setRecords([]);
+        setLoading(false);
+        return;
+      }
 
-      // Fetch beneficios data
-      const { data: beneficiosRaw } = await supabase
-        .from('controle_beneficios')
-        .select('fornecedor_id, mes_referencia, ano_referencia, valor, tipo_beneficio, status, contrato_id, fornecedores(razao_social)')
-        .eq('ano_referencia', year);
+      const contratoMap = new Map(contratos.map(c => [c.id, c]));
+      const contratoIds = contratos.map(c => c.id);
 
-      // Fetch cost centers for contracts
-      const allContratoIds = [
-        ...(folhaRaw || []).map(f => f.contrato_id).filter(Boolean),
-        ...(beneficiosRaw || []).map(b => b.contrato_id).filter(Boolean),
-      ];
-      const uniqueContratoIds = [...new Set(allContratoIds)] as string[];
+      // Fetch parcelas for these contracts
+      let query = supabase
+        .from('parcelas_contrato')
+        .select('id, contrato_id, data_vencimento, valor')
+        .in('contrato_id', contratoIds);
 
-      let ccMap = new Map<string, Array<{ codigo: string; descricao: string; percentual: number }>>();
-      if (uniqueContratoIds.length > 0) {
-        const { data: ccData } = await supabase
-          .from('contratos_centros_custo')
-          .select('contrato_id, percentual, centros_custo:centro_custo_id(codigo, descricao)')
-          .in('contrato_id', uniqueContratoIds);
+      if (dateRange) {
+        query = query
+          .gte('data_vencimento', format(dateRange.from, 'yyyy-MM-dd'))
+          .lte('data_vencimento', format(dateRange.to, 'yyyy-MM-dd'));
+      }
 
-        if (ccData) {
-          for (const cc of ccData) {
-            const existing = ccMap.get(cc.contrato_id) || [];
-            const centroInfo = cc.centros_custo as any;
-            if (centroInfo) {
-              existing.push({ codigo: centroInfo.codigo, descricao: centroInfo.descricao, percentual: cc.percentual });
-            }
-            ccMap.set(cc.contrato_id, existing);
+      const { data: parcelas } = await query;
+
+      // Fetch cost centers for all contracts
+      const { data: ccData } = await supabase
+        .from('contratos_centros_custo')
+        .select('contrato_id, percentual, centros_custo:centro_custo_id(codigo, descricao)')
+        .in('contrato_id', contratoIds);
+
+      const ccMap = new Map<string, Array<{ codigo: string; descricao: string; percentual: number }>>();
+      if (ccData) {
+        for (const cc of ccData) {
+          const existing = ccMap.get(cc.contrato_id) || [];
+          const info = cc.centros_custo as any;
+          if (info) {
+            existing.push({ codigo: info.codigo, descricao: info.descricao, percentual: cc.percentual });
           }
+          ccMap.set(cc.contrato_id, existing);
         }
       }
 
-      const folha = (folhaRaw || []).map(f => ({
-        fornecedor_id: f.fornecedor_id,
-        fornecedor_razao_social: (f.fornecedores as any)?.razao_social || '',
-        mes_referencia: f.mes_referencia,
-        ano_referencia: f.ano_referencia,
-        salario_base: f.salario_base,
-        valor_liquido: f.valor_liquido,
-        tipo_vinculo: f.tipo_vinculo,
-        status: f.status,
-        centros_custo: f.contrato_id ? (ccMap.get(f.contrato_id) || []) : [],
-      }));
+      const result: ParcelaRecord[] = (parcelas || []).map(p => {
+        const contrato = contratoMap.get(p.contrato_id!);
+        const isFolha = contrato?.is_folha_funcionario;
+        return {
+          parcela_id: p.id,
+          contrato_id: p.contrato_id!,
+          fornecedor_id: contrato?.fornecedor_id || '',
+          data_vencimento: p.data_vencimento,
+          valor: p.valor,
+          tipo: isFolha ? 'folha' : 'beneficio',
+          plano_contas_descricao: (contrato?.plano_contas as any)?.descricao || '',
+          centros_custo: ccMap.get(p.contrato_id!) || [],
+        };
+      });
 
-      const beneficios = (beneficiosRaw || []).map(b => ({
-        fornecedor_id: b.fornecedor_id,
-        fornecedor_razao_social: (b.fornecedores as any)?.razao_social || '',
-        mes_referencia: b.mes_referencia,
-        ano_referencia: b.ano_referencia,
-        valor: b.valor,
-        tipo_beneficio: b.tipo_beneficio,
-        status: b.status,
-        centros_custo: b.contrato_id ? (ccMap.get(b.contrato_id) || []) : [],
-      }));
-
-      setData({ folha, beneficios });
+      setRecords(result);
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard RH:', error);
     } finally {
@@ -126,65 +142,66 @@ export function RHDashboard() {
   };
 
   // Filter by cost center
-  const filteredData = useMemo(() => {
-    if (selectedCentroCusto.length === 0) return data;
-
-    const filterByCc = <T extends { centros_custo: Array<{ codigo: string }> }>(items: T[]) =>
-      items.filter(item => item.centros_custo.some(cc => selectedCentroCusto.includes(cc.codigo)));
-
-    return {
-      folha: filterByCc(data.folha),
-      beneficios: filterByCc(data.beneficios),
-    };
-  }, [data, selectedCentroCusto]);
+  const filteredRecords = useMemo(() => {
+    if (selectedCentroCusto.length === 0) return records;
+    return records.filter(r => r.centros_custo.some(cc => selectedCentroCusto.includes(cc.codigo)));
+  }, [records, selectedCentroCusto]);
 
   // KPIs
   const kpis = useMemo(() => {
-    const totalFolha = filteredData.folha.reduce((sum, f) => sum + f.salario_base, 0);
-    const totalBeneficios = filteredData.beneficios.reduce((sum, b) => sum + b.valor, 0);
+    const totalFolha = filteredRecords.filter(r => r.tipo === 'folha').reduce((sum, r) => sum + r.valor, 0);
+    const totalBeneficios = filteredRecords.filter(r => r.tipo === 'beneficio').reduce((sum, r) => sum + r.valor, 0);
     const totalGeral = totalFolha + totalBeneficios;
-    const uniqueFornecedores = new Set([
-      ...filteredData.folha.map(f => f.fornecedor_id),
-      ...filteredData.beneficios.map(b => b.fornecedor_id),
-    ]).size;
+    const uniqueFornecedores = new Set(filteredRecords.map(r => r.fornecedor_id)).size;
 
     return { totalFolha, totalBeneficios, totalGeral, uniqueFornecedores };
-  }, [filteredData]);
+  }, [filteredRecords]);
 
-  // Monthly chart data
+  // Monthly chart data - group by month from data_vencimento
   const monthlyChartData = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const mes = i + 1;
-      const folhaMes = filteredData.folha.filter(f => f.mes_referencia === mes);
-      const beneficiosMes = filteredData.beneficios.filter(b => b.mes_referencia === mes);
+    const monthMap = new Map<string, { salarios: number; beneficios: number }>();
 
-      return {
-        mes: MONTH_NAMES[i],
-        salarios: folhaMes.reduce((sum, f) => sum + f.salario_base, 0),
-        beneficios: beneficiosMes.reduce((sum, b) => sum + b.valor, 0),
-        total: folhaMes.reduce((sum, f) => sum + f.salario_base, 0) + beneficiosMes.reduce((sum, b) => sum + b.valor, 0),
-      };
-    });
-  }, [filteredData]);
+    for (const r of filteredRecords) {
+      const date = parseISO(r.data_vencimento);
+      const key = `${getYear(date)}-${String(getMonth(date) + 1).padStart(2, '0')}`;
 
-  // Cost center breakdown
+      const existing = monthMap.get(key) || { salarios: 0, beneficios: 0 };
+      if (r.tipo === 'folha') {
+        existing.salarios += r.valor;
+      } else {
+        existing.beneficios += r.valor;
+      }
+      monthMap.set(key, existing);
+    }
+
+    return Array.from(monthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, vals]) => {
+        const [year, month] = key.split('-');
+        return {
+          mes: `${MONTH_NAMES[parseInt(month) - 1]}/${year.slice(2)}`,
+          salarios: vals.salarios,
+          beneficios: vals.beneficios,
+          total: vals.salarios + vals.beneficios,
+        };
+      });
+  }, [filteredRecords]);
+
+  // Cost center breakdown - proportional
   const ccBreakdown = useMemo(() => {
     const map = new Map<string, { codigo: string; descricao: string; salarios: number; beneficios: number }>();
 
-    for (const f of filteredData.folha) {
-      for (const cc of f.centros_custo) {
+    for (const r of filteredRecords) {
+      if (r.centros_custo.length === 0) continue;
+      for (const cc of r.centros_custo) {
         const key = cc.codigo;
         const existing = map.get(key) || { codigo: cc.codigo, descricao: cc.descricao, salarios: 0, beneficios: 0 };
-        existing.salarios += f.salario_base * (cc.percentual / 100);
-        map.set(key, existing);
-      }
-    }
-
-    for (const b of filteredData.beneficios) {
-      for (const cc of b.centros_custo) {
-        const key = cc.codigo;
-        const existing = map.get(key) || { codigo: cc.codigo, descricao: cc.descricao, salarios: 0, beneficios: 0 };
-        existing.beneficios += b.valor * (cc.percentual / 100);
+        const proporcional = r.valor * (cc.percentual / 100);
+        if (r.tipo === 'folha') {
+          existing.salarios += proporcional;
+        } else {
+          existing.beneficios += proporcional;
+        }
         map.set(key, existing);
       }
     }
@@ -194,7 +211,7 @@ export function RHDashboard() {
       total: item.salarios + item.beneficios,
       color: getCompanyTheme(item.codigo).primaryColor,
     }));
-  }, [filteredData]);
+  }, [filteredRecords]);
 
   // Pie chart for cost center distribution
   const pieData = useMemo(() => {
@@ -205,34 +222,61 @@ export function RHDashboard() {
     }));
   }, [ccBreakdown]);
 
-  // Benefit type breakdown
-  const benefitTypeData = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const b of filteredData.beneficios) {
-      map.set(b.tipo_beneficio, (map.get(b.tipo_beneficio) || 0) + b.valor);
+  // Plano de contas breakdown (replaces tipo_vinculo / tipo_beneficio)
+  const categoriaData = useMemo(() => {
+    const map = new Map<string, { folha: number; beneficio: number }>();
+    for (const r of filteredRecords) {
+      const key = r.plano_contas_descricao || 'Sem categoria';
+      const existing = map.get(key) || { folha: 0, beneficio: 0 };
+      if (r.tipo === 'folha') existing.folha += r.valor;
+      else existing.beneficio += r.valor;
+      map.set(key, existing);
     }
-    return Array.from(map.entries()).map(([name, value], i) => ({
+    return Array.from(map.entries()).map(([name, vals], i) => ({
       name,
-      value,
+      value: vals.folha + vals.beneficio,
       color: CHART_COLORS[i % CHART_COLORS.length],
     }));
-  }, [filteredData]);
+  }, [filteredRecords]);
 
-  // Vinculo type breakdown
-  const vinculoData = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const f of filteredData.folha) {
-      map.set(f.tipo_vinculo, (map.get(f.tipo_vinculo) || 0) + f.salario_base);
+  // Monthly evolution per cost center for stacked bar
+  const monthlyCcChartData = useMemo(() => {
+    const monthMap = new Map<string, Map<string, number>>();
+    const allCcCodes = new Set<string>();
+
+    for (const r of filteredRecords) {
+      const date = parseISO(r.data_vencimento);
+      const monthKey = `${getYear(date)}-${String(getMonth(date) + 1).padStart(2, '0')}`;
+
+      for (const cc of r.centros_custo) {
+        allCcCodes.add(cc.codigo);
+        const monthData = monthMap.get(monthKey) || new Map<string, number>();
+        monthData.set(cc.codigo, (monthData.get(cc.codigo) || 0) + r.valor * (cc.percentual / 100));
+        monthMap.set(monthKey, monthData);
+      }
     }
-    return Array.from(map.entries()).map(([name, value], i) => ({
-      name,
-      value,
-      color: CHART_COLORS[i % CHART_COLORS.length],
-    }));
-  }, [filteredData]);
 
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 5 }, (_, i) => String(currentYear - i));
+    return {
+      data: Array.from(monthMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, ccVals]) => {
+          const [year, month] = key.split('-');
+          const entry: Record<string, any> = { mes: `${MONTH_NAMES[parseInt(month) - 1]}/${year.slice(2)}` };
+          for (const code of allCcCodes) {
+            entry[code] = ccVals.get(code) || 0;
+          }
+          return entry;
+        }),
+      ccCodes: Array.from(allCcCodes),
+    };
+  }, [filteredRecords]);
+
+  const handleDateChange = (preset: DateRangePreset, range?: { from?: Date; to?: Date }) => {
+    setDatePreset(preset);
+    if (preset === 'periodo-personalizado' && range?.from && range?.to) {
+      setCustomDateRange({ from: range.from.toISOString(), to: range.to.toISOString() });
+    }
+  };
 
   if (loading) {
     return (
@@ -246,16 +290,14 @@ export function RHDashboard() {
     <div className="space-y-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {yearOptions.map(y => (
-              <SelectItem key={y} value={y}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <DateRangeFilter
+          value={datePreset}
+          onChange={handleDateChange}
+          customRange={customDateRange.from && customDateRange.to ? {
+            from: new Date(customDateRange.from),
+            to: new Date(customDateRange.to),
+          } : undefined}
+        />
 
         <CentroCustoFilterSelect
           value={selectedCentroCusto}
@@ -272,7 +314,7 @@ export function RHDashboard() {
                 <DollarSign className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Folha ({selectedYear})</p>
+                <p className="text-sm text-muted-foreground">Total Folha</p>
                 <p className="text-xl font-bold text-foreground">{formatCurrency(kpis.totalFolha)}</p>
               </div>
             </div>
@@ -286,7 +328,7 @@ export function RHDashboard() {
                 <TrendingUp className="h-5 w-5" style={{ color: '#FF5722' }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Benefícios ({selectedYear})</p>
+                <p className="text-sm text-muted-foreground">Total Benefícios</p>
                 <p className="text-xl font-bold text-foreground">{formatCurrency(kpis.totalBeneficios)}</p>
               </div>
             </div>
@@ -300,7 +342,7 @@ export function RHDashboard() {
                 <Building2 className="h-5 w-5" style={{ color: '#5B2D8B' }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Custo Total RH ({selectedYear})</p>
+                <p className="text-sm text-muted-foreground">Custo Total RH</p>
                 <p className="text-xl font-bold text-foreground">{formatCurrency(kpis.totalGeral)}</p>
               </div>
             </div>
@@ -314,7 +356,7 @@ export function RHDashboard() {
                 <Users className="h-5 w-5" style={{ color: '#7C6FD0' }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Colaboradores Ativos</p>
+                <p className="text-sm text-muted-foreground">Colaboradores</p>
                 <p className="text-xl font-bold text-foreground">{kpis.uniqueFornecedores}</p>
               </div>
             </div>
@@ -328,17 +370,53 @@ export function RHDashboard() {
           <CardTitle className="text-base">Evolução Mensal - Salários vs Benefícios</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={monthlyChartData}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-              <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-              <Legend />
-              <Bar dataKey="salarios" name="Salários" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="beneficios" name="Benefícios" fill="#FF5722" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {monthlyChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={monthlyChartData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Legend />
+                <Bar dataKey="salarios" name="Salários" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="beneficios" name="Benefícios" fill="#FF5722" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-muted-foreground py-10">Nenhum dado disponível no período</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Monthly by Cost Center - Stacked */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Evolução Mensal por Centro de Custo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {monthlyCcChartData.data.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={monthlyCcChartData.data}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Legend />
+                {monthlyCcChartData.ccCodes.map(code => (
+                  <Bar
+                    key={code}
+                    dataKey={code}
+                    name={getCompanyTheme(code).name}
+                    fill={getCompanyTheme(code).primaryColor}
+                    stackId="cc"
+                    radius={[2, 2, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-muted-foreground py-10">Nenhum dado disponível no período</p>
+          )}
         </CardContent>
       </Card>
 
@@ -384,7 +462,7 @@ export function RHDashboard() {
           </CardContent>
         </Card>
 
-        {/* Cost center detailed table */}
+        {/* Cost center detailed breakdown */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Detalhamento por Centro de Custo</CardTitle>
@@ -415,44 +493,19 @@ export function RHDashboard() {
         </Card>
       </div>
 
-      {/* Bottom row 2 */}
+      {/* Category breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* By vinculo type */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Folha por Tipo de Vínculo</CardTitle>
+            <CardTitle className="text-base">Custos por Categoria</CardTitle>
           </CardHeader>
           <CardContent>
-            {vinculoData.length > 0 ? (
+            {categoriaData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={vinculoData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                  <Pie data={categoriaData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {vinculoData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-center text-muted-foreground py-10">Nenhum dado disponível</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* By benefit type */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Benefícios por Tipo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {benefitTypeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={benefitTypeData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {benefitTypeData.map((entry, index) => (
+                    {categoriaData.map((entry, index) => (
                       <Cell key={index} fill={entry.color} />
                     ))}
                   </Pie>
