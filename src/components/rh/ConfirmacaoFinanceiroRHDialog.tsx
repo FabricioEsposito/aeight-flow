@@ -53,7 +53,7 @@ export function ConfirmacaoFinanceiroRHDialog({ open, onOpenChange, solicitacaoI
       const { data: folhas, error: folhaError } = await supabase
         .from('folha_pagamento')
         .select('id, parcela_id, conta_pagar_id, valor_liquido, mes_referencia, ano_referencia')
-        .eq('solicitacao_rh_id' as any, solicitacao.id);
+        .eq('solicitacao_rh_id' as any, solicitacao.id) as any;
 
       if (folhaError) throw folhaError;
 

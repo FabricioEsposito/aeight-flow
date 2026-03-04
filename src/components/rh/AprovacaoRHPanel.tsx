@@ -73,7 +73,7 @@ export function AprovacaoRHPanel() {
       const { data: adminRoles } = await supabase
         .from('user_roles')
         .select('user_id')
-        .in('role', ['admin', 'finance_manager']);
+        .in('role', ['admin', 'finance_manager'] as any[]);
 
       const detalhes = solicitacao.detalhes || [];
       const totalLancamentos = Array.isArray(detalhes) ? detalhes.length : 0;
