@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { format, parse, isValid } from 'date-fns';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
 
