@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import * as XLSX from 'xlsx';
 import { format, parse, isValid } from 'date-fns';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
@@ -46,6 +48,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0, success: 0, errors: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { permissions } = useUserRole();
   const { toast } = useToast();
 
   const resetState = () => {
@@ -265,10 +270,52 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     const rowsToImport = previewData.filter(r => r.valid && r.hasChanges && r.matchedRecord);
     if (rowsToImport.length === 0) return;
 
+    const needsApproval = permissions.needsApprovalForRH;
+
     setStep('importing');
     setImportProgress({ current: 0, total: rowsToImport.length, success: 0, errors: 0 });
 
     let success = 0, errorCount = 0;
+    let solicitacaoId: string | null = null;
+
+    // If analyst, create approval request first
+    if (needsApproval && user) {
+      const firstRow = rowsToImport[0];
+      const rec0 = firstRow.matchedRecord!;
+      const dv = firstRow.newDataVencimento ?? rec0.data_vencimento;
+      const vd = new Date(dv + 'T00:00:00');
+
+      const detalhesJson = rowsToImport.map(row => {
+        const r = row.matchedRecord!;
+        return {
+          parcela_id: r.parcela_id,
+          razao_social: r.fornecedor_razao_social,
+          cnpj: r.fornecedor_cnpj,
+          salario_base: row.newSalarioBase ?? r.salario_base,
+          valor_liquido: row.newValorLiquido ?? r.valor_liquido,
+          data_vencimento: row.newDataVencimento ?? r.data_vencimento,
+        };
+      });
+
+      const { data: solData, error: solError } = await supabase
+        .from('solicitacoes_aprovacao_rh')
+        .insert({
+          solicitante_id: user.id,
+          tipo: 'importacao',
+          descricao: `Importação de ${rowsToImport.length} registro(s) via planilha`,
+          detalhes: detalhesJson as any,
+          mes_referencia: vd.getMonth() + 1,
+          ano_referencia: vd.getFullYear(),
+        } as any)
+        .select('id')
+        .single();
+
+      if (solError) {
+        toast({ title: 'Erro', description: 'Não foi possível criar solicitação de aprovação.', variant: 'destructive' });
+        return;
+      }
+      solicitacaoId = solData?.id || null;
+    }
 
     for (let i = 0; i < rowsToImport.length; i++) {
       const row = rowsToImport[i];
@@ -282,42 +329,46 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         const mesRef = vencDate.getMonth() + 1;
         const anoRef = vencDate.getFullYear();
 
+        const folhaPayload: any = {
+          salario_base: salarioBase,
+          valor_liquido: valorLiquido,
+          mes_referencia: mesRef,
+          ano_referencia: anoRef,
+          status: needsApproval ? 'pendente_aprovacao_rh' : 'pendente',
+        };
+        if (solicitacaoId) folhaPayload.solicitacao_rh_id = solicitacaoId;
+
         // 1. Upsert folha_pagamento
         if (rec.folha_id) {
-          await supabase.from('folha_pagamento').update({
-            salario_base: salarioBase,
-            valor_liquido: valorLiquido,
-            mes_referencia: mesRef,
-            ano_referencia: anoRef,
-          }).eq('id', rec.folha_id);
+          await supabase.from('folha_pagamento').update(folhaPayload).eq('id', rec.folha_id);
         } else {
           await supabase.from('folha_pagamento').insert({
+            ...folhaPayload,
             parcela_id: rec.parcela_id,
             contrato_id: rec.contrato_id,
             fornecedor_id: rec.fornecedor_id,
-            mes_referencia: mesRef,
-            ano_referencia: anoRef,
-            salario_base: salarioBase,
-            valor_liquido: valorLiquido,
             tipo_vinculo: rec.tipo_vinculo,
-            status: 'pendente',
             conta_pagar_id: rec.conta_pagar_id,
+            created_by: user?.id,
           });
         }
 
-        // 2. Update parcelas_contrato
-        await supabase.from('parcelas_contrato').update({
-          valor: valorLiquido,
-          data_vencimento: dataVencimento,
-        }).eq('id', rec.parcela_id);
-
-        // 3. Update contas_pagar
-        if (rec.conta_pagar_id) {
-          await supabase.from('contas_pagar').update({
+        // Only propagate if NOT needing approval
+        if (!needsApproval) {
+          // 2. Update parcelas_contrato
+          await supabase.from('parcelas_contrato').update({
             valor: valorLiquido,
             data_vencimento: dataVencimento,
-            data_competencia: dataVencimento,
-          }).eq('id', rec.conta_pagar_id);
+          }).eq('id', rec.parcela_id);
+
+          // 3. Update contas_pagar
+          if (rec.conta_pagar_id) {
+            await supabase.from('contas_pagar').update({
+              valor: valorLiquido,
+              data_vencimento: dataVencimento,
+              data_competencia: dataVencimento,
+            }).eq('id', rec.conta_pagar_id);
+          }
         }
 
         success++;
@@ -329,9 +380,13 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
       setImportProgress({ current: i + 1, total: rowsToImport.length, success, errors: errorCount });
     }
 
+    const msg = needsApproval 
+      ? `${success} registro(s) enviado(s) para aprovação do Gerente de RH.`
+      : `${success} registro(s) atualizado(s)${errorCount > 0 ? `, ${errorCount} erro(s)` : ''}.`;
+
     toast({
-      title: 'Importação concluída',
-      description: `${success} registro(s) atualizado(s)${errorCount > 0 ? `, ${errorCount} erro(s)` : ''}.`,
+      title: needsApproval ? 'Enviado para aprovação' : 'Importação concluída',
+      description: msg,
       variant: errorCount > 0 ? 'destructive' : 'default',
     });
 
