@@ -389,6 +389,10 @@ export function FolhaPagamentoTab() {
             </SelectContent>
           </Select>
           <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportDialogOpen(true)}>
+            <FileSpreadsheet className="w-4 h-4" />
+            Importar Planilha
+          </Button>
         </div>
 
         {someSelected && (
