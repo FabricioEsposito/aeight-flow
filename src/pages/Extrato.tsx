@@ -110,20 +110,80 @@ export default function Extrato() {
   const { toast } = useToast();
   const { exportToPDF, exportToExcel } = useExportReport();
 
-  // Fetch rateio de centros de custo para lançamentos com parcela_id
+  // Fetch rateio de centros de custo para lançamentos com parcela_id (contratos)
   const parcelaIds = useMemo(() => lancamentos.map(l => l.parcela_id), [lancamentos]);
   const { rateioMap } = useCentroCustoRateio(parcelaIds);
 
-  // Enrich lancamentos with rateio data
+  // Fetch rateio de centros de custo para lançamentos individuais (sem parcela_id)
+  const [lancamentoRateioMap, setLancamentoRateioMap] = useState<Map<string, CentroCustoRateioItem[]>>(new Map());
+
+  useEffect(() => {
+    const individuais = lancamentos.filter(l => !l.parcela_id);
+    if (individuais.length === 0) {
+      setLancamentoRateioMap(new Map());
+      return;
+    }
+
+    const fetchLancamentoRateio = async () => {
+      const receberIds = individuais.filter(l => l.origem === 'receber').map(l => l.id);
+      const pagarIds = individuais.filter(l => l.origem === 'pagar').map(l => l.id);
+
+      const result = new Map<string, CentroCustoRateioItem[]>();
+
+      if (receberIds.length > 0) {
+        const { data } = await supabase
+          .from('lancamentos_centros_custo')
+          .select('conta_receber_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+          .in('conta_receber_id', receberIds);
+        if (data) {
+          for (const r of data) {
+            const cc = r.centros_custo as any;
+            if (!cc) continue;
+            const item: CentroCustoRateioItem = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+            const existing = result.get(r.conta_receber_id!) || [];
+            existing.push(item);
+            result.set(r.conta_receber_id!, existing);
+          }
+        }
+      }
+
+      if (pagarIds.length > 0) {
+        const { data } = await supabase
+          .from('lancamentos_centros_custo')
+          .select('conta_pagar_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+          .in('conta_pagar_id', pagarIds);
+        if (data) {
+          for (const r of data) {
+            const cc = r.centros_custo as any;
+            if (!cc) continue;
+            const item: CentroCustoRateioItem = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+            const existing = result.get(r.conta_pagar_id!) || [];
+            existing.push(item);
+            result.set(r.conta_pagar_id!, existing);
+          }
+        }
+      }
+
+      setLancamentoRateioMap(result);
+    };
+
+    fetchLancamentoRateio();
+  }, [lancamentos]);
+
+  // Enrich lancamentos with rateio data (contratos via parcela_id + individuais via lancamentos_centros_custo)
   const lancamentosEnriquecidos = useMemo(() => {
-    if (rateioMap.size === 0) return lancamentos;
     return lancamentos.map(l => {
+      // Contract-based rateio
       if (l.parcela_id && rateioMap.has(l.parcela_id)) {
         return { ...l, centros_custo_rateio: rateioMap.get(l.parcela_id) };
       }
+      // Individual entry rateio
+      if (!l.parcela_id && lancamentoRateioMap.has(l.id)) {
+        return { ...l, centros_custo_rateio: lancamentoRateioMap.get(l.id) };
+      }
       return l;
     });
-  }, [lancamentos, rateioMap]);
+  }, [lancamentos, rateioMap, lancamentoRateioMap]);
 
   const formatCurrencyExport = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
