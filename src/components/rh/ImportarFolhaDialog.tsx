@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { format, parse, isValid } from 'date-fns';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
 
@@ -94,6 +94,30 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     });
 
     const ws = XLSX.utils.json_to_sheet(templateData);
+
+    // Highlight editable columns in yellow (Data Vencimento=col 1, Salário Base=col 10, Valor Líquido=col 11)
+    const editableColIndices = [1, 10, 11]; // 0-indexed column positions
+    const yellowFill = { fgColor: { rgb: 'FFFF00' } };
+    const headerStyle = { fill: yellowFill, font: { bold: true } };
+    const cellStyle = { fill: yellowFill };
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+
+    for (const colIdx of editableColIndices) {
+      // Style header row
+      const headerAddr = XLSX.utils.encode_cell({ r: 0, c: colIdx });
+      if (ws[headerAddr]) {
+        ws[headerAddr].s = headerStyle;
+      }
+      // Style data rows
+      for (let r = 1; r <= range.e.r; r++) {
+        const addr = XLSX.utils.encode_cell({ r, c: colIdx });
+        if (!ws[addr]) {
+          ws[addr] = { t: 's', v: '' };
+        }
+        ws[addr].s = cellStyle;
+      }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Folha de Pagamento');
 
