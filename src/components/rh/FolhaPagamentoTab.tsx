@@ -498,11 +498,17 @@ export function FolhaPagamentoTab() {
                     <TableCell>{getFolhaStatusBadge(r.folha_status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && r.folha_id && (
+                        {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && r.folha_id && (() => {
+                          const holeriteDisabled = permissions.canSendHoleriteOnlyWhenPaid && r.status !== 'pago';
+                          return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            disabled={sendingHoleriteId === r.folha_id}
+                            disabled={sendingHoleriteId === r.folha_id || holeriteDisabled}
                             onClick={async () => {
                               setSendingHoleriteId(r.folha_id);
                               try {
@@ -527,7 +533,15 @@ export function FolhaPagamentoTab() {
                               <Mail className="w-4 h-4" />
                             )}
                           </Button>
-                        )}
+                                </span>
+                              </TooltipTrigger>
+                              {holeriteDisabled && (
+                                <TooltipContent>Envio de holerite disponível apenas após o lançamento estar pago.</TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                          );
+                        })()}
                         {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && (
                           <Button variant="ghost" size="icon" onClick={() => window.open(r.holerite_url!, '_blank')} title="Visualizar holerite">
                             <FileText className="w-4 h-4" />
