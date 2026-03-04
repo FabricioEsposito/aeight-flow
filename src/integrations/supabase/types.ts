@@ -1675,6 +1675,8 @@ export type Database = {
         | "finance_analyst"
         | "commercial_manager"
         | "salesperson"
+        | "rh_manager"
+        | "rh_analyst"
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica" | "internacional"
@@ -1816,6 +1818,8 @@ export const Constants = {
         "finance_analyst",
         "commercial_manager",
         "salesperson",
+        "rh_manager",
+        "rh_analyst",
       ],
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],
