@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet } from 'lucide-react';
+import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import { EnviarHoleriteDialog } from './EnviarHoleriteDialog';
 import { ImportarFolhaDialog } from './ImportarFolhaDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { CategoriaFilterSelect } from '@/components/financeiro/CategoriaFilterSelect';
@@ -61,6 +63,7 @@ const SALARIO_CLT_IDS = [
 ];
 
 export function FolhaPagamentoTab() {
+  const { permissions } = useUserRole();
   const [records, setRecords] = useState<FolhaParcelaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('folha', 'search', '');
