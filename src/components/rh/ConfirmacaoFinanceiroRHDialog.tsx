@@ -98,7 +98,7 @@ export function ConfirmacaoFinanceiroRHDialog({ open, onOpenChange, solicitacaoI
           status: 'aprovado_financeiro',
           aprovador_financeiro_id: user?.id,
           data_aprovacao_financeiro: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', solicitacao.id);
 
       toast({ title: 'Sucesso', description: 'Valores propagados para o extrato com sucesso.' });

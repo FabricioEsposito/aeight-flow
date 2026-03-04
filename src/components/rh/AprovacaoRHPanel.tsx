@@ -58,7 +58,7 @@ export function AprovacaoRHPanel() {
           status: 'aprovado_rh',
           aprovador_rh_id: user?.id,
           data_aprovacao_rh: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', solicitacao.id);
 
       if (updateError) throw updateError;
