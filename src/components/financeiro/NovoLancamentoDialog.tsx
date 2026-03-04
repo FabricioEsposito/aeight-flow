@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
-import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
@@ -35,7 +35,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState<number>(0);
   const [categoriaId, setCategoriaId] = useState('');
-  const [centroCustoId, setCentroCustoId] = useState('');
+  const [rateioItems, setRateioItems] = useState<RateioItem[]>([]);
   const [codigoReferencia, setCodigoReferencia] = useState('');
   const [parcelamento, setParcelamento] = useState('a-vista');
   const [numeroParcelas, setNumeroParcelas] = useState('1');
@@ -76,7 +76,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setDescricao('');
     setValor(0);
     setCategoriaId('');
-    setCentroCustoId('');
+    setRateioItems([]);
     setCodigoReferencia('');
     setParcelamento('a-vista');
     setNumeroParcelas('1');
@@ -92,16 +92,24 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setDataMovimento(new Date());
   };
 
+  const saveRateio = async (lancamentoId: string, tipo: 'receita' | 'despesa') => {
+    if (rateioItems.length === 0) return;
+    const inserts = rateioItems.map(item => ({
+      ...(tipo === 'receita' ? { conta_receber_id: lancamentoId } : { conta_pagar_id: lancamentoId }),
+      centro_custo_id: item.centro_custo_id,
+      percentual: item.percentual,
+    }));
+    await supabase.from('lancamentos_centros_custo').insert(inserts);
+  };
+
   const handleSave = async () => {
     setLoading(true);
     try {
       const valorTotal = valor;
-      const numParcelas = parseInt(numeroParcelas) || 1;
-      const valorParcela = valorTotal / numParcelas;
+      const centroCustoLegacy = rateioItems.length === 1 ? rateioItems[0].centro_custo_id : (rateioItems.length > 1 ? rateioItems[0].centro_custo_id : null);
 
       if (tipoLancamento === 'receita') {
-        // Criar conta a receber
-        const { error } = await supabase.from('contas_receber').insert({
+        const { data, error } = await supabase.from('contas_receber').insert({
           cliente_id: clienteId,
           descricao,
           valor: valorTotal,
@@ -109,7 +117,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           data_competencia: format(dataCompetencia, 'yyyy-MM-dd'),
           data_vencimento: format(dataVencimento, 'yyyy-MM-dd'),
           plano_conta_id: categoriaId || null,
-          centro_custo: centroCustoId || null,
+          centro_custo: centroCustoLegacy,
           conta_bancaria_id: contaBancariaId || null,
           status: recebidoPago ? 'pago' : 'pendente',
           data_recebimento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
@@ -117,12 +125,12 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           numero_nf: informarNsu ? nsu : null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
-        });
+        }).select('id').single();
 
         if (error) throw error;
+        if (data) await saveRateio(data.id, 'receita');
       } else {
-        // Criar conta a pagar
-        const { error } = await supabase.from('contas_pagar').insert({
+        const { data, error } = await supabase.from('contas_pagar').insert({
           fornecedor_id: fornecedorId,
           descricao,
           valor: valorTotal,
@@ -130,16 +138,17 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           data_competencia: format(dataCompetencia, 'yyyy-MM-dd'),
           data_vencimento: format(dataVencimento, 'yyyy-MM-dd'),
           plano_conta_id: categoriaId || null,
-          centro_custo: centroCustoId || null,
+          centro_custo: centroCustoLegacy,
           conta_bancaria_id: contaBancariaId || null,
           status: recebidoPago ? 'pago' : 'pendente',
           data_pagamento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
           observacoes: observacoes || null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
-        });
+        }).select('id').single();
 
         if (error) throw error;
+        if (data) await saveRateio(data.id, 'despesa');
       }
 
       onSave();
@@ -227,21 +236,13 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
               </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Categoria *</Label>
                   <PlanoContasSelect 
                     value={categoriaId} 
                     onChange={setCategoriaId}
                     tipo="entrada"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Centro de custo</Label>
-                  <CentroCustoSelect 
-                    value={centroCustoId}
-                    onValueChange={setCentroCustoId}
                   />
                 </div>
 
@@ -254,6 +255,12 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   />
                 </div>
               </div>
+
+              <CentroCustoRateio
+                value={rateioItems}
+                onChange={setRateioItems}
+                valorTotal={valor}
+              />
             </div>
 
             <div className="space-y-4 border-t pt-4">
@@ -468,21 +475,13 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
               </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Categoria *</Label>
                   <PlanoContasSelect 
                     value={categoriaId} 
                     onChange={setCategoriaId}
                     tipo="saida"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Centro de custo</Label>
-                  <CentroCustoSelect 
-                    value={centroCustoId}
-                    onValueChange={setCentroCustoId}
                   />
                 </div>
 
@@ -495,6 +494,12 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   />
                 </div>
               </div>
+
+              <CentroCustoRateio
+                value={rateioItems}
+                onChange={setRateioItems}
+                valorTotal={valor}
+              />
             </div>
 
             <div className="space-y-4 border-t pt-4">

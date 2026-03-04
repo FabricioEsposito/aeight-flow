@@ -1091,6 +1091,58 @@ export type Database = {
         }
         Relationships: []
       }
+      lancamentos_centros_custo: {
+        Row: {
+          centro_custo_id: string
+          conta_pagar_id: string | null
+          conta_receber_id: string | null
+          created_at: string
+          id: string
+          percentual: number
+          updated_at: string
+        }
+        Insert: {
+          centro_custo_id: string
+          conta_pagar_id?: string | null
+          conta_receber_id?: string | null
+          created_at?: string
+          id?: string
+          percentual?: number
+          updated_at?: string
+        }
+        Update: {
+          centro_custo_id?: string
+          conta_pagar_id?: string | null
+          conta_receber_id?: string | null
+          created_at?: string
+          id?: string
+          percentual?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_centros_custo_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_centros_custo_conta_pagar_id_fkey"
+            columns: ["conta_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "contas_pagar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_centros_custo_conta_receber_id_fkey"
+            columns: ["conta_receber_id"]
+            isOneToOne: false
+            referencedRelation: "contas_receber"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes: {
         Row: {
           centro_custo: string | null
