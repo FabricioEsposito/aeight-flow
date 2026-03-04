@@ -97,7 +97,7 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     const instrucoes = [
       { 'Instruções de Preenchimento': '📋 COMO PREENCHER A PLANILHA DE FOLHA DE PAGAMENTO' },
       { 'Instruções de Preenchimento': '' },
-      { 'Instruções de Preenchimento': '1. As colunas Competência, Razão Social, Nome Fantasia, CNPJ/CPF, Categoria e Centro de Custo são apenas para identificação.' },
+      { 'Instruções de Preenchimento': '1. As colunas Competência, Razão Social, Nome Fantasia, CNPJ/CPF, Categoria e Centros de Custo (001-004) são apenas para identificação.' },
       { 'Instruções de Preenchimento': '2. NÃO altere os valores dessas colunas, pois são usadas para localizar o registro correto.' },
       { 'Instruções de Preenchimento': '' },
       { 'Instruções de Preenchimento': '3. COLUNAS EDITÁVEIS:' },
@@ -120,7 +120,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     // Column widths
     ws['!cols'] = [
       { wch: 18 }, { wch: 22 }, { wch: 35 }, { wch: 25 },
-      { wch: 22 }, { wch: 35 }, { wch: 35 }, { wch: 15 }, { wch: 15 },
+      { wch: 22 }, { wch: 35 },
+      { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 14 },
+      { wch: 15 }, { wch: 15 },
     ];
 
     XLSX.writeFile(wb, `folha_pagamento_template.xlsx`);
