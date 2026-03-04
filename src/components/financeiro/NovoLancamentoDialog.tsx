@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { FileUpload } from '@/components/ui/file-upload';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ClienteSelect } from '@/components/contratos/ClienteSelect';
@@ -45,6 +46,9 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
   const [informarNsu, setInformarNsu] = useState(false);
   const [nsu, setNsu] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [linkNf, setLinkNf] = useState<string | null>(null);
+  const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
+  const [dataMovimento, setDataMovimento] = useState<Date>(new Date());
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
   const [loading, setLoading] = useState(false);
 
@@ -83,6 +87,9 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setInformarNsu(false);
     setNsu('');
     setObservacoes('');
+    setLinkNf(null);
+    setLinkBoleto(null);
+    setDataMovimento(new Date());
   };
 
   const handleSave = async () => {
@@ -105,9 +112,11 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           centro_custo: centroCustoId || null,
           conta_bancaria_id: contaBancariaId || null,
           status: recebidoPago ? 'pago' : 'pendente',
-          data_recebimento: recebidoPago ? format(new Date(), 'yyyy-MM-dd') : null,
+          data_recebimento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
           observacoes: observacoes || null,
           numero_nf: informarNsu ? nsu : null,
+          link_nf: linkNf,
+          link_boleto: linkBoleto,
         });
 
         if (error) throw error;
@@ -124,8 +133,10 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           centro_custo: centroCustoId || null,
           conta_bancaria_id: contaBancariaId || null,
           status: recebidoPago ? 'pago' : 'pendente',
-          data_pagamento: recebidoPago ? format(new Date(), 'yyyy-MM-dd') : null,
+          data_pagamento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
           observacoes: observacoes || null,
+          link_nf: linkNf,
+          link_boleto: linkBoleto,
         });
 
         if (error) throw error;
@@ -331,6 +342,28 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                 </div>
               </div>
 
+              {recebidoPago && (
+                <div className="space-y-2">
+                  <Label>Data de recebimento *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(dataMovimento, "dd/MM/yyyy", { locale: ptBR })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dataMovimento}
+                        onSelect={(date) => date && setDataMovimento(date)}
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+
               {informarNsu && (
                 <div className="space-y-2">
                   <Label>Número NSU/NF</Label>
@@ -358,8 +391,23 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                     rows={4}
                   />
                 </TabsContent>
-                <TabsContent value="anexo">
-                  <p className="text-sm text-muted-foreground">Funcionalidade de anexo em desenvolvimento</p>
+                <TabsContent value="anexo" className="space-y-4 pt-2">
+                  <FileUpload
+                    bucket="contratos"
+                    path={`nf/${Date.now()}-nf.pdf`}
+                    value={linkNf}
+                    onChange={setLinkNf}
+                    accept="application/pdf,image/*"
+                    label="Nota Fiscal"
+                  />
+                  <FileUpload
+                    bucket="contratos"
+                    path={`boletos/${Date.now()}-boleto.pdf`}
+                    value={linkBoleto}
+                    onChange={setLinkBoleto}
+                    accept="application/pdf,image/*"
+                    label="Boleto"
+                  />
                 </TabsContent>
               </Tabs>
             </div>
@@ -534,6 +582,28 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   <label htmlFor="agendado" className="text-sm cursor-pointer">Agendado</label>
                 </div>
               </div>
+
+              {recebidoPago && (
+                <div className="space-y-2">
+                  <Label>Data de pagamento *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(dataMovimento, "dd/MM/yyyy", { locale: ptBR })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dataMovimento}
+                        onSelect={(date) => date && setDataMovimento(date)}
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
 
             <div className="border-t pt-4">
@@ -551,8 +621,23 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                     rows={4}
                   />
                 </TabsContent>
-                <TabsContent value="anexo">
-                  <p className="text-sm text-muted-foreground">Funcionalidade de anexo em desenvolvimento</p>
+                <TabsContent value="anexo" className="space-y-4 pt-2">
+                  <FileUpload
+                    bucket="contratos"
+                    path={`nf/${Date.now()}-nf.pdf`}
+                    value={linkNf}
+                    onChange={setLinkNf}
+                    accept="application/pdf,image/*"
+                    label="Nota Fiscal"
+                  />
+                  <FileUpload
+                    bucket="contratos"
+                    path={`boletos/${Date.now()}-boleto.pdf`}
+                    value={linkBoleto}
+                    onChange={setLinkBoleto}
+                    accept="application/pdf,image/*"
+                    label="Boleto"
+                  />
                 </TabsContent>
               </Tabs>
             </div>
