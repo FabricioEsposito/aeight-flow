@@ -50,10 +50,10 @@ export function ConfirmacaoFinanceiroRHDialog({ open, onOpenChange, solicitacaoI
     setProcessing(true);
     try {
       // Get folha records linked to this solicitacao
-      const { data: folhas, error: folhaError } = await supabase
+      const { data: folhas, error: folhaError } = await (supabase
         .from('folha_pagamento')
-        .select('id, parcela_id, conta_pagar_id, valor_liquido, mes_referencia, ano_referencia')
-        .eq('solicitacao_rh_id' as any, solicitacao.id) as any;
+        .select('id, parcela_id, conta_pagar_id, valor_liquido, mes_referencia, ano_referencia') as any)
+        .eq('solicitacao_rh_id', solicitacao.id);
 
       if (folhaError) throw folhaError;
 
