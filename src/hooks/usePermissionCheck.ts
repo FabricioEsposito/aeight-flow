@@ -25,6 +25,9 @@ const permissionMessages: Record<PermissionKey, string> = {
   canPerformBaixas: 'Você não tem permissão para realizar baixas de lançamentos. Entre em contato com o administrador ou gerente financeiro.',
   canApproveFinanceiroRequests: 'Você não tem permissão para aprovar solicitações financeiras.',
   canApproveCommissions: 'Você não tem permissão para aprovar comissões.',
+  canApproveRH: 'Você não tem permissão para aprovar solicitações de RH.',
+  needsApprovalForRH: 'Esta ação requer aprovação do Gerente de RH.',
+  canSendHoleriteOnlyWhenPaid: 'O envio de holerite só é permitido após o lançamento estar pago.',
   needsApprovalForFinanceiroEdits: 'Esta ação requer aprovação de um administrador ou gerente financeiro.',
 };
 

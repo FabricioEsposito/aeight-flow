@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson';
+export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst';
 
 export interface RolePermissions {
   // Navigation access
@@ -20,11 +20,16 @@ export interface RolePermissions {
   canEditCadastro: boolean;
   
   // Financial operations
-  canPerformBaixas: boolean; // Permite realizar baixas (total/parcial) sem aprovação
+  canPerformBaixas: boolean;
   
   // Approval permissions
   canApproveFinanceiroRequests: boolean;
   canApproveCommissions: boolean;
+  canApproveRH: boolean;
+  
+  // RH specific
+  needsApprovalForRH: boolean;
+  canSendHoleriteOnlyWhenPaid: boolean;
   
   // Needs approval for edits
   needsApprovalForFinanceiroEdits: boolean;
@@ -37,6 +42,8 @@ const roleLabels: Record<AppRole, string> = {
   finance_analyst: 'Analista Financeiro',
   commercial_manager: 'Gerente Comercial',
   salesperson: 'Vendedor',
+  rh_manager: 'Gerente de RH',
+  rh_analyst: 'Analista de RH',
 };
 
 export function useUserRole() {
@@ -86,6 +93,9 @@ export function useUserRole() {
       canPerformBaixas: false,
       canApproveFinanceiroRequests: false,
       canApproveCommissions: false,
+      canApproveRH: false,
+      needsApprovalForRH: false,
+      canSendHoleriteOnlyWhenPaid: false,
       needsApprovalForFinanceiroEdits: false,
     };
 
@@ -107,6 +117,9 @@ export function useUserRole() {
           canPerformBaixas: true,
           canApproveFinanceiroRequests: true,
           canApproveCommissions: true,
+          canApproveRH: true,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
           needsApprovalForFinanceiroEdits: false,
         };
       
@@ -125,6 +138,9 @@ export function useUserRole() {
           canPerformBaixas: true,
           canApproveFinanceiroRequests: true,
           canApproveCommissions: true,
+          canApproveRH: false,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
           needsApprovalForFinanceiroEdits: false,
         };
       
@@ -137,12 +153,15 @@ export function useUserRole() {
           canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: true,
-          canEditFinanceiro: false, // needs approval for general edits
+          canEditFinanceiro: false,
           canEditComercial: false,
-          canEditCadastro: false, // RLS não permite UPDATE em cadastros
-          canPerformBaixas: true, // PODE realizar baixas total/parcial
+          canEditCadastro: false,
+          canPerformBaixas: true,
           canApproveFinanceiroRequests: false,
           canApproveCommissions: false,
+          canApproveRH: false,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
           needsApprovalForFinanceiroEdits: true,
         };
       
@@ -160,8 +179,10 @@ export function useUserRole() {
           canEditCadastro: false,
           canPerformBaixas: false,
           canApproveFinanceiroRequests: false,
-          // Aprovação de comissão: somente Admin + Finanças
           canApproveCommissions: false,
+          canApproveRH: false,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
           needsApprovalForFinanceiroEdits: false,
         };
       
@@ -169,17 +190,62 @@ export function useUserRole() {
         return {
           canAccessDashboard: false,
           canAccessCadastro: false,
-          canAccessComercial: true, // only dashboard and commission
+          canAccessComercial: true,
           canAccessFinanceiro: false,
           canAccessRH: false,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
           canEditFinanceiro: false,
-          canEditComercial: false, // can only request
+          canEditComercial: false,
           canEditCadastro: false,
           canPerformBaixas: false,
           canApproveFinanceiroRequests: false,
           canApproveCommissions: false,
+          canApproveRH: false,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
+          needsApprovalForFinanceiroEdits: false,
+        };
+      
+      case 'rh_manager':
+        return {
+          canAccessDashboard: false,
+          canAccessCadastro: false,
+          canAccessComercial: false,
+          canAccessFinanceiro: false,
+          canAccessRH: true,
+          canAccessUsuarios: false,
+          canAccessSolicitacoes: false,
+          canEditFinanceiro: false,
+          canEditComercial: false,
+          canEditCadastro: false,
+          canPerformBaixas: false,
+          canApproveFinanceiroRequests: false,
+          canApproveCommissions: false,
+          canApproveRH: true,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
+          needsApprovalForFinanceiroEdits: false,
+        };
+      
+      case 'rh_analyst':
+        return {
+          canAccessDashboard: false,
+          canAccessCadastro: false,
+          canAccessComercial: false,
+          canAccessFinanceiro: false,
+          canAccessRH: true,
+          canAccessUsuarios: false,
+          canAccessSolicitacoes: false,
+          canEditFinanceiro: false,
+          canEditComercial: false,
+          canEditCadastro: false,
+          canPerformBaixas: false,
+          canApproveFinanceiroRequests: false,
+          canApproveCommissions: false,
+          canApproveRH: false,
+          needsApprovalForRH: true,
+          canSendHoleriteOnlyWhenPaid: true,
           needsApprovalForFinanceiroEdits: false,
         };
       
@@ -194,6 +260,8 @@ export function useUserRole() {
   const isFinanceAnalyst = role === 'finance_analyst';
   const isCommercialManager = role === 'commercial_manager';
   const isSalesperson = role === 'salesperson';
+  const isRHManager = role === 'rh_manager';
+  const isRHAnalyst = role === 'rh_analyst';
 
   const getRoleLabel = (r?: AppRole | null): string => {
     return roleLabels[r || 'user'] || 'Usuário Básico';
@@ -207,6 +275,8 @@ export function useUserRole() {
     isFinanceAnalyst,
     isCommercialManager,
     isSalesperson,
+    isRHManager,
+    isRHAnalyst,
     permissions,
     getRoleLabel,
     roleLabels,

@@ -27,6 +27,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     !permissions.canAccessCadastro &&
     !permissions.canAccessComercial &&
     !permissions.canAccessFinanceiro &&
+    !permissions.canAccessRH &&
     !permissions.canAccessUsuarios &&
     !permissions.canAccessSolicitacoes
   );

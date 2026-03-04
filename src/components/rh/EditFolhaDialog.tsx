@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { FileUpload } from '@/components/ui/file-upload';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
 
@@ -37,6 +38,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { permissions } = useUserRole();
 
   const isSalarioCLT = record?.plano_contas_id && SALARIO_CLT_IDS.includes(record.plano_contas_id);
 
@@ -78,6 +80,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   const handleSave = async () => {
     if (!record) return;
 
+    const needsApproval = permissions.needsApprovalForRH;
     setSaving(true);
     try {
       const newDataVencimento = dataVencimento
@@ -100,9 +103,34 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         salario_base: record.salario_base,
         valor_liquido: valorLiquido,
         observacoes: observacoes || null,
-        status,
+        status: needsApproval ? 'pendente_aprovacao_rh' : status,
         holerite_url: isSalarioCLT ? holerite_url : null,
       };
+
+      // If analyst needs approval, create solicitacao
+      if (needsApproval && user) {
+        const { data: solData } = await supabase
+          .from('solicitacoes_aprovacao_rh')
+          .insert({
+            solicitante_id: user.id,
+            tipo: 'edicao_individual',
+            descricao: `Edição de folha: ${record.fornecedor_razao_social}`,
+            detalhes: [{
+              parcela_id: record.parcela_id,
+              razao_social: record.fornecedor_razao_social,
+              cnpj: record.fornecedor_cnpj,
+              salario_base: record.salario_base,
+              valor_liquido: valorLiquido,
+              data_vencimento: newDataVencimento,
+            }] as any,
+            mes_referencia: mesRef,
+            ano_referencia: anoRef,
+          } as any)
+          .select('id')
+          .single();
+
+        if (solData?.id) payload.solicitacao_rh_id = solData.id;
+      }
 
       if (record.folha_id) {
         const { error } = await supabase.from('folha_pagamento').update(payload).eq('id', record.folha_id);
@@ -112,13 +140,18 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         if (error) throw error;
       }
 
-      // Propagate data_vencimento to parcela and conta_pagar
-      await supabase.from('parcelas_contrato').update({ data_vencimento: newDataVencimento }).eq('id', record.parcela_id);
-      if (record.conta_pagar_id) {
-        await supabase.from('contas_pagar').update({ data_vencimento: newDataVencimento, data_competencia: newDataVencimento }).eq('id', record.conta_pagar_id);
+      // Only propagate if NOT needing approval
+      if (!needsApproval) {
+        await supabase.from('parcelas_contrato').update({ data_vencimento: newDataVencimento }).eq('id', record.parcela_id);
+        if (record.conta_pagar_id) {
+          await supabase.from('contas_pagar').update({ data_vencimento: newDataVencimento, data_competencia: newDataVencimento }).eq('id', record.conta_pagar_id);
+        }
       }
 
-      toast({ title: 'Sucesso', description: 'Folha de pagamento salva com sucesso.' });
+      toast({ 
+        title: needsApproval ? 'Enviado para aprovação' : 'Sucesso', 
+        description: needsApproval ? 'Alteração enviada para aprovação do Gerente de RH.' : 'Folha de pagamento salva com sucesso.' 
+      });
       onSaved();
       onOpenChange(false);
     } catch (error: any) {

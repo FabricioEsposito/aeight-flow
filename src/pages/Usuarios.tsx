@@ -64,6 +64,8 @@ const roleOptions: { value: AppRole; label: string; description: string }[] = [
   { value: 'finance_analyst', label: 'Analista Financeiro', description: 'Acesso financeiro e cadastro, solicita aprovação para edições' },
   { value: 'commercial_manager', label: 'Gerente Comercial', description: 'Acesso comercial, edita vendedores e aprova comissões' },
   { value: 'salesperson', label: 'Vendedor', description: 'Acesso ao dashboard comercial e comissionamento' },
+  { value: 'rh_manager', label: 'Gerente de RH', description: 'Acesso à área de RH, aprova folha de pagamento e benefícios' },
+  { value: 'rh_analyst', label: 'Analista de RH', description: 'Acesso à área de RH, importa dados que requerem aprovação do Gerente de RH' },
   { value: 'user', label: 'Usuário Básico', description: 'Acesso limitado, aguarda atribuição de nível' },
 ];
 

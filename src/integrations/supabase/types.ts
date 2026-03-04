@@ -830,6 +830,7 @@ export type Database = {
           pis_percentual: number
           pis_valor: number
           salario_base: number
+          solicitacao_rh_id: string | null
           status: string
           tipo_vinculo: string
           updated_at: string
@@ -867,6 +868,7 @@ export type Database = {
           pis_percentual?: number
           pis_valor?: number
           salario_base?: number
+          solicitacao_rh_id?: string | null
           status?: string
           tipo_vinculo?: string
           updated_at?: string
@@ -904,6 +906,7 @@ export type Database = {
           pis_percentual?: number
           pis_valor?: number
           salario_base?: number
+          solicitacao_rh_id?: string | null
           status?: string
           tipo_vinculo?: string
           updated_at?: string
@@ -1437,6 +1440,60 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes_aprovacao_rh: {
+        Row: {
+          ano_referencia: number
+          aprovador_financeiro_id: string | null
+          aprovador_rh_id: string | null
+          created_at: string
+          data_aprovacao_financeiro: string | null
+          data_aprovacao_rh: string | null
+          descricao: string | null
+          detalhes: Json | null
+          id: string
+          mes_referencia: number
+          motivo_rejeicao: string | null
+          solicitante_id: string
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ano_referencia: number
+          aprovador_financeiro_id?: string | null
+          aprovador_rh_id?: string | null
+          created_at?: string
+          data_aprovacao_financeiro?: string | null
+          data_aprovacao_rh?: string | null
+          descricao?: string | null
+          detalhes?: Json | null
+          id?: string
+          mes_referencia: number
+          motivo_rejeicao?: string | null
+          solicitante_id: string
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ano_referencia?: number
+          aprovador_financeiro_id?: string | null
+          aprovador_rh_id?: string | null
+          created_at?: string
+          data_aprovacao_financeiro?: string | null
+          data_aprovacao_rh?: string | null
+          descricao?: string | null
+          detalhes?: Json | null
+          id?: string
+          mes_referencia?: number
+          motivo_rejeicao?: string | null
+          solicitante_id?: string
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       solicitacoes_comissao: {
         Row: {
           ano_referencia: number
@@ -1675,6 +1732,8 @@ export type Database = {
         | "finance_analyst"
         | "commercial_manager"
         | "salesperson"
+        | "rh_manager"
+        | "rh_analyst"
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica" | "internacional"
@@ -1816,6 +1875,8 @@ export const Constants = {
         "finance_analyst",
         "commercial_manager",
         "salesperson",
+        "rh_manager",
+        "rh_analyst",
       ],
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],

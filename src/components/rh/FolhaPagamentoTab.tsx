@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet } from 'lucide-react';
+import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import { EnviarHoleriteDialog } from './EnviarHoleriteDialog';
 import { ImportarFolhaDialog } from './ImportarFolhaDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { CategoriaFilterSelect } from '@/components/financeiro/CategoriaFilterSelect';
@@ -61,6 +63,7 @@ const SALARIO_CLT_IDS = [
 ];
 
 export function FolhaPagamentoTab() {
+  const { permissions } = useUserRole();
   const [records, setRecords] = useState<FolhaParcelaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('folha', 'search', '');
@@ -495,11 +498,17 @@ export function FolhaPagamentoTab() {
                     <TableCell>{getFolhaStatusBadge(r.folha_status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && r.folha_id && (
+                        {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && r.folha_id && (() => {
+                          const holeriteDisabled = permissions.canSendHoleriteOnlyWhenPaid && r.status !== 'pago';
+                          return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            disabled={sendingHoleriteId === r.folha_id}
+                            disabled={sendingHoleriteId === r.folha_id || holeriteDisabled}
                             onClick={async () => {
                               setSendingHoleriteId(r.folha_id);
                               try {
@@ -524,7 +533,15 @@ export function FolhaPagamentoTab() {
                               <Mail className="w-4 h-4" />
                             )}
                           </Button>
-                        )}
+                                </span>
+                              </TooltipTrigger>
+                              {holeriteDisabled && (
+                                <TooltipContent>Envio de holerite disponível apenas após o lançamento estar pago.</TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                          );
+                        })()}
                         {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && (
                           <Button variant="ghost" size="icon" onClick={() => window.open(r.holerite_url!, '_blank')} title="Visualizar holerite">
                             <FileText className="w-4 h-4" />
