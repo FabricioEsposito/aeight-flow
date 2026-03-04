@@ -28,6 +28,7 @@ import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDialog';
+import { openStorageFile } from '@/lib/storage-utils';
 import { ImportarLancamentosDialog } from '@/components/financeiro/ImportarLancamentosDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -1940,16 +1941,14 @@ export default function Extrato() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {lanc.link_nf ? (
-                          <a 
-                            href={lanc.link_nf} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700"
+                          <button 
+                            onClick={() => openStorageFile(lanc.link_nf!)}
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
                             title="Ver NF"
                           >
                             <FileCheck className="w-4 h-4" />
                             <span className="text-xs">NF</span>
-                          </a>
+                          </button>
                         ) : (
                           <span className="flex items-center gap-1 text-muted-foreground" title="NF não anexada">
                             <FileX className="w-4 h-4" />
@@ -1957,16 +1956,14 @@ export default function Extrato() {
                           </span>
                         )}
                         {lanc.link_boleto ? (
-                          <a 
-                            href={lanc.link_boleto} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700"
+                          <button 
+                            onClick={() => openStorageFile(lanc.link_boleto!)}
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
                             title="Ver Boleto"
                           >
                             <FileCheck className="w-4 h-4" />
                             <span className="text-xs">Bol</span>
-                          </a>
+                          </button>
                         ) : (
                           <span className="flex items-center gap-1 text-muted-foreground" title="Boleto não anexado">
                             <FileX className="w-4 h-4" />

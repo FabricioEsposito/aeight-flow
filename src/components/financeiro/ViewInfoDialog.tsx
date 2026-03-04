@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, FileCheck, FileX, History, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { openStorageFile } from '@/lib/storage-utils';
 
 interface HistoricoBaixa {
   id: string;
@@ -252,12 +253,10 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 {data.link_nf ? (
-                  <Button variant="outline" size="sm" asChild className="w-full justify-start">
-                    <a href={data.link_nf} target="_blank" rel="noopener noreferrer">
-                      <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
-                      Ver Nota Fiscal
-                      <ExternalLink className="w-3 h-3 ml-auto" />
-                    </a>
+                  <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => openStorageFile(data.link_nf!)}>
+                    <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                    Ver Nota Fiscal
+                    <ExternalLink className="w-3 h-3 ml-auto" />
                   </Button>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -268,12 +267,10 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
               </div>
               <div className="flex items-center gap-2">
                 {data.link_boleto ? (
-                  <Button variant="outline" size="sm" asChild className="w-full justify-start">
-                    <a href={data.link_boleto} target="_blank" rel="noopener noreferrer">
-                      <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
-                      Ver Boleto
-                      <ExternalLink className="w-3 h-3 ml-auto" />
-                    </a>
+                  <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => openStorageFile(data.link_boleto!)}>
+                    <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                    Ver Boleto
+                    <ExternalLink className="w-3 h-3 ml-auto" />
                   </Button>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground text-sm">
