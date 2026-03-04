@@ -226,7 +226,7 @@ export default function Auth() {
         if (error.message.includes('already registered')) {
           toast({
             title: "Erro ao criar conta",
-            description: "Este email já está cadastrado.",
+            description: "Não foi possível criar a conta. Verifique os dados e tente novamente.",
             variant: "destructive",
           });
         } else {
