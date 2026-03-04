@@ -51,7 +51,6 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
   const { toast } = useToast();
   const { user } = useAuth();
   const { permissions } = useUserRole();
-  const { toast } = useToast();
 
   const resetState = () => {
     setStep('download');
