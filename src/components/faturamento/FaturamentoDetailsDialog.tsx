@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { openStorageFile } from '@/lib/storage-utils';
 
 interface Faturamento {
   id: string;
@@ -223,7 +224,7 @@ export function FaturamentoDetailsDialog({ open, onOpenChange, faturamento }: Fa
                   <Button
                     variant="link"
                     className="p-0 h-auto"
-                    onClick={() => window.open(faturamento.link_nf!, '_blank')}
+                    onClick={() => openStorageFile(faturamento.link_nf!)}
                   >
                     Abrir NF <ExternalLink className="ml-1 h-3 w-3" />
                   </Button>

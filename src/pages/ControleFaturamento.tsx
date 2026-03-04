@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
+import { openStorageFile } from '@/lib/storage-utils';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -874,7 +875,7 @@ export default function ControleFaturamento() {
                         </DropdownMenuItem>
                         {faturamento.link_nf && (
                           <DropdownMenuItem 
-                            onClick={() => window.open(faturamento.link_nf!, '_blank')} 
+                            onClick={() => openStorageFile(faturamento.link_nf!)} 
                             className="cursor-pointer"
                           >
                             <ExternalLink className="w-4 h-4 mr-2 text-green-500" />
@@ -883,7 +884,7 @@ export default function ControleFaturamento() {
                         )}
                         {faturamento.link_boleto && (
                           <DropdownMenuItem 
-                            onClick={() => window.open(faturamento.link_boleto!, '_blank')} 
+                            onClick={() => openStorageFile(faturamento.link_boleto!)} 
                             className="cursor-pointer"
                           >
                             <ExternalLink className="w-4 h-4 mr-2 text-orange-500" />
