@@ -669,6 +669,13 @@ export function FolhaPagamentoTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportarFolhaDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={fetchRecords}
+        records={filteredRecords}
+      />
     </div>
   );
 }
