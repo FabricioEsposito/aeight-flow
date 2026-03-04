@@ -830,6 +830,7 @@ export type Database = {
           pis_percentual: number
           pis_valor: number
           salario_base: number
+          solicitacao_rh_id: string | null
           status: string
           tipo_vinculo: string
           updated_at: string
@@ -867,6 +868,7 @@ export type Database = {
           pis_percentual?: number
           pis_valor?: number
           salario_base?: number
+          solicitacao_rh_id?: string | null
           status?: string
           tipo_vinculo?: string
           updated_at?: string
@@ -904,6 +906,7 @@ export type Database = {
           pis_percentual?: number
           pis_valor?: number
           salario_base?: number
+          solicitacao_rh_id?: string | null
           status?: string
           tipo_vinculo?: string
           updated_at?: string
@@ -1434,6 +1437,60 @@ export type Database = {
           tipo_lancamento?: string
           updated_at?: string | null
           valor_original?: number | null
+        }
+        Relationships: []
+      }
+      solicitacoes_aprovacao_rh: {
+        Row: {
+          ano_referencia: number
+          aprovador_financeiro_id: string | null
+          aprovador_rh_id: string | null
+          created_at: string
+          data_aprovacao_financeiro: string | null
+          data_aprovacao_rh: string | null
+          descricao: string | null
+          detalhes: Json | null
+          id: string
+          mes_referencia: number
+          motivo_rejeicao: string | null
+          solicitante_id: string
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ano_referencia: number
+          aprovador_financeiro_id?: string | null
+          aprovador_rh_id?: string | null
+          created_at?: string
+          data_aprovacao_financeiro?: string | null
+          data_aprovacao_rh?: string | null
+          descricao?: string | null
+          detalhes?: Json | null
+          id?: string
+          mes_referencia: number
+          motivo_rejeicao?: string | null
+          solicitante_id: string
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ano_referencia?: number
+          aprovador_financeiro_id?: string | null
+          aprovador_rh_id?: string | null
+          created_at?: string
+          data_aprovacao_financeiro?: string | null
+          data_aprovacao_rh?: string | null
+          descricao?: string | null
+          detalhes?: Json | null
+          id?: string
+          mes_referencia?: number
+          motivo_rejeicao?: string | null
+          solicitante_id?: string
+          status?: string
+          tipo?: string
+          updated_at?: string
         }
         Relationships: []
       }
