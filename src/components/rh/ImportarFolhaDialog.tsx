@@ -69,7 +69,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     const templateData = records.map(r => {
       const vencDate = new Date(r.data_vencimento + 'T00:00:00');
       const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
-      const ccStr = r.centros_custo.map(cc => `${cc.codigo} ${cc.percentual}%`).join(' / ');
+
+      const ccMap: Record<string, number> = {};
+      r.centros_custo.forEach(cc => { ccMap[cc.codigo] = cc.percentual; });
 
       return {
         'Competência (MM/AAAA)': competencia,
@@ -78,7 +80,10 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         'Nome Fantasia': r.fornecedor_nome_fantasia || '',
         'CNPJ/CPF': r.fornecedor_cnpj,
         'Categoria': r.plano_contas_descricao,
-        'Centro de Custo': ccStr,
+        '001_b8one (%)': ccMap['001'] || '',
+        '002_Lomadee (%)': ccMap['002'] || '',
+        '003_Cryah (%)': ccMap['003'] || '',
+        '004_SAIO (%)': ccMap['004'] || '',
         'Salário Base': '',
         'Valor Líquido': '',
       };
