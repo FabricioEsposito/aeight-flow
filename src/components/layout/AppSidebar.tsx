@@ -215,7 +215,8 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const hasAnyAccess = permissions.canAccessDashboard || 
     permissions.canAccessCadastro || 
     permissions.canAccessComercial || 
-    permissions.canAccessFinanceiro;
+    permissions.canAccessFinanceiro ||
+    permissions.canAccessRH;
 
   return (
     <aside className="w-64 border-r border-border bg-card flex flex-col h-full md:fixed md:left-0 md:top-0 md:h-screen">
