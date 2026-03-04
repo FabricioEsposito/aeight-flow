@@ -192,9 +192,49 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         }
       }
 
+      // Fetch lancamentos_centros_custo for individual entries (no parcela_id)
+      const individualReceberIds = (receitas || []).filter((l: any) => !l.parcela_id).map((l: any) => l.id);
+      const individualPagarIds = (despesas || []).filter((l: any) => !l.parcela_id).map((l: any) => l.id);
+      const lancamentoRateioMap = new Map<string, RateioInfo[]>();
+
+      if (individualReceberIds.length > 0) {
+        const { data: lccReceber } = await supabase
+          .from('lancamentos_centros_custo')
+          .select('conta_receber_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+          .in('conta_receber_id', individualReceberIds);
+        if (lccReceber) {
+          for (const r of lccReceber) {
+            const cc = r.centros_custo as any;
+            if (!cc) continue;
+            const item: RateioInfo = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+            const existing = lancamentoRateioMap.get(r.conta_receber_id!) || [];
+            existing.push(item);
+            lancamentoRateioMap.set(r.conta_receber_id!, existing);
+          }
+        }
+      }
+
+      if (individualPagarIds.length > 0) {
+        const { data: lccPagar } = await supabase
+          .from('lancamentos_centros_custo')
+          .select('conta_pagar_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+          .in('conta_pagar_id', individualPagarIds);
+        if (lccPagar) {
+          for (const r of lccPagar) {
+            const cc = r.centros_custo as any;
+            if (!cc) continue;
+            const item: RateioInfo = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+            const existing = lancamentoRateioMap.get(r.conta_pagar_id!) || [];
+            existing.push(item);
+            lancamentoRateioMap.set(r.conta_pagar_id!, existing);
+          }
+        }
+      }
+
       // Helper: get the effective value for a lancamento considering rateio and cost center filter
       const getEffectiveValue = (l: any): { valor: number; rateio?: RateioInfo[] } | null => {
-        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : null;
+        // Contract-based rateio (via parcela_id) or individual entry rateio (via lancamento id)
+        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : lancamentoRateioMap.get(l.id) || null;
         
         if (centroCusto && centroCusto.length > 0) {
           if (rateio && rateio.length > 0) {
