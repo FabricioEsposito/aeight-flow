@@ -10,10 +10,11 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
-import CentroCustoSelect from '@/components/centro-custos/CentroCustoSelect';
+import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
 import { FileUpload } from '@/components/ui/file-upload';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { supabase } from '@/integrations/supabase/client';
 interface EditParcelaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,7 +62,7 @@ export function EditParcelaDialog({
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [descricao, setDescricao] = useState('');
   const [planoContaId, setPlanoContaId] = useState<string>('');
-  const [centroCusto, setCentroCusto] = useState('');
+  const [rateioItems, setRateioItems] = useState<RateioItem[]>([]);
   const [contaBancariaId, setContaBancariaId] = useState<string>('');
   const [juros, setJuros] = useState<number>(0);
   const [multa, setMulta] = useState<number>(0);
@@ -71,19 +72,55 @@ export function EditParcelaDialog({
 
   useEffect(() => {
     if (initialData && open) {
-      // Usar T00:00:00 para evitar problemas de timezone que alteram a data
       setDataVencimento(new Date(initialData.data_vencimento + 'T00:00:00'));
       setDescricao(initialData.descricao);
       setPlanoContaId(initialData.plano_conta_id || 'none');
-      setCentroCusto(initialData.centro_custo || '');
       setContaBancariaId(initialData.conta_bancaria_id || 'none');
       setJuros(initialData.juros || 0);
       setMulta(initialData.multa || 0);
       setDesconto(initialData.desconto || 0);
       setLinkNf(initialData.link_nf || null);
       setLinkBoleto(initialData.link_boleto || null);
+
+      // Load existing rateio
+      const loadRateio = async () => {
+        const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
+        const { data } = await supabase
+          .from('lancamentos_centros_custo')
+          .select('centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+          .eq(field, initialData.id);
+
+        if (data && data.length > 0) {
+          setRateioItems(data.map((r: any) => ({
+            centro_custo_id: r.centro_custo_id,
+            codigo: r.centros_custo?.codigo || '',
+            descricao: r.centros_custo?.descricao || '',
+            percentual: r.percentual,
+          })));
+        } else if (initialData.centro_custo) {
+          // Fallback: load legacy single centro_custo
+          const { data: cc } = await supabase
+            .from('centros_custo')
+            .select('id, codigo, descricao')
+            .eq('id', initialData.centro_custo)
+            .single();
+          if (cc) {
+            setRateioItems([{
+              centro_custo_id: cc.id,
+              codigo: cc.codigo,
+              descricao: cc.descricao,
+              percentual: 100,
+            }]);
+          } else {
+            setRateioItems([]);
+          }
+        } else {
+          setRateioItems([]);
+        }
+      };
+      loadRateio();
     }
-  }, [initialData, open]);
+  }, [initialData, open, tipo]);
 
   const [valorOriginal, setValorOriginal] = useState<number>(0);
 
@@ -96,15 +133,17 @@ export function EditParcelaDialog({
 
   const valorTotal = valorOriginal + juros + multa - desconto;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!initialData || !dataVencimento) return;
+
+    const centroCustoLegacy = rateioItems.length > 0 ? rateioItems[0].centro_custo_id : undefined;
 
     const data: EditParcelaData = {
       id: initialData.id,
       data_vencimento: format(dataVencimento, 'yyyy-MM-dd'),
       descricao,
       plano_conta_id: planoContaId && planoContaId !== 'none' ? planoContaId : undefined,
-      centro_custo: centroCusto || undefined,
+      centro_custo: centroCustoLegacy,
       conta_bancaria_id: contaBancariaId && contaBancariaId !== 'none' ? contaBancariaId : undefined,
       juros: juros,
       multa: multa,
@@ -114,6 +153,21 @@ export function EditParcelaDialog({
       link_nf: linkNf,
       link_boleto: linkBoleto,
     };
+
+    // Save rateio
+    const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
+    // Delete existing
+    await supabase.from('lancamentos_centros_custo').delete().eq(field, initialData.id);
+    // Insert new
+    if (rateioItems.length > 0) {
+      await supabase.from('lancamentos_centros_custo').insert(
+        rateioItems.map(item => ({
+          [field]: initialData.id,
+          centro_custo_id: item.centro_custo_id,
+          percentual: item.percentual,
+        }))
+      );
+    }
 
     onSave(data);
     onOpenChange(false);
@@ -182,24 +236,20 @@ export function EditParcelaDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label>Plano de Contas</Label>
               <PlanoContasSelect 
                 value={planoContaId === 'none' ? '' : planoContaId} 
                 onChange={setPlanoContaId}
                 tipo={tipo}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Centro de Custo</Label>
-              <CentroCustoSelect 
-                value={centroCusto}
-                onValueChange={setCentroCusto}
-              />
-            </div>
           </div>
+
+          <CentroCustoRateio
+            value={rateioItems}
+            onChange={setRateioItems}
+            valorTotal={valorOriginal}
+          />
 
           <div className="border-t pt-4 space-y-4">
             <h4 className="font-medium">Ajustes de Valor</h4>
