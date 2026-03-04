@@ -69,7 +69,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     const templateData = records.map(r => {
       const vencDate = new Date(r.data_vencimento + 'T00:00:00');
       const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
-      const ccStr = r.centros_custo.map(cc => `${cc.codigo} ${cc.percentual}%`).join(' / ');
+
+      const ccMap: Record<string, number> = {};
+      r.centros_custo.forEach(cc => { ccMap[cc.codigo] = cc.percentual; });
 
       return {
         'Competência (MM/AAAA)': competencia,
@@ -78,7 +80,10 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         'Nome Fantasia': r.fornecedor_nome_fantasia || '',
         'CNPJ/CPF': r.fornecedor_cnpj,
         'Categoria': r.plano_contas_descricao,
-        'Centro de Custo': ccStr,
+        '001_b8one (%)': ccMap['001'] || '',
+        '002_Lomadee (%)': ccMap['002'] || '',
+        '003_Cryah (%)': ccMap['003'] || '',
+        '004_SAIO (%)': ccMap['004'] || '',
         'Salário Base': '',
         'Valor Líquido': '',
       };
@@ -92,7 +97,7 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     const instrucoes = [
       { 'Instruções de Preenchimento': '📋 COMO PREENCHER A PLANILHA DE FOLHA DE PAGAMENTO' },
       { 'Instruções de Preenchimento': '' },
-      { 'Instruções de Preenchimento': '1. As colunas Competência, Razão Social, Nome Fantasia, CNPJ/CPF, Categoria e Centro de Custo são apenas para identificação.' },
+      { 'Instruções de Preenchimento': '1. As colunas Competência, Razão Social, Nome Fantasia, CNPJ/CPF, Categoria e Centros de Custo (001-004) são apenas para identificação.' },
       { 'Instruções de Preenchimento': '2. NÃO altere os valores dessas colunas, pois são usadas para localizar o registro correto.' },
       { 'Instruções de Preenchimento': '' },
       { 'Instruções de Preenchimento': '3. COLUNAS EDITÁVEIS:' },
@@ -115,7 +120,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
     // Column widths
     ws['!cols'] = [
       { wch: 18 }, { wch: 22 }, { wch: 35 }, { wch: 25 },
-      { wch: 22 }, { wch: 35 }, { wch: 35 }, { wch: 15 }, { wch: 15 },
+      { wch: 22 }, { wch: 35 },
+      { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 14 },
+      { wch: 15 }, { wch: 15 },
     ];
 
     XLSX.writeFile(wb, `folha_pagamento_template.xlsx`);
