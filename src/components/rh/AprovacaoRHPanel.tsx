@@ -64,10 +64,10 @@ export function AprovacaoRHPanel() {
       if (updateError) throw updateError;
 
       // Update folha_pagamento records linked to this solicitacao
-      await supabase
+      await (supabase
         .from('folha_pagamento')
-        .update({ status: 'aprovado' })
-        .eq('solicitacao_rh_id' as any, solicitacao.id);
+        .update({ status: 'aprovado' }) as any)
+        .eq('solicitacao_rh_id', solicitacao.id);
 
       // Send notifications to admin and finance_manager
       const { data: adminRoles } = await supabase
