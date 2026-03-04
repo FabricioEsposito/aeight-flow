@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send } from 'lucide-react';
+import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { EditFolhaDialog } from './EditFolhaDialog';
 import { EnviarHoleriteDialog } from './EnviarHoleriteDialog';
+import { ImportarFolhaDialog } from './ImportarFolhaDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
@@ -84,6 +85,7 @@ export function FolhaPagamentoTab() {
   const [sendingHoleriteId, setSendingHoleriteId] = useState<string | null>(null);
   const [batchHoleriteDialogOpen, setBatchHoleriteDialogOpen] = useState(false);
   const [batchHoleriteSending, setBatchHoleriteSending] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const getDateRange = (): { from: Date; to: Date } | null => {
@@ -387,6 +389,10 @@ export function FolhaPagamentoTab() {
             </SelectContent>
           </Select>
           <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportDialogOpen(true)}>
+            <FileSpreadsheet className="w-4 h-4" />
+            Importar Planilha
+          </Button>
         </div>
 
         {someSelected && (
@@ -663,6 +669,13 @@ export function FolhaPagamentoTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportarFolhaDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={fetchRecords}
+        records={filteredRecords}
+      />
     </div>
   );
 }

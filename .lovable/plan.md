@@ -1,60 +1,66 @@
 
 
-## Plano: Importacao via Planilha para Folha de Pagamento
+## Plano Consolidado: Holerite - Upload PDF, Template de E-mail e Envio
 
-### Resumo
+### 1. Migration SQL
 
-Criar um componente `ImportarFolhaDialog.tsx` que permite importar/atualizar dados da folha de pagamento via planilha Excel. O template sera baixado ja preenchido com todos os dados do periodo filtrado. O usuario preenche as colunas **Salario Base**, **Valor Liquido** e pode editar **Data Vencimento**.
+- Criar bucket `holerites` (público) no storage
+- Adicionar coluna `holerite_url` (text, nullable) na tabela `folha_pagamento`
+- RLS policies para o bucket (authenticated can upload/read/delete)
 
-### Fluxo do Usuario
+### 2. Simplificar EditFolhaDialog
 
-1. Clica em **"Importar Planilha"** na aba Folha de Pagamento
-2. Baixa o template preenchido com os dados do periodo atual
-3. Preenche Salario Base e Valor Liquido, e opcionalmente edita Data Vencimento
-4. Faz upload do arquivo
-5. Sistema exibe preview destacando alteracoes
-6. Confirma -- sistema atualiza `folha_pagamento`, `parcelas_contrato` e `contas_pagar`
+Remover do formulário:
+- **Tipo de Vínculo** (select CLT/PJ)
+- **Salário Base** (currency input)
+- **Outros Proventos** (currency input)
+- **Outros Descontos** (currency input)
 
-### Template Pre-preenchido
+O valor líquido será o valor da parcela diretamente. Manter: data de vencimento, status, observações.
 
-| Coluna | Preenchida? | Editavel? |
-|---|---|---|
-| Competencia (MM/AAAA) | Sim | Nao (identificador) |
-| Data Vencimento (DD/MM/AAAA) | Sim | **Sim** |
-| Razao Social | Sim | Nao |
-| Nome Fantasia | Sim | Nao |
-| CNPJ/CPF | Sim | Nao (chave de match) |
-| Categoria | Sim | Nao |
-| Centro de Custo | Sim | Nao |
-| Salario Base | Vazio | **Sim** |
-| Valor Liquido | Vazio | **Sim** |
+Adicionar **FileUpload de holerite** (condicional): exibido apenas quando `plano_contas_id` for `30a56eb0-cfba-4e09-9f43-bf3cd39873bc` (2.1.2 - Salário CLT) ou `c1b3c1bf-c014-46f0-baa7-cdea1c3b0ac7` (3.1.1 - Salário CLT). Usa o componente `FileUpload` existente com bucket `holerites`.
 
-Aba "Instrucoes" com orientacoes de preenchimento.
+### 3. Edge Function `send-holerite-email`
 
-### Logica de Matching (upload)
+**Template HTML profissional** seguindo o padrão visual do `send-billing-emails`:
 
-- Match por **CNPJ/CPF** + **Competencia (mes/ano)** + **Categoria**
-- Localiza parcela e conta a pagar correspondentes
+- **Header:** Gradiente roxo (`#4f46e5` → `#818cf8`), título "Holerite", subtítulo "Recursos Humanos - Aeight"
+- **Corpo:**
+  - Saudação personalizada ao fornecedor (nome fantasia ou razão social)
+  - Mensagem: "Segue em anexo o holerite referente à competência **Mês/Ano**."
+  - Card resumo com Competência e Valor Líquido
+  - Indicador de anexo (📎 PDF)
+- **Rodapé:** Contato `rh@aeight.global`, copyright Aeight
+- **Anexo:** PDF do holerite (via URL do storage)
+- **Remetente:** `rh@financeiro.aeight.global`
 
-### Propagacao ao Confirmar
+**Lógica:**
+1. Recebe `{ folha_id }`
+2. Busca `folha_pagamento` → `fornecedor` (email) + `holerite_url`
+3. Valida que existe holerite e e-mail
+4. Envia via Resend com PDF em anexo
+5. Registra em `email_logs`
 
-- **folha_pagamento**: upsert `salario_base`, `valor_liquido`
-- **parcelas_contrato**: update `valor` com `valor_liquido`, update `data_vencimento` se alterada
-- **contas_pagar**: update `valor`, `data_vencimento` e `data_competencia` se alterados
+### 4. UI na FolhaPagamentoTab
 
-### Arquivos
+- Passar `plano_contas_id` para o `EditFolhaDialog`
+- Adicionar botão de envio de e-mail (ícone Mail) na coluna de ações, visível apenas para registros com categoria Salário CLT **e** que tenham holerite anexado
+- Toast de sucesso/erro no envio
 
-| Arquivo | Acao |
+### 5. Config
+
+```toml
+[functions.send-holerite-email]
+verify_jwt = false
+```
+
+### Arquivos afetados
+
+| Arquivo | Ação |
 |---|---|
-| `src/components/rh/ImportarFolhaDialog.tsx` | Novo -- dialog multi-step (download template / upload / preview / confirmar) |
-| `src/components/rh/FolhaPagamentoTab.tsx` | Adicionar botao "Importar Planilha" e integrar dialog, passando `records` filtrados |
-
-### Detalhes Tecnicos
-
-- Usa lib `xlsx` ja instalada
-- Template gerado a partir dos `records` ja carregados (sem query adicional)
-- Preview mostra tabela com valores atuais vs novos, destacando alteracoes em amarelo
-- Validacao: CNPJ existente, competencia valida, valores numericos, data no formato DD/MM/AAAA
-- Segue padrao visual do `ImportarLancamentosDialog` existente
-- Sem migrations SQL necessarias
+| Migration SQL | Bucket `holerites` + coluna `holerite_url` |
+| `src/components/rh/EditFolhaDialog.tsx` | Simplificar campos, adicionar FileUpload condicional, salvar `holerite_url` |
+| `src/components/rh/FolhaPagamentoTab.tsx` | Botão enviar holerite na tabela |
+| `supabase/functions/send-holerite-email/index.ts` | Nova edge function com template |
+| `supabase/config.toml` | Registrar nova função |
 
