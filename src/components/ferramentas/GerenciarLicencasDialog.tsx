@@ -32,7 +32,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
   const [fornecedorId, setFornecedorId] = useState("");
   const [descricaoUsuario, setDescricaoUsuario] = useState("");
   const [valorLicenca, setValorLicenca] = useState(0);
-  const [moeda, setMoeda] = useState("BRL");
+  const [moeda, setMoeda] = useState(ferramenta?.moeda || "BRL");
   const [rateio, setRateio] = useState<RateioItem[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -132,10 +132,21 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
     setFornecedorId("");
     setDescricaoUsuario("");
     setValorLicenca(0);
-    setMoeda("BRL");
+    setMoeda(ferramentaMoeda);
     setRateio([]);
     setEditingId(null);
     setShowForm(false);
+  };
+
+  // Auto-fill descricaoUsuario with nome_fantasia when fornecedor changes
+  const handleFornecedorChange = (id: string) => {
+    setFornecedorId(id);
+    if (!editingId) {
+      const forn = fornecedores.find((f: any) => f.id === id);
+      if (forn) {
+        setDescricaoUsuario((forn as any).nome_fantasia || (forn as any).razao_social || "");
+      }
+    }
   };
 
   const handleEdit = (licenca: any) => {
@@ -378,7 +389,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
                 <SearchableSelect
                   options={fornecedorOptions}
                   value={fornecedorId}
-                  onValueChange={setFornecedorId}
+                  onValueChange={handleFornecedorChange}
                   placeholder="Selecione..."
                 />
               </div>
