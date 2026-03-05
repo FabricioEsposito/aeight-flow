@@ -845,9 +845,11 @@ export type Database = {
           centro_custo_id: string | null
           created_at: string
           descricao: string | null
+          dia_vencimento: number
           id: string
           moeda: string
           nome: string
+          recorrente: boolean
           status: string
           updated_at: string
           valor_mensal: number
@@ -856,9 +858,11 @@ export type Database = {
           centro_custo_id?: string | null
           created_at?: string
           descricao?: string | null
+          dia_vencimento?: number
           id?: string
           moeda?: string
           nome: string
+          recorrente?: boolean
           status?: string
           updated_at?: string
           valor_mensal?: number
@@ -867,9 +871,11 @@ export type Database = {
           centro_custo_id?: string | null
           created_at?: string
           descricao?: string | null
+          dia_vencimento?: number
           id?: string
           moeda?: string
           nome?: string
+          recorrente?: boolean
           status?: string
           updated_at?: string
           valor_mensal?: number
