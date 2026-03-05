@@ -126,7 +126,7 @@ export function BeneficiosTab() {
       // 3. Fetch contas_pagar linked to these parcelas
       const { data: contasPagar } = await supabase
         .from('contas_pagar')
-        .select('id, parcela_id, status, data_competencia, data_pagamento')
+        .select('id, parcela_id, status, data_competencia, data_pagamento, link_nf, link_boleto')
         .in('parcela_id', parcelaIds);
 
       // 4. Fetch controle_beneficios for tipo_beneficio
