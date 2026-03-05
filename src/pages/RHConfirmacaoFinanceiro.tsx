@@ -5,9 +5,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
 
 export default function RHConfirmacaoFinanceiro() {
-  const { isAdmin, isFinanceManager } = useUserRole();
+  const { isAdmin, isFinanceManager, loading } = useUserRole();
   const [confirmacaoDialogOpen, setConfirmacaoDialogOpen] = useState(false);
   const [confirmacaoSolicitacaoId, setConfirmacaoSolicitacaoId] = useState<string | null>(null);
+
+  if (loading) return null;
 
   if (!isAdmin && !isFinanceManager) {
     return <Navigate to="/rh" replace />;
