@@ -32,6 +32,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 
 interface NavItem {
   title: string;
@@ -104,6 +105,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const { role, permissions, getRoleLabel } = useUserRole();
+  const { getCountForRoute } = useNotificationCounts();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "Cadastro": false,
@@ -195,40 +197,50 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     onNavigate?.();
   };
 
-  const renderNavItem = (item: NavItem, showFavoriteStar = true) => (
-    <div key={item.title} className="flex items-center gap-1 group">
-      <NavLink
-        to={item.url}
-        onClick={handleNavigation}
-        className={cn(
-          "flex-1 flex items-center gap-3 px-3 py-2.5 rounded transition-all duration-200",
-          isActive(item.url)
-            ? "bg-primary text-primary-foreground font-medium shadow-sm"
-            : "text-foreground hover:bg-secondary"
-        )}
-      >
-        <item.icon className="w-4 h-4 flex-shrink-0" />
-        <span className="text-sm">{item.title}</span>
-      </NavLink>
-      {showFavoriteStar && (
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleFavorite(item.url);
-          }}
+  const renderNavItem = (item: NavItem, showFavoriteStar = true) => {
+    const notifCount = getCountForRoute(item.url);
+    return (
+      <div key={item.title} className="flex items-center gap-1 group">
+        <NavLink
+          to={item.url}
+          onClick={handleNavigation}
           className={cn(
-            "p-1.5 rounded transition-all duration-200 opacity-0 group-hover:opacity-100",
-            isFavorite(item.url) 
-              ? "text-warning opacity-100" 
-              : "text-muted-foreground hover:text-foreground"
+            "flex-1 flex items-center gap-3 px-3 py-2.5 rounded transition-all duration-200",
+            isActive(item.url)
+              ? "bg-primary text-primary-foreground font-medium shadow-sm"
+              : "text-foreground hover:bg-secondary"
           )}
         >
-          <Star className={cn("w-3.5 h-3.5", isFavorite(item.url) && "fill-current")} />
-        </button>
-      )}
-    </div>
-  );
+          <div className="relative">
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            {notifCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                {notifCount > 9 ? "9+" : notifCount}
+              </span>
+            )}
+          </div>
+          <span className="text-sm">{item.title}</span>
+        </NavLink>
+        {showFavoriteStar && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleFavorite(item.url);
+            }}
+            className={cn(
+              "p-1.5 rounded transition-all duration-200 opacity-0 group-hover:opacity-100",
+              isFavorite(item.url) 
+                ? "text-warning opacity-100" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Star className={cn("w-3.5 h-3.5", isFavorite(item.url) && "fill-current")} />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   // If user has no permissions (basic user), show limited sidebar
   const hasAnyAccess = permissions.canAccessDashboard || 

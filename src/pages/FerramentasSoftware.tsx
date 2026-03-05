@@ -8,6 +8,7 @@ import { NovaFerramentaDialog } from "@/components/ferramentas/NovaFerramentaDia
 import { GerenciarLicencasDialog } from "@/components/ferramentas/GerenciarLicencasDialog";
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { useCotacaoMoedas, convertToBRL } from "@/hooks/useCotacaoMoedas";
+import { useOverdueLicencasNotifications } from "@/hooks/useOverdueLicencas";
 
 export default function FerramentasSoftware() {
   const [showNovaDialog, setShowNovaDialog] = useState(false);
@@ -117,6 +118,9 @@ export default function FerramentasSoftware() {
       cc_distribution: ccDistribution,
     };
   });
+
+  // Check for overdue licenses and create notifications
+  useOverdueLicencasNotifications(enrichedFerramentas);
 
   const filteredFerramentas = selectedCentrosCusto.length > 0
     ? enrichedFerramentas.filter((f: any) =>

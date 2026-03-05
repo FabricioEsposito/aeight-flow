@@ -1,8 +1,9 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Settings2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { formatCurrencyWithSymbol } from "@/hooks/useCotacaoMoedas";
+import { isFerramentaVencida } from "@/hooks/useOverdueLicencas";
 
 interface FerramentasTableProps {
   ferramentas: any[];
@@ -35,6 +36,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
             <TableHead className="text-right">Soma Licenças</TableHead>
             <TableHead className="text-center">Licenças</TableHead>
             <TableHead className="text-center">Vencimento</TableHead>
+            <TableHead className="text-center">Pagamento</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead className="w-24">Ações</TableHead>
           </TableRow>
@@ -49,6 +51,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
             const valido = Math.abs(somaLicencasBRL - valorMensalBRL) < 0.01;
             const ccDistribution = f.cc_distribution || [];
             const isForeign = moeda !== "BRL";
+            const vencida = qtdLicencas > 0 && f.recorrente && isFerramentaVencida(f.dia_vencimento || 1);
 
             return (
               <TableRow key={f.id} className="cursor-pointer" onClick={() => onManageLicencas(f)}>
@@ -86,6 +89,19 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                 </TableCell>
                 <TableCell className="text-center">{qtdLicencas}</TableCell>
                 <TableCell className="text-center">Dia {f.dia_vencimento || 1}</TableCell>
+                <TableCell className="text-center">
+                  {qtdLicencas === 0 ? (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  ) : vencida ? (
+                    <Badge variant="destructive" className="gap-1">
+                      <Clock className="w-3 h-3" /> Vencida
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
+                      <CheckCircle className="w-3 h-3" /> Em dia
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell className="text-center">
                   {qtdLicencas === 0 ? (
                     <Badge variant="secondary">Sem licenças</Badge>
