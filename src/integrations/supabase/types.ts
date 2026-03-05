@@ -798,6 +798,95 @@ export type Database = {
           },
         ]
       }
+      ferramentas_software: {
+        Row: {
+          centro_custo_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          status: string
+          updated_at: string
+          valor_mensal: number
+        }
+        Insert: {
+          centro_custo_id: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          status?: string
+          updated_at?: string
+          valor_mensal?: number
+        }
+        Update: {
+          centro_custo_id?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          status?: string
+          updated_at?: string
+          valor_mensal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ferramentas_software_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ferramentas_software_licencas: {
+        Row: {
+          created_at: string
+          descricao_usuario: string | null
+          ferramenta_id: string
+          fornecedor_id: string
+          id: string
+          status: string
+          updated_at: string
+          valor_licenca: number
+        }
+        Insert: {
+          created_at?: string
+          descricao_usuario?: string | null
+          ferramenta_id: string
+          fornecedor_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          valor_licenca?: number
+        }
+        Update: {
+          created_at?: string
+          descricao_usuario?: string | null
+          ferramenta_id?: string
+          fornecedor_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          valor_licenca?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ferramentas_software_licencas_ferramenta_id_fkey"
+            columns: ["ferramenta_id"]
+            isOneToOne: false
+            referencedRelation: "ferramentas_software"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ferramentas_software_licencas_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folha_pagamento: {
         Row: {
           ano_referencia: number
