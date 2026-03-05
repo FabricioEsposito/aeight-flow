@@ -124,7 +124,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    {!pago && qtdLicencas > 0 && (
+                    {qtdLicencas > 0 && !pago && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -133,6 +133,17 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                         onClick={() => onMarcarPago(f)}
                       >
                         <CreditCard className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {pago && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950"
+                        title="Desfazer pagamento"
+                        onClick={() => onDesfazerPagamento(f)}
+                      >
+                        <Undo2 className="w-4 h-4" />
                       </Button>
                     )}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(f)}>
