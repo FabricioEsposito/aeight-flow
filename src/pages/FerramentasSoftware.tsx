@@ -77,8 +77,8 @@ export default function FerramentasSoftware() {
 
         <div className="flex gap-2">
           <CentroCustoFilterSelect
-            selectedCentrosCusto={selectedCentrosCusto}
-            onChange={setSelectedCentrosCusto}
+            value={selectedCentrosCusto}
+            onValueChange={setSelectedCentrosCusto}
           />
         </div>
 
