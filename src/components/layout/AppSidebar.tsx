@@ -130,6 +130,19 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           };
         }
 
+        // Filter RH items based on permissions
+        if (group.name === "RH") {
+          const isAdminOrFinanceManager = role === 'admin' || role === 'finance_manager';
+          return {
+            ...group,
+            items: group.items.filter(item => {
+              if (item.url === '/rh/aprovacoes') return permissions.canApproveRH;
+              if (item.url === '/rh/confirmacao') return isAdminOrFinanceManager;
+              return true;
+            })
+          };
+        }
+
         return group;
       })
       .filter(Boolean) as NavGroup[];
