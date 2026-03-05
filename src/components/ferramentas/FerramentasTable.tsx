@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock, CreditCard } from "lucide-react";
 import { formatCurrencyWithSymbol } from "@/hooks/useCotacaoMoedas";
 import { isFerramentaVencida } from "@/hooks/useOverdueLicencas";
 
@@ -11,9 +11,10 @@ interface FerramentasTableProps {
   cotacoes?: Record<string, { cotacao: number; data: string } | null>;
   onEdit: (ferramenta: any) => void;
   onManageLicencas: (ferramenta: any) => void;
+  onMarcarPago: (ferramenta: any) => void;
 }
 
-export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas }: FerramentasTableProps) {
+export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas, onMarcarPago }: FerramentasTableProps) {
   const formatBRL = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
@@ -38,7 +39,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
             <TableHead className="text-center">Vencimento</TableHead>
             <TableHead className="text-center">Pagamento</TableHead>
             <TableHead className="text-center">Status</TableHead>
-            <TableHead className="w-24">Ações</TableHead>
+            <TableHead className="w-28">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -51,7 +52,8 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
             const valido = Math.abs(somaLicencasBRL - valorMensalBRL) < 0.01;
             const ccDistribution = f.cc_distribution || [];
             const isForeign = moeda !== "BRL";
-            const vencida = qtdLicencas > 0 && f.recorrente && isFerramentaVencida(f.dia_vencimento || 1);
+            const pago = !!f.pago_mes_atual;
+            const vencida = qtdLicencas > 0 && f.recorrente && isFerramentaVencida(f.dia_vencimento || 1, pago);
 
             return (
               <TableRow key={f.id} className="cursor-pointer" onClick={() => onManageLicencas(f)}>
@@ -92,13 +94,17 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                 <TableCell className="text-center">
                   {qtdLicencas === 0 ? (
                     <span className="text-muted-foreground text-xs">—</span>
+                  ) : pago ? (
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
+                      <CheckCircle className="w-3 h-3" /> Pago
+                    </Badge>
                   ) : vencida ? (
                     <Badge variant="destructive" className="gap-1">
                       <Clock className="w-3 h-3" /> Vencida
                     </Badge>
                   ) : (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
-                      <CheckCircle className="w-3 h-3" /> Em dia
+                    <Badge variant="outline" className="gap-1">
+                      <Clock className="w-3 h-3" /> Pendente
                     </Badge>
                   )}
                 </TableCell>
@@ -117,6 +123,17 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    {!pago && qtdLicencas > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                        title="Marcar como pago"
+                        onClick={() => onMarcarPago(f)}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(f)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
