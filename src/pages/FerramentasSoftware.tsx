@@ -28,44 +28,49 @@ export default function FerramentasSoftware() {
       const ids = (data || []).map((f: any) => f.id);
       if (ids.length === 0) return [];
 
+      // Fetch licenses
       const { data: licencas, error: licError } = await supabase
         .from("ferramentas_software_licencas" as any)
-        .select("ferramenta_id, valor_licenca, moeda, centro_custo_id, centros_custo(id, descricao, codigo)")
+        .select("id, ferramenta_id, valor_licenca, moeda")
         .in("ferramenta_id", ids)
         .eq("status", "ativo");
-
       if (licError) throw licError;
 
-      const aggMap: Record<string, { soma: number; count: number; moedas: Set<string>; ccMap: Record<string, { descricao: string; codigo: string; valor: number }>; licencasList: any[] }> = {};
+      // Fetch CC allocations for all licenses
+      const licIds = (licencas || []).map((l: any) => l.id);
+      let ccAllocations: any[] = [];
+      if (licIds.length > 0) {
+        const { data: ccData } = await supabase
+          .from("ferramentas_licencas_centros_custo" as any)
+          .select("licenca_id, centro_custo_id, percentual, centros_custo(id, descricao, codigo)")
+          .in("licenca_id", licIds);
+        ccAllocations = ccData || [];
+      }
+
+      // Group CC allocations by license
+      const ccByLicenca: Record<string, any[]> = {};
+      ccAllocations.forEach((cc: any) => {
+        if (!ccByLicenca[cc.licenca_id]) ccByLicenca[cc.licenca_id] = [];
+        ccByLicenca[cc.licenca_id].push(cc);
+      });
+
+      // Aggregate per tool
+      const aggMap: Record<string, { soma: number; count: number; moedas: Set<string>; licencasList: any[] }> = {};
       (licencas || []).forEach((l: any) => {
-        if (!aggMap[l.ferramenta_id]) aggMap[l.ferramenta_id] = { soma: 0, count: 0, moedas: new Set(), ccMap: {}, licencasList: [] };
+        if (!aggMap[l.ferramenta_id]) aggMap[l.ferramenta_id] = { soma: 0, count: 0, moedas: new Set(), licencasList: [] };
         const agg = aggMap[l.ferramenta_id];
-        const val = Number(l.valor_licenca || 0);
-        agg.soma += val;
+        agg.soma += Number(l.valor_licenca || 0);
         agg.count += 1;
         agg.moedas.add(l.moeda || "BRL");
-        agg.licencasList.push(l);
-        if (l.centros_custo) {
-          const ccId = l.centros_custo.id;
-          if (!agg.ccMap[ccId]) agg.ccMap[ccId] = { descricao: l.centros_custo.descricao, codigo: l.centros_custo.codigo, valor: 0 };
-          agg.ccMap[ccId].valor += val;
-        }
+        agg.licencasList.push({ ...l, cc_allocs: ccByLicenca[l.id] || [] });
       });
 
       return (data || []).map((f: any) => {
         const agg = aggMap[f.id];
-        const soma = agg?.soma || 0;
-        const ccDistribution = agg ? Object.entries(agg.ccMap).map(([id, info]) => ({
-          id,
-          ...info,
-          percentual: soma > 0 ? (info.valor / soma) * 100 : 0,
-        })) : [];
-
         return {
           ...f,
-          licencas_soma: soma,
+          licencas_soma: agg?.soma || 0,
           licencas_count: agg?.count || 0,
-          cc_distribution: ccDistribution,
           moedas_usadas: agg ? Array.from(agg.moedas) : [],
           licencas_list: agg?.licencasList || [],
         };
@@ -73,27 +78,43 @@ export default function FerramentasSoftware() {
     },
   });
 
-  // Collect all unique currencies used across all tools
+  // Collect all unique currencies
   const allMoedas = Array.from(new Set(
     ferramentas.flatMap((f: any) => [f.moeda || "BRL", ...(f.moedas_usadas || [])])
   ));
 
   const { data: cotacoes } = useCotacaoMoedas(allMoedas);
 
-  // Enrich ferramentas with BRL-converted values
+  // Enrich ferramentas with BRL-converted values and CC distribution
   const enrichedFerramentas = ferramentas.map((f: any) => {
     const valorMensalBRL = convertToBRL(Number(f.valor_mensal || 0), f.moeda || "BRL", cotacoes);
-    
-    // Sum licenses converting each to BRL
+
     let somaLicencasBRL = 0;
+    const ccMap: Record<string, { descricao: string; codigo: string; valor: number }> = {};
+
     (f.licencas_list || []).forEach((l: any) => {
-      somaLicencasBRL += convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
+      const valorBRL = convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
+      somaLicencasBRL += valorBRL;
+
+      (l.cc_allocs || []).forEach((cc: any) => {
+        const ccInfo = cc.centros_custo;
+        if (!ccInfo) return;
+        if (!ccMap[ccInfo.id]) ccMap[ccInfo.id] = { descricao: ccInfo.descricao, codigo: ccInfo.codigo, valor: 0 };
+        ccMap[ccInfo.id].valor += valorBRL * (Number(cc.percentual) / 100);
+      });
     });
+
+    const ccDistribution = Object.entries(ccMap).map(([id, info]) => ({
+      id,
+      ...info,
+      percentual: somaLicencasBRL > 0 ? (info.valor / somaLicencasBRL) * 100 : 0,
+    }));
 
     return {
       ...f,
       valor_mensal_brl: valorMensalBRL,
       licencas_soma_brl: somaLicencasBRL,
+      cc_distribution: ccDistribution,
     };
   });
 
