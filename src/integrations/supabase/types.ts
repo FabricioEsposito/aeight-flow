@@ -798,6 +798,48 @@ export type Database = {
           },
         ]
       }
+      ferramentas_licencas_centros_custo: {
+        Row: {
+          centro_custo_id: string
+          created_at: string
+          id: string
+          licenca_id: string
+          percentual: number
+          updated_at: string
+        }
+        Insert: {
+          centro_custo_id: string
+          created_at?: string
+          id?: string
+          licenca_id: string
+          percentual?: number
+          updated_at?: string
+        }
+        Update: {
+          centro_custo_id?: string
+          created_at?: string
+          id?: string
+          licenca_id?: string
+          percentual?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ferramentas_licencas_centros_custo_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ferramentas_licencas_centros_custo_licenca_id_fkey"
+            columns: ["licenca_id"]
+            isOneToOne: false
+            referencedRelation: "ferramentas_software_licencas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ferramentas_software: {
         Row: {
           centro_custo_id: string | null
@@ -844,7 +886,6 @@ export type Database = {
       }
       ferramentas_software_licencas: {
         Row: {
-          centro_custo_id: string | null
           created_at: string
           descricao_usuario: string | null
           ferramenta_id: string
@@ -856,7 +897,6 @@ export type Database = {
           valor_licenca: number
         }
         Insert: {
-          centro_custo_id?: string | null
           created_at?: string
           descricao_usuario?: string | null
           ferramenta_id: string
@@ -868,7 +908,6 @@ export type Database = {
           valor_licenca?: number
         }
         Update: {
-          centro_custo_id?: string | null
           created_at?: string
           descricao_usuario?: string | null
           ferramenta_id?: string
@@ -880,13 +919,6 @@ export type Database = {
           valor_licenca?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "ferramentas_software_licencas_centro_custo_id_fkey"
-            columns: ["centro_custo_id"]
-            isOneToOne: false
-            referencedRelation: "centros_custo"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "ferramentas_software_licencas_ferramenta_id_fkey"
             columns: ["ferramenta_id"]
