@@ -4,7 +4,7 @@ import {
   Truck, 
   FileText, 
   CreditCard, 
-  TreePine, 
+  Monitor, 
   TrendingUp, 
   TrendingDown, 
   BarChart3,
@@ -82,6 +82,7 @@ const allNavigationGroups: NavGroup[] = [
       { title: "Contas Bancárias", url: "/contas-bancarias", icon: CreditCard },
       { title: "Centro de Custos", url: "/centro-custos", icon: FolderKanban },
       { title: "Plano de Contas", url: "/plano-contas", icon: TreePine },
+      { title: "Ferramentas de Software", url: "/ferramentas-software", icon: Monitor },
     ]
   },
 ];
