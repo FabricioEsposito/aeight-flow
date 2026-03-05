@@ -1,66 +1,56 @@
 
 
-## Plano Consolidado: Holerite - Upload PDF, Template de E-mail e Envio
+## Plano: Controle de Ferramentas de Software
 
-### 1. Migration SQL
+### Objetivo
+Criar uma nova área dentro do Financeiro para gerenciar ferramentas de software (ex: Adobe, Google Workspace), com controle de licenças por fornecedor/pessoa, custo individual e total mensal, segmentado por centro de custo.
 
-- Criar bucket `holerites` (público) no storage
-- Adicionar coluna `holerite_url` (text, nullable) na tabela `folha_pagamento`
-- RLS policies para o bucket (authenticated can upload/read/delete)
+### Modelo de Dados (2 novas tabelas)
 
-### 2. Simplificar EditFolhaDialog
+**`ferramentas_software`** — cadastro das ferramentas
+- `id` (uuid, PK)
+- `nome` (varchar) — ex: "Adobe Creative Cloud"
+- `descricao` (text, nullable)
+- `centro_custo_id` (uuid, FK → centros_custo)
+- `valor_mensal` (numeric) — valor total esperado/mês
+- `status` (varchar, default 'ativo')
+- `created_at`, `updated_at`
 
-Remover do formulário:
-- **Tipo de Vínculo** (select CLT/PJ)
-- **Salário Base** (currency input)
-- **Outros Proventos** (currency input)
-- **Outros Descontos** (currency input)
+**`ferramentas_software_licencas`** — licenças individuais por fornecedor/pessoa
+- `id` (uuid, PK)
+- `ferramenta_id` (uuid, FK → ferramentas_software)
+- `fornecedor_id` (uuid, FK → fornecedores) — a pessoa/empresa que usa
+- `descricao_usuario` (text, nullable) — nome do usuário da licença
+- `valor_licenca` (numeric) — custo dessa licença
+- `status` (varchar, default 'ativo')
+- `created_at`, `updated_at`
 
-O valor líquido será o valor da parcela diretamente. Manter: data de vencimento, status, observações.
+RLS: mesmas políticas do padrão financeiro (SELECT para authenticated, INSERT para authenticated, UPDATE para finance roles, DELETE para admin).
 
-Adicionar **FileUpload de holerite** (condicional): exibido apenas quando `plano_contas_id` for `30a56eb0-cfba-4e09-9f43-bf3cd39873bc` (2.1.2 - Salário CLT) ou `c1b3c1bf-c014-46f0-baa7-cdea1c3b0ac7` (3.1.1 - Salário CLT). Usa o componente `FileUpload` existente com bucket `holerites`.
+### Componentes Frontend
 
-### 3. Edge Function `send-holerite-email`
+1. **Página `FerramentasSoftware.tsx`** — lista de ferramentas com filtro por centro de custo (multi-select), exibindo nome, centro de custo, valor mensal total, quantidade de licenças, e um badge de validação (soma licenças vs valor total)
 
-**Template HTML profissional** seguindo o padrão visual do `send-billing-emails`:
+2. **Dialog `NovaFerramentaDialog.tsx`** — formulário para criar/editar ferramenta (nome, descrição, centro de custo, valor mensal)
 
-- **Header:** Gradiente roxo (`#4f46e5` → `#818cf8`), título "Holerite", subtítulo "Recursos Humanos - Aeight"
-- **Corpo:**
-  - Saudação personalizada ao fornecedor (nome fantasia ou razão social)
-  - Mensagem: "Segue em anexo o holerite referente à competência **Mês/Ano**."
-  - Card resumo com Competência e Valor Líquido
-  - Indicador de anexo (📎 PDF)
-- **Rodapé:** Contato `rh@aeight.global`, copyright Aeight
-- **Anexo:** PDF do holerite (via URL do storage)
-- **Remetente:** `rh@financeiro.aeight.global`
+3. **Dialog `GerenciarLicencasDialog.tsx`** — ao clicar numa ferramenta, abre detalhes com tabela de licenças (fornecedor, descrição do usuário, valor). Permite adicionar/editar/remover licenças. Exibe alerta se soma das licenças ≠ valor total da ferramenta
 
-**Lógica:**
-1. Recebe `{ folha_id }`
-2. Busca `folha_pagamento` → `fornecedor` (email) + `holerite_url`
-3. Valida que existe holerite e e-mail
-4. Envia via Resend com PDF em anexo
-5. Registra em `email_logs`
+### Navegação
 
-### 4. UI na FolhaPagamentoTab
+- Adicionar item "Ferramentas de Software" no grupo "Financeiro" do sidebar, com ícone `Monitor` (lucide)
+- Rota: `/ferramentas-software`
 
-- Passar `plano_contas_id` para o `EditFolhaDialog`
-- Adicionar botão de envio de e-mail (ícone Mail) na coluna de ações, visível apenas para registros com categoria Salário CLT **e** que tenham holerite anexado
-- Toast de sucesso/erro no envio
+### Validação
 
-### 5. Config
+- A soma dos `valor_licenca` de todas as licenças ativas de uma ferramenta deve ser comparada com o `valor_mensal`. Exibir indicador visual (verde se bate, vermelho se diverge)
 
-```toml
-[functions.send-holerite-email]
-verify_jwt = false
-```
+### Arquivos a criar/editar
 
-### Arquivos afetados
-
-| Arquivo | Ação |
-|---|---|
-| Migration SQL | Bucket `holerites` + coluna `holerite_url` |
-| `src/components/rh/EditFolhaDialog.tsx` | Simplificar campos, adicionar FileUpload condicional, salvar `holerite_url` |
-| `src/components/rh/FolhaPagamentoTab.tsx` | Botão enviar holerite na tabela |
-| `supabase/functions/send-holerite-email/index.ts` | Nova edge function com template |
-| `supabase/config.toml` | Registrar nova função |
+- **Migração SQL**: criar tabelas `ferramentas_software` e `ferramentas_software_licencas` com RLS
+- **`src/pages/FerramentasSoftware.tsx`**: página principal
+- **`src/components/ferramentas/NovaFerramentaDialog.tsx`**: criar/editar ferramenta
+- **`src/components/ferramentas/GerenciarLicencasDialog.tsx`**: gerenciar licenças
+- **`src/components/ferramentas/FerramentasTable.tsx`**: tabela de ferramentas
+- **`src/components/layout/AppSidebar.tsx`**: adicionar item no menu
+- **`src/App.tsx`**: adicionar rota protegida
 
