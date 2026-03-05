@@ -4,7 +4,9 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
 
 export default function RHAprovacoes() {
-  const { permissions } = useUserRole();
+  const { permissions, loading } = useUserRole();
+
+  if (loading) return null;
 
   if (!permissions.canApproveRH) {
     return <Navigate to="/rh" replace />;
