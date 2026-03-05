@@ -65,7 +65,11 @@ const allNavigationGroups: NavGroup[] = [
   {
     name: "RH",
     items: [
-      { title: "Recursos Humanos", url: "/rh", icon: Briefcase },
+      { title: "Dashboard RH", url: "/rh", icon: BarChart3 },
+      { title: "Folha de Pagamento", url: "/rh/folha", icon: FileText },
+      { title: "Benefícios", url: "/rh/beneficios", icon: Briefcase },
+      { title: "Aprovações RH", url: "/rh/aprovacoes", icon: ClipboardList },
+      { title: "Confirmação Financeiro", url: "/rh/confirmacao", icon: DollarSign },
     ]
   },
   {
@@ -123,6 +127,19 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
             items: group.items.filter(item => 
               item.url === '/dashboard-comercial' || item.url === '/comissionamento'
             )
+          };
+        }
+
+        // Filter RH items based on permissions
+        if (group.name === "RH") {
+          const isAdminOrFinanceManager = role === 'admin' || role === 'finance_manager';
+          return {
+            ...group,
+            items: group.items.filter(item => {
+              if (item.url === '/rh/aprovacoes') return permissions.canApproveRH;
+              if (item.url === '/rh/confirmacao') return isAdminOrFinanceManager;
+              return true;
+            })
           };
         }
 
