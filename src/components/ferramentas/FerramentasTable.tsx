@@ -85,6 +85,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                   <span>{formatBRL(somaLicencasBRL)}</span>
                 </TableCell>
                 <TableCell className="text-center">{qtdLicencas}</TableCell>
+                <TableCell className="text-center">Dia {f.dia_vencimento || 1}</TableCell>
                 <TableCell className="text-center">
                   {qtdLicencas === 0 ? (
                     <Badge variant="secondary">Sem licenças</Badge>
