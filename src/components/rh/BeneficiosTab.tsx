@@ -38,6 +38,8 @@ interface BeneficioParcelaRecord {
   beneficio_id: string | null;
   plano_contas_id: string | null;
   plano_contas_descricao: string;
+  link_nf: string | null;
+  link_boleto: string | null;
 }
 
 
@@ -124,7 +126,7 @@ export function BeneficiosTab() {
       // 3. Fetch contas_pagar linked to these parcelas
       const { data: contasPagar } = await supabase
         .from('contas_pagar')
-        .select('id, parcela_id, status, data_competencia, data_pagamento')
+        .select('id, parcela_id, status, data_competencia, data_pagamento, link_nf, link_boleto')
         .in('parcela_id', parcelaIds);
 
       // 4. Fetch controle_beneficios for tipo_beneficio
@@ -186,6 +188,8 @@ export function BeneficiosTab() {
           beneficio_id: beneficio?.id || null,
           plano_contas_id: contrato?.plano_contas_id || null,
           plano_contas_descricao: contrato?.plano_contas ? `${contrato.plano_contas.codigo} - ${contrato.plano_contas.descricao}` : '-',
+          link_nf: cp?.link_nf || null,
+          link_boleto: cp?.link_boleto || null,
         };
       });
 
