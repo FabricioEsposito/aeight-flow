@@ -38,6 +38,8 @@ interface BeneficioParcelaRecord {
   beneficio_id: string | null;
   plano_contas_id: string | null;
   plano_contas_descricao: string;
+  link_nf: string | null;
+  link_boleto: string | null;
 }
 
 

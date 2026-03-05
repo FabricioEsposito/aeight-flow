@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
+import { FileUpload } from '@/components/ui/file-upload';
 
 const tiposBeneficio = ['VR', 'VA', 'VT', 'Plano de Saude', 'Plano Odontologico', 'Seguro de Vida', 'Outros'];
 
@@ -22,6 +23,8 @@ interface BeneficioParcelaRecord {
   centros_custo: Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>;
   conta_pagar_id: string | null;
   beneficio_id: string | null;
+  link_nf?: string | null;
+  link_boleto?: string | null;
 }
 
 interface EditBeneficioDialogProps {
@@ -36,6 +39,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   const [valor, setValor] = useState(0);
   const [observacoes, setObservacoes] = useState('');
   const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
+  const [linkNf, setLinkNf] = useState<string | null>(null);
+  const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -45,6 +50,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       setTipoBeneficio(record.tipo_beneficio || 'Outros');
       setValor(record.valor);
       setObservacoes('');
+      setLinkNf(record.link_nf || null);
+      setLinkBoleto(record.link_boleto || null);
       setCentroCustoRateio(
         record.centros_custo.map(cc => ({
           centro_custo_id: cc.centro_custo_id,
@@ -77,16 +84,16 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
         .eq('id', record.parcela_id);
       if (parcelaError) throw parcelaError;
 
-      // 2. Update contas_pagar valor if linked
+      // 2. Update contas_pagar valor, link_nf, link_boleto if linked
       if (record.conta_pagar_id) {
         await supabase
           .from('contas_pagar')
-          .update({ valor })
+          .update({ valor, link_nf: linkNf, link_boleto: linkBoleto })
           .eq('id', record.conta_pagar_id);
       }
 
       // 3. Upsert controle_beneficios
-      const vencDate = new Date(); // We use current month/year for reference
+      const vencDate = new Date();
       const beneficioPayload: any = {
         fornecedor_id: record.fornecedor_id,
         contrato_id: record.contrato_id,
@@ -111,13 +118,11 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       }
 
       // 4. Update centro de custo rateio for the contract
-      // Delete existing
       await supabase
         .from('contratos_centros_custo')
         .delete()
         .eq('contrato_id', record.contrato_id);
 
-      // Insert new rateio
       if (centroCustoRateio.length > 0) {
         const rateioInserts = centroCustoRateio.map(item => ({
           contrato_id: record.contrato_id,
@@ -144,6 +149,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   };
 
   if (!record) return null;
+
+  const uploadBasePath = `beneficios/${record.contrato_id}/${record.parcela_id}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,6 +181,25 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
               value={centroCustoRateio}
               onChange={setCentroCustoRateio}
               valorTotal={valor}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FileUpload
+              bucket="faturamento-docs"
+              path={`${uploadBasePath}/nf-${Date.now()}.pdf`}
+              value={linkNf}
+              onChange={setLinkNf}
+              accept="application/pdf,image/*"
+              label="Nota Fiscal (NF)"
+            />
+            <FileUpload
+              bucket="faturamento-docs"
+              path={`${uploadBasePath}/boleto-${Date.now()}.pdf`}
+              value={linkBoleto}
+              onChange={setLinkBoleto}
+              accept="application/pdf,image/*"
+              label="Boleto"
             />
           </div>
 
