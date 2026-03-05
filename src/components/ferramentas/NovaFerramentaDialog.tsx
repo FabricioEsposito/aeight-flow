@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,8 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
   const [descricao, setDescricao] = useState("");
   const [valorMensal, setValorMensal] = useState(0);
   const [moeda, setMoeda] = useState("BRL");
+  const [recorrente, setRecorrente] = useState(true);
+  const [diaVencimento, setDiaVencimento] = useState(1);
 
   useEffect(() => {
     if (ferramenta) {
@@ -32,11 +35,15 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
       setDescricao(ferramenta.descricao || "");
       setValorMensal(ferramenta.valor_mensal || 0);
       setMoeda(ferramenta.moeda || "BRL");
+      setRecorrente(ferramenta.recorrente ?? true);
+      setDiaVencimento(ferramenta.dia_vencimento ?? 1);
     } else {
       setNome("");
       setDescricao("");
       setValorMensal(0);
       setMoeda("BRL");
+      setRecorrente(true);
+      setDiaVencimento(1);
     }
   }, [ferramenta, open]);
 
@@ -44,6 +51,10 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
     e.preventDefault();
     if (!nome) {
       toast({ title: "Preencha o nome da ferramenta", variant: "destructive" });
+      return;
+    }
+    if (diaVencimento < 1 || diaVencimento > 31) {
+      toast({ title: "Dia de vencimento deve ser entre 1 e 31", variant: "destructive" });
       return;
     }
 
@@ -54,6 +65,8 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
         descricao: descricao || null,
         valor_mensal: valorMensal,
         moeda,
+        recorrente,
+        dia_vencimento: diaVencimento,
       };
 
       if (ferramenta) {
@@ -114,6 +127,28 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
             <div className="space-y-2">
               <Label>Valor Mensal ({selectedMoeda?.symbol})</Label>
               <CurrencyInput value={valorMensal} onChange={setValorMensal} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                id="recorrente"
+                checked={recorrente}
+                onCheckedChange={(checked) => setRecorrente(checked === true)}
+              />
+              <Label htmlFor="recorrente" className="cursor-pointer text-sm">
+                Recorrente (lançar todo mês)
+              </Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Dia de Vencimento</Label>
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={diaVencimento}
+                onChange={(e) => setDiaVencimento(Number(e.target.value))}
+              />
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
