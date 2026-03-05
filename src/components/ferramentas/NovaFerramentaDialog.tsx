@@ -96,7 +96,7 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
           </div>
           <div className="space-y-2">
             <Label>Centro de Custo *</Label>
-            <CentroCustoSelect value={centroCustoId} onChange={setCentroCustoId} />
+            <CentroCustoSelect value={centroCustoId} onValueChange={setCentroCustoId} />
           </div>
           <div className="space-y-2">
             <Label>Valor Mensal Total (R$)</Label>
