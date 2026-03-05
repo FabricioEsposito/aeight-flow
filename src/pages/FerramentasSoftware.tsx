@@ -7,6 +7,7 @@ import { FerramentasTable } from "@/components/ferramentas/FerramentasTable";
 import { NovaFerramentaDialog } from "@/components/ferramentas/NovaFerramentaDialog";
 import { GerenciarLicencasDialog } from "@/components/ferramentas/GerenciarLicencasDialog";
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
+import { useCotacaoMoedas, convertToBRL } from "@/hooks/useCotacaoMoedas";
 
 export default function FerramentasSoftware() {
   const [showNovaDialog, setShowNovaDialog] = useState(false);
@@ -27,23 +28,23 @@ export default function FerramentasSoftware() {
       const ids = (data || []).map((f: any) => f.id);
       if (ids.length === 0) return [];
 
-      // Fetch licenses with their cost centers
       const { data: licencas, error: licError } = await supabase
         .from("ferramentas_software_licencas" as any)
-        .select("ferramenta_id, valor_licenca, centro_custo_id, centros_custo(id, descricao, codigo)")
+        .select("ferramenta_id, valor_licenca, moeda, centro_custo_id, centros_custo(id, descricao, codigo)")
         .in("ferramenta_id", ids)
         .eq("status", "ativo");
 
       if (licError) throw licError;
 
-      // Aggregate per tool: total, count, and cost center distribution
-      const aggMap: Record<string, { soma: number; count: number; ccMap: Record<string, { descricao: string; codigo: string; valor: number }> }> = {};
+      const aggMap: Record<string, { soma: number; count: number; moedas: Set<string>; ccMap: Record<string, { descricao: string; codigo: string; valor: number }>; licencasList: any[] }> = {};
       (licencas || []).forEach((l: any) => {
-        if (!aggMap[l.ferramenta_id]) aggMap[l.ferramenta_id] = { soma: 0, count: 0, ccMap: {} };
+        if (!aggMap[l.ferramenta_id]) aggMap[l.ferramenta_id] = { soma: 0, count: 0, moedas: new Set(), ccMap: {}, licencasList: [] };
         const agg = aggMap[l.ferramenta_id];
         const val = Number(l.valor_licenca || 0);
         agg.soma += val;
         agg.count += 1;
+        agg.moedas.add(l.moeda || "BRL");
+        agg.licencasList.push(l);
         if (l.centros_custo) {
           const ccId = l.centros_custo.id;
           if (!agg.ccMap[ccId]) agg.ccMap[ccId] = { descricao: l.centros_custo.descricao, codigo: l.centros_custo.codigo, valor: 0 };
@@ -65,17 +66,42 @@ export default function FerramentasSoftware() {
           licencas_soma: soma,
           licencas_count: agg?.count || 0,
           cc_distribution: ccDistribution,
+          moedas_usadas: agg ? Array.from(agg.moedas) : [],
+          licencas_list: agg?.licencasList || [],
         };
       });
     },
   });
 
-  // Filter by cost center: show tools that have at least one license in the selected cost centers
+  // Collect all unique currencies used across all tools
+  const allMoedas = Array.from(new Set(
+    ferramentas.flatMap((f: any) => [f.moeda || "BRL", ...(f.moedas_usadas || [])])
+  ));
+
+  const { data: cotacoes } = useCotacaoMoedas(allMoedas);
+
+  // Enrich ferramentas with BRL-converted values
+  const enrichedFerramentas = ferramentas.map((f: any) => {
+    const valorMensalBRL = convertToBRL(Number(f.valor_mensal || 0), f.moeda || "BRL", cotacoes);
+    
+    // Sum licenses converting each to BRL
+    let somaLicencasBRL = 0;
+    (f.licencas_list || []).forEach((l: any) => {
+      somaLicencasBRL += convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
+    });
+
+    return {
+      ...f,
+      valor_mensal_brl: valorMensalBRL,
+      licencas_soma_brl: somaLicencasBRL,
+    };
+  });
+
   const filteredFerramentas = selectedCentrosCusto.length > 0
-    ? ferramentas.filter((f: any) =>
+    ? enrichedFerramentas.filter((f: any) =>
         (f.cc_distribution || []).some((cc: any) => selectedCentrosCusto.includes(cc.id))
       )
-    : ferramentas;
+    : enrichedFerramentas;
 
   return (
     <div className="space-y-6">
@@ -104,6 +130,7 @@ export default function FerramentasSoftware() {
       <FerramentasTable
         ferramentas={filteredFerramentas}
         loading={isLoading}
+        cotacoes={cotacoes}
         onEdit={(f) => { setEditingFerramenta(f); setShowNovaDialog(true); }}
         onManageLicencas={(f) => setManagingFerramenta(f)}
       />
@@ -119,6 +146,7 @@ export default function FerramentasSoftware() {
           open={!!managingFerramenta}
           onOpenChange={(v) => { if (!v) setManagingFerramenta(null); }}
           ferramenta={managingFerramenta}
+          cotacoes={cotacoes}
         />
       )}
     </div>

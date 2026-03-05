@@ -804,6 +804,7 @@ export type Database = {
           created_at: string
           descricao: string | null
           id: string
+          moeda: string
           nome: string
           status: string
           updated_at: string
@@ -814,6 +815,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          moeda?: string
           nome: string
           status?: string
           updated_at?: string
@@ -824,6 +826,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          moeda?: string
           nome?: string
           status?: string
           updated_at?: string
@@ -847,6 +850,7 @@ export type Database = {
           ferramenta_id: string
           fornecedor_id: string
           id: string
+          moeda: string
           status: string
           updated_at: string
           valor_licenca: number
@@ -858,6 +862,7 @@ export type Database = {
           ferramenta_id: string
           fornecedor_id: string
           id?: string
+          moeda?: string
           status?: string
           updated_at?: string
           valor_licenca?: number
@@ -869,6 +874,7 @@ export type Database = {
           ferramenta_id?: string
           fornecedor_id?: string
           id?: string
+          moeda?: string
           status?: string
           updated_at?: string
           valor_licenca?: number
