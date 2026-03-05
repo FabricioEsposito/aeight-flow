@@ -13,8 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, AlertTriangle, CheckCircle, Pencil } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
+import { CentroCustoRateio, RateioItem } from "@/components/contratos/CentroCustoRateio";
 import { MOEDAS_DISPONIVEIS, formatCurrencyWithSymbol, convertToBRL } from "@/hooks/useCotacaoMoedas";
+import { CompanyTagWithPercent } from "@/components/centro-custos/CompanyBadge";
 
 interface GerenciarLicencasDialogProps {
   open: boolean;
@@ -29,26 +30,48 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fornecedorId, setFornecedorId] = useState("");
-  const [centroCustoId, setCentroCustoId] = useState("");
   const [descricaoUsuario, setDescricaoUsuario] = useState("");
   const [valorLicenca, setValorLicenca] = useState(0);
   const [moeda, setMoeda] = useState("BRL");
+  const [rateio, setRateio] = useState<RateioItem[]>([]);
   const [saving, setSaving] = useState(false);
 
   const ferramentaId = ferramenta?.id;
 
+  // Fetch licenses with their cost center allocations
   const { data: licencas = [], isLoading } = useQuery({
     queryKey: ["ferramentas-licencas", ferramentaId],
     queryFn: async () => {
       if (!ferramentaId) return [];
       const { data, error } = await supabase
         .from("ferramentas_software_licencas" as any)
-        .select("*, fornecedores(razao_social, nome_fantasia), centros_custo(id, descricao, codigo)")
+        .select("*, fornecedores(razao_social, nome_fantasia)")
         .eq("ferramenta_id", ferramentaId)
         .eq("status", "ativo")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data || [];
+
+      // Fetch cost center allocations for all licenses
+      const licIds = (data || []).map((l: any) => l.id);
+      if (licIds.length === 0) return [];
+
+      const { data: ccData, error: ccError } = await supabase
+        .from("ferramentas_licencas_centros_custo" as any)
+        .select("*, centros_custo(id, descricao, codigo)")
+        .in("licenca_id", licIds);
+      if (ccError) throw ccError;
+
+      // Group CC allocations by license
+      const ccMap: Record<string, any[]> = {};
+      (ccData || []).forEach((cc: any) => {
+        if (!ccMap[cc.licenca_id]) ccMap[cc.licenca_id] = [];
+        ccMap[cc.licenca_id].push(cc);
+      });
+
+      return (data || []).map((l: any) => ({
+        ...l,
+        centros_custo_rateio: ccMap[l.id] || [],
+      }));
     },
     enabled: !!ferramentaId && open,
   });
@@ -83,14 +106,17 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
   const diferenca = Math.abs(somaLicencasBRL - valorMensalBRL);
   const valido = diferenca < 0.01;
 
-  // Cost center distribution (in BRL)
+  // Aggregate cost center distribution across all licenses (in BRL)
   const centroCustoDistribution = (() => {
     const map: Record<string, { descricao: string; codigo: string; valor: number }> = {};
     (licencas as any[]).forEach((l: any) => {
-      const cc = l.centros_custo;
-      if (!cc) return;
-      if (!map[cc.id]) map[cc.id] = { descricao: cc.descricao, codigo: cc.codigo, valor: 0 };
-      map[cc.id].valor += convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
+      const valorBRL = convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
+      (l.centros_custo_rateio || []).forEach((cc: any) => {
+        const ccInfo = cc.centros_custo;
+        if (!ccInfo) return;
+        if (!map[ccInfo.id]) map[ccInfo.id] = { descricao: ccInfo.descricao, codigo: ccInfo.codigo, valor: 0 };
+        map[ccInfo.id].valor += valorBRL * (Number(cc.percentual) / 100);
+      });
     });
     const total = somaLicencasBRL || 1;
     return Object.entries(map).map(([id, info]) => ({
@@ -100,15 +126,14 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
     }));
   })();
 
-  // Show exchange rate info
   const activeCotacao = cotacoes && ferramentaMoeda !== "BRL" ? cotacoes[ferramentaMoeda] : null;
 
   const resetForm = () => {
     setFornecedorId("");
-    setCentroCustoId("");
     setDescricaoUsuario("");
     setValorLicenca(0);
     setMoeda("BRL");
+    setRateio([]);
     setEditingId(null);
     setShowForm(false);
   };
@@ -116,10 +141,17 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
   const handleEdit = (licenca: any) => {
     setEditingId(licenca.id);
     setFornecedorId(licenca.fornecedor_id);
-    setCentroCustoId(licenca.centro_custo_id || "");
     setDescricaoUsuario(licenca.descricao_usuario || "");
     setValorLicenca(Number(licenca.valor_licenca));
     setMoeda(licenca.moeda || "BRL");
+    // Load existing rateio
+    const existingRateio = (licenca.centros_custo_rateio || []).map((cc: any) => ({
+      centro_custo_id: cc.centro_custo_id,
+      codigo: cc.centros_custo?.codigo || "",
+      descricao: cc.centros_custo?.descricao || "",
+      percentual: Number(cc.percentual),
+    }));
+    setRateio(existingRateio);
     setShowForm(true);
   };
 
@@ -128,36 +160,62 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
       toast({ title: "Selecione um fornecedor", variant: "destructive" });
       return;
     }
-    if (!centroCustoId) {
-      toast({ title: "Selecione um centro de custo", variant: "destructive" });
+    if (rateio.length === 0) {
+      toast({ title: "Adicione pelo menos um centro de custo", variant: "destructive" });
       return;
     }
+    const totalPerc = rateio.reduce((s, r) => s + r.percentual, 0);
+    if (Math.abs(totalPerc - 100) > 0.01) {
+      toast({ title: "A soma dos percentuais deve ser 100%", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
-      const data = {
+      const licData = {
         ferramenta_id: ferramentaId,
         fornecedor_id: fornecedorId,
-        centro_custo_id: centroCustoId,
         descricao_usuario: descricaoUsuario || null,
         valor_licenca: valorLicenca,
         moeda,
       };
 
+      let licencaId = editingId;
+
       if (editingId) {
         const { error } = await supabase
           .from("ferramentas_software_licencas" as any)
-          .update(data)
+          .update(licData)
           .eq("id", editingId);
         if (error) throw error;
-        toast({ title: "Licença atualizada" });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("ferramentas_software_licencas" as any)
-          .insert(data);
+          .insert(licData)
+          .select("id")
+          .single();
         if (error) throw error;
-        toast({ title: "Licença adicionada" });
+        licencaId = (data as any).id;
       }
 
+      // Update rateio: delete existing, insert new
+      await supabase
+        .from("ferramentas_licencas_centros_custo" as any)
+        .delete()
+        .eq("licenca_id", licencaId);
+
+      const ccInserts = rateio.map((r) => ({
+        licenca_id: licencaId,
+        centro_custo_id: r.centro_custo_id,
+        percentual: r.percentual,
+      }));
+
+      const { error: ccError } = await supabase
+        .from("ferramentas_licencas_centros_custo" as any)
+        .insert(ccInserts);
+      if (ccError) throw ccError;
+
+      toast({ title: editingId ? "Licença atualizada" : "Licença adicionada" });
       queryClient.invalidateQueries({ queryKey: ["ferramentas-licencas", ferramentaId] });
       queryClient.invalidateQueries({ queryKey: ["ferramentas-software"] });
       resetForm();
@@ -201,7 +259,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
         {/* Exchange Rate Info */}
         {activeCotacao && (
           <p className="text-xs text-muted-foreground">
-            Cotação {ferramentaMoeda}: {formatBRL(activeCotacao.cotacao)} 
+            Cotação {ferramentaMoeda}: {formatBRL(activeCotacao.cotacao)}
             {activeCotacao.data && ` (${new Date(activeCotacao.data).toLocaleDateString("pt-BR")})`}
           </p>
         )}
@@ -245,7 +303,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
               <TableRow>
                 <TableHead>Fornecedor/Pessoa</TableHead>
                 <TableHead>Usuário</TableHead>
-                <TableHead>Centro de Custo</TableHead>
+                <TableHead>Centros de Custo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="text-right">Valor (BRL)</TableHead>
                 <TableHead className="w-20">Ações</TableHead>
@@ -265,6 +323,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
                   const licMoeda = licenca.moeda || "BRL";
                   const valorOrig = Number(licenca.valor_licenca);
                   const valorBRL = convertToBRL(valorOrig, licMoeda, cotacoes);
+                  const ccRateio = licenca.centros_custo_rateio || [];
                   return (
                     <TableRow key={licenca.id}>
                       <TableCell className="font-medium">
@@ -272,9 +331,18 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
                       </TableCell>
                       <TableCell>{licenca.descricao_usuario || "—"}</TableCell>
                       <TableCell>
-                        {licenca.centros_custo ? (
-                          <Badge variant="outline" className="text-xs">{licenca.centros_custo.descricao}</Badge>
-                        ) : "—"}
+                        <div className="flex flex-wrap gap-1">
+                          {ccRateio.length > 0 ? ccRateio.map((cc: any) => (
+                            <CompanyTagWithPercent
+                              key={cc.id}
+                              codigo={cc.centros_custo?.codigo || ""}
+                              percentual={Number(cc.percentual)}
+                              className="text-xs"
+                            />
+                          )) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right text-xs">
                         {formatCurrencyWithSymbol(valorOrig, licMoeda)}
@@ -315,15 +383,11 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Centro de Custo *</Label>
-                <CentroCustoSelect value={centroCustoId} onValueChange={setCentroCustoId} />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
                 <Label className="text-xs">Usuário da Licença</Label>
                 <Input value={descricaoUsuario} onChange={(e) => setDescricaoUsuario(e.target.value)} placeholder="Nome do usuário" />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Moeda</Label>
                 <Select value={moeda} onValueChange={setMoeda}>
@@ -341,6 +405,13 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotaco
                 <Label className="text-xs">Valor da Licença</Label>
                 <CurrencyInput value={valorLicenca} onChange={setValorLicenca} />
               </div>
+            </div>
+            <div className="pt-2">
+              <CentroCustoRateio
+                value={rateio}
+                onChange={setRateio}
+                valorTotal={convertToBRL(valorLicenca, moeda, cotacoes)}
+              />
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={resetForm}>Cancelar</Button>
