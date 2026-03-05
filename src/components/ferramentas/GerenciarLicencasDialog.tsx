@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,14 +14,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, AlertTriangle, CheckCircle, Pencil } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
+import { MOEDAS_DISPONIVEIS, formatCurrencyWithSymbol, convertToBRL } from "@/hooks/useCotacaoMoedas";
 
 interface GerenciarLicencasDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ferramenta: any;
+  cotacoes?: Record<string, { cotacao: number; data: string } | null>;
 }
 
-export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: GerenciarLicencasDialogProps) {
+export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta, cotacoes }: GerenciarLicencasDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -29,6 +32,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
   const [centroCustoId, setCentroCustoId] = useState("");
   const [descricaoUsuario, setDescricaoUsuario] = useState("");
   const [valorLicenca, setValorLicenca] = useState(0);
+  const [moeda, setMoeda] = useState("BRL");
   const [saving, setSaving] = useState(false);
 
   const ferramentaId = ferramenta?.id;
@@ -68,21 +72,27 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
     label: f.nome_fantasia || f.razao_social,
   }));
 
-  const somaLicencas = (licencas as any[]).reduce((sum: number, l: any) => sum + Number(l.valor_licenca || 0), 0);
+  // Calculate totals in BRL
+  const somaLicencasBRL = (licencas as any[]).reduce((sum: number, l: any) => {
+    return sum + convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
+  }, 0);
+
+  const ferramentaMoeda = ferramenta?.moeda || "BRL";
   const valorMensal = Number(ferramenta?.valor_mensal || 0);
-  const diferenca = Math.abs(somaLicencas - valorMensal);
+  const valorMensalBRL = convertToBRL(valorMensal, ferramentaMoeda, cotacoes);
+  const diferenca = Math.abs(somaLicencasBRL - valorMensalBRL);
   const valido = diferenca < 0.01;
 
-  // Calculate cost center distribution
+  // Cost center distribution (in BRL)
   const centroCustoDistribution = (() => {
     const map: Record<string, { descricao: string; codigo: string; valor: number }> = {};
     (licencas as any[]).forEach((l: any) => {
       const cc = l.centros_custo;
       if (!cc) return;
       if (!map[cc.id]) map[cc.id] = { descricao: cc.descricao, codigo: cc.codigo, valor: 0 };
-      map[cc.id].valor += Number(l.valor_licenca || 0);
+      map[cc.id].valor += convertToBRL(Number(l.valor_licenca || 0), l.moeda || "BRL", cotacoes);
     });
-    const total = somaLicencas || 1;
+    const total = somaLicencasBRL || 1;
     return Object.entries(map).map(([id, info]) => ({
       id,
       ...info,
@@ -90,11 +100,15 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
     }));
   })();
 
+  // Show exchange rate info
+  const activeCotacao = cotacoes && ferramentaMoeda !== "BRL" ? cotacoes[ferramentaMoeda] : null;
+
   const resetForm = () => {
     setFornecedorId("");
     setCentroCustoId("");
     setDescricaoUsuario("");
     setValorLicenca(0);
+    setMoeda("BRL");
     setEditingId(null);
     setShowForm(false);
   };
@@ -105,6 +119,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
     setCentroCustoId(licenca.centro_custo_id || "");
     setDescricaoUsuario(licenca.descricao_usuario || "");
     setValorLicenca(Number(licenca.valor_licenca));
+    setMoeda(licenca.moeda || "BRL");
     setShowForm(true);
   };
 
@@ -125,6 +140,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
         centro_custo_id: centroCustoId,
         descricao_usuario: descricaoUsuario || null,
         valor_licenca: valorLicenca,
+        moeda,
       };
 
       if (editingId) {
@@ -167,7 +183,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
     }
   };
 
-  const formatCurrency = (value: number) =>
+  const formatBRL = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   return (
@@ -176,8 +192,19 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Licenças — {ferramenta?.nome}
+            {ferramentaMoeda !== "BRL" && (
+              <Badge variant="outline">{ferramentaMoeda}</Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Exchange Rate Info */}
+        {activeCotacao && (
+          <p className="text-xs text-muted-foreground">
+            Cotação {ferramentaMoeda}: {formatBRL(activeCotacao.cotacao)} 
+            {activeCotacao.data && ` (${new Date(activeCotacao.data).toLocaleDateString("pt-BR")})`}
+          </p>
+        )}
 
         {/* Validation Alert */}
         <Alert variant={valido ? "default" : "destructive"} className="mb-2">
@@ -185,15 +212,15 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
             {valido ? <CheckCircle className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4" />}
             <AlertDescription className="flex-1">
               <span className="font-medium">
-                Soma das licenças: {formatCurrency(somaLicencas)}
+                Soma licenças (BRL): {formatBRL(somaLicencasBRL)}
               </span>
               {" / "}
               <span className="font-medium">
-                Valor mensal: {formatCurrency(valorMensal)}
+                Valor mensal (BRL): {formatBRL(valorMensalBRL)}
               </span>
               {!valido && (
                 <span className="ml-2 text-destructive font-semibold">
-                  (Diferença: {formatCurrency(diferenca)})
+                  (Diferença: {formatBRL(diferenca)})
                 </span>
               )}
             </AlertDescription>
@@ -205,7 +232,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
           <div className="flex flex-wrap gap-2">
             {centroCustoDistribution.map((cc) => (
               <Badge key={cc.id} variant="outline" className="text-xs">
-                {cc.descricao} — {cc.percentual.toFixed(1)}% ({formatCurrency(cc.valor)})
+                {cc.descricao} — {cc.percentual.toFixed(1)}% ({formatBRL(cc.valor)})
               </Badge>
             ))}
           </div>
@@ -220,43 +247,54 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
                 <TableHead>Usuário</TableHead>
                 <TableHead>Centro de Custo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-right">Valor (BRL)</TableHead>
                 <TableHead className="w-20">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">Carregando...</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">Carregando...</TableCell>
                 </TableRow>
               ) : (licencas as any[]).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">Nenhuma licença cadastrada</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">Nenhuma licença cadastrada</TableCell>
                 </TableRow>
               ) : (
-                (licencas as any[]).map((licenca: any) => (
-                  <TableRow key={licenca.id}>
-                    <TableCell className="font-medium">
-                      {licenca.fornecedores?.nome_fantasia || licenca.fornecedores?.razao_social || "—"}
-                    </TableCell>
-                    <TableCell>{licenca.descricao_usuario || "—"}</TableCell>
-                    <TableCell>
-                      {licenca.centros_custo ? (
-                        <Badge variant="outline" className="text-xs">{licenca.centros_custo.descricao}</Badge>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(Number(licenca.valor_licenca))}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(licenca)}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(licenca.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                (licencas as any[]).map((licenca: any) => {
+                  const licMoeda = licenca.moeda || "BRL";
+                  const valorOrig = Number(licenca.valor_licenca);
+                  const valorBRL = convertToBRL(valorOrig, licMoeda, cotacoes);
+                  return (
+                    <TableRow key={licenca.id}>
+                      <TableCell className="font-medium">
+                        {licenca.fornecedores?.nome_fantasia || licenca.fornecedores?.razao_social || "—"}
+                      </TableCell>
+                      <TableCell>{licenca.descricao_usuario || "—"}</TableCell>
+                      <TableCell>
+                        {licenca.centros_custo ? (
+                          <Badge variant="outline" className="text-xs">{licenca.centros_custo.descricao}</Badge>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {formatCurrencyWithSymbol(valorOrig, licMoeda)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatBRL(valorBRL)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(licenca)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(licenca.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -281,13 +319,26 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
                 <CentroCustoSelect value={centroCustoId} onValueChange={setCentroCustoId} />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Usuário da Licença</Label>
                 <Input value={descricaoUsuario} onChange={(e) => setDescricaoUsuario(e.target.value)} placeholder="Nome do usuário" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Valor da Licença (R$)</Label>
+                <Label className="text-xs">Moeda</Label>
+                <Select value={moeda} onValueChange={setMoeda}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOEDAS_DISPONIVEIS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Valor da Licença</Label>
                 <CurrencyInput value={valorLicenca} onChange={setValorLicenca} />
               </div>
             </div>

@@ -2,16 +2,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Settings2, CheckCircle, AlertTriangle } from "lucide-react";
+import { formatCurrencyWithSymbol } from "@/hooks/useCotacaoMoedas";
 
 interface FerramentasTableProps {
   ferramentas: any[];
   loading: boolean;
+  cotacoes?: Record<string, { cotacao: number; data: string } | null>;
   onEdit: (ferramenta: any) => void;
   onManageLicencas: (ferramenta: any) => void;
 }
 
-export function FerramentasTable({ ferramentas, loading, onEdit, onManageLicencas }: FerramentasTableProps) {
-  const formatCurrency = (value: number) =>
+export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas }: FerramentasTableProps) {
+  const formatBRL = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   if (loading) {
@@ -38,15 +40,25 @@ export function FerramentasTable({ ferramentas, loading, onEdit, onManageLicenca
         </TableHeader>
         <TableBody>
           {ferramentas.map((f: any) => {
-            const somaLicencas = (f.licencas_soma as number) || 0;
-            const qtdLicencas = (f.licencas_count as number) || 0;
+            const moeda = f.moeda || "BRL";
             const valorMensal = Number(f.valor_mensal || 0);
-            const valido = Math.abs(somaLicencas - valorMensal) < 0.01;
+            const valorMensalBRL = f.valor_mensal_brl ?? valorMensal;
+            const somaLicencasBRL = f.licencas_soma_brl ?? f.licencas_soma ?? 0;
+            const qtdLicencas = (f.licencas_count as number) || 0;
+            const valido = Math.abs(somaLicencasBRL - valorMensalBRL) < 0.01;
             const ccDistribution = f.cc_distribution || [];
+            const isForeign = moeda !== "BRL";
 
             return (
               <TableRow key={f.id} className="cursor-pointer" onClick={() => onManageLicencas(f)}>
-                <TableCell className="font-medium">{f.nome}</TableCell>
+                <TableCell className="font-medium">
+                  <div>
+                    {f.nome}
+                    {isForeign && (
+                      <Badge variant="outline" className="ml-2 text-xs">{moeda}</Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {ccDistribution.length > 0 ? ccDistribution.map((cc: any) => (
@@ -58,8 +70,19 @@ export function FerramentasTable({ ferramentas, loading, onEdit, onManageLicenca
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-right">{formatCurrency(valorMensal)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(somaLicencas)}</TableCell>
+                <TableCell className="text-right">
+                  <div>
+                    {isForeign && (
+                      <span className="text-xs text-muted-foreground block">
+                        {formatCurrencyWithSymbol(valorMensal, moeda)}
+                      </span>
+                    )}
+                    <span>{formatBRL(valorMensalBRL)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span>{formatBRL(somaLicencasBRL)}</span>
+                </TableCell>
                 <TableCell className="text-center">{qtdLicencas}</TableCell>
                 <TableCell className="text-center">
                   {qtdLicencas === 0 ? (
