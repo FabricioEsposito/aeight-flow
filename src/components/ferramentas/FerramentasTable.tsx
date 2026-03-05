@@ -34,6 +34,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
             <TableHead className="text-right">Valor Mensal</TableHead>
             <TableHead className="text-right">Soma Licenças</TableHead>
             <TableHead className="text-center">Licenças</TableHead>
+            <TableHead className="text-center">Vencimento</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead className="w-24">Ações</TableHead>
           </TableRow>
@@ -84,6 +85,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                   <span>{formatBRL(somaLicencasBRL)}</span>
                 </TableCell>
                 <TableCell className="text-center">{qtdLicencas}</TableCell>
+                <TableCell className="text-center">Dia {f.dia_vencimento || 1}</TableCell>
                 <TableCell className="text-center">
                   {qtdLicencas === 0 ? (
                     <Badge variant="secondary">Sem licenças</Badge>
