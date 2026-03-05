@@ -840,6 +840,44 @@ export type Database = {
           },
         ]
       }
+      ferramentas_licencas_pagamentos: {
+        Row: {
+          ano_referencia: number
+          created_at: string
+          created_by: string | null
+          data_pagamento: string
+          ferramenta_id: string
+          id: string
+          mes_referencia: number
+        }
+        Insert: {
+          ano_referencia: number
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string
+          ferramenta_id: string
+          id?: string
+          mes_referencia: number
+        }
+        Update: {
+          ano_referencia?: number
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string
+          ferramenta_id?: string
+          id?: string
+          mes_referencia?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ferramentas_licencas_pagamentos_ferramenta_id_fkey"
+            columns: ["ferramenta_id"]
+            isOneToOne: false
+            referencedRelation: "ferramentas_software"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ferramentas_software: {
         Row: {
           centro_custo_id: string | null

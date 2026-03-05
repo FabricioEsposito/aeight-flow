@@ -4,9 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Determines if a tool's license payment is overdue based on dia_vencimento.
- * A license is considered overdue if today > dia_vencimento of the current month.
+ * A license is considered overdue if today > dia_vencimento of the current month
+ * AND it hasn't been paid this month.
  */
-export function isFerramentaVencida(diaVencimento: number): boolean {
+export function isFerramentaVencida(diaVencimento: number, pago: boolean): boolean {
+  if (pago) return false;
   const today = new Date();
   const dia = today.getDate();
   return dia > diaVencimento;
@@ -14,7 +16,6 @@ export function isFerramentaVencida(diaVencimento: number): boolean {
 
 /**
  * Hook that checks for overdue licenses and creates notifications if needed.
- * Should be called on the FerramentasSoftware page.
  */
 export function useOverdueLicencasNotifications(ferramentas: any[]) {
   const { user } = useAuth();
@@ -24,7 +25,7 @@ export function useOverdueLicencasNotifications(ferramentas: any[]) {
       const qtdLicencas = f.licencas_count || 0;
       if (qtdLicencas === 0) return false;
       if (!f.recorrente) return false;
-      return isFerramentaVencida(f.dia_vencimento || 1);
+      return isFerramentaVencida(f.dia_vencimento || 1, !!f.pago_mes_atual);
     });
   }, [ferramentas]);
 
@@ -36,7 +37,6 @@ export function useOverdueLicencasNotifications(ferramentas: any[]) {
       const mesAno = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 
       for (const f of overdueFerrramentas) {
-        // Check if notification already exists for this tool this month
         const { data: existing } = await supabase
           .from("notificacoes")
           .select("id")

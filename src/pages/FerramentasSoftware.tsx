@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Monitor } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FerramentasTable } from "@/components/ferramentas/FerramentasTable";
 import { NovaFerramentaDialog } from "@/components/ferramentas/NovaFerramentaDialog";
@@ -9,12 +9,21 @@ import { GerenciarLicencasDialog } from "@/components/ferramentas/GerenciarLicen
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { useCotacaoMoedas, convertToBRL } from "@/hooks/useCotacaoMoedas";
 import { useOverdueLicencasNotifications } from "@/hooks/useOverdueLicencas";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function FerramentasSoftware() {
   const [showNovaDialog, setShowNovaDialog] = useState(false);
   const [editingFerramenta, setEditingFerramenta] = useState<any>(null);
   const [managingFerramenta, setManagingFerramenta] = useState<any>(null);
   const [selectedCentrosCusto, setSelectedCentrosCusto] = useState<string[]>([]);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const today = new Date();
+  const mesAtual = today.getMonth() + 1;
+  const anoAtual = today.getFullYear();
 
   const { data: ferramentas = [], isLoading } = useQuery({
     queryKey: ["ferramentas-software"],
@@ -36,6 +45,16 @@ export default function FerramentasSoftware() {
         .in("ferramenta_id", ids)
         .eq("status", "ativo");
       if (licError) throw licError;
+
+      // Fetch payments for current month
+      const { data: pagamentos } = await supabase
+        .from("ferramentas_licencas_pagamentos" as any)
+        .select("ferramenta_id")
+        .in("ferramenta_id", ids)
+        .eq("mes_referencia", mesAtual)
+        .eq("ano_referencia", anoAtual);
+      
+      const pagoSet = new Set((pagamentos || []).map((p: any) => p.ferramenta_id));
 
       // Fetch CC allocations for all licenses
       const licIds = (licencas || []).map((l: any) => l.id);
@@ -74,6 +93,7 @@ export default function FerramentasSoftware() {
           licencas_count: agg?.count || 0,
           moedas_usadas: agg ? Array.from(agg.moedas) : [],
           licencas_list: agg?.licencasList || [],
+          pago_mes_atual: pagoSet.has(f.id),
         };
       });
     },
@@ -128,6 +148,34 @@ export default function FerramentasSoftware() {
       )
     : enrichedFerramentas;
 
+  const handleMarcarPago = async (ferramenta: any) => {
+    try {
+      const { error } = await supabase
+        .from("ferramentas_licencas_pagamentos" as any)
+        .insert({
+          ferramenta_id: ferramenta.id,
+          mes_referencia: mesAtual,
+          ano_referencia: anoAtual,
+          created_by: user?.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Pagamento registrado",
+        description: `Pagamento da ferramenta "${ferramenta.nome}" registrado para ${String(mesAtual).padStart(2, "0")}/${anoAtual}.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["ferramentas-software"] });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao registrar pagamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -158,6 +206,7 @@ export default function FerramentasSoftware() {
         cotacoes={cotacoes}
         onEdit={(f) => { setEditingFerramenta(f); setShowNovaDialog(true); }}
         onManageLicencas={(f) => setManagingFerramenta(f)}
+        onMarcarPago={handleMarcarPago}
       />
 
       <NovaFerramentaDialog
