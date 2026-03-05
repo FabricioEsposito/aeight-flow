@@ -28,7 +28,7 @@ export function FerramentasTable({ ferramentas, loading, onEdit, onManageLicenca
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
-            <TableHead>Centro de Custo</TableHead>
+            <TableHead>Centros de Custo</TableHead>
             <TableHead className="text-right">Valor Mensal</TableHead>
             <TableHead className="text-right">Soma Licenças</TableHead>
             <TableHead className="text-center">Licenças</TableHead>
@@ -42,15 +42,21 @@ export function FerramentasTable({ ferramentas, loading, onEdit, onManageLicenca
             const qtdLicencas = (f.licencas_count as number) || 0;
             const valorMensal = Number(f.valor_mensal || 0);
             const valido = Math.abs(somaLicencas - valorMensal) < 0.01;
-            const centroCusto = f.centros_custo;
+            const ccDistribution = f.cc_distribution || [];
 
             return (
               <TableRow key={f.id} className="cursor-pointer" onClick={() => onManageLicencas(f)}>
                 <TableCell className="font-medium">{f.nome}</TableCell>
                 <TableCell>
-                  {centroCusto ? (
-                    <Badge variant="outline">{centroCusto.descricao}</Badge>
-                  ) : "—"}
+                  <div className="flex flex-wrap gap-1">
+                    {ccDistribution.length > 0 ? ccDistribution.map((cc: any) => (
+                      <Badge key={cc.id} variant="outline" className="text-xs">
+                        {cc.descricao} {cc.percentual.toFixed(0)}%
+                      </Badge>
+                    )) : (
+                      <span className="text-muted-foreground text-xs">Sem licenças</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">{formatCurrency(valorMensal)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(somaLicencas)}</TableCell>

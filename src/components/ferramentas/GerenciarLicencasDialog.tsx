@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, AlertTriangle, CheckCircle, Pencil } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
 
 interface GerenciarLicencasDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fornecedorId, setFornecedorId] = useState("");
+  const [centroCustoId, setCentroCustoId] = useState("");
   const [descricaoUsuario, setDescricaoUsuario] = useState("");
   const [valorLicenca, setValorLicenca] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -37,7 +39,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
       if (!ferramentaId) return [];
       const { data, error } = await supabase
         .from("ferramentas_software_licencas" as any)
-        .select("*, fornecedores(razao_social, nome_fantasia)")
+        .select("*, fornecedores(razao_social, nome_fantasia), centros_custo(id, descricao, codigo)")
         .eq("ferramenta_id", ferramentaId)
         .eq("status", "ativo")
         .order("created_at", { ascending: true });
@@ -71,8 +73,26 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
   const diferenca = Math.abs(somaLicencas - valorMensal);
   const valido = diferenca < 0.01;
 
+  // Calculate cost center distribution
+  const centroCustoDistribution = (() => {
+    const map: Record<string, { descricao: string; codigo: string; valor: number }> = {};
+    (licencas as any[]).forEach((l: any) => {
+      const cc = l.centros_custo;
+      if (!cc) return;
+      if (!map[cc.id]) map[cc.id] = { descricao: cc.descricao, codigo: cc.codigo, valor: 0 };
+      map[cc.id].valor += Number(l.valor_licenca || 0);
+    });
+    const total = somaLicencas || 1;
+    return Object.entries(map).map(([id, info]) => ({
+      id,
+      ...info,
+      percentual: (info.valor / total) * 100,
+    }));
+  })();
+
   const resetForm = () => {
     setFornecedorId("");
+    setCentroCustoId("");
     setDescricaoUsuario("");
     setValorLicenca(0);
     setEditingId(null);
@@ -82,6 +102,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
   const handleEdit = (licenca: any) => {
     setEditingId(licenca.id);
     setFornecedorId(licenca.fornecedor_id);
+    setCentroCustoId(licenca.centro_custo_id || "");
     setDescricaoUsuario(licenca.descricao_usuario || "");
     setValorLicenca(Number(licenca.valor_licenca));
     setShowForm(true);
@@ -92,11 +113,16 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
       toast({ title: "Selecione um fornecedor", variant: "destructive" });
       return;
     }
+    if (!centroCustoId) {
+      toast({ title: "Selecione um centro de custo", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const data = {
         ferramenta_id: ferramentaId,
         fornecedor_id: fornecedorId,
+        centro_custo_id: centroCustoId,
         descricao_usuario: descricaoUsuario || null,
         valor_licenca: valorLicenca,
       };
@@ -146,7 +172,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Licenças — {ferramenta?.nome}
@@ -174,6 +200,17 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
           </div>
         </Alert>
 
+        {/* Cost Center Distribution */}
+        {centroCustoDistribution.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {centroCustoDistribution.map((cc) => (
+              <Badge key={cc.id} variant="outline" className="text-xs">
+                {cc.descricao} — {cc.percentual.toFixed(1)}% ({formatCurrency(cc.valor)})
+              </Badge>
+            ))}
+          </div>
+        )}
+
         {/* Licenças Table */}
         <div className="rounded-md border">
           <Table>
@@ -181,6 +218,7 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
               <TableRow>
                 <TableHead>Fornecedor/Pessoa</TableHead>
                 <TableHead>Usuário</TableHead>
+                <TableHead>Centro de Custo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="w-20">Ações</TableHead>
               </TableRow>
@@ -188,11 +226,11 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">Carregando...</TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">Carregando...</TableCell>
                 </TableRow>
               ) : (licencas as any[]).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">Nenhuma licença cadastrada</TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">Nenhuma licença cadastrada</TableCell>
                 </TableRow>
               ) : (
                 (licencas as any[]).map((licenca: any) => (
@@ -201,6 +239,11 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
                       {licenca.fornecedores?.nome_fantasia || licenca.fornecedores?.razao_social || "—"}
                     </TableCell>
                     <TableCell>{licenca.descricao_usuario || "—"}</TableCell>
+                    <TableCell>
+                      {licenca.centros_custo ? (
+                        <Badge variant="outline" className="text-xs">{licenca.centros_custo.descricao}</Badge>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className="text-right">{formatCurrency(Number(licenca.valor_licenca))}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -234,13 +277,19 @@ export function GerenciarLicencasDialog({ open, onOpenChange, ferramenta }: Gere
                 />
               </div>
               <div className="space-y-1">
+                <Label className="text-xs">Centro de Custo *</Label>
+                <CentroCustoSelect value={centroCustoId} onValueChange={setCentroCustoId} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
                 <Label className="text-xs">Usuário da Licença</Label>
                 <Input value={descricaoUsuario} onChange={(e) => setDescricaoUsuario(e.target.value)} placeholder="Nome do usuário" />
               </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Valor da Licença (R$)</Label>
-              <CurrencyInput value={valorLicenca} onChange={setValorLicenca} />
+              <div className="space-y-1">
+                <Label className="text-xs">Valor da Licença (R$)</Label>
+                <CurrencyInput value={valorLicenca} onChange={setValorLicenca} />
+              </div>
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={resetForm}>Cancelar</Button>

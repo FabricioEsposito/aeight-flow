@@ -800,7 +800,7 @@ export type Database = {
       }
       ferramentas_software: {
         Row: {
-          centro_custo_id: string
+          centro_custo_id: string | null
           created_at: string
           descricao: string | null
           id: string
@@ -810,7 +810,7 @@ export type Database = {
           valor_mensal: number
         }
         Insert: {
-          centro_custo_id: string
+          centro_custo_id?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
@@ -820,7 +820,7 @@ export type Database = {
           valor_mensal?: number
         }
         Update: {
-          centro_custo_id?: string
+          centro_custo_id?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
@@ -841,6 +841,7 @@ export type Database = {
       }
       ferramentas_software_licencas: {
         Row: {
+          centro_custo_id: string | null
           created_at: string
           descricao_usuario: string | null
           ferramenta_id: string
@@ -851,6 +852,7 @@ export type Database = {
           valor_licenca: number
         }
         Insert: {
+          centro_custo_id?: string | null
           created_at?: string
           descricao_usuario?: string | null
           ferramenta_id: string
@@ -861,6 +863,7 @@ export type Database = {
           valor_licenca?: number
         }
         Update: {
+          centro_custo_id?: string | null
           created_at?: string
           descricao_usuario?: string | null
           ferramenta_id?: string
@@ -871,6 +874,13 @@ export type Database = {
           valor_licenca?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "ferramentas_software_licencas_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_custo"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ferramentas_software_licencas_ferramenta_id_fkey"
             columns: ["ferramenta_id"]

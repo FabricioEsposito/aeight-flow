@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import CentroCustoSelect from "@/components/centro-custos/CentroCustoSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,36 +21,32 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
   const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [centroCustoId, setCentroCustoId] = useState("");
   const [valorMensal, setValorMensal] = useState(0);
 
   useEffect(() => {
     if (ferramenta) {
       setNome(ferramenta.nome || "");
       setDescricao(ferramenta.descricao || "");
-      setCentroCustoId(ferramenta.centro_custo_id || "");
       setValorMensal(ferramenta.valor_mensal || 0);
     } else {
       setNome("");
       setDescricao("");
-      setCentroCustoId("");
       setValorMensal(0);
     }
   }, [ferramenta, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome || !centroCustoId) {
-      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+    if (!nome) {
+      toast({ title: "Preencha o nome da ferramenta", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      const data = {
+      const data: any = {
         nome,
         descricao: descricao || null,
-        centro_custo_id: centroCustoId,
         valor_mensal: valorMensal,
       };
 
@@ -63,6 +58,7 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
         if (error) throw error;
         toast({ title: "Ferramenta atualizada com sucesso" });
       } else {
+        // centro_custo_id is now nullable, will be determined by licenses
         const { error } = await supabase
           .from("ferramentas_software" as any)
           .insert(data);
@@ -95,13 +91,12 @@ export function NovaFerramentaDialog({ open, onOpenChange, ferramenta }: NovaFer
             <Textarea id="descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição opcional" />
           </div>
           <div className="space-y-2">
-            <Label>Centro de Custo *</Label>
-            <CentroCustoSelect value={centroCustoId} onValueChange={setCentroCustoId} />
-          </div>
-          <div className="space-y-2">
             <Label>Valor Mensal Total (R$)</Label>
             <CurrencyInput value={valorMensal} onChange={setValorMensal} />
           </div>
+          <p className="text-xs text-muted-foreground">
+            O centro de custo será calculado automaticamente com base nas licenças cadastradas.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar"}</Button>
