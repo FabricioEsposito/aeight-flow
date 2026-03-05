@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock, CreditCard } from "lucide-react";
+import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock, CreditCard, Undo2 } from "lucide-react";
 import { formatCurrencyWithSymbol } from "@/hooks/useCotacaoMoedas";
 import { isFerramentaVencida } from "@/hooks/useOverdueLicencas";
 
@@ -12,9 +12,10 @@ interface FerramentasTableProps {
   onEdit: (ferramenta: any) => void;
   onManageLicencas: (ferramenta: any) => void;
   onMarcarPago: (ferramenta: any) => void;
+  onDesfazerPagamento: (ferramenta: any) => void;
 }
 
-export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas, onMarcarPago }: FerramentasTableProps) {
+export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas, onMarcarPago, onDesfazerPagamento }: FerramentasTableProps) {
   const formatBRL = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
