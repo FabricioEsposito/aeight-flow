@@ -176,6 +176,32 @@ export default function FerramentasSoftware() {
     }
   };
 
+  const handleDesfazerPagamento = async (ferramenta: any) => {
+    try {
+      const { error } = await supabase
+        .from("ferramentas_licencas_pagamentos" as any)
+        .delete()
+        .eq("ferramenta_id", ferramenta.id)
+        .eq("mes_referencia", mesAtual)
+        .eq("ano_referencia", anoAtual);
+
+      if (error) throw error;
+
+      toast({
+        title: "Pagamento desfeito",
+        description: `Pagamento da ferramenta "${ferramenta.nome}" foi reaberto.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["ferramentas-software"] });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao desfazer pagamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -207,6 +233,7 @@ export default function FerramentasSoftware() {
         onEdit={(f) => { setEditingFerramenta(f); setShowNovaDialog(true); }}
         onManageLicencas={(f) => setManagingFerramenta(f)}
         onMarcarPago={handleMarcarPago}
+        onDesfazerPagamento={handleDesfazerPagamento}
       />
 
       <NovaFerramentaDialog

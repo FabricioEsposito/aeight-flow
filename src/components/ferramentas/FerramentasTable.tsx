@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock, CreditCard } from "lucide-react";
+import { Pencil, Settings2, CheckCircle, AlertTriangle, Clock, CreditCard, Undo2 } from "lucide-react";
 import { formatCurrencyWithSymbol } from "@/hooks/useCotacaoMoedas";
 import { isFerramentaVencida } from "@/hooks/useOverdueLicencas";
 
@@ -12,9 +12,10 @@ interface FerramentasTableProps {
   onEdit: (ferramenta: any) => void;
   onManageLicencas: (ferramenta: any) => void;
   onMarcarPago: (ferramenta: any) => void;
+  onDesfazerPagamento: (ferramenta: any) => void;
 }
 
-export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas, onMarcarPago }: FerramentasTableProps) {
+export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onManageLicencas, onMarcarPago, onDesfazerPagamento }: FerramentasTableProps) {
   const formatBRL = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
@@ -123,7 +124,7 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    {!pago && qtdLicencas > 0 && (
+                    {qtdLicencas > 0 && !pago && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -132,6 +133,17 @@ export function FerramentasTable({ ferramentas, loading, cotacoes, onEdit, onMan
                         onClick={() => onMarcarPago(f)}
                       >
                         <CreditCard className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {pago && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950"
+                        title="Desfazer pagamento"
+                        onClick={() => onDesfazerPagamento(f)}
+                      >
+                        <Undo2 className="w-4 h-4" />
                       </Button>
                     )}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(f)}>
