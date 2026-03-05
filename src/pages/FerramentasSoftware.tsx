@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, Monitor } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -58,7 +57,6 @@ export default function FerramentasSoftware() {
     : ferramentas;
 
   return (
-    <AppLayout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -103,6 +101,5 @@ export default function FerramentasSoftware() {
           />
         )}
       </div>
-    </AppLayout>
   );
 }
