@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, Monitor } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -102,6 +101,5 @@ export default function FerramentasSoftware() {
           />
         )}
       </div>
-    </AppLayout>
   );
 }
