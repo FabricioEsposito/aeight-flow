@@ -1889,11 +1889,6 @@ export default function Extrato() {
                       <div>
                         <div className="flex items-center gap-1">
                           <p className="font-medium text-sm" title={lanc.descricao}>{lanc.descricao}</p>
-                          {lanc.descricao?.includes('(Residual)') && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-amber-500/10 text-amber-600 border-amber-500/30 flex-shrink-0">
-                              Res
-                            </Badge>
-                          )}
                         </div>
                         {lanc.numero_contrato && (
                           <p className="text-xs text-muted-foreground">Contrato: {lanc.numero_contrato}</p>
