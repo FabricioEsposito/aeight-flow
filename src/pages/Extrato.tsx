@@ -901,7 +901,7 @@ export default function Extrato() {
     }
   };
 
-  const handleMarkAsOpen = async () => {
+   const handleMarkAsOpen = async () => {
     if (!statusChangeData) return;
 
     try {
@@ -909,10 +909,59 @@ export default function Extrato() {
       const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
-      // Verificar se há baixas parciais para recompor o valor original
+      // CASO 1: Este registro É uma "Baixa Parcial" (é o lancamento_residual_id no histórico)
+      // Nesse caso, devemos devolver o valor ao lançamento original e excluir este registro
+      const { data: baixaComoResidual } = await supabase
+        .from('historico_baixas')
+        .select('*')
+        .eq('lancamento_residual_id', lancamento.id)
+        .eq('tipo_lancamento', lancamento.origem);
+
+      if (baixaComoResidual && baixaComoResidual.length > 0) {
+        const baixa = baixaComoResidual[0];
+        const originalId = baixa.lancamento_id;
+
+        // Buscar o lançamento original para somar o valor de volta
+        const { data: lancOriginal } = await supabase
+          .from(table)
+          .select('valor')
+          .eq('id', originalId)
+          .single();
+
+        if (lancOriginal) {
+          const valorRecomposto = Number(lancOriginal.valor) + Number(baixa.valor_baixa);
+
+          // Atualizar o lançamento original somando o valor de volta
+          await supabase
+            .from(table)
+            .update({ valor: valorRecomposto })
+            .eq('id', originalId);
+
+          // Excluir o registro de histórico desta baixa
+          await supabase
+            .from('historico_baixas')
+            .delete()
+            .eq('id', baixa.id);
+
+          // Excluir este registro de baixa parcial (o "pago")
+          await supabase
+            .from(table)
+            .delete()
+            .eq('id', lancamento.id);
+
+          toast({
+            title: "Sucesso",
+            description: `Baixa parcial revertida! Valor de ${formatCurrencyExport(Number(baixa.valor_baixa))} devolvido ao lançamento original (novo saldo: ${formatCurrencyExport(valorRecomposto)}).`,
+          });
+          fetchLancamentos();
+          return;
+        }
+      }
+
+      // CASO 2: Este é o lançamento ORIGINAL que teve baixas parciais
       const { data: baixas } = await supabase
         .from('historico_baixas')
-        .select('valor_baixa, data_baixa, lancamento_residual_id')
+        .select('valor_baixa, data_baixa, lancamento_residual_id, id')
         .eq('lancamento_id', lancamento.id)
         .eq('tipo_lancamento', lancamento.origem);
 
@@ -920,11 +969,9 @@ export default function Extrato() {
       let dataVencimentoOriginal: string | undefined;
 
       if (baixas && baixas.length > 0) {
-        // Somar todos os valores das baixas parciais ao valor atual para recompor o total
         const totalBaixado = baixas.reduce((sum, b) => sum + Number(b.valor_baixa), 0);
         valorRestaurado = lancamento.valor + totalBaixado;
 
-        // Usar a data_vencimento_original se existir, ou manter a atual
         const { data: lancOriginal } = await supabase
           .from(table)
           .select('data_vencimento_original')
@@ -947,7 +994,6 @@ export default function Extrato() {
             .in('id', residualIds);
         }
 
-        // Remover os registros de baixas parciais
         await supabase
           .from('historico_baixas')
           .delete()
@@ -963,6 +1009,7 @@ export default function Extrato() {
 
       if (dataVencimentoOriginal) {
         updateData.data_vencimento = dataVencimentoOriginal;
+        updateData.data_vencimento_original = null;
       }
 
       const { error } = await supabase
