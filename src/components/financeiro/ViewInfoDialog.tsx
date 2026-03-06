@@ -234,6 +234,10 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
                           {baixa.observacao}
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           )}
 
