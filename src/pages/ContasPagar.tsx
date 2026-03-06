@@ -27,6 +27,7 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
 interface ContaPagar {
   id: string;
   descricao: string;
@@ -92,6 +93,8 @@ export default function ContasPagar() {
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
+  const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
+  const [partialPaymentConta, setPartialPaymentConta] = useState<ContaPagar | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
@@ -344,31 +347,33 @@ export default function ContasPagar() {
     if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de parcelas. Entre em contato com o administrador.')) {
       return;
     }
-    setStatusChangeData({ id, currentStatus });
-    setStatusChangeDialogOpen(true);
+    if (currentStatus !== 'pago') {
+      // Marking as paid - open partial payment dialog
+      const conta = contas.find(c => c.id === id);
+      if (conta) {
+        setPartialPaymentConta(conta);
+        setPartialPaymentDialogOpen(true);
+      }
+    } else {
+      // Marking as open - simple confirmation
+      setStatusChangeData({ id, currentStatus });
+      setStatusChangeDialogOpen(true);
+    }
   };
 
   const handleToggleStatus = async () => {
     if (!statusChangeData) return;
 
     try {
-      const { id, currentStatus } = statusChangeData;
-      const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
-      const updateData: any = {
-        status: newStatus
-      };
-      if (newStatus === 'pago') {
-        updateData.data_pagamento = new Date().toISOString().split('T')[0];
-      } else {
-        updateData.data_pagamento = null;
-      }
-      const {
-        error
-      } = await supabase.from('contas_pagar').update(updateData).eq('id', id);
+      const { id } = statusChangeData;
+      const { error } = await supabase.from('contas_pagar').update({
+        status: 'pendente',
+        data_pagamento: null,
+      }).eq('id', id);
       if (error) throw error;
       toast({
         title: "Sucesso",
-        description: `Status alterado para ${newStatus}!`
+        description: "Voltado para em aberto!",
       });
       fetchContas();
     } catch (error) {
@@ -381,6 +386,83 @@ export default function ContasPagar() {
     } finally {
       setStatusChangeDialogOpen(false);
       setStatusChangeData(null);
+    }
+  };
+
+  const formatCurrencyValue = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const handlePartialPayment = async (data: {
+    isPartial: boolean;
+    paymentDate: string;
+    paidAmount?: number;
+    remainingDueDate?: string;
+  }) => {
+    if (!partialPaymentConta) return;
+
+    try {
+      const conta = partialPaymentConta;
+
+      if (data.isPartial && data.paidAmount && data.remainingDueDate) {
+        const remainingAmount = conta.valor_parcela - data.paidAmount;
+
+        const { error: updateError } = await supabase
+          .from('contas_pagar')
+          .update({
+            valor: remainingAmount,
+            data_vencimento: data.remainingDueDate,
+            status: 'pendente',
+          })
+          .eq('id', conta.id);
+
+        if (updateError) throw updateError;
+
+        const { data: userData } = await supabase.auth.getUser();
+
+        await supabase.from('historico_baixas').insert({
+          lancamento_id: conta.id,
+          tipo_lancamento: 'pagar',
+          valor_baixa: data.paidAmount,
+          data_baixa: data.paymentDate,
+          valor_restante: remainingAmount,
+          lancamento_residual_id: null,
+          observacao: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} - saldo residual: ${formatCurrencyValue(remainingAmount)}`,
+          created_by: userData?.user?.id,
+        });
+
+        toast({
+          title: "Sucesso",
+          description: `Baixa parcial realizada! Saldo residual de ${formatCurrencyValue(remainingAmount)}.`,
+        });
+      } else {
+        const { error } = await supabase
+          .from('contas_pagar')
+          .update({
+            status: 'pago',
+            data_pagamento: data.paymentDate,
+          })
+          .eq('id', conta.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Marcado como pago!",
+        });
+      }
+
+      fetchContas();
+    } catch (error) {
+      console.error('Erro ao processar baixa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível processar a baixa.",
+        variant: "destructive",
+      });
+    } finally {
+      setPartialPaymentDialogOpen(false);
+      setPartialPaymentConta(null);
     }
   };
 
@@ -858,9 +940,7 @@ export default function ContasPagar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
             <AlertDialogDescription>
-              {statusChangeData?.currentStatus === 'pago' 
-                ? 'Tem certeza que deseja marcar esta parcela como pendente?' 
-                : 'Tem certeza que deseja marcar esta parcela como paga?'}
+              Tem certeza que deseja marcar esta parcela como pendente?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -871,6 +951,14 @@ export default function ContasPagar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PartialPaymentDialog
+        open={partialPaymentDialogOpen}
+        onOpenChange={setPartialPaymentDialogOpen}
+        tipo="saida"
+        valorTotal={partialPaymentConta?.valor_parcela || 0}
+        onConfirm={handlePartialPayment}
+      />
 
       <PermissionDeniedDialog
         open={showPermissionDenied}
