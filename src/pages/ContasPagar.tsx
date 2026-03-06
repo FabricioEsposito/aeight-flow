@@ -440,16 +440,50 @@ export default function ContasPagar() {
       if (data.isPartial && data.paidAmount && data.remainingDueDate) {
         const remainingAmount = conta.valor_parcela - data.paidAmount;
 
+        // Buscar dados completos do lançamento original
+        const { data: lancOriginal } = await supabase
+          .from('contas_pagar')
+          .select('*')
+          .eq('id', conta.id)
+          .single();
+
+        if (!lancOriginal) throw new Error('Lançamento não encontrado');
+
+        const dataVencimentoOriginal = lancOriginal.data_vencimento_original || lancOriginal.data_vencimento;
+
         const { error: updateError } = await supabase
           .from('contas_pagar')
           .update({
             valor: remainingAmount,
             data_vencimento: data.remainingDueDate,
+            data_vencimento_original: dataVencimentoOriginal,
             status: 'pendente',
           })
           .eq('id', conta.id);
 
         if (updateError) throw updateError;
+
+        // Criar registro "pago" para a parte paga (visível no extrato)
+        const { data: newRecord, error: insertError } = await supabase
+          .from('contas_pagar')
+          .insert({
+            descricao: `Baixa Parcial - ${conta.descricao || lancOriginal.descricao}`,
+            valor: data.paidAmount,
+            data_vencimento: dataVencimentoOriginal,
+            data_competencia: lancOriginal.data_competencia,
+            status: 'pago',
+            data_pagamento: data.paymentDate,
+            fornecedor_id: lancOriginal.fornecedor_id,
+            plano_conta_id: lancOriginal.plano_conta_id,
+            conta_bancaria_id: lancOriginal.conta_bancaria_id,
+            centro_custo: lancOriginal.centro_custo,
+            parcela_id: lancOriginal.parcela_id,
+            observacoes: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} do lançamento original de ${formatCurrencyValue(conta.valor_parcela)}`,
+          })
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
 
         const { data: userData } = await supabase.auth.getUser();
 
@@ -459,7 +493,7 @@ export default function ContasPagar() {
           valor_baixa: data.paidAmount,
           data_baixa: data.paymentDate,
           valor_restante: remainingAmount,
-          lancamento_residual_id: null,
+          lancamento_residual_id: newRecord?.id || null,
           observacao: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} - saldo residual: ${formatCurrencyValue(remainingAmount)}`,
           created_by: userData?.user?.id,
         });

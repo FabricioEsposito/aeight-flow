@@ -912,7 +912,7 @@ export default function Extrato() {
       // Verificar se há baixas parciais para recompor o valor original
       const { data: baixas } = await supabase
         .from('historico_baixas')
-        .select('valor_baixa, data_baixa')
+        .select('valor_baixa, data_baixa, lancamento_residual_id')
         .eq('lancamento_id', lancamento.id)
         .eq('tipo_lancamento', lancamento.origem);
 
@@ -933,6 +933,18 @@ export default function Extrato() {
 
         if (lancOriginal?.data_vencimento_original) {
           dataVencimentoOriginal = lancOriginal.data_vencimento_original;
+        }
+
+        // Excluir os registros "pago" criados pelas baixas parciais
+        const residualIds = baixas
+          .map(b => b.lancamento_residual_id)
+          .filter((id): id is string => !!id);
+        
+        if (residualIds.length > 0) {
+          await supabase
+            .from(table)
+            .delete()
+            .in('id', residualIds);
         }
 
         // Remover os registros de baixas parciais
