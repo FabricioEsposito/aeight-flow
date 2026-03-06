@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
 
 
 interface ContaReceber {
