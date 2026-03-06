@@ -1991,6 +1991,11 @@ export default function Extrato() {
                       )}
                     </TableCell>
                     <TableCell>
+                      <span className="text-xs text-muted-foreground" title={lanc.plano_conta_descricao || ''}>
+                        {lanc.plano_conta_descricao || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-col gap-1">
                         <Badge variant={
                           displayStatus === 'pago' || displayStatus === 'recebido' ? 'default' : 
