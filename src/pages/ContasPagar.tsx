@@ -370,7 +370,7 @@ export default function ContasPagar() {
       // Verificar se há baixas parciais para recompor o valor original
       const { data: baixas } = await supabase
         .from('historico_baixas')
-        .select('valor_baixa')
+        .select('valor_baixa, lancamento_residual_id')
         .eq('lancamento_id', id)
         .eq('tipo_lancamento', 'pagar');
 
@@ -391,6 +391,18 @@ export default function ContasPagar() {
 
         if (lancOriginal.data_vencimento_original) {
           updateData.data_vencimento = lancOriginal.data_vencimento_original;
+        }
+
+        // Excluir os registros "pago" criados pelas baixas parciais
+        const residualIds = baixas
+          .map(b => b.lancamento_residual_id)
+          .filter((id): id is string => !!id);
+        
+        if (residualIds.length > 0) {
+          await supabase
+            .from('contas_pagar')
+            .delete()
+            .in('id', residualIds);
         }
 
         await supabase
