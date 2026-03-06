@@ -366,14 +366,47 @@ export default function ContasPagar() {
 
     try {
       const { id } = statusChangeData;
-      const { error } = await supabase.from('contas_pagar').update({
+
+      // Verificar se há baixas parciais para recompor o valor original
+      const { data: baixas } = await supabase
+        .from('historico_baixas')
+        .select('valor_baixa')
+        .eq('lancamento_id', id)
+        .eq('tipo_lancamento', 'pagar');
+
+      const { data: lancOriginal } = await supabase
+        .from('contas_pagar')
+        .select('valor, data_vencimento_original')
+        .eq('id', id)
+        .single();
+
+      const updateData: any = {
         status: 'pendente',
         data_pagamento: null,
-      }).eq('id', id);
+      };
+
+      if (baixas && baixas.length > 0 && lancOriginal) {
+        const totalBaixado = baixas.reduce((sum, b) => sum + Number(b.valor_baixa), 0);
+        updateData.valor = Number(lancOriginal.valor) + totalBaixado;
+
+        if (lancOriginal.data_vencimento_original) {
+          updateData.data_vencimento = lancOriginal.data_vencimento_original;
+        }
+
+        await supabase
+          .from('historico_baixas')
+          .delete()
+          .eq('lancamento_id', id)
+          .eq('tipo_lancamento', 'pagar');
+      }
+
+      const { error } = await supabase.from('contas_pagar').update(updateData).eq('id', id);
       if (error) throw error;
       toast({
         title: "Sucesso",
-        description: "Voltado para em aberto!",
+        description: baixas && baixas.length > 0
+          ? `Voltado para em aberto! Valor recomposto para ${formatCurrencyValue(updateData.valor)}.`
+          : "Voltado para em aberto!",
       });
       fetchContas();
     } catch (error) {

@@ -865,19 +865,62 @@ export default function Extrato() {
       const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
+      // Verificar se há baixas parciais para recompor o valor original
+      const { data: baixas } = await supabase
+        .from('historico_baixas')
+        .select('valor_baixa, data_baixa')
+        .eq('lancamento_id', lancamento.id)
+        .eq('tipo_lancamento', lancamento.origem);
+
+      let valorRestaurado = lancamento.valor;
+      let dataVencimentoOriginal: string | undefined;
+
+      if (baixas && baixas.length > 0) {
+        // Somar todos os valores das baixas parciais ao valor atual para recompor o total
+        const totalBaixado = baixas.reduce((sum, b) => sum + Number(b.valor_baixa), 0);
+        valorRestaurado = lancamento.valor + totalBaixado;
+
+        // Usar a data_vencimento_original se existir, ou manter a atual
+        const { data: lancOriginal } = await supabase
+          .from(table)
+          .select('data_vencimento_original')
+          .eq('id', lancamento.id)
+          .single();
+
+        if (lancOriginal?.data_vencimento_original) {
+          dataVencimentoOriginal = lancOriginal.data_vencimento_original;
+        }
+
+        // Remover os registros de baixas parciais
+        await supabase
+          .from('historico_baixas')
+          .delete()
+          .eq('lancamento_id', lancamento.id)
+          .eq('tipo_lancamento', lancamento.origem);
+      }
+      
+      const updateData: any = { 
+        status: 'pendente',
+        [dateField]: null,
+        valor: valorRestaurado,
+      };
+
+      if (dataVencimentoOriginal) {
+        updateData.data_vencimento = dataVencimentoOriginal;
+      }
+
       const { error } = await supabase
         .from(table)
-        .update({ 
-          status: 'pendente',
-          [dateField]: null
-        })
+        .update(updateData)
         .eq('id', lancamento.id);
 
       if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: "Voltado para em aberto!",
+        description: baixas && baixas.length > 0 
+          ? `Voltado para em aberto! Valor recomposto para ${formatCurrencyExport(valorRestaurado)}.`
+          : "Voltado para em aberto!",
       });
       fetchLancamentos();
     } catch (error) {
