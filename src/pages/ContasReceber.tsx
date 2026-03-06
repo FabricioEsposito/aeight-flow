@@ -401,7 +401,7 @@ export default function ContasReceber() {
       // Verificar se há baixas parciais para recompor o valor original
       const { data: baixas } = await supabase
         .from('historico_baixas')
-        .select('valor_baixa')
+        .select('valor_baixa, lancamento_residual_id')
         .eq('lancamento_id', id)
         .eq('tipo_lancamento', 'receber');
 
@@ -422,6 +422,18 @@ export default function ContasReceber() {
 
         if (lancOriginal.data_vencimento_original) {
           updateData.data_vencimento = lancOriginal.data_vencimento_original;
+        }
+
+        // Excluir os registros "pago" criados pelas baixas parciais
+        const residualIds = baixas
+          .map(b => b.lancamento_residual_id)
+          .filter((id): id is string => !!id);
+        
+        if (residualIds.length > 0) {
+          await supabase
+            .from('contas_receber')
+            .delete()
+            .in('id', residualIds);
         }
 
         await supabase
@@ -476,16 +488,51 @@ export default function ContasReceber() {
       if (data.isPartial && data.paidAmount && data.remainingDueDate) {
         const remainingAmount = conta.valor - data.paidAmount;
 
+        // Buscar dados completos do lançamento original
+        const { data: lancOriginal } = await supabase
+          .from('contas_receber')
+          .select('*')
+          .eq('id', conta.id)
+          .single();
+
+        if (!lancOriginal) throw new Error('Lançamento não encontrado');
+
+        const dataVencimentoOriginal = lancOriginal.data_vencimento_original || lancOriginal.data_vencimento;
+
         const { error: updateError } = await supabase
           .from('contas_receber')
           .update({
             valor: remainingAmount,
             data_vencimento: data.remainingDueDate,
+            data_vencimento_original: dataVencimentoOriginal,
             status: 'pendente',
           })
           .eq('id', conta.id);
 
         if (updateError) throw updateError;
+
+        // Criar registro "pago" para a parte recebida (visível no extrato)
+        const { data: newRecord, error: insertError } = await supabase
+          .from('contas_receber')
+          .insert({
+            descricao: `Baixa Parcial - ${lancOriginal.descricao}`,
+            valor: data.paidAmount,
+            data_vencimento: dataVencimentoOriginal,
+            data_competencia: lancOriginal.data_competencia,
+            status: 'pago',
+            data_recebimento: data.paymentDate,
+            cliente_id: lancOriginal.cliente_id,
+            plano_conta_id: lancOriginal.plano_conta_id,
+            conta_bancaria_id: lancOriginal.conta_bancaria_id,
+            centro_custo: lancOriginal.centro_custo,
+            parcela_id: lancOriginal.parcela_id,
+            numero_nf: lancOriginal.numero_nf,
+            observacoes: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} do lançamento original de ${formatCurrencyValue(conta.valor)}`,
+          })
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
 
         const { data: userData } = await supabase.auth.getUser();
 
@@ -495,7 +542,7 @@ export default function ContasReceber() {
           valor_baixa: data.paidAmount,
           data_baixa: data.paymentDate,
           valor_restante: remainingAmount,
-          lancamento_residual_id: null,
+          lancamento_residual_id: newRecord?.id || null,
           observacao: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} - saldo residual: ${formatCurrencyValue(remainingAmount)}`,
           created_by: userData?.user?.id,
         });

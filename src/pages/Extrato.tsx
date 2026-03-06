@@ -789,25 +789,69 @@ export default function Extrato() {
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
       if (data.isPartial && data.paidAmount && data.remainingDueDate) {
-        // Baixa parcial: abater o valor pago e atualizar o vencimento do residual no MESMO lançamento
+        // Baixa parcial: abater o valor pago e criar registro "pago" para a parte paga
         const remainingAmount = lancamento.valor - data.paidAmount;
 
-        // Atualizar o lançamento com o valor residual e novo vencimento
+        // Buscar dados completos do lançamento original para copiar campos
+        const { data: lancOriginal } = await supabase
+          .from(table)
+          .select('*')
+          .eq('id', lancamento.id)
+          .single();
+
+        if (!lancOriginal) throw new Error('Lançamento não encontrado');
+
+        // Salvar data_vencimento_original apenas na primeira baixa parcial
+        const dataVencimentoOriginal = lancOriginal.data_vencimento_original || lancOriginal.data_vencimento;
+
+        // Atualizar o lançamento original com o valor residual e novo vencimento
         const { error: updateError } = await supabase
           .from(table)
           .update({ 
             valor: remainingAmount,
             data_vencimento: data.remainingDueDate,
+            data_vencimento_original: dataVencimentoOriginal,
             status: 'pendente',
           })
           .eq('id', lancamento.id);
 
         if (updateError) throw updateError;
 
+        // Criar registro "pago" para a parte paga (visível no extrato)
+        const paidRecord: any = {
+          descricao: `Baixa Parcial - ${lancamento.descricao}`,
+          valor: data.paidAmount,
+          data_vencimento: dataVencimentoOriginal,
+          data_competencia: lancOriginal.data_competencia,
+          status: 'pago',
+          plano_conta_id: lancOriginal.plano_conta_id,
+          conta_bancaria_id: lancOriginal.conta_bancaria_id,
+          centro_custo: lancOriginal.centro_custo,
+          parcela_id: lancOriginal.parcela_id,
+          observacoes: `Baixa parcial de ${formatCurrencyExport(data.paidAmount)} do lançamento original de ${formatCurrencyExport(lancamento.valor)}`,
+        };
+
+        if (lancamento.origem === 'receber') {
+          paidRecord.cliente_id = (lancOriginal as any).cliente_id;
+          paidRecord.data_recebimento = data.paymentDate;
+          paidRecord.numero_nf = (lancOriginal as any).numero_nf;
+        } else {
+          paidRecord.fornecedor_id = (lancOriginal as any).fornecedor_id;
+          paidRecord.data_pagamento = data.paymentDate;
+        }
+
+        const { data: newRecord, error: insertError } = await supabase
+          .from(table)
+          .insert(paidRecord)
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
+
         // Buscar usuário atual para registrar no histórico
         const { data: userData } = await supabase.auth.getUser();
         
-        // Registrar no histórico de baixas
+        // Registrar no histórico de baixas (com referência ao registro pago)
         await supabase
           .from('historico_baixas')
           .insert({
@@ -816,7 +860,7 @@ export default function Extrato() {
             valor_baixa: data.paidAmount,
             data_baixa: data.paymentDate,
             valor_restante: remainingAmount,
-            lancamento_residual_id: null,
+            lancamento_residual_id: newRecord?.id || null,
             observacao: `Baixa parcial de ${formatCurrencyExport(data.paidAmount)} - saldo residual: ${formatCurrencyExport(remainingAmount)} com vencimento em ${data.remainingDueDate}`,
             created_by: userData?.user?.id,
           });
@@ -868,7 +912,7 @@ export default function Extrato() {
       // Verificar se há baixas parciais para recompor o valor original
       const { data: baixas } = await supabase
         .from('historico_baixas')
-        .select('valor_baixa, data_baixa')
+        .select('valor_baixa, data_baixa, lancamento_residual_id')
         .eq('lancamento_id', lancamento.id)
         .eq('tipo_lancamento', lancamento.origem);
 
@@ -889,6 +933,18 @@ export default function Extrato() {
 
         if (lancOriginal?.data_vencimento_original) {
           dataVencimentoOriginal = lancOriginal.data_vencimento_original;
+        }
+
+        // Excluir os registros "pago" criados pelas baixas parciais
+        const residualIds = baixas
+          .map(b => b.lancamento_residual_id)
+          .filter((id): id is string => !!id);
+        
+        if (residualIds.length > 0) {
+          await supabase
+            .from(table)
+            .delete()
+            .in('id', residualIds);
         }
 
         // Remover os registros de baixas parciais
