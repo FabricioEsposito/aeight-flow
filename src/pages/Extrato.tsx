@@ -789,55 +789,20 @@ export default function Extrato() {
       const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
       
       if (data.isPartial && data.paidAmount && data.remainingDueDate) {
-        // Baixa parcial: atualizar o lançamento atual com valor parcial e criar novo para o residual
+        // Baixa parcial: abater o valor pago e atualizar o vencimento do residual no MESMO lançamento
         const remainingAmount = lancamento.valor - data.paidAmount;
-        
-        // Buscar dados completos do lançamento
-        const { data: fullData, error: fetchError } = await supabase
-          .from(table)
-          .select('*')
-          .eq('id', lancamento.id)
-          .single();
 
-        if (fetchError) throw fetchError;
-
-        // Atualizar o lançamento atual com o valor pago
+        // Atualizar o lançamento com o valor residual e novo vencimento
         const { error: updateError } = await supabase
           .from(table)
           .update({ 
-            status: 'pago',
-            valor: data.paidAmount,
-            [dateField]: data.paymentDate
+            valor: remainingAmount,
+            data_vencimento: data.remainingDueDate,
+            status: 'pendente',
           })
           .eq('id', lancamento.id);
 
         if (updateError) throw updateError;
-
-        // Criar novo lançamento para o valor residual
-        const novoLancamento: any = { ...fullData };
-        delete novoLancamento.id;
-        delete novoLancamento.created_at;
-        delete novoLancamento.updated_at;
-        delete novoLancamento[dateField];
-        delete novoLancamento.parcela_id; // Remove vínculo para permitir exclusão
-        
-        novoLancamento.valor = remainingAmount;
-        novoLancamento.valor_original = remainingAmount;
-        novoLancamento.data_vencimento = data.remainingDueDate;
-        novoLancamento.data_vencimento_original = data.remainingDueDate;
-        novoLancamento.status = 'pendente';
-        novoLancamento.descricao = `${lancamento.descricao} (Residual)`;
-        novoLancamento.juros = 0;
-        novoLancamento.multa = 0;
-        novoLancamento.desconto = 0;
-
-        const { data: insertedData, error: insertError } = await supabase
-          .from(table)
-          .insert(novoLancamento)
-          .select('id')
-          .single();
-
-        if (insertError) throw insertError;
 
         // Buscar usuário atual para registrar no histórico
         const { data: userData } = await supabase.auth.getUser();
@@ -851,14 +816,14 @@ export default function Extrato() {
             valor_baixa: data.paidAmount,
             data_baixa: data.paymentDate,
             valor_restante: remainingAmount,
-            lancamento_residual_id: insertedData?.id,
-            observacao: `Baixa parcial de ${formatCurrencyExport(data.paidAmount)} - valor residual: ${formatCurrencyExport(remainingAmount)}`,
+            lancamento_residual_id: null,
+            observacao: `Baixa parcial de ${formatCurrencyExport(data.paidAmount)} - saldo residual: ${formatCurrencyExport(remainingAmount)} com vencimento em ${data.remainingDueDate}`,
             created_by: userData?.user?.id,
           });
 
         toast({
           title: "Sucesso",
-          description: `Baixa parcial realizada! Novo lançamento de valor residual criado.`,
+          description: `Baixa parcial realizada! Valor abatido, saldo residual de ${formatCurrencyExport(remainingAmount)}.`,
         });
       } else {
         // Baixa total: apenas marcar como pago
