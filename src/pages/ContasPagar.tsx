@@ -940,9 +940,7 @@ export default function ContasPagar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
             <AlertDialogDescription>
-              {statusChangeData?.currentStatus === 'pago' 
-                ? 'Tem certeza que deseja marcar esta parcela como pendente?' 
-                : 'Tem certeza que deseja marcar esta parcela como paga?'}
+              Tem certeza que deseja marcar esta parcela como pendente?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -953,6 +951,14 @@ export default function ContasPagar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PartialPaymentDialog
+        open={partialPaymentDialogOpen}
+        onOpenChange={setPartialPaymentDialogOpen}
+        tipo="saida"
+        valorTotal={partialPaymentConta?.valor_parcela || 0}
+        onConfirm={handlePartialPayment}
+      />
 
       <PermissionDeniedDialog
         open={showPermissionDenied}
