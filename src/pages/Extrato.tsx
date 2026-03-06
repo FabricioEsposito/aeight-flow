@@ -437,7 +437,7 @@ export default function Extrato() {
       const { data: dataReceberPendentes, error: errorReceberPendentes } = await queryReceberPendentes;
       if (errorReceberPendentes) throw errorReceberPendentes;
 
-      // NOVA LÓGICA: Buscar por data_recebimento para pagos
+      // Buscar pagos de contas a receber: por data_recebimento OU data_vencimento no range
       let queryReceberPagos = supabase
         .from('contas_receber')
         .select(`
@@ -449,13 +449,15 @@ export default function Extrato() {
         .order('data_recebimento', { ascending: true });
 
       if (dateRange) {
-        queryReceberPagos = queryReceberPagos.gte('data_recebimento', dateRange.start).lte('data_recebimento', dateRange.end);
+        queryReceberPagos = queryReceberPagos.or(
+          `and(data_recebimento.gte.${dateRange.start},data_recebimento.lte.${dateRange.end}),and(data_vencimento.gte.${dateRange.start},data_vencimento.lte.${dateRange.end})`
+        );
       }
 
       const { data: dataReceberPagos, error: errorReceberPagos } = await queryReceberPagos;
       if (errorReceberPagos) throw errorReceberPagos;
 
-      // NOVA LÓGICA: Buscar por data_vencimento para pendentes (contas a pagar)
+      // Buscar pendentes de contas a pagar: por data_vencimento
       let queryPagarPendentes = supabase
         .from('contas_pagar')
         .select(`
@@ -473,7 +475,7 @@ export default function Extrato() {
       const { data: dataPagarPendentes, error: errorPagarPendentes } = await queryPagarPendentes;
       if (errorPagarPendentes) throw errorPagarPendentes;
 
-      // NOVA LÓGICA: Buscar por data_pagamento para pagos (contas a pagar)
+      // Buscar pagos de contas a pagar: por data_pagamento OU data_vencimento no range
       let queryPagarPagos = supabase
         .from('contas_pagar')
         .select(`
@@ -485,7 +487,9 @@ export default function Extrato() {
         .order('data_pagamento', { ascending: true });
 
       if (dateRange) {
-        queryPagarPagos = queryPagarPagos.gte('data_pagamento', dateRange.start).lte('data_pagamento', dateRange.end);
+        queryPagarPagos = queryPagarPagos.or(
+          `and(data_pagamento.gte.${dateRange.start},data_pagamento.lte.${dateRange.end}),and(data_vencimento.gte.${dateRange.start},data_vencimento.lte.${dateRange.end})`
+        );
       }
 
       const { data: dataPagarPagos, error: errorPagarPagos } = await queryPagarPagos;
