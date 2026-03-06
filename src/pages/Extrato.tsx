@@ -1556,18 +1556,19 @@ export default function Extrato() {
       const startDate = new Date(`${dateRange.start}T00:00:00`);
       const endDate = new Date(`${dateRange.end}T23:59:59.999`);
 
-      // NOVA LÓGICA: para lançamentos não baixados usa data_vencimento, para baixados usa data_movimento
+      // Para pagos: mostrar se data_movimento OU data_vencimento estiver no range
+      // Para pendentes: mostrar se data_vencimento estiver no range
       const isPago = lanc.status === 'pago';
       const movStr = lanc.data_recebimento || lanc.data_pagamento;
+      const vencimentoDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
+      const vencimentoInRange = vencimentoDate ? vencimentoDate >= startDate && vencimentoDate <= endDate : false;
       
       if (isPago && movStr) {
-        // Para lançamentos baixados, filtra pela data de movimento
         const movementDate = new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr);
-        matchesDate = movementDate >= startDate && movementDate <= endDate;
+        const movInRange = movementDate >= startDate && movementDate <= endDate;
+        matchesDate = movInRange || vencimentoInRange;
       } else {
-        // Para lançamentos não baixados, filtra pela data de vencimento
-        const vencimentoDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
-        matchesDate = vencimentoDate ? vencimentoDate >= startDate && vencimentoDate <= endDate : false;
+        matchesDate = vencimentoInRange;
       }
     }
 
