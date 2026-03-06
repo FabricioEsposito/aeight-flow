@@ -93,6 +93,8 @@ export default function ContasPagar() {
   const [contaToDelete, setContaToDelete] = useState<string | null>(null);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
+  const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
+  const [partialPaymentConta, setPartialPaymentConta] = useState<ContaPagar | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
@@ -345,8 +347,18 @@ export default function ContasPagar() {
     if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de parcelas. Entre em contato com o administrador.')) {
       return;
     }
-    setStatusChangeData({ id, currentStatus });
-    setStatusChangeDialogOpen(true);
+    if (currentStatus !== 'pago') {
+      // Marking as paid - open partial payment dialog
+      const conta = contas.find(c => c.id === id);
+      if (conta) {
+        setPartialPaymentConta(conta);
+        setPartialPaymentDialogOpen(true);
+      }
+    } else {
+      // Marking as open - simple confirmation
+      setStatusChangeData({ id, currentStatus });
+      setStatusChangeDialogOpen(true);
+    }
   };
 
   const handleToggleStatus = async () => {
