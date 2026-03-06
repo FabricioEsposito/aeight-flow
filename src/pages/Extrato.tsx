@@ -1817,6 +1817,7 @@ export default function Extrato() {
                 <TableHead className="min-w-[80px]">Anexos</TableHead>
                 <TableHead className="min-w-[180px]">Serviço / Import.</TableHead>
                 <TableHead className="min-w-[130px]">Centro de Custo</TableHead>
+                <TableHead className="min-w-[150px]">Categoria</TableHead>
                 <TableHead className="min-w-[90px]">Situação</TableHead>
                 <TableHead className="min-w-[110px] text-right">Valor (R$)</TableHead>
                 <TableHead className="min-w-[110px] text-right">Realizado</TableHead>
