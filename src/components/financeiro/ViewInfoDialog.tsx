@@ -92,9 +92,8 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
     return new Date(dateString).toLocaleString('pt-BR');
   };
 
-  // Verificar se tem baixas parciais ou é um lançamento residual
+  // Verificar se tem baixas parciais
   const hasPartialPayments = historicoBaixas.length > 0;
-  const isResidualLancamento = data.descricao?.includes('(Residual)');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,7 +181,7 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
           )}
 
           {/* Histórico de Baixas Parciais */}
-          {(hasPartialPayments || isResidualLancamento) && (
+          {hasPartialPayments && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <History className="w-4 h-4 text-primary" />
@@ -230,20 +229,11 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
                         </div>
                       </div>
                       
-                      {baixa.lancamento_residual_id && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                          <ArrowRight className="w-3 h-3" />
-                          <span>Gerou novo lançamento residual</span>
+                      {baixa.observacao && (
+                        <div className="mt-2 text-xs text-muted-foreground italic">
+                          {baixa.observacao}
                         </div>
                       )}
-                    </div>
-                  ))}
-                </div>
-              ) : isResidualLancamento ? (
-                <p className="text-sm text-muted-foreground italic">
-                  Este é um lançamento residual gerado a partir de uma baixa parcial.
-                </p>
-              ) : null}
             </div>
           )}
 
