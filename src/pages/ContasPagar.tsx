@@ -365,23 +365,15 @@ export default function ContasPagar() {
     if (!statusChangeData) return;
 
     try {
-      const { id, currentStatus } = statusChangeData;
-      const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
-      const updateData: any = {
-        status: newStatus
-      };
-      if (newStatus === 'pago') {
-        updateData.data_pagamento = new Date().toISOString().split('T')[0];
-      } else {
-        updateData.data_pagamento = null;
-      }
-      const {
-        error
-      } = await supabase.from('contas_pagar').update(updateData).eq('id', id);
+      const { id } = statusChangeData;
+      const { error } = await supabase.from('contas_pagar').update({
+        status: 'pendente',
+        data_pagamento: null,
+      }).eq('id', id);
       if (error) throw error;
       toast({
         title: "Sucesso",
-        description: `Status alterado para ${newStatus}!`
+        description: "Voltado para em aberto!",
       });
       fetchContas();
     } catch (error) {
@@ -394,6 +386,83 @@ export default function ContasPagar() {
     } finally {
       setStatusChangeDialogOpen(false);
       setStatusChangeData(null);
+    }
+  };
+
+  const formatCurrencyValue = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const handlePartialPayment = async (data: {
+    isPartial: boolean;
+    paymentDate: string;
+    paidAmount?: number;
+    remainingDueDate?: string;
+  }) => {
+    if (!partialPaymentConta) return;
+
+    try {
+      const conta = partialPaymentConta;
+
+      if (data.isPartial && data.paidAmount && data.remainingDueDate) {
+        const remainingAmount = conta.valor_parcela - data.paidAmount;
+
+        const { error: updateError } = await supabase
+          .from('contas_pagar')
+          .update({
+            valor: remainingAmount,
+            data_vencimento: data.remainingDueDate,
+            status: 'pendente',
+          })
+          .eq('id', conta.id);
+
+        if (updateError) throw updateError;
+
+        const { data: userData } = await supabase.auth.getUser();
+
+        await supabase.from('historico_baixas').insert({
+          lancamento_id: conta.id,
+          tipo_lancamento: 'pagar',
+          valor_baixa: data.paidAmount,
+          data_baixa: data.paymentDate,
+          valor_restante: remainingAmount,
+          lancamento_residual_id: null,
+          observacao: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} - saldo residual: ${formatCurrencyValue(remainingAmount)}`,
+          created_by: userData?.user?.id,
+        });
+
+        toast({
+          title: "Sucesso",
+          description: `Baixa parcial realizada! Saldo residual de ${formatCurrencyValue(remainingAmount)}.`,
+        });
+      } else {
+        const { error } = await supabase
+          .from('contas_pagar')
+          .update({
+            status: 'pago',
+            data_pagamento: data.paymentDate,
+          })
+          .eq('id', conta.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Marcado como pago!",
+        });
+      }
+
+      fetchContas();
+    } catch (error) {
+      console.error('Erro ao processar baixa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível processar a baixa.",
+        variant: "destructive",
+      });
+    } finally {
+      setPartialPaymentDialogOpen(false);
+      setPartialPaymentConta(null);
     }
   };
 
