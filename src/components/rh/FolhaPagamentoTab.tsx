@@ -89,6 +89,7 @@ export function FolhaPagamentoTab() {
   const [batchHoleriteDialogOpen, setBatchHoleriteDialogOpen] = useState(false);
   const [batchHoleriteSending, setBatchHoleriteSending] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useSessionState<string>('folha', 'sortOrder', 'default');
   const { toast } = useToast();
 
   const getDateRange = (): { from: Date; to: Date } | null => {
