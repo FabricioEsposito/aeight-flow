@@ -1033,6 +1033,14 @@ export default function Extrato() {
 
       if (error) throw error;
 
+      // Atualizar parcela do contrato com valor e vencimento restaurados
+      if (lancamento.parcela_id) {
+        const parcelaUpdate: any = { status: 'pendente' };
+        if (valorRestaurado !== lancamento.valor) parcelaUpdate.valor = valorRestaurado;
+        if (dataVencimentoOriginal) parcelaUpdate.data_vencimento = dataVencimentoOriginal;
+        await supabase.from('parcelas_contrato').update(parcelaUpdate).eq('id', lancamento.parcela_id);
+      }
+
       toast({
         title: "Sucesso",
         description: baixas && baixas.length > 0 
