@@ -1741,9 +1741,20 @@ export default function Extrato() {
   const totalPagar = fluxoResult?.totalSaidasPrevistas || 0;
   const saldoFinal = fluxoResult?.saldoFinalPrevisto || saldoInicial;
 
-  const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
+   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
-  // Paginação
+   // Totais de entradas e saídas filtrados
+   const totalEntradasFiltrado = filteredLancamentos
+     .filter(l => l.tipo === 'entrada')
+     .reduce((acc, l) => acc + l.valor, 0);
+   
+   const totalSaidasFiltrado = filteredLancamentos
+     .filter(l => l.tipo === 'saida')
+     .reduce((acc, l) => acc + l.valor, 0);
+   
+   const saldoPeriodoFiltrado = totalEntradasFiltrado - totalSaidasFiltrado;
+
+   // Paginação
   const totalItems = filteredLancamentos.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -1859,6 +1870,50 @@ export default function Extrato() {
               </p>
             </div>
             <BarChart3 className="w-8 h-8 text-primary shrink-0" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Cards de Totais do Período Filtrado */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4 border-l-4 border-l-emerald-600">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Entradas (Período)</p>
+              <p className="text-2xl font-bold text-emerald-600 tabular-nums">{formatCurrency(totalEntradasFiltrado)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredLancamentos.filter(l => l.tipo === 'entrada').length} lançamento(s)
+              </p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-emerald-600" />
+          </div>
+        </Card>
+
+        <Card className="p-4 border-l-4 border-l-destructive">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Saídas (Período)</p>
+              <p className="text-2xl font-bold text-destructive tabular-nums">{formatCurrency(totalSaidasFiltrado)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredLancamentos.filter(l => l.tipo === 'saida').length} lançamento(s)
+              </p>
+            </div>
+            <TrendingDown className="w-8 h-8 text-destructive" />
+          </div>
+        </Card>
+
+        <Card className={`p-4 border-l-4 ${saldoPeriodoFiltrado >= 0 ? 'border-l-emerald-600' : 'border-l-destructive'}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Saldo do Período</p>
+              <p className={`text-2xl font-bold tabular-nums ${saldoPeriodoFiltrado >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                {formatCurrency(saldoPeriodoFiltrado)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Entradas - Saídas
+              </p>
+            </div>
+            <BarChart3 className={`w-8 h-8 ${saldoPeriodoFiltrado >= 0 ? 'text-emerald-600' : 'text-destructive'}`} />
           </div>
         </Card>
       </div>
