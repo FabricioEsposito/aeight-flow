@@ -408,6 +408,16 @@ export function FolhaPagamentoTab() {
             </SelectContent>
           </Select>
           <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Padrão</SelectItem>
+              <SelectItem value="alpha-asc">Nome A → Z</SelectItem>
+              <SelectItem value="alpha-desc">Nome Z → A</SelectItem>
+              <SelectItem value="valor-asc">Valor menor → maior</SelectItem>
+              <SelectItem value="valor-desc">Valor maior → menor</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportDialogOpen(true)}>
             <FileSpreadsheet className="w-4 h-4" />
             Importar Planilha
