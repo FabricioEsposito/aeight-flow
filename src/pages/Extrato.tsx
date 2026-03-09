@@ -941,6 +941,16 @@ export default function Extrato() {
             .update({ valor: valorRecomposto })
             .eq('id', originalId);
 
+          // Atualizar parcela do contrato com valor recomposto
+          const { data: lancOriginalFull } = await supabase
+            .from(table)
+            .select('parcela_id')
+            .eq('id', originalId)
+            .maybeSingle();
+          if (lancOriginalFull?.parcela_id) {
+            await supabase.from('parcelas_contrato').update({ valor: valorRecomposto }).eq('id', lancOriginalFull.parcela_id);
+          }
+
           // Excluir o registro de histórico desta baixa
           await supabase
             .from('historico_baixas')
