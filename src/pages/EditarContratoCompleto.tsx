@@ -563,7 +563,7 @@ export default function EditarContratoCompleto() {
 
         if (parcelaError) throw parcelaError;
 
-        if (parcela.status !== 'aguardando_conclusao') {
+        if (parcela.status !== 'aguardando_conclusao' && parcela.status !== 'pago') {
           if (tipoContrato === 'venda') {
             await supabase
               .from('contas_receber')
@@ -575,7 +575,8 @@ export default function EditarContratoCompleto() {
                 plano_conta_id: planoContasId || null,
                 conta_bancaria_id: contaBancariaId || null,
               })
-              .eq('parcela_id', parcela.id);
+              .eq('parcela_id', parcela.id)
+              .neq('status', 'pago');
           } else {
             await supabase
               .from('contas_pagar')
@@ -587,7 +588,8 @@ export default function EditarContratoCompleto() {
                 plano_conta_id: planoContasId || null,
                 conta_bancaria_id: contaBancariaId || null,
               })
-              .eq('parcela_id', parcela.id);
+              .eq('parcela_id', parcela.id)
+              .neq('status', 'pago');
           }
         }
       }
