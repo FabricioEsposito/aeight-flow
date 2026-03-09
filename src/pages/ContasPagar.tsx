@@ -388,6 +388,13 @@ export default function ContasPagar() {
           const valorRecomposto = Number(lancOriginal.valor) + Number(baixa.valor_baixa);
 
           await supabase.from('contas_pagar').update({ valor: valorRecomposto }).eq('id', originalId);
+          
+          // Atualizar parcela do contrato
+          const { data: lancFull } = await supabase.from('contas_pagar').select('parcela_id').eq('id', originalId).maybeSingle();
+          if (lancFull?.parcela_id) {
+            await supabase.from('parcelas_contrato').update({ valor: valorRecomposto }).eq('id', lancFull.parcela_id);
+          }
+
           await supabase.from('historico_baixas').delete().eq('id', baixa.id);
           await supabase.from('contas_pagar').delete().eq('id', id);
 
@@ -440,6 +447,15 @@ export default function ContasPagar() {
 
       const { error } = await supabase.from('contas_pagar').update(updateData).eq('id', id);
       if (error) throw error;
+
+      // Atualizar parcela do contrato
+      const { data: lancFull } = await supabase.from('contas_pagar').select('parcela_id').eq('id', id).maybeSingle();
+      if (lancFull?.parcela_id) {
+        const parcelaUpdate: any = { status: 'pendente' };
+        if (updateData.valor) parcelaUpdate.valor = updateData.valor;
+        if (updateData.data_vencimento) parcelaUpdate.data_vencimento = updateData.data_vencimento;
+        await supabase.from('parcelas_contrato').update(parcelaUpdate).eq('id', lancFull.parcela_id);
+      }
       toast({
         title: "Sucesso",
         description: baixas && baixas.length > 0
