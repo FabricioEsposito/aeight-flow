@@ -1874,6 +1874,50 @@ export default function Extrato() {
         </Card>
       </div>
 
+      {/* Cards de Totais do Período Filtrado */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4 border-l-4 border-l-emerald-600">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Entradas (Período)</p>
+              <p className="text-2xl font-bold text-emerald-600 tabular-nums">{formatCurrency(totalEntradasFiltrado)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredLancamentos.filter(l => l.tipo === 'entrada').length} lançamento(s)
+              </p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-emerald-600" />
+          </div>
+        </Card>
+
+        <Card className="p-4 border-l-4 border-l-destructive">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Saídas (Período)</p>
+              <p className="text-2xl font-bold text-destructive tabular-nums">{formatCurrency(totalSaidasFiltrado)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredLancamentos.filter(l => l.tipo === 'saida').length} lançamento(s)
+              </p>
+            </div>
+            <TrendingDown className="w-8 h-8 text-destructive" />
+          </div>
+        </Card>
+
+        <Card className={`p-4 border-l-4 ${saldoPeriodoFiltrado >= 0 ? 'border-l-emerald-600' : 'border-l-destructive'}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Saldo do Período</p>
+              <p className={`text-2xl font-bold tabular-nums ${saldoPeriodoFiltrado >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                {formatCurrency(saldoPeriodoFiltrado)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Entradas - Saídas
+              </p>
+            </div>
+            <BarChart3 className={`w-8 h-8 ${saldoPeriodoFiltrado >= 0 ? 'text-emerald-600' : 'text-destructive'}`} />
+          </div>
+        </Card>
+      </div>
+
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
           <DateRangeFilter
