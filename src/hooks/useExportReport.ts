@@ -63,10 +63,13 @@ export const useExportReport = () => {
       const [day, month, year] = parts;
       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     }
-    // Tenta parse de formato ISO - adiciona T00:00:00 para evitar problemas de timezone
-    const isoValue = value.includes('T') ? value : value + 'T00:00:00';
-    const date = new Date(isoValue);
-    return isNaN(date.getTime()) ? null : date;
+    // Tenta parse de formato ISO (YYYY-MM-DD) - usar componentes locais para evitar shift de timezone
+    const isoParts = value.split('T')[0].split('-');
+    if (isoParts.length === 3) {
+      const [year, month, day] = isoParts.map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return null;
   };
 
   const exportToPDF = ({ title, filename, columns, data, dateRange, subtotals }: ExportOptions) => {
