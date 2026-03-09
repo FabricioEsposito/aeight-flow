@@ -483,6 +483,15 @@ export default function ContasReceber() {
 
       if (error) throw error;
 
+      // Atualizar parcela do contrato
+      const { data: lancFull } = await supabase.from('contas_receber').select('parcela_id').eq('id', id).maybeSingle();
+      if (lancFull?.parcela_id) {
+        const parcelaUpdate: any = { status: 'pendente' };
+        if (updateData.valor) parcelaUpdate.valor = updateData.valor;
+        if (updateData.data_vencimento) parcelaUpdate.data_vencimento = updateData.data_vencimento;
+        await supabase.from('parcelas_contrato').update(parcelaUpdate).eq('id', lancFull.parcela_id);
+      }
+
       toast({
         title: "Sucesso",
         description: baixas && baixas.length > 0
