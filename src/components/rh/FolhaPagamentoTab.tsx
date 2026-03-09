@@ -287,9 +287,24 @@ export function FolhaPagamentoTab() {
     return matchesSearch && matchesStatus && matchesCentroCusto && matchesCategoria;
   });
 
-  const totalItems = filteredRecords.length;
+  const sortedRecords = [...filteredRecords].sort((a, b) => {
+    switch (sortOrder) {
+      case 'alpha-asc':
+        return a.fornecedor_razao_social.localeCompare(b.fornecedor_razao_social, 'pt-BR');
+      case 'alpha-desc':
+        return b.fornecedor_razao_social.localeCompare(a.fornecedor_razao_social, 'pt-BR');
+      case 'valor-asc':
+        return a.valor - b.valor;
+      case 'valor-desc':
+        return b.valor - a.valor;
+      default:
+        return 0;
+    }
+  });
+
+  const totalItems = sortedRecords.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedRecords = sortedRecords.slice(startIndex, startIndex + itemsPerPage);
 
   const allSelected = paginatedRecords.length > 0 && paginatedRecords.every(r => selectedIds.includes(r.parcela_id));
   const someSelected = selectedIds.length > 0;
