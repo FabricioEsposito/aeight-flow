@@ -235,7 +235,7 @@ export default function Extrato() {
   const exportColumnsExcel = [
     { header: 'Data Vencimento', accessor: (row: LancamentoExtrato) => row.data_vencimento, type: 'date' as const },
     { header: 'Data Competência', accessor: (row: LancamentoExtrato) => row.data_competencia, type: 'date' as const },
-    { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => row.data_recebimento || row.data_pagamento || '', type: 'date' as const },
+    { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => row.status === 'pago' ? (row.data_recebimento || row.data_pagamento || '') : '', type: 'date' as const },
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'Entrada' : 'Saída' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
     { header: 'Descrição', accessor: 'descricao' },
