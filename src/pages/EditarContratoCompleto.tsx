@@ -447,23 +447,28 @@ export default function EditarContratoCompleto() {
       const valorPorParcela = Math.round((valorLiquido / numeroParcelas) * 100) / 100;
 
       for (const parcela of (parcelasData || [])) {
-        const { error: updateParcelaError } = await supabase
-          .from('parcelas_contrato')
-          .update({ valor: valorPorParcela })
-          .eq('id', parcela.id);
+        // Só atualizar parcelas que NÃO estão pagas
+        if (parcela.status !== 'pago') {
+          const { error: updateParcelaError } = await supabase
+            .from('parcelas_contrato')
+            .update({ valor: valorPorParcela })
+            .eq('id', parcela.id);
 
-        if (updateParcelaError) throw updateParcelaError;
+          if (updateParcelaError) throw updateParcelaError;
 
-        if (contrato.tipo_contrato === 'venda') {
-          await supabase
-            .from('contas_receber')
-            .update({ valor: valorPorParcela, valor_original: valorPorParcela })
-            .eq('parcela_id', parcela.id);
-        } else {
-          await supabase
-            .from('contas_pagar')
-            .update({ valor: valorPorParcela, valor_original: valorPorParcela })
-            .eq('parcela_id', parcela.id);
+          if (contrato.tipo_contrato === 'venda') {
+            await supabase
+              .from('contas_receber')
+              .update({ valor: valorPorParcela, valor_original: valorPorParcela })
+              .eq('parcela_id', parcela.id)
+              .neq('status', 'pago');
+          } else {
+            await supabase
+              .from('contas_pagar')
+              .update({ valor: valorPorParcela, valor_original: valorPorParcela })
+              .eq('parcela_id', parcela.id)
+              .neq('status', 'pago');
+          }
         }
       }
 
