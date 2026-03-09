@@ -234,9 +234,9 @@ export const useExportReport = () => {
             if (colType === 'currency' || colType === 'number') {
               cell.t = 'n'; // tipo numérico
               cell.z = '#,##0.00'; // formato com separador de milhares
-            } else if (colType === 'date' && cell.v instanceof Date) {
-              cell.t = 'd'; // tipo data
-              cell.z = 'dd/mm/yyyy'; // formato data abreviada
+            } else if (colType === 'date') {
+              // Datas já são strings formatadas DD/MM/YYYY, manter como texto
+              cell.t = 's';
             }
           }
         }
