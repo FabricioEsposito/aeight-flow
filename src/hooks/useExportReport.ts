@@ -196,8 +196,16 @@ export const useExportReport = () => {
           if (col.type === 'currency' || col.type === 'number') {
             rowData[col.header] = parseNumericValue(rawValue);
           } else if (col.type === 'date') {
+            // Formatar como string DD/MM/YYYY para evitar shift de timezone do XLSX
             const dateVal = parseDateValue(String(rawValue));
-            rowData[col.header] = dateVal || rawValue;
+            if (dateVal) {
+              const day = String(dateVal.getDate()).padStart(2, '0');
+              const month = String(dateVal.getMonth() + 1).padStart(2, '0');
+              const year = dateVal.getFullYear();
+              rowData[col.header] = `${day}/${month}/${year}`;
+            } else {
+              rowData[col.header] = rawValue || '';
+            }
           } else {
             rowData[col.header] = rawValue;
           }
@@ -226,9 +234,9 @@ export const useExportReport = () => {
             if (colType === 'currency' || colType === 'number') {
               cell.t = 'n'; // tipo numérico
               cell.z = '#,##0.00'; // formato com separador de milhares
-            } else if (colType === 'date' && cell.v instanceof Date) {
-              cell.t = 'd'; // tipo data
-              cell.z = 'dd/mm/yyyy'; // formato data abreviada
+            } else if (colType === 'date') {
+              // Datas já são strings formatadas DD/MM/YYYY, manter como texto
+              cell.t = 's';
             }
           }
         }
