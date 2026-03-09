@@ -206,12 +206,12 @@ export function IPCAReajusteContratos({ selectedCentroCusto, companyTheme }: IPC
             .update({ valor: novoValorParcela })
             .eq("id", parcela.id);
 
-          // 3. Update linked contas_receber
+          // 3. Update linked contas_receber (only pending/overdue)
           await supabase
             .from("contas_receber")
             .update({ valor: novoValorParcela })
             .eq("parcela_id", parcela.id)
-            .in("status", ["pendente", "vencido"]);
+            .neq("status", "pago");
         }
       }
 
