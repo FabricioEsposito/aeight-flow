@@ -403,7 +403,8 @@ export default function EditarContrato() {
                   valor: parcela.valor,
                   valor_original: parcela.valor,
                 })
-                .eq('parcela_id', parcela.id);
+                .eq('parcela_id', parcela.id)
+                .neq('status', 'pago');
 
               if (receberError) throw receberError;
             } else {
@@ -414,7 +415,8 @@ export default function EditarContrato() {
                   valor: parcela.valor,
                   valor_original: parcela.valor,
                 })
-                .eq('parcela_id', parcela.id);
+                .eq('parcela_id', parcela.id)
+                .neq('status', 'pago');
 
               if (pagarError) throw pagarError;
             }
