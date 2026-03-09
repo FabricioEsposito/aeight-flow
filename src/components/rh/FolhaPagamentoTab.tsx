@@ -89,6 +89,7 @@ export function FolhaPagamentoTab() {
   const [batchHoleriteDialogOpen, setBatchHoleriteDialogOpen] = useState(false);
   const [batchHoleriteSending, setBatchHoleriteSending] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useSessionState<string>('folha', 'sortOrder', 'default');
   const { toast } = useToast();
 
   const getDateRange = (): { from: Date; to: Date } | null => {
@@ -286,9 +287,24 @@ export function FolhaPagamentoTab() {
     return matchesSearch && matchesStatus && matchesCentroCusto && matchesCategoria;
   });
 
-  const totalItems = filteredRecords.length;
+  const sortedRecords = [...filteredRecords].sort((a, b) => {
+    switch (sortOrder) {
+      case 'alpha-asc':
+        return a.fornecedor_razao_social.localeCompare(b.fornecedor_razao_social, 'pt-BR');
+      case 'alpha-desc':
+        return b.fornecedor_razao_social.localeCompare(a.fornecedor_razao_social, 'pt-BR');
+      case 'valor-asc':
+        return a.valor - b.valor;
+      case 'valor-desc':
+        return b.valor - a.valor;
+      default:
+        return 0;
+    }
+  });
+
+  const totalItems = sortedRecords.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedRecords = sortedRecords.slice(startIndex, startIndex + itemsPerPage);
 
   const allSelected = paginatedRecords.length > 0 && paginatedRecords.every(r => selectedIds.includes(r.parcela_id));
   const someSelected = selectedIds.length > 0;
@@ -392,6 +408,16 @@ export function FolhaPagamentoTab() {
             </SelectContent>
           </Select>
           <CentroCustoFilterSelect value={selectedCentroCusto} onValueChange={setSelectedCentroCusto} />
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Padrão</SelectItem>
+              <SelectItem value="alpha-asc">Nome A → Z</SelectItem>
+              <SelectItem value="alpha-desc">Nome Z → A</SelectItem>
+              <SelectItem value="valor-asc">Valor menor → maior</SelectItem>
+              <SelectItem value="valor-desc">Valor maior → menor</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportDialogOpen(true)}>
             <FileSpreadsheet className="w-4 h-4" />
             Importar Planilha
