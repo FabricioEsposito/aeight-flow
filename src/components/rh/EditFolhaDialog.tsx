@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { FileUpload } from '@/components/ui/file-upload';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
 
 const SALARIO_CLT_IDS = [
@@ -35,6 +36,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState('pendente');
   const [holerite_url, setHoleriteUrl] = useState<string | null>(null);
+  const [valorParcela, setValorParcela] = useState(0);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -48,10 +50,12 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
     if (record?.folha_id) {
       loadFolhaData(record.folha_id);
       setDataVencimento(new Date(record.data_vencimento + 'T00:00:00'));
+      setValorParcela(record.valor);
     } else {
       resetForm();
       if (record) {
         setDataVencimento(new Date(record.data_vencimento + 'T00:00:00'));
+        setValorParcela(record.valor);
       }
     }
   }, [record, open]);
@@ -75,6 +79,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
     setDataVencimento(undefined);
     setStatus('pendente');
     setHoleriteUrl(null);
+    setValorParcela(0);
   };
 
   const handleSave = async () => {
@@ -91,7 +96,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
       const mesRef = vencDate.getMonth() + 1;
       const anoRef = vencDate.getFullYear();
 
-      const valorLiquido = record.valor;
+      const valorLiquido = valorParcela;
 
       const payload: any = {
         fornecedor_id: record.fornecedor_id,
@@ -100,7 +105,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         mes_referencia: mesRef,
         ano_referencia: anoRef,
         tipo_vinculo: record.tipo_vinculo,
-        salario_base: record.salario_base,
+        salario_base: valorParcela,
         valor_liquido: valorLiquido,
         observacoes: observacoes || null,
         status: needsApproval ? 'pendente_aprovacao_rh' : status,
@@ -119,7 +124,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
               parcela_id: record.parcela_id,
               razao_social: record.fornecedor_razao_social,
               cnpj: record.fornecedor_cnpj,
-              salario_base: record.salario_base,
+              salario_base: valorParcela,
               valor_liquido: valorLiquido,
               data_vencimento: newDataVencimento,
             }] as any,
@@ -142,9 +147,35 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
 
       // Only propagate if NOT needing approval
       if (!needsApproval) {
-        await supabase.from('parcelas_contrato').update({ data_vencimento: newDataVencimento }).eq('id', record.parcela_id);
+        // Update parcela value and date
+        await supabase.from('parcelas_contrato').update({ 
+          data_vencimento: newDataVencimento,
+          valor: valorParcela,
+        }).eq('id', record.parcela_id);
+
+        // Update conta a pagar value and date
         if (record.conta_pagar_id) {
-          await supabase.from('contas_pagar').update({ data_vencimento: newDataVencimento, data_competencia: newDataVencimento }).eq('id', record.conta_pagar_id);
+          await supabase.from('contas_pagar').update({ 
+            data_vencimento: newDataVencimento, 
+            data_competencia: newDataVencimento,
+            valor: valorParcela,
+          }).eq('id', record.conta_pagar_id);
+        }
+
+        // Update contrato valor_total and valor_unitario based on updated parcelas
+        if (record.contrato_id) {
+          const { data: allParcelas } = await supabase
+            .from('parcelas_contrato')
+            .select('valor')
+            .eq('contrato_id', record.contrato_id);
+
+          if (allParcelas && allParcelas.length > 0) {
+            const novoTotal = allParcelas.reduce((sum, p) => sum + Number(p.valor), 0);
+            await supabase.from('contratos').update({
+              valor_total: novoTotal,
+              valor_unitario: novoTotal / allParcelas.length,
+            }).eq('id', record.contrato_id);
+          }
         }
       }
 
@@ -207,12 +238,14 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
             </Popover>
           </div>
 
-          {record && (
-            <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
-              <span className="font-semibold">Valor da Parcela:</span>
-              <span className="text-xl font-bold text-primary">{formatCurrency(record.valor)}</span>
-            </div>
-          )}
+          <div>
+            <Label>Valor da Parcela (R$)</Label>
+            <CurrencyInput
+              value={valorParcela}
+              onChange={setValorParcela}
+              placeholder="0,00"
+            />
+          </div>
 
           <div>
             <Label>Status</Label>
