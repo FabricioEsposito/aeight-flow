@@ -403,7 +403,8 @@ export default function EditarContrato() {
                   valor: parcela.valor,
                   valor_original: parcela.valor,
                 })
-                .eq('parcela_id', parcela.id);
+                .eq('parcela_id', parcela.id)
+                .neq('status', 'pago');
 
               if (receberError) throw receberError;
             } else {
@@ -414,7 +415,8 @@ export default function EditarContrato() {
                   valor: parcela.valor,
                   valor_original: parcela.valor,
                 })
-                .eq('parcela_id', parcela.id);
+                .eq('parcela_id', parcela.id)
+                .neq('status', 'pago');
 
               if (pagarError) throw pagarError;
             }
@@ -475,33 +477,37 @@ export default function EditarContrato() {
       const numeroParcelas = parcelasData?.length || 1;
       const valorPorParcela = Math.round((valorLiquido / numeroParcelas) * 100) / 100;
 
-      // Atualizar cada parcela e sua conta correspondente
+      // Atualizar cada parcela e sua conta correspondente (apenas pendentes)
       for (const parcela of (parcelasData || [])) {
-        // Atualizar parcela_contrato
-        const { error: updateParcelaError } = await supabase
-          .from('parcelas_contrato')
-          .update({ valor: valorPorParcela })
-          .eq('id', parcela.id);
+        // Só atualizar parcelas que NÃO estão pagas
+        if (parcela.status !== 'pago') {
+          const { error: updateParcelaError } = await supabase
+            .from('parcelas_contrato')
+            .update({ valor: valorPorParcela })
+            .eq('id', parcela.id);
 
-        if (updateParcelaError) throw updateParcelaError;
+          if (updateParcelaError) throw updateParcelaError;
 
-        // Atualizar contas_receber ou contas_pagar (se existir)
-        if (contrato.tipo_contrato === 'venda') {
-          await supabase
-            .from('contas_receber')
-            .update({ 
-              valor: valorPorParcela,
-              valor_original: valorPorParcela 
-            })
-            .eq('parcela_id', parcela.id);
-        } else {
-          await supabase
-            .from('contas_pagar')
-            .update({ 
-              valor: valorPorParcela,
-              valor_original: valorPorParcela 
-            })
-            .eq('parcela_id', parcela.id);
+          // Atualizar contas_receber ou contas_pagar (apenas pendentes)
+          if (contrato.tipo_contrato === 'venda') {
+            await supabase
+              .from('contas_receber')
+              .update({ 
+                valor: valorPorParcela,
+                valor_original: valorPorParcela 
+              })
+              .eq('parcela_id', parcela.id)
+              .neq('status', 'pago');
+          } else {
+            await supabase
+              .from('contas_pagar')
+              .update({ 
+                valor: valorPorParcela,
+                valor_original: valorPorParcela 
+              })
+              .eq('parcela_id', parcela.id)
+              .neq('status', 'pago');
+          }
         }
       }
 
