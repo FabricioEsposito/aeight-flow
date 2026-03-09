@@ -1741,9 +1741,20 @@ export default function Extrato() {
   const totalPagar = fluxoResult?.totalSaidasPrevistas || 0;
   const saldoFinal = fluxoResult?.saldoFinalPrevisto || saldoInicial;
 
-  const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
+   const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
-  // Paginação
+   // Totais de entradas e saídas filtrados
+   const totalEntradasFiltrado = filteredLancamentos
+     .filter(l => l.tipo === 'entrada')
+     .reduce((acc, l) => acc + l.valor, 0);
+   
+   const totalSaidasFiltrado = filteredLancamentos
+     .filter(l => l.tipo === 'saida')
+     .reduce((acc, l) => acc + l.valor, 0);
+   
+   const saldoPeriodoFiltrado = totalEntradasFiltrado - totalSaidasFiltrado;
+
+   // Paginação
   const totalItems = filteredLancamentos.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
