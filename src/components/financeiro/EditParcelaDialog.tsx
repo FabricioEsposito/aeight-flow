@@ -52,6 +52,7 @@ export interface EditParcelaData {
   valor_original: number;
   link_nf?: string | null;
   link_boleto?: string | null;
+  data_movimentacao?: string | null;
 }
 
 export function EditParcelaDialog({
