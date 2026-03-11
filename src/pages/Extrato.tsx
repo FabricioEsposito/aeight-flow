@@ -1191,7 +1191,7 @@ export default function Extrato() {
     setSelectedLancamento({
       ...data,
       valor_original: data.valor_original ?? data.valor,
-      data_movimentacao: data.data_recebimento || data.data_pagamento || null,
+      data_movimentacao: (data as any).data_recebimento || (data as any).data_pagamento || null,
     });
     if (isAdmin) {
       setEditDialogOpen(true);
