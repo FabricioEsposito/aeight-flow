@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSessionState } from '@/hooks/useSessionState';
-import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2, Landmark } from 'lucide-react';
+import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2, Landmark, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -37,6 +37,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { format } from 'date-fns';
 import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
+import { FluxoCaixaMensal } from '@/components/financeiro/FluxoCaixaMensal';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
 
 interface LancamentoExtrato {
   id: string;
@@ -1973,6 +1976,28 @@ export default function Extrato() {
           </div>
         </Card>
       </div>
+
+      {/* Fluxo de Caixa Mensal - Collapsible */}
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="w-full flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Fluxo de Caixa Mensal
+            </span>
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <FluxoCaixaMensal
+            lancamentos={lancamentos}
+            contasBancarias={contasBancarias}
+            contaBancariaFilter={contaBancariaFilter}
+            movimentacoesAnteriores={movimentacoesAnteriores}
+            dateRange={dateRange || undefined}
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
