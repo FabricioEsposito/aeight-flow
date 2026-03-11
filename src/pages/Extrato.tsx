@@ -1699,23 +1699,26 @@ export default function Extrato() {
     let matchesDate = true;
     const dateRange = getDateRange();
     if (dateRange) {
-      // Range inclusivo (dia inteiro), para não "sumir" lançamentos por causa de horário/fuso
       const startDate = new Date(`${dateRange.start}T00:00:00`);
       const endDate = new Date(`${dateRange.end}T23:59:59.999`);
 
-      // Para pagos: mostrar se data_movimento OU data_vencimento estiver no range
-      // Para pendentes: mostrar se data_vencimento estiver no range
-      const isPago = lanc.status === 'pago';
-      const movStr = lanc.data_recebimento || lanc.data_pagamento;
-      const vencimentoDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
-      const vencimentoInRange = vencimentoDate ? vencimentoDate >= startDate && vencimentoDate <= endDate : false;
-      
-      if (isPago && movStr) {
-        const movementDate = new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr);
-        const movInRange = movementDate >= startDate && movementDate <= endDate;
-        matchesDate = movInRange || vencimentoInRange;
+      if (dateFilterType === 'movimentacao') {
+        // Filtro por data de baixa: usar APENAS data_recebimento/data_pagamento
+        const movStr = lanc.data_recebimento || lanc.data_pagamento;
+        if (!movStr) {
+          matchesDate = false; // Sem data de baixa = não aparece
+        } else {
+          const movDate = new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr);
+          matchesDate = movDate >= startDate && movDate <= endDate;
+        }
+      } else if (dateFilterType === 'competencia') {
+        // Filtro por competência: usar APENAS data_competencia
+        const compDate = lanc.data_competencia ? new Date(`${lanc.data_competencia}T00:00:00`) : null;
+        matchesDate = compDate ? compDate >= startDate && compDate <= endDate : false;
       } else {
-        matchesDate = vencimentoInRange;
+        // Filtro por vencimento: usar APENAS data_vencimento
+        const vencDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
+        matchesDate = vencDate ? vencDate >= startDate && vencDate <= endDate : false;
       }
     }
 
