@@ -37,6 +37,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { format } from 'date-fns';
 import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
+import { FluxoCaixaMensal } from '@/components/financeiro/FluxoCaixaMensal';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
 
 interface LancamentoExtrato {
   id: string;
