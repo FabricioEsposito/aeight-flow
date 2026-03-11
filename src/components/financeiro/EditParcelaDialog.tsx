@@ -33,6 +33,8 @@ interface EditParcelaDialogProps {
     desconto?: number;
     link_nf?: string | null;
     link_boleto?: string | null;
+    data_movimentacao?: string | null;
+    status?: string;
   };
 }
 
