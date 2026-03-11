@@ -352,3 +352,147 @@ export function prepararMovimentacoes(
 
   return movimentacoes;
 }
+
+// ==========================================
+// FLUXO DE CAIXA MENSAL
+// ==========================================
+
+export interface FluxoMensal {
+  mesAno: string; // formato YYYY-MM
+  mesAnoFormatted: string; // formato MM/YYYY
+  saldoInicial: number;
+  totalEntradas: number;
+  totalSaidas: number;
+  saldoFinal: number;
+}
+
+export interface FluxoCaixaMensalParams {
+  dataInicio: string; // YYYY-MM-DD
+  dataFim: string; // YYYY-MM-DD
+  contasBancarias: ContaBancariaSaldo[];
+  contasBancariasIds: string[]; // IDs selecionados, vazio = todas
+  movimentacoesAnteriores: { valor: number; tipo: 'entrada' | 'saida'; conta_bancaria_id: string | null }[];
+  movimentacoesNoPeriodo: MovimentacaoFluxo[];
+}
+
+export interface FluxoCaixaMensalResult {
+  meses: FluxoMensal[];
+  saldoInicialPeriodo: number;
+  saldoFinalPeriodo: number;
+  totalEntradasPeriodo: number;
+  totalSaidasPeriodo: number;
+}
+
+/**
+ * Calcula o fluxo de caixa mês a mês.
+ * Regra: saldo_final = saldo_inicial + entradas - saídas
+ * Continuidade: saldo_inicial(mês N+1) = saldo_final(mês N)
+ * 
+ * Considera APENAS movimentações PAGAS (realizadas).
+ */
+export function calcularFluxoCaixaMensal(params: FluxoCaixaMensalParams): FluxoCaixaMensalResult {
+  const {
+    dataInicio,
+    dataFim,
+    contasBancarias,
+    contasBancariasIds,
+    movimentacoesAnteriores,
+    movimentacoesNoPeriodo,
+  } = params;
+
+  // Filtrar contas bancárias
+  const contasFiltradas = contasBancariasIds.length === 0
+    ? contasBancarias
+    : contasBancarias.filter(c => contasBancariasIds.includes(c.id));
+
+  // Saldo inicial das contas cadastradas
+  const saldoInicialContas = contasFiltradas.reduce((acc, conta) => acc + conta.saldo_inicial, 0);
+
+  // Filtrar movimentações anteriores por conta bancária
+  const movAnterioresFiltradas = contasBancariasIds.length === 0
+    ? movimentacoesAnteriores
+    : movimentacoesAnteriores.filter(m => m.conta_bancaria_id && contasBancariasIds.includes(m.conta_bancaria_id));
+
+  const entradasAnteriores = movAnterioresFiltradas
+    .filter(m => m.tipo === 'entrada')
+    .reduce((acc, m) => acc + m.valor, 0);
+
+  const saidasAnteriores = movAnterioresFiltradas
+    .filter(m => m.tipo === 'saida')
+    .reduce((acc, m) => acc + m.valor, 0);
+
+  // Saldo inicial do período
+  const saldoInicialPeriodo = saldoInicialContas + entradasAnteriores - saidasAnteriores;
+
+  // Filtrar movimentações do período por conta bancária (apenas PAGAS)
+  const movPagas = (contasBancariasIds.length === 0
+    ? movimentacoesNoPeriodo
+    : movimentacoesNoPeriodo.filter(m => m.conta_bancaria_id && contasBancariasIds.includes(m.conta_bancaria_id))
+  ).filter(m => m.status === 'pago');
+
+  // Gerar lista de meses do período
+  const mesesList: string[] = [];
+  const startDate = new Date(dataInicio + 'T00:00:00');
+  const endDate = new Date(dataFim + 'T00:00:00');
+  const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const lastMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+  while (current <= lastMonth) {
+    const y = current.getFullYear();
+    const m = String(current.getMonth() + 1).padStart(2, '0');
+    mesesList.push(`${y}-${m}`);
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  // Agrupar movimentações pagas por mês (YYYY-MM)
+  const movPorMes: Record<string, { entradas: number; saidas: number }> = {};
+  for (const mes of mesesList) {
+    movPorMes[mes] = { entradas: 0, saidas: 0 };
+  }
+
+  for (const mov of movPagas) {
+    const data = normalizeDateToYYYYMMDD(mov.data_movimento);
+    if (!data) continue;
+    const mesKey = data.substring(0, 7); // YYYY-MM
+    if (!movPorMes[mesKey]) continue; // fora do período
+    if (mov.tipo === 'entrada') {
+      movPorMes[mesKey].entradas += mov.valor;
+    } else {
+      movPorMes[mesKey].saidas += mov.valor;
+    }
+  }
+
+  // Calcular fluxo mês a mês com continuidade
+  const meses: FluxoMensal[] = [];
+  let saldoAcumulado = saldoInicialPeriodo;
+  let totalEntradasPeriodo = 0;
+  let totalSaidasPeriodo = 0;
+
+  for (const mesKey of mesesList) {
+    const { entradas, saidas } = movPorMes[mesKey];
+    const saldoInicial = saldoAcumulado;
+    const saldoFinal = saldoInicial + entradas - saidas;
+
+    const [ano, mes] = mesKey.split('-');
+    meses.push({
+      mesAno: mesKey,
+      mesAnoFormatted: `${mes}/${ano}`,
+      saldoInicial,
+      totalEntradas: entradas,
+      totalSaidas: saidas,
+      saldoFinal,
+    });
+
+    saldoAcumulado = saldoFinal;
+    totalEntradasPeriodo += entradas;
+    totalSaidasPeriodo += saidas;
+  }
+
+  return {
+    meses,
+    saldoInicialPeriodo,
+    saldoFinalPeriodo: saldoAcumulado,
+    totalEntradasPeriodo,
+    totalSaidasPeriodo,
+  };
+}
