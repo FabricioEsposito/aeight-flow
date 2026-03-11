@@ -157,6 +157,7 @@ export function EditParcelaDialog({
       valor_original: valorOriginal,
       link_nf: linkNf,
       link_boleto: linkBoleto,
+      data_movimentacao: dataMovimentacao ? format(dataMovimentacao, 'yyyy-MM-dd') : null,
     };
 
     // Save rateio
