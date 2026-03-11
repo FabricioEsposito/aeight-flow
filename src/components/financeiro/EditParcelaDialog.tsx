@@ -63,6 +63,7 @@ export function EditParcelaDialog({
   initialData,
 }: EditParcelaDialogProps) {
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
+  const [dataMovimentacao, setDataMovimentacao] = useState<Date | undefined>();
   const [descricao, setDescricao] = useState('');
   const [planoContaId, setPlanoContaId] = useState<string>('');
   const [rateioItems, setRateioItems] = useState<RateioItem[]>([]);
