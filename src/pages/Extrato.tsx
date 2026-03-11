@@ -817,7 +817,7 @@ export default function Extrato() {
 
   useEffect(() => {
     fetchLancamentos();
-  }, [datePreset, customDateRange]);
+  }, [datePreset, customDateRange, dateFilterType]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
     if (!checkPermission('canPerformBaixas', 'Você não tem permissão para marcar lançamentos como pagos/recebidos. Entre em contato com o administrador.')) {
