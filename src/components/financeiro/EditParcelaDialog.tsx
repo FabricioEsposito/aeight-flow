@@ -77,6 +77,7 @@ export function EditParcelaDialog({
   useEffect(() => {
     if (initialData && open) {
       setDataVencimento(new Date(initialData.data_vencimento + 'T00:00:00'));
+      setDataMovimentacao(initialData.data_movimentacao ? new Date(initialData.data_movimentacao + 'T00:00:00') : undefined);
       setDescricao(initialData.descricao);
       setPlanoContaId(initialData.plano_conta_id || 'none');
       setContaBancariaId(initialData.conta_bancaria_id || 'none');
