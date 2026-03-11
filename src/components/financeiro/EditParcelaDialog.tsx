@@ -33,6 +33,8 @@ interface EditParcelaDialogProps {
     desconto?: number;
     link_nf?: string | null;
     link_boleto?: string | null;
+    data_movimentacao?: string | null;
+    status?: string;
   };
 }
 
@@ -50,6 +52,7 @@ export interface EditParcelaData {
   valor_original: number;
   link_nf?: string | null;
   link_boleto?: string | null;
+  data_movimentacao?: string | null;
 }
 
 export function EditParcelaDialog({
@@ -60,6 +63,7 @@ export function EditParcelaDialog({
   initialData,
 }: EditParcelaDialogProps) {
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
+  const [dataMovimentacao, setDataMovimentacao] = useState<Date | undefined>();
   const [descricao, setDescricao] = useState('');
   const [planoContaId, setPlanoContaId] = useState<string>('');
   const [rateioItems, setRateioItems] = useState<RateioItem[]>([]);
@@ -73,6 +77,7 @@ export function EditParcelaDialog({
   useEffect(() => {
     if (initialData && open) {
       setDataVencimento(new Date(initialData.data_vencimento + 'T00:00:00'));
+      setDataMovimentacao(initialData.data_movimentacao ? new Date(initialData.data_movimentacao + 'T00:00:00') : undefined);
       setDescricao(initialData.descricao);
       setPlanoContaId(initialData.plano_conta_id || 'none');
       setContaBancariaId(initialData.conta_bancaria_id || 'none');
@@ -152,6 +157,7 @@ export function EditParcelaDialog({
       valor_original: valorOriginal,
       link_nf: linkNf,
       link_boleto: linkBoleto,
+      data_movimentacao: dataMovimentacao ? format(dataMovimentacao, 'yyyy-MM-dd') : null,
     };
 
     // Save rateio
@@ -217,6 +223,44 @@ export function EditParcelaDialog({
             </div>
 
             <div className="space-y-2">
+              <Label>Data de Movimentação {tipo === 'entrada' ? '(Recebimento)' : '(Pagamento)'}</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dataMovimentacao && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dataMovimentacao ? format(dataMovimentacao, "dd/MM/yyyy", { locale: ptBR }) : "Sem data de movimentação"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dataMovimentacao}
+                    onSelect={setDataMovimentacao}
+                    locale={ptBR}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              {dataMovimentacao && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => setDataMovimentacao(undefined)}
+                >
+                  Limpar data de movimentação
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
               <Label>Conta Bancária</Label>
               <ContaBancariaSelect
                 value={contaBancariaId}
@@ -224,7 +268,6 @@ export function EditParcelaDialog({
                 placeholder="Selecione"
                 showNoneOption
               />
-            </div>
           </div>
 
           <div className="space-y-2">
