@@ -23,10 +23,10 @@ function notifyListeners() {
   listeners.forEach(listener => listener({ ...globalState }));
 }
 
-let timeoutRef: NodeJS.Timeout | null = null;
-let warningTimeoutRef: NodeJS.Timeout | null = null;
-let countdownRef: NodeJS.Timeout | null = null;
-let totalCountdownRef: NodeJS.Timeout | null = null;
+let timeoutRef: ReturnType<typeof setTimeout> | null = null;
+let warningTimeoutRef: ReturnType<typeof setTimeout> | null = null;
+let countdownRef: ReturnType<typeof setInterval> | null = null;
+let totalCountdownRef: ReturnType<typeof setInterval> | null = null;
 let lastActivityTime = Date.now();
 let isInitialized = false;
 
