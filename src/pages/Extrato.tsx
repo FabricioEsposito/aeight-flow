@@ -425,6 +425,9 @@ export default function Extrato() {
       const isFilterByMovimentacao = dateFilterType === 'movimentacao';
       const isFilterByCompetencia = dateFilterType === 'competencia';
       
+      let receberCombinado: any[] = [];
+      let pagarCombinado: any[] = [];
+
       // ===== CONTAS A RECEBER =====
       if (isFilterByMovimentacao) {
         // Filtro por data de baixa: buscar SOMENTE pagos com data_recebimento no range
@@ -443,11 +446,9 @@ export default function Extrato() {
           queryReceberPagos = queryReceberPagos.gte('data_recebimento', dateRange.start).lte('data_recebimento', dateRange.end);
         }
 
-        const { data: dataReceberPagos, error: errorReceberPagos } = await queryReceberPagos;
-        if (errorReceberPagos) throw errorReceberPagos;
-
-        // Não buscar pendentes quando filtro é por baixa (pendentes não têm data de baixa)
-        var receberCombinado = [...(dataReceberPagos || [])];
+        const { data, error } = await queryReceberPagos;
+        if (error) throw error;
+        receberCombinado = data || [];
       } else {
         // Filtro por vencimento ou competência
         const dateColumn = isFilterByCompetencia ? 'data_competencia' : 'data_vencimento';
@@ -467,8 +468,8 @@ export default function Extrato() {
           queryReceberPendentes = queryReceberPendentes.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
         }
 
-        const { data: dataReceberPendentes, error: errorReceberPendentes } = await queryReceberPendentes;
-        if (errorReceberPendentes) throw errorReceberPendentes;
+        const { data: pendentes, error: errPend } = await queryReceberPendentes;
+        if (errPend) throw errPend;
 
         // Pagos - filtrar pela MESMA coluna selecionada (sem .or())
         let queryReceberPagos = supabase
@@ -485,10 +486,10 @@ export default function Extrato() {
           queryReceberPagos = queryReceberPagos.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
         }
 
-        const { data: dataReceberPagos, error: errorReceberPagos } = await queryReceberPagos;
-        if (errorReceberPagos) throw errorReceberPagos;
+        const { data: pagos, error: errPagos } = await queryReceberPagos;
+        if (errPagos) throw errPagos;
 
-        var receberCombinado = [...(dataReceberPendentes || []), ...(dataReceberPagos || [])];
+        receberCombinado = [...(pendentes || []), ...(pagos || [])];
       }
 
       // ===== CONTAS A PAGAR =====
@@ -509,10 +510,9 @@ export default function Extrato() {
           queryPagarPagos = queryPagarPagos.gte('data_pagamento', dateRange.start).lte('data_pagamento', dateRange.end);
         }
 
-        const { data: dataPagarPagos, error: errorPagarPagos } = await queryPagarPagos;
-        if (errorPagarPagos) throw errorPagarPagos;
-
-        var pagarCombinado = [...(dataPagarPagos || [])];
+        const { data, error } = await queryPagarPagos;
+        if (error) throw error;
+        pagarCombinado = data || [];
       } else {
         const dateColumn = isFilterByCompetencia ? 'data_competencia' : 'data_vencimento';
         
@@ -531,8 +531,8 @@ export default function Extrato() {
           queryPagarPendentes = queryPagarPendentes.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
         }
 
-        const { data: dataPagarPendentes, error: errorPagarPendentes } = await queryPagarPendentes;
-        if (errorPagarPendentes) throw errorPagarPendentes;
+        const { data: pendentes, error: errPend } = await queryPagarPendentes;
+        if (errPend) throw errPend;
 
         // Pagos - filtrar pela MESMA coluna selecionada (sem .or())
         let queryPagarPagos = supabase
@@ -549,15 +549,11 @@ export default function Extrato() {
           queryPagarPagos = queryPagarPagos.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
         }
 
-        const { data: dataPagarPagos, error: errorPagarPagos } = await queryPagarPagos;
-        if (errorPagarPagos) throw errorPagarPagos;
+        const { data: pagos, error: errPagos } = await queryPagarPagos;
+        if (errPagos) throw errPagos;
 
-        var pagarCombinado = [...(dataPagarPendentes || []), ...(dataPagarPagos || [])];
+        pagarCombinado = [...(pendentes || []), ...(pagos || [])];
       }
-
-      // Combinar resultados (pendentes + pagos)
-      const receberCombinado = [...(dataReceberPendentes || []), ...(dataReceberPagos || [])];
-      const pagarCombinado = [...(dataPagarPendentes || []), ...(dataPagarPagos || [])];
 
       // Filtrar parcelas de contratos inativos - Contas a Receber
       // IMPORTANTE: Lançamentos já PAGOS devem sempre aparecer, pois já foram efetivados
