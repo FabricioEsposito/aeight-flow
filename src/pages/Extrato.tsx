@@ -39,7 +39,7 @@ import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-uti
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
 import { FluxoCaixaMensal } from '@/components/financeiro/FluxoCaixaMensal';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
+
 
 interface LancamentoExtrato {
   id: string;
