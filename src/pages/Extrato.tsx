@@ -1206,6 +1206,8 @@ export default function Extrato() {
     try {
       const table = selectedLancamento.cliente_id ? 'contas_receber' : 'contas_pagar';
       
+      const dateField = selectedLancamento.cliente_id ? 'data_recebimento' : 'data_pagamento';
+      
       const updateData: any = {
         data_vencimento: data.data_vencimento,
         descricao: data.descricao,
@@ -1217,6 +1219,7 @@ export default function Extrato() {
         desconto: data.desconto,
         valor: data.valor_total,
         valor_original: data.valor_original,
+        [dateField]: data.data_movimentacao || null,
       };
       
       // Adicionar link_nf e link_boleto apenas para contas a pagar
