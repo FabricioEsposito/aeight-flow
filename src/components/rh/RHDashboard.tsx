@@ -77,7 +77,8 @@ export function RHDashboard() {
       const { data: contratos } = await supabase
         .from('contratos')
         .select('id, is_folha_funcionario, is_beneficio_funcionario, fornecedor_id, plano_contas_id, plano_contas:plano_contas_id(descricao)')
-        .or('is_folha_funcionario.eq.true,is_beneficio_funcionario.eq.true');
+        .or('is_folha_funcionario.eq.true,is_beneficio_funcionario.eq.true')
+        .eq('status', 'ativo');
 
       if (!contratos || contratos.length === 0) {
         setRecords([]);
