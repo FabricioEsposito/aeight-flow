@@ -129,6 +129,7 @@ export function FolhaPagamentoTab() {
           )
         `)
         .eq('contratos.is_folha_funcionario', true)
+        .eq('contratos.status', 'ativo')
         .gte('data_vencimento', startDate)
         .lte('data_vencimento', endDate)
         .order('data_vencimento');

@@ -104,6 +104,7 @@ export function BeneficiosTab() {
           )
         `)
         .eq('contratos.is_beneficio_funcionario', true)
+        .eq('contratos.status', 'ativo')
         .gte('data_vencimento', startDate)
         .lte('data_vencimento', endDate)
         .order('data_vencimento');
