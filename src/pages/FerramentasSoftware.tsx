@@ -32,7 +32,7 @@ export default function FerramentasSoftware() {
         .from("ferramentas_software" as any)
         .select("*")
         .eq("status", "ativo")
-        .order("nome");
+        .order("dia_vencimento", { ascending: true });
       if (error) throw error;
 
       const ids = (data || []).map((f: any) => f.id);
