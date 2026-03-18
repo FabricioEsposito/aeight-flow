@@ -24,7 +24,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
-import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
+
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
@@ -90,7 +90,7 @@ export default function Extrato() {
   const [categoriaFilter, setCategoriaFilter] = useSessionState<string[]>('extrato', 'categoria', []);
   const [contaBancariaFilter, setContaBancariaFilter] = useSessionState<string[]>('extrato', 'contaBancaria', []);
   const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('extrato', 'datePreset', 'hoje');
-  const [dateFilterType, setDateFilterType] = useSessionState<DateFilterType>('extrato', 'dateFilterType', 'vencimento');
+  
   
   const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('extrato', 'customDateRange', undefined as any);
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
@@ -424,139 +424,94 @@ export default function Extrato() {
       if (errorContasBancarias) throw errorContasBancarias;
       const contasBancariasMap = new Map((contasBancariasData || []).map(c => [c.id, c]));
       
-      // Determinar qual coluna de data usar baseado no filtro selecionado
-      const isFilterByMovimentacao = dateFilterType === 'movimentacao';
-      const isFilterByCompetencia = dateFilterType === 'competencia';
-      
       let receberCombinado: any[] = [];
       let pagarCombinado: any[] = [];
 
+      // ===== LÓGICA UNIFICADA DE FILTRO =====
+      // Pagos: filtrar por data de movimentação (data_recebimento / data_pagamento)
+      // Pendentes/Vencidos: filtrar por data de vencimento
+
       // ===== CONTAS A RECEBER =====
-      if (isFilterByMovimentacao) {
-        // Filtro por data de baixa: buscar SOMENTE pagos com data_recebimento no range
-        let queryReceberPagos = supabase
-          .from('contas_receber')
-          .select(`
-            *,
-            clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
-          `)
-          .eq('status', 'pago')
-          .not('data_recebimento', 'is', null)
-          .order('data_recebimento', { ascending: true });
+      // Pagos filtrados por data_recebimento
+      let queryReceberPagos = supabase
+        .from('contas_receber')
+        .select(`
+          *,
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+        `)
+        .eq('status', 'pago')
+        .not('data_recebimento', 'is', null)
+        .order('data_recebimento', { ascending: true });
 
-        if (dateRange) {
-          queryReceberPagos = queryReceberPagos.gte('data_recebimento', dateRange.start).lte('data_recebimento', dateRange.end);
-        }
-
-        const { data, error } = await queryReceberPagos;
-        if (error) throw error;
-        receberCombinado = data || [];
-      } else {
-        // Filtro por vencimento ou competência
-        const dateColumn = isFilterByCompetencia ? 'data_competencia' : 'data_vencimento';
-        
-        // Pendentes
-        let queryReceberPendentes = supabase
-          .from('contas_receber')
-          .select(`
-            *,
-            clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
-          `)
-          .neq('status', 'pago')
-          .order('data_vencimento', { ascending: true });
-
-        if (dateRange) {
-          queryReceberPendentes = queryReceberPendentes.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
-        }
-
-        const { data: pendentes, error: errPend } = await queryReceberPendentes;
-        if (errPend) throw errPend;
-
-        // Pagos - filtrar pela MESMA coluna selecionada (sem .or())
-        let queryReceberPagos = supabase
-          .from('contas_receber')
-          .select(`
-            *,
-            clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
-          `)
-          .eq('status', 'pago')
-          .order('data_recebimento', { ascending: true });
-
-        if (dateRange) {
-          queryReceberPagos = queryReceberPagos.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
-        }
-
-        const { data: pagos, error: errPagos } = await queryReceberPagos;
-        if (errPagos) throw errPagos;
-
-        receberCombinado = [...(pendentes || []), ...(pagos || [])];
+      if (dateRange) {
+        queryReceberPagos = queryReceberPagos.gte('data_recebimento', dateRange.start).lte('data_recebimento', dateRange.end);
       }
+
+      const { data: receberPagos, error: errReceberPagos } = await queryReceberPagos;
+      if (errReceberPagos) throw errReceberPagos;
+
+      // Pendentes/vencidos filtrados por data_vencimento
+      let queryReceberPendentes = supabase
+        .from('contas_receber')
+        .select(`
+          *,
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf),
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao))
+        `)
+        .neq('status', 'pago')
+        .neq('status', 'cancelado')
+        .order('data_vencimento', { ascending: true });
+
+      if (dateRange) {
+        queryReceberPendentes = queryReceberPendentes.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
+      }
+
+      const { data: receberPendentes, error: errReceberPend } = await queryReceberPendentes;
+      if (errReceberPend) throw errReceberPend;
+
+      receberCombinado = [...(receberPagos || []), ...(receberPendentes || [])];
 
       // ===== CONTAS A PAGAR =====
-      if (isFilterByMovimentacao) {
-        // Filtro por data de baixa: buscar SOMENTE pagos com data_pagamento no range
-        let queryPagarPagos = supabase
-          .from('contas_pagar')
-          .select(`
-            *,
-            fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
-          `)
-          .eq('status', 'pago')
-          .not('data_pagamento', 'is', null)
-          .order('data_pagamento', { ascending: true });
+      // Pagos filtrados por data_pagamento
+      let queryPagarPagos = supabase
+        .from('contas_pagar')
+        .select(`
+          *,
+          fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
+        `)
+        .eq('status', 'pago')
+        .not('data_pagamento', 'is', null)
+        .order('data_pagamento', { ascending: true });
 
-        if (dateRange) {
-          queryPagarPagos = queryPagarPagos.gte('data_pagamento', dateRange.start).lte('data_pagamento', dateRange.end);
-        }
-
-        const { data, error } = await queryPagarPagos;
-        if (error) throw error;
-        pagarCombinado = data || [];
-      } else {
-        const dateColumn = isFilterByCompetencia ? 'data_competencia' : 'data_vencimento';
-        
-        // Pendentes
-        let queryPagarPendentes = supabase
-          .from('contas_pagar')
-          .select(`
-            *,
-            fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
-          `)
-          .neq('status', 'pago')
-          .order('data_vencimento', { ascending: true });
-
-        if (dateRange) {
-          queryPagarPendentes = queryPagarPendentes.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
-        }
-
-        const { data: pendentes, error: errPend } = await queryPagarPendentes;
-        if (errPend) throw errPend;
-
-        // Pagos - filtrar pela MESMA coluna selecionada (sem .or())
-        let queryPagarPagos = supabase
-          .from('contas_pagar')
-          .select(`
-            *,
-            fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
-            parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
-          `)
-          .eq('status', 'pago')
-          .order('data_pagamento', { ascending: true });
-
-        if (dateRange) {
-          queryPagarPagos = queryPagarPagos.gte(dateColumn, dateRange.start).lte(dateColumn, dateRange.end);
-        }
-
-        const { data: pagos, error: errPagos } = await queryPagarPagos;
-        if (errPagos) throw errPagos;
-
-        pagarCombinado = [...(pendentes || []), ...(pagos || [])];
+      if (dateRange) {
+        queryPagarPagos = queryPagarPagos.gte('data_pagamento', dateRange.start).lte('data_pagamento', dateRange.end);
       }
+
+      const { data: pagarPagos, error: errPagarPagos } = await queryPagarPagos;
+      if (errPagarPagos) throw errPagarPagos;
+
+      // Pendentes/vencidos filtrados por data_vencimento
+      let queryPagarPendentes = supabase
+        .from('contas_pagar')
+        .select(`
+          *,
+          fornecedores:fornecedor_id (razao_social, nome_fantasia, cnpj_cpf),
+          parcelas_contrato:parcela_id (contratos:contrato_id(numero_contrato, servicos, importancia_cliente_fornecedor, status, data_reativacao, is_folha_funcionario))
+        `)
+        .neq('status', 'pago')
+        .neq('status', 'cancelado')
+        .order('data_vencimento', { ascending: true });
+
+      if (dateRange) {
+        queryPagarPendentes = queryPagarPendentes.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
+      }
+
+      const { data: pagarPendentes, error: errPagarPend } = await queryPagarPendentes;
+      if (errPagarPend) throw errPagarPend;
+
+      pagarCombinado = [...(pagarPagos || []), ...(pagarPendentes || [])];
 
       // Filtrar parcelas de contratos inativos - Contas a Receber
       // IMPORTANTE: Lançamentos já PAGOS devem sempre aparecer, pois já foram efetivados
@@ -820,7 +775,7 @@ export default function Extrato() {
 
   useEffect(() => {
     fetchLancamentos();
-  }, [datePreset, customDateRange, dateFilterType]);
+  }, [datePreset, customDateRange]);
 
   const handleMarkAsPaidClick = (lancamento: LancamentoExtrato) => {
     if (!checkPermission('canPerformBaixas', 'Você não tem permissão para marcar lançamentos como pagos/recebidos. Entre em contato com o administrador.')) {
@@ -1700,46 +1655,26 @@ export default function Extrato() {
       matchesCategoria = !!lanc.plano_conta_id && categoriaFilter.includes(lanc.plano_conta_id);
     }
 
-    let matchesDate = true;
-    const dateRange = getDateRange();
-    if (dateRange) {
-      const startDate = new Date(`${dateRange.start}T00:00:00`);
-      const endDate = new Date(`${dateRange.end}T23:59:59.999`);
+    // Date filtering is done at query level (paid by movement date, pending by due date)
+    // No additional client-side date filter needed
 
-      if (dateFilterType === 'movimentacao') {
-        // Filtro por data de baixa: usar APENAS data_recebimento/data_pagamento
-        const movStr = lanc.data_recebimento || lanc.data_pagamento;
-        if (!movStr) {
-          matchesDate = false; // Sem data de baixa = não aparece
-        } else {
-          const movDate = new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr);
-          matchesDate = movDate >= startDate && movDate <= endDate;
-        }
-      } else if (dateFilterType === 'competencia') {
-        // Filtro por competência: usar APENAS data_competencia
-        const compDate = lanc.data_competencia ? new Date(`${lanc.data_competencia}T00:00:00`) : null;
-        matchesDate = compDate ? compDate >= startDate && compDate <= endDate : false;
-      } else {
-        // Filtro por vencimento: usar APENAS data_vencimento
-        const vencDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
-        matchesDate = vencDate ? vencDate >= startDate && vencDate <= endDate : false;
-      }
-    }
-
-    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria && matchesDate;
+    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria;
   }).sort((a, b) => {
-    // Primeiro: pagos/recebidos antes de pendentes
+    // Sort by effective date ascending (like a bank statement)
+    // Paid: use movement date; Pending/overdue: use due date
+    const getEffectiveDate = (lanc: LancamentoExtrato) => {
+      if (lanc.status === 'pago') {
+        return lanc.data_recebimento || lanc.data_pagamento || lanc.data_vencimento;
+      }
+      return lanc.data_vencimento;
+    };
+    const dateA = new Date(getEffectiveDate(a) + 'T00:00:00').getTime();
+    const dateB = new Date(getEffectiveDate(b) + 'T00:00:00').getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    // Secondary sort: paid before pending on same date
     const isPagoA = a.status === 'pago' ? 0 : 1;
     const isPagoB = b.status === 'pago' ? 0 : 1;
-    if (isPagoA !== isPagoB) return isPagoA - isPagoB;
-    
-    // Depois: ordenar por data de movimento em ordem crescente
-    const getMovementDate = (lanc: LancamentoExtrato) => {
-      return lanc.data_recebimento || lanc.data_pagamento || lanc.data_vencimento;
-    };
-    const dateA = new Date(getMovementDate(a)).getTime();
-    const dateB = new Date(getMovementDate(b)).getTime();
-    return dateA - dateB;
+    return isPagoA - isPagoB;
   });
 
   const formatCurrency = (value: number) => {
@@ -2017,11 +1952,6 @@ export default function Extrato() {
             customRange={customDateRange}
           />
 
-          <DateTypeFilter
-            value={dateFilterType}
-            onChange={setDateFilterType}
-            showMovimentacao
-          />
 
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
