@@ -271,20 +271,24 @@ export default function Extrato() {
   const calcularDadosComSaldos = () => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
+    const round = (v: number) => Math.round(v * 100) / 100;
+
+    // Use saldoInicialAjustado for consistency with table display
+    const baseInicial = typeof saldoInicialAjustado === 'number' ? saldoInicialAjustado : saldoInicial;
     
     return filteredLancamentos.map((lanc, index) => {
       const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
       
-      const saldoRealizado =
-        saldoInicial +
+      const saldoRealizado = round(
+        baseInicial +
         lancamentosAteAqui
           .filter(l => l.status === 'pago' && l.tipo === 'entrada')
           .reduce((acc, l) => acc + l.valor, 0) -
         lancamentosAteAqui
           .filter(l => l.status === 'pago' && l.tipo === 'saida')
-          .reduce((acc, l) => acc + l.valor, 0);
+          .reduce((acc, l) => acc + l.valor, 0));
 
-      const saldoPrevisto =
+      const saldoPrevisto = round(
         saldoRealizado +
         lancamentosAteAqui
           .filter(l => {
@@ -299,7 +303,7 @@ export default function Extrato() {
             const venc = new Date(l.data_vencimento + 'T00:00:00');
             return venc >= hoje;
           })
-          .reduce((acc, l) => acc + l.valor, 0);
+          .reduce((acc, l) => acc + l.valor, 0));
 
       return {
         ...lanc,
