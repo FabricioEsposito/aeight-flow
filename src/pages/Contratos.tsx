@@ -53,6 +53,7 @@ interface Contrato {
 export default function Contratos() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { exportToExcel } = useExportReport();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
