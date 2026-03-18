@@ -65,7 +65,8 @@ interface FluxoCaixaData {
   receitaPrevista: number;
   despesaRealizada: number;
   despesaPrevista: number;
-  saldoFinal: number;
+  saldoRealizado: number;
+  saldoPrevisto: number;
 }
 
 export function Dashboard() {
