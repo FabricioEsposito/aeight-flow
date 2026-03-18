@@ -665,73 +665,97 @@ export default function Extrato() {
       const contasAtivas = (contasBancariasData || []).filter((c: any) => c.status !== 'inativo');
       setContasBancarias(contasAtivas);
 
-      // Buscar movimentações PAGAS anteriores ao período para calcular o saldo inicial corretamente
-      // IMPORTANTE: agregar no banco evita limite padrão de 1000 linhas do Supabase
+      // Buscar movimentações anteriores ao período para calcular o saldo inicial corretamente
+      // IMPORTANTE: paginar evita o limite padrão de 1000 linhas do Supabase sem quebrar o cliente
       const dataInicioFiltro = dateRange?.start || format(new Date(), 'yyyy-MM-dd');
       const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-      let totalEntradasAnterioresQuery = supabase
-        .from('contas_receber')
-        .select('valor.sum()')
-        .eq('status', 'pago')
-        .lt('data_recebimento', dataInicioFiltro);
+      const fetchPaginatedResults = async (
+        queryFactory: (from: number, to: number) => Promise<{ data: any[] | null; error: any }>
+      ) => {
+        const pageSize = 1000;
+        let from = 0;
+        const results: any[] = [];
 
-      let totalSaidasAnterioresQuery = supabase
-        .from('contas_pagar')
-        .select('valor.sum()')
-        .eq('status', 'pago')
-        .lt('data_pagamento', dataInicioFiltro);
+        while (true) {
+          const { data, error } = await queryFactory(from, from + pageSize - 1);
+          if (error) throw error;
 
-      let totalPendentesReceberAntQuery = supabase
-        .from('contas_receber')
-        .select('valor.sum()')
-        .neq('status', 'pago')
-        .neq('status', 'cancelado')
-        .gte('data_vencimento', todayStr)
-        .lt('data_vencimento', dataInicioFiltro);
+          const chunk = data || [];
+          results.push(...chunk);
 
-      let totalPendentesPagarAntQuery = supabase
-        .from('contas_pagar')
-        .select('valor.sum()')
-        .neq('status', 'pago')
-        .neq('status', 'cancelado')
-        .gte('data_vencimento', todayStr)
-        .lt('data_vencimento', dataInicioFiltro);
+          if (chunk.length < pageSize) break;
+          from += pageSize;
+        }
 
-      if (contaBancariaFilter.length > 0) {
-        totalEntradasAnterioresQuery = totalEntradasAnterioresQuery.in('conta_bancaria_id', contaBancariaFilter);
-        totalSaidasAnterioresQuery = totalSaidasAnterioresQuery.in('conta_bancaria_id', contaBancariaFilter);
-        totalPendentesReceberAntQuery = totalPendentesReceberAntQuery.in('conta_bancaria_id', contaBancariaFilter);
-        totalPendentesPagarAntQuery = totalPendentesPagarAntQuery.in('conta_bancaria_id', contaBancariaFilter);
-      }
+        return results;
+      };
 
-      const [
-        { data: totalEntradasAnteriores, error: entradasAntError },
-        { data: totalSaidasAnteriores, error: saidasAntError },
-        { data: totalPendentesReceberAnt, error: pendReceberAntError },
-        { data: totalPendentesPagarAnt, error: pendPagarAntError },
-      ] = await Promise.all([
-        totalEntradasAnterioresQuery,
-        totalSaidasAnterioresQuery,
-        totalPendentesReceberAntQuery,
-        totalPendentesPagarAntQuery,
+      const [entradasAnteriores, saidasAnteriores, pendentesReceberAnt, pendentesPagarAnt] = await Promise.all([
+        fetchPaginatedResults((from, to) =>
+          supabase
+            .from('contas_receber')
+            .select('valor, conta_bancaria_id')
+            .eq('status', 'pago')
+            .lt('data_recebimento', dataInicioFiltro)
+            .order('id', { ascending: true })
+            .range(from, to)
+        ),
+        fetchPaginatedResults((from, to) =>
+          supabase
+            .from('contas_pagar')
+            .select('valor, conta_bancaria_id')
+            .eq('status', 'pago')
+            .lt('data_pagamento', dataInicioFiltro)
+            .order('id', { ascending: true })
+            .range(from, to)
+        ),
+        fetchPaginatedResults((from, to) =>
+          supabase
+            .from('contas_receber')
+            .select('valor, data_vencimento, conta_bancaria_id')
+            .neq('status', 'pago')
+            .neq('status', 'cancelado')
+            .gte('data_vencimento', todayStr)
+            .lt('data_vencimento', dataInicioFiltro)
+            .order('id', { ascending: true })
+            .range(from, to)
+        ),
+        fetchPaginatedResults((from, to) =>
+          supabase
+            .from('contas_pagar')
+            .select('valor, data_vencimento, conta_bancaria_id')
+            .neq('status', 'pago')
+            .neq('status', 'cancelado')
+            .gte('data_vencimento', todayStr)
+            .lt('data_vencimento', dataInicioFiltro)
+            .order('id', { ascending: true })
+            .range(from, to)
+        ),
       ]);
 
-      if (entradasAntError) throw entradasAntError;
-      if (saidasAntError) throw saidasAntError;
-      if (pendReceberAntError) throw pendReceberAntError;
-      if (pendPagarAntError) throw pendPagarAntError;
-
       const movimentacoesAnt: Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }> = [
-        { valor: Number(totalEntradasAnteriores?.[0]?.sum ?? 0), conta_bancaria_id: null, tipo: 'entrada' as const },
-        { valor: Number(totalSaidasAnteriores?.[0]?.sum ?? 0), conta_bancaria_id: null, tipo: 'saida' as const },
+        ...entradasAnteriores.map(e => ({ valor: e.valor, conta_bancaria_id: e.conta_bancaria_id, tipo: 'entrada' as const })),
+        ...saidasAnteriores.map(s => ({ valor: s.valor, conta_bancaria_id: s.conta_bancaria_id, tipo: 'saida' as const })),
       ];
 
       setMovimentacoesAnteriores(movimentacoesAnt);
 
       const pendentesAnt: Array<{ valor: number; data_movimento: string; tipo: 'entrada' | 'saida'; status: 'pendente'; conta_bancaria_id: string | null }> = [
-        { valor: Number(totalPendentesReceberAnt?.[0]?.sum ?? 0), data_movimento: dataInicioFiltro, tipo: 'entrada' as const, status: 'pendente' as const, conta_bancaria_id: null },
-        { valor: Number(totalPendentesPagarAnt?.[0]?.sum ?? 0), data_movimento: dataInicioFiltro, tipo: 'saida' as const, status: 'pendente' as const, conta_bancaria_id: null },
+        ...pendentesReceberAnt.map(e => ({
+          valor: e.valor,
+          data_movimento: e.data_vencimento,
+          tipo: 'entrada' as const,
+          status: 'pendente' as const,
+          conta_bancaria_id: e.conta_bancaria_id,
+        })),
+        ...pendentesPagarAnt.map(s => ({
+          valor: s.valor,
+          data_movimento: s.data_vencimento,
+          tipo: 'saida' as const,
+          status: 'pendente' as const,
+          conta_bancaria_id: s.conta_bancaria_id,
+        })),
       ];
 
       setPendentesAnteriores(pendentesAnt);
