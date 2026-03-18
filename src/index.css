@@ -138,7 +138,7 @@
     --ring: 217 91% 55%;
 
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%));
-    --gradient-accent: linear-gradient(135deg, hsl(24 95% 55%), hsl(24 95% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%));
     --gradient-success: linear-gradient(135deg, hsl(160 84% 45%), hsl(160 84% 35%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 4%), hsl(0 0% 7%));
 
