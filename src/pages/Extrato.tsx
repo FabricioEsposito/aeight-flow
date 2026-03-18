@@ -692,7 +692,7 @@ export default function Extrato() {
       };
 
       const [entradasAnteriores, saidasAnteriores, pendentesReceberAnt, pendentesPagarAnt] = await Promise.all([
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_receber')
             .select('valor, conta_bancaria_id')
@@ -701,7 +701,7 @@ export default function Extrato() {
             .order('id', { ascending: true })
             .range(from, to)
         ),
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_pagar')
             .select('valor, conta_bancaria_id')
@@ -710,7 +710,7 @@ export default function Extrato() {
             .order('id', { ascending: true })
             .range(from, to)
         ),
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_receber')
             .select('valor, data_vencimento, conta_bancaria_id')
@@ -721,7 +721,7 @@ export default function Extrato() {
             .order('id', { ascending: true })
             .range(from, to)
         ),
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_pagar')
             .select('valor, data_vencimento, conta_bancaria_id')
