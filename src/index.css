@@ -35,10 +35,10 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* Accent - For CTAs (Orange vibrant) */
-    --accent: 24 95% 53%;
-    --accent-foreground: 0 0% 100%;
-    --accent-light: 24 95% 95%;
+    /* Accent - Light Blue for selections */
+    --accent: 217 91% 95%;
+    --accent-foreground: 217 91% 50%;
+    --accent-light: 217 91% 97%;
 
     /* Status colors */
     --success: 160 84% 39%;
@@ -63,7 +63,7 @@
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 50%), hsl(217 91% 40%));
-    --gradient-accent: linear-gradient(135deg, hsl(24 95% 53%), hsl(24 95% 43%));
+    --gradient-accent: linear-gradient(135deg, hsl(217 91% 50%), hsl(217 91% 40%));
     --gradient-success: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 29%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(220 14% 96%));
 
@@ -73,7 +73,7 @@
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1);
     --shadow-primary: 0 4px 14px 0 hsl(217 91% 50% / 0.25);
-    --shadow-accent: 0 4px 14px 0 hsl(24 95% 53% / 0.25);
+    --shadow-accent: 0 4px 14px 0 hsl(217 91% 50% / 0.25);
 
     /* Animations */
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -117,9 +117,9 @@
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 64%;
 
-    --accent: 24 95% 55%;
-    --accent-foreground: 0 0% 100%;
-    --accent-light: 24 95% 15%;
+    --accent: 217 91% 20%;
+    --accent-foreground: 217 91% 80%;
+    --accent-light: 217 91% 15%;
 
     --success: 160 84% 45%;
     --success-foreground: 0 0% 100%;
@@ -138,12 +138,12 @@
     --ring: 217 91% 55%;
 
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%));
-    --gradient-accent: linear-gradient(135deg, hsl(24 95% 55%), hsl(24 95% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%));
     --gradient-success: linear-gradient(135deg, hsl(160 84% 45%), hsl(160 84% 35%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 4%), hsl(0 0% 7%));
 
     --shadow-primary: 0 4px 14px 0 hsl(217 91% 55% / 0.35);
-    --shadow-accent: 0 4px 14px 0 hsl(24 95% 55% / 0.35);
+    --shadow-accent: 0 4px 14px 0 hsl(217 91% 55% / 0.35);
 
     --sidebar-background: 0 0% 4%;
     --sidebar-foreground: 0 0% 98%;
