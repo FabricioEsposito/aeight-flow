@@ -1,45 +1,66 @@
 
 
-## Investigation Results: Saldo BTG Pactual B8One em 13/03
+## Plano Consolidado: Holerite - Upload PDF, Template de E-mail e Envio
 
-### What the Database Shows
+### 1. Migration SQL
 
-The database confirms the balance for "Banco BTG Pactual - Matriz b8one" on 13/03 should indeed be approximately **R$ 0,00** (the exact value is -R$ 0,01 due to floating point precision with values like 12867.7735, 192850.488, 32445.48414).
+- Criar bucket `holerites` (público) no storage
+- Adicionar coluna `holerite_url` (text, nullable) na tabela `folha_pagamento`
+- RLS policies para o bucket (authenticated can upload/read/delete)
 
-### Root Causes Identified
+### 2. Simplificar EditFolhaDialog
 
-**1. Floating Point Precision (minor)**
-Values with many decimal places (e.g., R$ 32.445,48414) accumulate tiny rounding errors. The true balance on 13/03 is -R$ 0,011565 — essentially zero, but displayed as a small negative number.
+Remover do formulário:
+- **Tipo de Vínculo** (select CLT/PJ)
+- **Salário Base** (currency input)
+- **Outros Proventos** (currency input)
+- **Outros Descontos** (currency input)
 
-**2. Filter Inconsistency in Running Balance (major)**
-The `saldoInicial` for the table comes from `fluxoResult` which is calculated using ALL `lancamentos` (unfiltered). However, the running balance per row accumulates only from `filteredLancamentos` (filtered by search, tipo, status, centro de custo, categoria). If ANY of these non-bank-account filters are applied, the running balance becomes mathematically inconsistent — the starting point assumes all transactions exist, but the accumulation skips filtered-out ones.
+O valor líquido será o valor da parcela diretamente. Manter: data de vencimento, status, observações.
 
-### Proposed Fixes
+Adicionar **FileUpload de holerite** (condicional): exibido apenas quando `plano_contas_id` for `30a56eb0-cfba-4e09-9f43-bf3cd39873bc` (2.1.2 - Salário CLT) ou `c1b3c1bf-c014-46f0-baa7-cdea1c3b0ac7` (3.1.1 - Salário CLT). Usa o componente `FileUpload` existente com bucket `holerites`.
 
-**File: `src/pages/Extrato.tsx`**
+### 3. Edge Function `send-holerite-email`
 
-1. **Round displayed balances to 2 decimal places** — Apply `Math.round(value * 100) / 100` to `saldoRealizado` and `saldoPrevisto` before display, so -0.01 shows as 0.00 (or -0.01 at worst, not -0.011565).
+**Template HTML profissional** seguindo o padrão visual do `send-billing-emails`:
 
-2. **Fix the filter consistency bug** — Recalculate `saldoInicial` for the table rows to account for paid transactions that exist but are filtered out by UI filters (search, tipo, status, centro de custo, categoria). When these filters remove paid items from view, the running balance must adjust the starting point to compensate:
-   - Calculate `saldoInicialAjustado = saldoInicial + (paid amounts in lancamentos but NOT in filteredLancamentos)`
-   - Use this adjusted value for the per-row running balance
+- **Header:** Gradiente roxo (`#4f46e5` → `#818cf8`), título "Holerite", subtítulo "Recursos Humanos - Aeight"
+- **Corpo:**
+  - Saudação personalizada ao fornecedor (nome fantasia ou razão social)
+  - Mensagem: "Segue em anexo o holerite referente à competência **Mês/Ano**."
+  - Card resumo com Competência e Valor Líquido
+  - Indicador de anexo (📎 PDF)
+- **Rodapé:** Contato `rh@aeight.global`, copyright Aeight
+- **Anexo:** PDF do holerite (via URL do storage)
+- **Remetente:** `rh@financeiro.aeight.global`
 
-3. **Apply same rounding fix to `calcularDadosComSaldos`** (used for PDF/Excel exports)
+**Lógica:**
+1. Recebe `{ folha_id }`
+2. Busca `folha_pagamento` → `fornecedor` (email) + `holerite_url`
+3. Valida que existe holerite e e-mail
+4. Envia via Resend com PDF em anexo
+5. Registra em `email_logs`
 
-### Technical Detail
+### 4. UI na FolhaPagamentoTab
 
-```text
-Current (broken when filters active):
-  saldoInicial (from ALL lancamentos)
-  + filtered paid entries
-  - filtered paid exits
-  = WRONG (missing filtered-out paid items)
+- Passar `plano_contas_id` para o `EditFolhaDialog`
+- Adicionar botão de envio de e-mail (ícone Mail) na coluna de ações, visível apenas para registros com categoria Salário CLT **e** que tenham holerite anexado
+- Toast de sucesso/erro no envio
 
-Fixed:
-  saldoInicial (from ALL lancamentos)
-  + adjustment for filtered-out paid items
-  + filtered paid entries  
-  - filtered paid exits
-  = CORRECT
+### 5. Config
+
+```toml
+[functions.send-holerite-email]
+verify_jwt = false
 ```
+
+### Arquivos afetados
+
+| Arquivo | Ação |
+|---|---|
+| Migration SQL | Bucket `holerites` + coluna `holerite_url` |
+| `src/components/rh/EditFolhaDialog.tsx` | Simplificar campos, adicionar FileUpload condicional, salvar `holerite_url` |
+| `src/components/rh/FolhaPagamentoTab.tsx` | Botão enviar holerite na tabela |
+| `supabase/functions/send-holerite-email/index.ts` | Nova edge function com template |
+| `supabase/config.toml` | Registrar nova função |
 

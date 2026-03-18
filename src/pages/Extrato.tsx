@@ -271,20 +271,24 @@ export default function Extrato() {
   const calcularDadosComSaldos = () => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
+    const round = (v: number) => Math.round(v * 100) / 100;
+
+    // Use saldoInicialAjustado for consistency with table display
+    const baseInicial = typeof saldoInicialAjustado === 'number' ? saldoInicialAjustado : saldoInicial;
     
     return filteredLancamentos.map((lanc, index) => {
       const lancamentosAteAqui = filteredLancamentos.slice(0, index + 1);
       
-      const saldoRealizado =
-        saldoInicial +
+      const saldoRealizado = round(
+        baseInicial +
         lancamentosAteAqui
           .filter(l => l.status === 'pago' && l.tipo === 'entrada')
           .reduce((acc, l) => acc + l.valor, 0) -
         lancamentosAteAqui
           .filter(l => l.status === 'pago' && l.tipo === 'saida')
-          .reduce((acc, l) => acc + l.valor, 0);
+          .reduce((acc, l) => acc + l.valor, 0));
 
-      const saldoPrevisto =
+      const saldoPrevisto = round(
         saldoRealizado +
         lancamentosAteAqui
           .filter(l => {
@@ -299,7 +303,7 @@ export default function Extrato() {
             const venc = new Date(l.data_vencimento + 'T00:00:00');
             return venc >= hoje;
           })
-          .reduce((acc, l) => acc + l.valor, 0);
+          .reduce((acc, l) => acc + l.valor, 0));
 
       return {
         ...lanc,
@@ -1677,12 +1681,15 @@ export default function Extrato() {
     return isPagoA - isPagoB;
   });
 
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
   };
+
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -1741,6 +1748,15 @@ export default function Extrato() {
   const totalReceber = fluxoResult?.totalEntradasPrevistas || 0;
   const totalPagar = fluxoResult?.totalSaidasPrevistas || 0;
   const saldoFinal = fluxoResult?.saldoFinalPrevisto || saldoInicial;
+
+  // Ajustar saldoInicial para compensar lançamentos pagos removidos pelos filtros de UI
+  const saldoInicialAjustado = useMemo(() => {
+    const filteredIds = new Set(filteredLancamentos.map(l => l.id));
+    const hiddenPaidDelta = lancamentosEnriquecidos
+      .filter(l => l.status === 'pago' && !filteredIds.has(l.id))
+      .reduce((acc, l) => acc + (l.tipo === 'entrada' ? l.valor : -l.valor), 0);
+    return round2(saldoInicial + hiddenPaidDelta);
+  }, [saldoInicial, lancamentosEnriquecidos, filteredLancamentos]);
 
    const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
@@ -2156,18 +2172,18 @@ export default function Extrato() {
                 const realIndex = startIndex + index;
                 const lancamentosAteAqui = filteredLancamentos.slice(0, realIndex + 1);
 
-                const saldoRealizado =
-                  saldoInicial +
+                const saldoRealizado = round2(
+                  saldoInicialAjustado +
                   lancamentosAteAqui
                     .filter(l => l.status === 'pago' && l.tipo === 'entrada')
                     .reduce((acc, l) => acc + l.valor, 0) -
                   lancamentosAteAqui
                     .filter(l => l.status === 'pago' && l.tipo === 'saida')
-                    .reduce((acc, l) => acc + l.valor, 0);
+                    .reduce((acc, l) => acc + l.valor, 0));
 
                 // Calcular saldo previsto (realizado + pendentes EM DIA até aqui)
                 // Regra: vencidos NÃO contam no saldo. Só pendentes com vencimento >= hoje.
-                const saldoPrevisto =
+                const saldoPrevisto = round2(
                   saldoRealizado +
                   lancamentosAteAqui
                     .filter(l => {
@@ -2182,7 +2198,7 @@ export default function Extrato() {
                       const venc = new Date(l.data_vencimento + 'T00:00:00');
                       return venc >= hoje;
                     })
-                    .reduce((acc, l) => acc + l.valor, 0);
+                    .reduce((acc, l) => acc + l.valor, 0));
 
                 return (
                   <TableRow key={lanc.id}>
