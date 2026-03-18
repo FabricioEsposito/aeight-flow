@@ -1735,7 +1735,7 @@ export default function Extrato() {
         conta_bancaria_id: p.conta_bancaria_id
       }))
     });
-  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores, pendentesAnteriores]);
+  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores, pendentesAnteriores, loading]);
   
   // Usar valores do fluxo calculado
   const saldoInicial = fluxoResult?.saldoInicialPeriodo || 0;
