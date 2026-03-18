@@ -47,6 +47,7 @@ interface Contrato {
   tem_go_live?: boolean;
   centro_custo_info?: CentroCusto;
   importancia_cliente_fornecedor?: 'importante' | 'mediano' | 'nao_importante';
+  link_contrato?: string | null;
 }
 
 interface ContratosTableProps {
