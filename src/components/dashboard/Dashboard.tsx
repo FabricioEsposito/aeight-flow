@@ -1233,6 +1233,17 @@ export function Dashboard() {
                       <span className="text-muted-foreground">Previsto</span>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground font-medium">Saldo:</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(220, 90%, 56%)' }} />
+                      <span className="text-muted-foreground">Realizado</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(47, 96%, 53%)' }} />
+                      <span className="text-muted-foreground">Previsto</span>
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
