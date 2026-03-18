@@ -397,6 +397,7 @@ export default function Extrato() {
   };
 
   const fetchLancamentos = async () => {
+    setLoading(true);
     try {
       const dateRange = getDateRange();
       
@@ -1694,7 +1695,7 @@ export default function Extrato() {
   
   // Calcular fluxo de caixa usando a função unificada
   const fluxoResult = useMemo(() => {
-    if (!dateRange) return null;
+    if (!dateRange || loading) return null;
     
     // Preparar movimentações do período
     const movimentacoesNoPeriodo = prepararMovimentacoes(
@@ -1734,7 +1735,7 @@ export default function Extrato() {
         conta_bancaria_id: p.conta_bancaria_id
       }))
     });
-  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores, pendentesAnteriores]);
+  }, [dateRange?.start, dateRange?.end, lancamentos, contasBancarias, contaBancariaFilter, movimentacoesAnteriores, pendentesAnteriores, loading]);
   
   // Usar valores do fluxo calculado
   const saldoInicial = fluxoResult?.saldoInicialPeriodo || 0;
