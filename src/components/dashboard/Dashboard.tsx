@@ -664,7 +664,8 @@ export function Dashboard() {
           receitaPrevista: d.entradaPrevista,
           despesaRealizada: d.saidaRealizada,
           despesaPrevista: d.saidaPrevista,
-          saldoFinal: d.saldoFinalPrevisto,
+          saldoRealizado: d.saldoFinalRealizado,
+          saldoPrevisto: d.saldoFinalPrevisto,
         })) || [];
 
       const fluxoTabelaData = fluxoResult?.fluxoDiario.map(d => ({
@@ -675,7 +676,8 @@ export function Dashboard() {
         receitaPrevista: d.entradaPrevista,
         despesaRealizada: d.saidaRealizada,
         despesaPrevista: d.saidaPrevista,
-        saldoFinal: d.saldoFinalPrevisto,
+        saldoRealizado: d.saldoFinalRealizado,
+        saldoPrevisto: d.saldoFinalPrevisto,
       })) || [];
 
       setFluxoCaixaData(fluxoChartData);
