@@ -1658,20 +1658,23 @@ export default function Extrato() {
     // Date filtering is done at query level (paid by movement date, pending by due date)
     // No additional client-side date filter needed
 
-    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria && matchesDate;
+    return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria;
   }).sort((a, b) => {
-    // Primeiro: pagos/recebidos antes de pendentes
+    // Sort by effective date ascending (like a bank statement)
+    // Paid: use movement date; Pending/overdue: use due date
+    const getEffectiveDate = (lanc: LancamentoExtrato) => {
+      if (lanc.status === 'pago') {
+        return lanc.data_recebimento || lanc.data_pagamento || lanc.data_vencimento;
+      }
+      return lanc.data_vencimento;
+    };
+    const dateA = new Date(getEffectiveDate(a) + 'T00:00:00').getTime();
+    const dateB = new Date(getEffectiveDate(b) + 'T00:00:00').getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    // Secondary sort: paid before pending on same date
     const isPagoA = a.status === 'pago' ? 0 : 1;
     const isPagoB = b.status === 'pago' ? 0 : 1;
-    if (isPagoA !== isPagoB) return isPagoA - isPagoB;
-    
-    // Depois: ordenar por data de movimento em ordem crescente
-    const getMovementDate = (lanc: LancamentoExtrato) => {
-      return lanc.data_recebimento || lanc.data_pagamento || lanc.data_vencimento;
-    };
-    const dateA = new Date(getMovementDate(a)).getTime();
-    const dateB = new Date(getMovementDate(b)).getTime();
-    return dateA - dateB;
+    return isPagoA - isPagoB;
   });
 
   const formatCurrency = (value: number) => {
