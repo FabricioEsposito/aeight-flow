@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2 } from 'lucide-react';
+import { Plus, Search, Edit2, Download } from 'lucide-react';
+import { useExportReport } from '@/hooks/useExportReport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -52,6 +53,7 @@ interface Contrato {
 export default function Contratos() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { exportToExcel } = useExportReport();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,6 +344,43 @@ export default function Contratos() {
     setCurrentPage(1);
   };
 
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: 'Contratos',
+      filename: 'contratos',
+      columns: [
+        { header: 'Data Início', accessor: 'data_inicio', type: 'date' },
+        { header: 'Razão Social', accessor: (row: any) => row.tipo_contrato === 'venda' ? (row.clientes?.razao_social || '') : (row.fornecedores?.razao_social || '') },
+        { header: 'Nome Fantasia', accessor: (row: any) => row.tipo_contrato === 'venda' ? (row.clientes?.nome_fantasia || '-') : (row.fornecedores?.nome_fantasia || '-') },
+        { header: 'Nº Contrato', accessor: 'numero_contrato' },
+        { header: 'Tipo', accessor: (row: any) => row.tipo_contrato === 'venda' ? 'Venda' : 'Compra' },
+        { header: 'Recorrência', accessor: (row: any) => {
+          if (!row.recorrente) return 'Avulso';
+          switch (row.periodo_recorrencia) {
+            case 'mensal': return 'Mensal';
+            case 'trimestral': return 'Trimestral';
+            case 'semestral': return 'Semestral';
+            case 'anual': return 'Anual';
+            default: return 'Recorrente';
+          }
+        }},
+        { header: 'Centro de Custo', accessor: (row: any) => row.centro_custo_info ? `${row.centro_custo_info.codigo} - ${row.centro_custo_info.descricao}` : '-' },
+        { header: 'Importância', accessor: (row: any) => {
+          switch (row.importancia_cliente_fornecedor) {
+            case 'importante': return 'Importante';
+            case 'mediano': return 'Mediano';
+            case 'nao_importante': return 'Não Importante';
+            default: return 'Mediano';
+          }
+        }},
+        { header: 'Valor Bruto', accessor: (row: any) => row.valor_bruto || (row.quantidade && row.valor_unitario ? row.quantidade * row.valor_unitario : row.valor_total), type: 'currency' },
+        { header: 'Valor Líquido', accessor: 'valor_total', type: 'currency' },
+        { header: 'Status', accessor: 'status' },
+      ],
+      data: filteredContratos,
+    });
+  };
+
 
   if (loading) {
     return (
@@ -370,6 +409,10 @@ export default function Contratos() {
               Editar em Lote ({selectedIds.length})
             </Button>
           )}
+          <Button variant="outline" onClick={handleExportExcel}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar Excel
+          </Button>
           <Button onClick={() => navigate('/contratos/novo')}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Contrato
