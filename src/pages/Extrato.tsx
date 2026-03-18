@@ -24,7 +24,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
-import { DateTypeFilter, DateFilterType } from '@/components/financeiro/DateTypeFilter';
+
 import { BatchActionsDialog } from '@/components/financeiro/BatchActionsDialog';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
