@@ -397,6 +397,7 @@ export default function Extrato() {
   };
 
   const fetchLancamentos = async () => {
+    setLoading(true);
     try {
       const dateRange = getDateRange();
       
