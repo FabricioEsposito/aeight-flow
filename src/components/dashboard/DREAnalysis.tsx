@@ -290,7 +290,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             const group = grouped.get(l.plano_conta_id)!;
             group.total += effective.valor;
             const itemKey = ccNome ? `${nome}|||${ccNome}` : nome;
-            const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome, rateio: effective.rateio };
+            const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
             current.valor += effective.valor;
             group.items.set(itemKey, current);
           }
