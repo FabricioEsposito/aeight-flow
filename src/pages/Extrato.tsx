@@ -1695,7 +1695,7 @@ export default function Extrato() {
   
   // Calcular fluxo de caixa usando a função unificada
   const fluxoResult = useMemo(() => {
-    if (!dateRange) return null;
+    if (!dateRange || loading) return null;
     
     // Preparar movimentações do período
     const movimentacoesNoPeriodo = prepararMovimentacoes(
