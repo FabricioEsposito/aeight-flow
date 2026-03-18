@@ -1,4 +1,4 @@
-import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket, RefreshCw } from 'lucide-react';
+import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket, RefreshCw, FileX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
