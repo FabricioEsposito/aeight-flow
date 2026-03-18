@@ -670,15 +670,15 @@ export default function Extrato() {
       const dataInicioFiltro = dateRange?.start || format(new Date(), 'yyyy-MM-dd');
       const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-      const fetchPaginatedResults = async (
-        queryFactory: (from: number, to: number) => Promise<{ data: any[] | null; error: any }>
-      ) => {
+      const fetchAllPages = async (
+        buildQuery: (from: number, to: number) => any
+      ): Promise<any[]> => {
         const pageSize = 1000;
         let from = 0;
         const results: any[] = [];
 
         while (true) {
-          const { data, error } = await queryFactory(from, from + pageSize - 1);
+          const { data, error } = await buildQuery(from, from + pageSize - 1);
           if (error) throw error;
 
           const chunk = data || [];
@@ -692,7 +692,7 @@ export default function Extrato() {
       };
 
       const [entradasAnteriores, saidasAnteriores, pendentesReceberAnt, pendentesPagarAnt] = await Promise.all([
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_receber')
             .select('valor, conta_bancaria_id')
@@ -701,7 +701,7 @@ export default function Extrato() {
             .order('id', { ascending: true })
             .range(from, to)
         ),
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_pagar')
             .select('valor, conta_bancaria_id')
@@ -710,7 +710,7 @@ export default function Extrato() {
             .order('id', { ascending: true })
             .range(from, to)
         ),
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_receber')
             .select('valor, data_vencimento, conta_bancaria_id')
@@ -721,7 +721,7 @@ export default function Extrato() {
             .order('id', { ascending: true })
             .range(from, to)
         ),
-        fetchPaginatedResults((from, to) =>
+        fetchAllPages((from, to) =>
           supabase
             .from('contas_pagar')
             .select('valor, data_vencimento, conta_bancaria_id')
