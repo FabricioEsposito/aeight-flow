@@ -2169,18 +2169,18 @@ export default function Extrato() {
                 const realIndex = startIndex + index;
                 const lancamentosAteAqui = filteredLancamentos.slice(0, realIndex + 1);
 
-                const saldoRealizado =
-                  saldoInicial +
+                const saldoRealizado = round2(
+                  saldoInicialAjustado +
                   lancamentosAteAqui
                     .filter(l => l.status === 'pago' && l.tipo === 'entrada')
                     .reduce((acc, l) => acc + l.valor, 0) -
                   lancamentosAteAqui
                     .filter(l => l.status === 'pago' && l.tipo === 'saida')
-                    .reduce((acc, l) => acc + l.valor, 0);
+                    .reduce((acc, l) => acc + l.valor, 0));
 
                 // Calcular saldo previsto (realizado + pendentes EM DIA até aqui)
                 // Regra: vencidos NÃO contam no saldo. Só pendentes com vencimento >= hoje.
-                const saldoPrevisto =
+                const saldoPrevisto = round2(
                   saldoRealizado +
                   lancamentosAteAqui
                     .filter(l => {
@@ -2195,7 +2195,7 @@ export default function Extrato() {
                       const venc = new Date(l.data_vencimento + 'T00:00:00');
                       return venc >= hoje;
                     })
-                    .reduce((acc, l) => acc + l.valor, 0);
+                    .reduce((acc, l) => acc + l.valor, 0));
 
                 return (
                   <TableRow key={lanc.id}>
