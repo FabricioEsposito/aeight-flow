@@ -1,4 +1,4 @@
-import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket, RefreshCw } from 'lucide-react';
+import { Eye, Edit, Trash2, MoreVertical, XCircle, Rocket, RefreshCw, FileX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -47,6 +47,7 @@ interface Contrato {
   tem_go_live?: boolean;
   centro_custo_info?: CentroCusto;
   importancia_cliente_fornecedor?: 'importante' | 'mediano' | 'nao_importante';
+  link_contrato?: string | null;
 }
 
 interface ContratosTableProps {
@@ -232,6 +233,12 @@ export function ContratosTable({
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-0.5 text-[10px] px-1 py-0 w-fit">
                           <Rocket className="h-2.5 w-2.5" />
                           GoLive
+                        </Badge>
+                      )}
+                      {!contrato.link_contrato && (
+                        <Badge variant="destructive" className="flex items-center gap-0.5 text-[10px] px-1 py-0 w-fit">
+                          <FileX className="h-2.5 w-2.5" />
+                          Sem contrato
                         </Badge>
                       )}
                     </div>
