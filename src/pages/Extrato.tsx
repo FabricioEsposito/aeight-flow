@@ -1749,6 +1749,15 @@ export default function Extrato() {
   const totalPagar = fluxoResult?.totalSaidasPrevistas || 0;
   const saldoFinal = fluxoResult?.saldoFinalPrevisto || saldoInicial;
 
+  // Ajustar saldoInicial para compensar lançamentos pagos removidos pelos filtros de UI
+  const saldoInicialAjustado = useMemo(() => {
+    const filteredIds = new Set(filteredLancamentos.map(l => l.id));
+    const hiddenPaidDelta = lancamentosEnriquecidos
+      .filter(l => l.status === 'pago' && !filteredIds.has(l.id))
+      .reduce((acc, l) => acc + (l.tipo === 'entrada' ? l.valor : -l.valor), 0);
+    return round2(saldoInicial + hiddenPaidDelta);
+  }, [saldoInicial, lancamentosEnriquecidos, filteredLancamentos]);
+
    const lancamentosPendentes = filteredLancamentos.filter(l => l.status === 'pendente').length;
 
    // Totais de entradas e saídas filtrados
