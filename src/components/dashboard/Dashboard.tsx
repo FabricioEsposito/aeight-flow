@@ -65,7 +65,8 @@ interface FluxoCaixaData {
   receitaPrevista: number;
   despesaRealizada: number;
   despesaPrevista: number;
-  saldoFinal: number;
+  saldoRealizado: number;
+  saldoPrevisto: number;
 }
 
 export function Dashboard() {
@@ -663,7 +664,8 @@ export function Dashboard() {
           receitaPrevista: d.entradaPrevista,
           despesaRealizada: d.saidaRealizada,
           despesaPrevista: d.saidaPrevista,
-          saldoFinal: d.saldoFinalPrevisto,
+          saldoRealizado: d.saldoFinalRealizado,
+          saldoPrevisto: d.saldoFinalPrevisto,
         })) || [];
 
       const fluxoTabelaData = fluxoResult?.fluxoDiario.map(d => ({
@@ -674,7 +676,8 @@ export function Dashboard() {
         receitaPrevista: d.entradaPrevista,
         despesaRealizada: d.saidaRealizada,
         despesaPrevista: d.saidaPrevista,
-        saldoFinal: d.saldoFinalPrevisto,
+        saldoRealizado: d.saldoFinalRealizado,
+        saldoPrevisto: d.saldoFinalPrevisto,
       })) || [];
 
       setFluxoCaixaData(fluxoChartData);
@@ -1098,8 +1101,12 @@ export function Dashboard() {
                       label: "Despesa Prevista",
                       color: "hsl(0, 84%, 80%)",
                     },
-                    saldoFinal: {
-                      label: "Saldo",
+                    saldoRealizado: {
+                      label: "Saldo Realizado",
+                      color: "hsl(220, 90%, 56%)",
+                    },
+                    saldoPrevisto: {
+                      label: "Saldo Previsto",
                       color: "hsl(47, 96%, 53%)",
                     },
                   }}
@@ -1175,11 +1182,20 @@ export function Dashboard() {
                       />
                       <Line 
                         type="monotone" 
-                        dataKey="saldoFinal" 
-                        stroke="hsl(47, 96%, 53%)" 
+                        dataKey="saldoRealizado" 
+                        stroke="hsl(220, 90%, 56%)" 
                         strokeWidth={3}
-                        name="Saldo"
-                        dot={{ r: 4 }}
+                        name="Saldo Realizado"
+                        dot={{ r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="saldoPrevisto" 
+                        stroke="hsl(47, 96%, 53%)" 
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        name="Saldo Previsto"
+                        dot={{ r: 3 }}
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -1214,6 +1230,17 @@ export function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 rounded opacity-70" style={{ backgroundColor: 'hsl(0, 84%, 80%)' }} />
+                      <span className="text-muted-foreground">Previsto</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground font-medium">Saldo:</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(220, 90%, 56%)' }} />
+                      <span className="text-muted-foreground">Realizado</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(47, 96%, 53%)' }} />
                       <span className="text-muted-foreground">Previsto</span>
                     </div>
                   </div>
@@ -1274,10 +1301,17 @@ export function Dashboard() {
                                 )}
                               </div>
                             </td>
-                            <td className={`p-2 text-xs text-right font-bold ${
-                              item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
-                            }`}>
-                              {formatCurrency(item.saldoFinal)}
+                            <td className="p-2 text-xs text-right">
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className={`font-bold ${item.saldoRealizado >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                  {formatCurrency(item.saldoRealizado)}
+                                </span>
+                                {item.saldoPrevisto !== item.saldoRealizado && (
+                                  <span className={`text-[10px] opacity-70 ${item.saldoPrevisto >= 0 ? 'text-amber-600' : 'text-red-500'}`}>
+                                    Prev: {formatCurrency(item.saldoPrevisto)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
