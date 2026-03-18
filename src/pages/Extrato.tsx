@@ -1655,31 +1655,8 @@ export default function Extrato() {
       matchesCategoria = !!lanc.plano_conta_id && categoriaFilter.includes(lanc.plano_conta_id);
     }
 
-    let matchesDate = true;
-    const dateRange = getDateRange();
-    if (dateRange) {
-      const startDate = new Date(`${dateRange.start}T00:00:00`);
-      const endDate = new Date(`${dateRange.end}T23:59:59.999`);
-
-      if (dateFilterType === 'movimentacao') {
-        // Filtro por data de baixa: usar APENAS data_recebimento/data_pagamento
-        const movStr = lanc.data_recebimento || lanc.data_pagamento;
-        if (!movStr) {
-          matchesDate = false; // Sem data de baixa = não aparece
-        } else {
-          const movDate = new Date(movStr.length === 10 ? `${movStr}T00:00:00` : movStr);
-          matchesDate = movDate >= startDate && movDate <= endDate;
-        }
-      } else if (dateFilterType === 'competencia') {
-        // Filtro por competência: usar APENAS data_competencia
-        const compDate = lanc.data_competencia ? new Date(`${lanc.data_competencia}T00:00:00`) : null;
-        matchesDate = compDate ? compDate >= startDate && compDate <= endDate : false;
-      } else {
-        // Filtro por vencimento: usar APENAS data_vencimento
-        const vencDate = lanc.data_vencimento ? new Date(`${lanc.data_vencimento}T00:00:00`) : null;
-        matchesDate = vencDate ? vencDate >= startDate && vencDate <= endDate : false;
-      }
-    }
+    // Date filtering is done at query level (paid by movement date, pending by due date)
+    // No additional client-side date filter needed
 
     return matchesSearch && matchesTipo && matchesStatus && matchesConta && matchesCentroCusto && matchesCategoria && matchesDate;
   }).sort((a, b) => {
