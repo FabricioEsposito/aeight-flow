@@ -181,7 +181,6 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
     if (preset === 'periodo-personalizado') {
       setShowCustomDatePicker(true);
     } else {
-      // Reset baseDate to today when selecting a new preset
       setBaseDate(new Date());
       onChange(preset);
       setIsOpen(false);
@@ -292,63 +291,23 @@ export function DateRangeFilter({ value, onChange, customRange }: DateRangeFilte
               </div>
             ) : (
               <div className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Data inicial</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !tempRange.from && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {tempRange.from ? format(tempRange.from, "dd/MM/yyyy") : "Selecione"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={tempRange.from}
-                          onSelect={(date) => setTempRange({ ...tempRange, from: date })}
-                          locale={ptBR}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Data final</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !tempRange.to && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {tempRange.to ? format(tempRange.to, "dd/MM/yyyy") : "Selecione"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={tempRange.to}
-                          onSelect={(date) => setTempRange({ ...tempRange, to: date })}
-                          locale={ptBR}
-                          className="pointer-events-auto"
-                          disabled={(date) => tempRange.from ? date < tempRange.from : false}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                <div className="text-sm text-muted-foreground text-center">
+                  {tempRange.from && !tempRange.to
+                    ? `Início: ${format(tempRange.from, 'dd/MM/yyyy')} — selecione a data final`
+                    : tempRange.from && tempRange.to
+                      ? `${format(tempRange.from, 'dd/MM/yyyy')} - ${format(tempRange.to, 'dd/MM/yyyy')}`
+                      : 'Selecione a data inicial'}
                 </div>
-
+                <Calendar
+                  mode="range"
+                  selected={tempRange.from ? { from: tempRange.from, to: tempRange.to } : undefined}
+                  onSelect={(range: any) => {
+                    setTempRange({ from: range?.from, to: range?.to });
+                  }}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  className="pointer-events-auto"
+                />
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
