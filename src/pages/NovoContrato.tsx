@@ -1204,12 +1204,13 @@ export default function NovoContrato() {
               </div>
 
               <div className="space-y-2">
-                <Label>Link do Contrato</Label>
+                <Label>Link do Contrato {tipoContrato === 'venda' && <span className="text-destructive">*</span>}</Label>
                 <Input 
                   type="url"
                   value={linkContrato}
                   onChange={(e) => setLinkContrato(e.target.value)}
                   placeholder="https://..."
+                  required={tipoContrato === 'venda'}
                 />
               </div>
 
