@@ -90,7 +90,7 @@ export default function Extrato() {
   const [categoriaFilter, setCategoriaFilter] = useSessionState<string[]>('extrato', 'categoria', []);
   const [contaBancariaFilter, setContaBancariaFilter] = useSessionState<string[]>('extrato', 'contaBancaria', []);
   const [datePreset, setDatePreset] = useSessionState<DateRangePreset>('extrato', 'datePreset', 'hoje');
-  const [dateFilterType, setDateFilterType] = useSessionState<DateFilterType>('extrato', 'dateFilterType', 'vencimento');
+  
   
   const [customDateRange, setCustomDateRange] = useSessionState<{ from: Date | undefined; to: Date | undefined }>('extrato', 'customDateRange', undefined as any);
   const [novoLancamentoOpen, setNovoLancamentoOpen] = useState(false);
