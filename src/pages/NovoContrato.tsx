@@ -413,6 +413,10 @@ export default function NovoContrato() {
         toast({ title: "Erro", description: "Adicione pelo menos um item ao contrato", variant: "destructive" });
         return;
       }
+      if (tipoContrato === 'venda' && !linkContrato) {
+        toast({ title: "Erro", description: "O link do contrato é obrigatório para contratos de venda", variant: "destructive" });
+        return;
+      }
 
       // Validar parcelamento customizado
       if (tipoParcelamento === 'customizado' && parcelasCustomizadas.length > 0) {
