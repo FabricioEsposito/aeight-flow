@@ -1101,8 +1101,12 @@ export function Dashboard() {
                       label: "Despesa Prevista",
                       color: "hsl(0, 84%, 80%)",
                     },
-                    saldoFinal: {
-                      label: "Saldo",
+                    saldoRealizado: {
+                      label: "Saldo Realizado",
+                      color: "hsl(220, 90%, 56%)",
+                    },
+                    saldoPrevisto: {
+                      label: "Saldo Previsto",
                       color: "hsl(47, 96%, 53%)",
                     },
                   }}
