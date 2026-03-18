@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2 } from 'lucide-react';
+import { Plus, Search, Edit2, Download } from 'lucide-react';
+import { useExportReport } from '@/hooks/useExportReport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
