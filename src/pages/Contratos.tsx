@@ -409,6 +409,10 @@ export default function Contratos() {
               Editar em Lote ({selectedIds.length})
             </Button>
           )}
+          <Button variant="outline" onClick={handleExportExcel}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar Excel
+          </Button>
           <Button onClick={() => navigate('/contratos/novo')}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Contrato
