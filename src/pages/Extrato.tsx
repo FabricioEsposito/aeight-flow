@@ -1690,16 +1690,6 @@ export default function Extrato() {
     }).format(value);
   };
 
-  // Ajustar saldoInicial para compensar lançamentos pagos que foram removidos pelos filtros de UI
-  // (search, tipo, status, centro de custo, categoria) mas que existem em `lancamentos`
-  const saldoInicialAjustado = useMemo(() => {
-    const filteredIds = new Set(filteredLancamentos.map(l => l.id));
-    // Encontrar lançamentos pagos que estão em lancamentosEnriquecidos mas NÃO em filteredLancamentos
-    const hiddenPaidDelta = lancamentosEnriquecidos
-      .filter(l => l.status === 'pago' && !filteredIds.has(l.id))
-      .reduce((acc, l) => acc + (l.tipo === 'entrada' ? l.valor : -l.valor), 0);
-    return round2(saldoInicial + hiddenPaidDelta);
-  }, [saldoInicial, lancamentosEnriquecidos, filteredLancamentos]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
