@@ -413,6 +413,10 @@ export default function NovoContrato() {
         toast({ title: "Erro", description: "Adicione pelo menos um item ao contrato", variant: "destructive" });
         return;
       }
+      if (tipoContrato === 'venda' && !linkContrato) {
+        toast({ title: "Erro", description: "O link do contrato é obrigatório para contratos de venda", variant: "destructive" });
+        return;
+      }
 
       // Validar parcelamento customizado
       if (tipoParcelamento === 'customizado' && parcelasCustomizadas.length > 0) {
@@ -1200,12 +1204,13 @@ export default function NovoContrato() {
               </div>
 
               <div className="space-y-2">
-                <Label>Link do Contrato</Label>
+                <Label>Link do Contrato {tipoContrato === 'venda' && <span className="text-destructive">*</span>}</Label>
                 <Input 
                   type="url"
                   value={linkContrato}
                   onChange={(e) => setLinkContrato(e.target.value)}
                   placeholder="https://..."
+                  required={tipoContrato === 'venda'}
                 />
               </div>
 

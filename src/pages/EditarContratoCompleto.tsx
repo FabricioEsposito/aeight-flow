@@ -503,6 +503,10 @@ export default function EditarContratoCompleto() {
   };
 
   const handleSave = async () => {
+    if (tipoContrato === 'venda' && !linkContrato) {
+      toast({ title: "Erro", description: "O link do contrato é obrigatório para contratos de venda", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const valorTotal = calcularValorTotal();
@@ -740,11 +744,12 @@ export default function EditarContratoCompleto() {
           </div>
 
           <div className="space-y-2">
-            <Label>Link do Contrato</Label>
+            <Label>Link do Contrato {tipoContrato === 'venda' && <span className="text-destructive">*</span>}</Label>
             <Input
               value={linkContrato}
               onChange={(e) => setLinkContrato(e.target.value)}
               placeholder="URL do documento do contrato"
+              required={tipoContrato === 'venda'}
             />
           </div>
         </CardContent>

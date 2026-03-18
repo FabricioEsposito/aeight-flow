@@ -235,7 +235,7 @@ export function ContratosTable({
                           GoLive
                         </Badge>
                       )}
-                      {!contrato.link_contrato && (
+                      {!contrato.link_contrato && contrato.tipo_contrato === 'venda' && (
                         <Badge variant="destructive" className="flex items-center gap-0.5 text-[10px] px-1 py-0 w-fit">
                           <FileX className="h-2.5 w-2.5" />
                           Sem contrato
