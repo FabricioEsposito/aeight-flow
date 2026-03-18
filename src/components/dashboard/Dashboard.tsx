@@ -1182,11 +1182,20 @@ export function Dashboard() {
                       />
                       <Line 
                         type="monotone" 
-                        dataKey="saldoFinal" 
-                        stroke="hsl(47, 96%, 53%)" 
+                        dataKey="saldoRealizado" 
+                        stroke="hsl(220, 90%, 56%)" 
                         strokeWidth={3}
-                        name="Saldo"
-                        dot={{ r: 4 }}
+                        name="Saldo Realizado"
+                        dot={{ r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="saldoPrevisto" 
+                        stroke="hsl(47, 96%, 53%)" 
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        name="Saldo Previsto"
+                        dot={{ r: 3 }}
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
