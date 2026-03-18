@@ -344,6 +344,43 @@ export default function Contratos() {
     setCurrentPage(1);
   };
 
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: 'Contratos',
+      filename: 'contratos',
+      columns: [
+        { header: 'Data Início', accessor: 'data_inicio', type: 'date' },
+        { header: 'Razão Social', accessor: (row: any) => row.tipo_contrato === 'venda' ? (row.clientes?.razao_social || '') : (row.fornecedores?.razao_social || '') },
+        { header: 'Nome Fantasia', accessor: (row: any) => row.tipo_contrato === 'venda' ? (row.clientes?.nome_fantasia || '-') : (row.fornecedores?.nome_fantasia || '-') },
+        { header: 'Nº Contrato', accessor: 'numero_contrato' },
+        { header: 'Tipo', accessor: (row: any) => row.tipo_contrato === 'venda' ? 'Venda' : 'Compra' },
+        { header: 'Recorrência', accessor: (row: any) => {
+          if (!row.recorrente) return 'Avulso';
+          switch (row.periodo_recorrencia) {
+            case 'mensal': return 'Mensal';
+            case 'trimestral': return 'Trimestral';
+            case 'semestral': return 'Semestral';
+            case 'anual': return 'Anual';
+            default: return 'Recorrente';
+          }
+        }},
+        { header: 'Centro de Custo', accessor: (row: any) => row.centro_custo_info ? `${row.centro_custo_info.codigo} - ${row.centro_custo_info.descricao}` : '-' },
+        { header: 'Importância', accessor: (row: any) => {
+          switch (row.importancia_cliente_fornecedor) {
+            case 'importante': return 'Importante';
+            case 'mediano': return 'Mediano';
+            case 'nao_importante': return 'Não Importante';
+            default: return 'Mediano';
+          }
+        }},
+        { header: 'Valor Bruto', accessor: (row: any) => row.valor_bruto || (row.quantidade && row.valor_unitario ? row.quantidade * row.valor_unitario : row.valor_total), type: 'currency' },
+        { header: 'Valor Líquido', accessor: 'valor_total', type: 'currency' },
+        { header: 'Status', accessor: 'status' },
+      ],
+      data: filteredContratos,
+    });
+  };
+
 
   if (loading) {
     return (
