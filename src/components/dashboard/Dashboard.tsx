@@ -1290,10 +1290,17 @@ export function Dashboard() {
                                 )}
                               </div>
                             </td>
-                            <td className={`p-2 text-xs text-right font-bold ${
-                              item.saldoFinal >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
-                            }`}>
-                              {formatCurrency(item.saldoFinal)}
+                            <td className="p-2 text-xs text-right">
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className={`font-bold ${item.saldoRealizado >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                  {formatCurrency(item.saldoRealizado)}
+                                </span>
+                                {item.saldoPrevisto !== item.saldoRealizado && (
+                                  <span className={`text-[10px] opacity-70 ${item.saldoPrevisto >= 0 ? 'text-amber-600' : 'text-red-500'}`}>
+                                    Prev: {formatCurrency(item.saldoPrevisto)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
