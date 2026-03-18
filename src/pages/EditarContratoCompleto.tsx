@@ -503,6 +503,10 @@ export default function EditarContratoCompleto() {
   };
 
   const handleSave = async () => {
+    if (tipoContrato === 'venda' && !linkContrato) {
+      toast({ title: "Erro", description: "O link do contrato é obrigatório para contratos de venda", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const valorTotal = calcularValorTotal();
