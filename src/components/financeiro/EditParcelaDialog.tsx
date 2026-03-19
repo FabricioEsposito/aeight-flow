@@ -5,16 +5,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
+import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
+import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FileUpload } from '@/components/ui/file-upload';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+
 interface EditParcelaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +39,9 @@ interface EditParcelaDialogProps {
     link_boleto?: string | null;
     data_movimentacao?: string | null;
     status?: string;
+    fornecedor_id?: string;
+    cliente_id?: string;
+    parcela_id?: string | null;
   };
 }
 
@@ -53,6 +60,10 @@ export interface EditParcelaData {
   link_nf?: string | null;
   link_boleto?: string | null;
   data_movimentacao?: string | null;
+  fornecedor_id?: string;
+  cliente_id?: string;
+  fornecedor_changed?: boolean;
+  cliente_changed?: boolean;
 }
 
 export function EditParcelaDialog({
@@ -73,6 +84,10 @@ export function EditParcelaDialog({
   const [desconto, setDesconto] = useState<number>(0);
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
+  const [fornecedorId, setFornecedorId] = useState<string>('');
+  const [clienteId, setClienteId] = useState<string>('');
+  const [originalFornecedorId, setOriginalFornecedorId] = useState<string>('');
+  const [originalClienteId, setOriginalClienteId] = useState<string>('');
 
   useEffect(() => {
     if (initialData && open) {
@@ -86,6 +101,10 @@ export function EditParcelaDialog({
       setDesconto(initialData.desconto || 0);
       setLinkNf(initialData.link_nf || null);
       setLinkBoleto(initialData.link_boleto || null);
+      setFornecedorId(initialData.fornecedor_id || '');
+      setClienteId(initialData.cliente_id || '');
+      setOriginalFornecedorId(initialData.fornecedor_id || '');
+      setOriginalClienteId(initialData.cliente_id || '');
 
       // Load existing rateio
       const loadRateio = async () => {
@@ -103,7 +122,6 @@ export function EditParcelaDialog({
             percentual: r.percentual,
           })));
         } else if (initialData.centro_custo) {
-          // Fallback: load legacy single centro_custo
           const { data: cc } = await supabase
             .from('centros_custo')
             .select('id, codigo, descricao')
@@ -129,7 +147,6 @@ export function EditParcelaDialog({
 
   const [valorOriginal, setValorOriginal] = useState<number>(0);
 
-  // Sync valorOriginal from initialData
   useEffect(() => {
     if (initialData && open) {
       setValorOriginal(initialData.valor_original ?? 0);
@@ -137,6 +154,10 @@ export function EditParcelaDialog({
   }, [initialData, open]);
 
   const valorTotal = valorOriginal + juros + multa - desconto;
+
+  const fornecedorChanged = tipo === 'saida' && fornecedorId !== originalFornecedorId && originalFornecedorId !== '';
+  const clienteChanged = tipo === 'entrada' && clienteId !== originalClienteId && originalClienteId !== '';
+  const hasParcelaId = !!initialData?.parcela_id;
 
   const handleSave = async () => {
     if (!initialData || !dataVencimento) return;
@@ -158,13 +179,15 @@ export function EditParcelaDialog({
       link_nf: linkNf,
       link_boleto: linkBoleto,
       data_movimentacao: dataMovimentacao ? format(dataMovimentacao, 'yyyy-MM-dd') : null,
+      fornecedor_id: tipo === 'saida' ? fornecedorId : undefined,
+      cliente_id: tipo === 'entrada' ? clienteId : undefined,
+      fornecedor_changed: fornecedorChanged,
+      cliente_changed: clienteChanged,
     };
 
     // Save rateio
     const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
-    // Delete existing
     await supabase.from('lancamentos_centros_custo').delete().eq(field, initialData.id);
-    // Insert new
     if (rateioItems.length > 0) {
       await supabase.from('lancamentos_centros_custo').insert(
         rateioItems.map(item => ({
@@ -194,6 +217,46 @@ export function EditParcelaDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Fornecedor / Cliente */}
+          {tipo === 'saida' && (
+            <div className="space-y-2">
+              <Label>Fornecedor</Label>
+              <FornecedorSelect
+                value={fornecedorId}
+                onChange={setFornecedorId}
+              />
+            </div>
+          )}
+
+          {tipo === 'entrada' && (
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <ClienteSelect
+                value={clienteId}
+                onChange={setClienteId}
+              />
+            </div>
+          )}
+
+          {/* Alerta sobre alteração de fornecedor/cliente em lançamento recorrente */}
+          {(fornecedorChanged || clienteChanged) && hasParcelaId && (
+            <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-700 dark:text-amber-400">
+                Ao alterar o {tipo === 'saida' ? 'fornecedor' : 'cliente'}, todas as parcelas pendentes deste contrato também serão atualizadas automaticamente.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {(fornecedorChanged || clienteChanged) && !hasParcelaId && (
+            <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-700 dark:text-amber-400">
+                O {tipo === 'saida' ? 'fornecedor' : 'cliente'} deste lançamento será alterado.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data de Vencimento</Label>
