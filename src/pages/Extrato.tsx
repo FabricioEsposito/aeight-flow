@@ -1211,6 +1211,16 @@ export default function Extrato() {
         [dateField]: data.data_movimentacao || null,
       };
       
+      // Adicionar fornecedor_id para contas a pagar
+      if (data.fornecedor_id) {
+        updateData.fornecedor_id = data.fornecedor_id;
+      }
+      
+      // Adicionar cliente_id para contas a receber
+      if (data.cliente_id) {
+        updateData.cliente_id = data.cliente_id;
+      }
+      
       // Adicionar link_nf e link_boleto apenas para contas a pagar
       if (!selectedLancamento.cliente_id) {
         updateData.link_nf = data.link_nf;
@@ -1236,9 +1246,77 @@ export default function Extrato() {
         }
       }
 
+      // Se o fornecedor/cliente mudou e é um lançamento com contrato recorrente, atualizar todas as parcelas pendentes
+      let parcelasAtualizadas = 0;
+      if ((data.fornecedor_changed || data.cliente_changed) && selectedLancamento.parcela_id) {
+        // Buscar o contrato_id através da parcela
+        const { data: parcelaData } = await supabase
+          .from('parcelas_contrato')
+          .select('contrato_id')
+          .eq('id', selectedLancamento.parcela_id)
+          .single();
+
+        if (parcelaData?.contrato_id) {
+          // Atualizar o fornecedor/cliente no contrato
+          const contratoUpdate: any = {};
+          if (data.fornecedor_changed && data.fornecedor_id) {
+            contratoUpdate.fornecedor_id = data.fornecedor_id;
+          }
+          if (data.cliente_changed && data.cliente_id) {
+            contratoUpdate.cliente_id = data.cliente_id;
+          }
+          
+          if (Object.keys(contratoUpdate).length > 0) {
+            await supabase
+              .from('contratos')
+              .update(contratoUpdate)
+              .eq('id', parcelaData.contrato_id);
+          }
+
+          // Buscar todas as parcelas pendentes do mesmo contrato (exceto a atual)
+          const { data: outrasParcelas } = await supabase
+            .from('parcelas_contrato')
+            .select('id')
+            .eq('contrato_id', parcelaData.contrato_id)
+            .eq('status', 'pendente')
+            .neq('id', selectedLancamento.parcela_id);
+
+          if (outrasParcelas && outrasParcelas.length > 0) {
+            const parcelaIds = outrasParcelas.map(p => p.id);
+            
+            // Atualizar todas as contas a pagar/receber vinculadas a essas parcelas
+            const entityUpdate: any = {};
+            if (data.fornecedor_changed && data.fornecedor_id) {
+              entityUpdate.fornecedor_id = data.fornecedor_id;
+            }
+            if (data.cliente_changed && data.cliente_id) {
+              entityUpdate.cliente_id = data.cliente_id;
+            }
+
+            if (Object.keys(entityUpdate).length > 0) {
+              const { error: batchError } = await supabase
+                .from(table)
+                .update(entityUpdate)
+                .in('parcela_id', parcelaIds);
+
+              if (batchError) {
+                console.error('Erro ao atualizar parcelas relacionadas:', batchError);
+              } else {
+                parcelasAtualizadas = parcelaIds.length;
+              }
+            }
+          }
+        }
+      }
+
+      const entityLabel = data.fornecedor_changed ? 'fornecedor' : data.cliente_changed ? 'cliente' : '';
+      const extraMessage = parcelasAtualizadas > 0
+        ? ` O ${entityLabel} foi alterado também em ${parcelasAtualizadas} parcela(s) pendente(s) do mesmo contrato.`
+        : '';
+
       toast({
         title: "Sucesso",
-        description: "Lançamento atualizado!",
+        description: `Lançamento atualizado!${extraMessage}`,
       });
       fetchLancamentos();
     } catch (error) {
