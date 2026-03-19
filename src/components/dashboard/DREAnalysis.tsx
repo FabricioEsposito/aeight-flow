@@ -574,7 +574,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     provisaoCsllIrrf: dreData.provisaoCsllIrrf,
     resultadoExercicio: dreData.resultadoExercicio,
     periodo: dateRange
-      ? `${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
+      ? `${formatDateStr(dateRange.from)} a ${formatDateStr(dateRange.to)}`
       : 'Todo o período',
     centrosCusto: centrosCustoNomes.length > 0 ? centrosCustoNomes : null,
   } : null;
@@ -587,7 +587,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           <CardTitle>DRE Gerencial (Competência)</CardTitle>
           <p className="text-sm text-muted-foreground">
             {dateRange 
-              ? `Período: ${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
+              ? `Período: ${formatDateStr(dateRange.from)} a ${formatDateStr(dateRange.to)}`
               : 'Todo o período'
             }
           </p>
@@ -603,7 +603,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           <div className="bg-primary text-primary-foreground flex items-center py-3 px-4 font-bold">
             <span className="flex-1">DRE Gerencial (Competência)</span>
             <span className="text-xs w-16 text-right shrink-0 opacity-80">AV%</span>
-            <span className="w-36 text-right shrink-0">{dateRange ? `${dateRange.from.toLocaleDateString('pt-BR', { month: 'short' })}/${dateRange.from.getFullYear()}` : 'Todo período'}</span>
+            <span className="w-36 text-right shrink-0">{dateRange ? formatDateStr(dateRange.from, true) : 'Todo período'}</span>
           </div>
 
           {/* Receita */}
