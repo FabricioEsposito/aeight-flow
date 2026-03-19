@@ -57,6 +57,16 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [chatOpen, setChatOpen] = useState(false);
 
+  // Helper to format "YYYY-MM-DD" string to display format
+  const formatDateStr = (dateStr: string, shortMonth = false): string => {
+    const [year, month, day] = dateStr.split('-');
+    if (shortMonth) {
+      const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      return `${months[parseInt(month) - 1]}/${year}`;
+    }
+    return `${day}/${month}/${year}`;
+  };
+
   useEffect(() => {
     fetchDREData();
   }, [dateRange, centroCusto]);
