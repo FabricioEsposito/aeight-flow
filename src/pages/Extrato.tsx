@@ -2032,27 +2032,6 @@ export default function Extrato() {
         </Card>
       </div>
 
-      {/* Fluxo de Caixa Mensal - Collapsible */}
-      <Collapsible>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="w-full flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Fluxo de Caixa Mensal
-            </span>
-            <ChevronDown className="w-4 h-4" />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <FluxoCaixaMensal
-            lancamentos={lancamentos}
-            contasBancarias={contasBancarias}
-            contaBancariaFilter={contaBancariaFilter}
-            movimentacoesAnteriores={movimentacoesAnteriores}
-            dateRange={dateRange || undefined}
-          />
-        </CollapsibleContent>
-      </Collapsible>
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
