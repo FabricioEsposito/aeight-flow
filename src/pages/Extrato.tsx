@@ -1190,7 +1190,8 @@ export default function Extrato() {
   };
 
   const handleSaveEdit = async (data: EditParcelaData) => {
-    if (!selectedLancamento) return;
+    console.log('[Extrato] handleSaveEdit called', { data, selectedLancamento: selectedLancamento?.id, parcela_id: selectedLancamento?.parcela_id });
+    if (!selectedLancamento) { console.log('[Extrato] selectedLancamento is null, aborting'); return; }
 
     try {
       const table = selectedLancamento.cliente_id ? 'contas_receber' : 'contas_pagar';
@@ -1227,11 +1228,13 @@ export default function Extrato() {
         updateData.link_boleto = data.link_boleto;
       }
       
+      console.log('[Extrato] updateData:', JSON.stringify(updateData, null, 2), 'table:', table, 'id:', data.id);
       const { error } = await supabase
         .from(table)
         .update(updateData)
         .eq('id', data.id);
 
+      console.log('[Extrato] update result - error:', error);
       if (error) throw error;
 
       // Propagar alteração do valor original para parcelas_contrato
