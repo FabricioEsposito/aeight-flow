@@ -1190,7 +1190,8 @@ export default function Extrato() {
   };
 
   const handleSaveEdit = async (data: EditParcelaData) => {
-    if (!selectedLancamento) return;
+    console.log('[Extrato] handleSaveEdit called', { data, selectedLancamento: selectedLancamento?.id, parcela_id: selectedLancamento?.parcela_id });
+    if (!selectedLancamento) { console.log('[Extrato] selectedLancamento is null, aborting'); return; }
 
     try {
       const table = selectedLancamento.cliente_id ? 'contas_receber' : 'contas_pagar';

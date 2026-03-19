@@ -199,6 +199,7 @@ export function EditParcelaDialog({
       );
     }
 
+    console.log('[EditParcelaDialog] onSave data:', JSON.stringify(data, null, 2));
     onSave(data);
     onOpenChange(false);
   };
