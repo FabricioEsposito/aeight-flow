@@ -1327,14 +1327,7 @@ export function Dashboard() {
         {/* DRE Analysis */}
         {analiseAtiva === 'dre' && (
           <DREAnalysis 
-            dateRange={(() => {
-              const range = getDateRange();
-              if (!range) return null;
-              return {
-                from: new Date(range.from),
-                to: new Date(range.to)
-              };
-            })()}
+            dateRange={getDateRange()}
             centroCusto={selectedCentroCusto.length > 0 ? selectedCentroCusto : undefined}
           />
         )}

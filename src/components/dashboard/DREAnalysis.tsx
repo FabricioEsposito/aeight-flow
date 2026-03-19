@@ -47,7 +47,7 @@ interface DREData {
 }
 
 interface DREAnalysisProps {
-  dateRange: { from: Date; to: Date } | null;
+  dateRange: { from: string; to: string } | null;
   centroCusto?: string[];
 }
 
@@ -56,6 +56,16 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [chatOpen, setChatOpen] = useState(false);
+
+  // Helper to format "YYYY-MM-DD" string to display format
+  const formatDateStr = (dateStr: string, shortMonth = false): string => {
+    const [year, month, day] = dateStr.split('-');
+    if (shortMonth) {
+      const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      return `${months[parseInt(month) - 1]}/${year}`;
+    }
+    return `${day}/${month}/${year}`;
+  };
 
   useEffect(() => {
     fetchDREData();
@@ -119,11 +129,9 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), clientes(razao_social)');
 
       if (dateRange) {
-        const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
-        const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         receitasQuery = receitasQuery
-          .gte('data_competencia', fromDate)
-          .lte('data_competencia', toDate);
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
       }
 
       // Não filtrar por centro_custo diretamente - será feito via rateio
@@ -135,11 +143,9 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)');
 
       if (dateRange) {
-        const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
-        const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         despesasQuery = despesasQuery
-          .gte('data_competencia', fromDate)
-          .lte('data_competencia', toDate);
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
       }
 
       const { data: despesas } = await despesasQuery;
@@ -578,7 +584,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     provisaoCsllIrrf: dreData.provisaoCsllIrrf,
     resultadoExercicio: dreData.resultadoExercicio,
     periodo: dateRange
-      ? `${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
+      ? `${formatDateStr(dateRange.from)} a ${formatDateStr(dateRange.to)}`
       : 'Todo o período',
     centrosCusto: centrosCustoNomes.length > 0 ? centrosCustoNomes : null,
   } : null;
@@ -591,7 +597,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           <CardTitle>DRE Gerencial (Competência)</CardTitle>
           <p className="text-sm text-muted-foreground">
             {dateRange 
-              ? `Período: ${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`
+              ? `Período: ${formatDateStr(dateRange.from)} a ${formatDateStr(dateRange.to)}`
               : 'Todo o período'
             }
           </p>
@@ -607,7 +613,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           <div className="bg-primary text-primary-foreground flex items-center py-3 px-4 font-bold">
             <span className="flex-1">DRE Gerencial (Competência)</span>
             <span className="text-xs w-16 text-right shrink-0 opacity-80">AV%</span>
-            <span className="w-36 text-right shrink-0">{dateRange ? `${dateRange.from.toLocaleDateString('pt-BR', { month: 'short' })}/${dateRange.from.getFullYear()}` : 'Todo período'}</span>
+            <span className="w-36 text-right shrink-0">{dateRange ? formatDateStr(dateRange.from, true) : 'Todo período'}</span>
           </div>
 
           {/* Receita */}
