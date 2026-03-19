@@ -133,11 +133,9 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)');
 
       if (dateRange) {
-        const fromDate = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, '0')}-${String(dateRange.from.getDate()).padStart(2, '0')}`;
-        const toDate = `${dateRange.to.getFullYear()}-${String(dateRange.to.getMonth() + 1).padStart(2, '0')}-${String(dateRange.to.getDate()).padStart(2, '0')}`;
         despesasQuery = despesasQuery
-          .gte('data_competencia', fromDate)
-          .lte('data_competencia', toDate);
+          .gte('data_competencia', dateRange.from)
+          .lte('data_competencia', dateRange.to);
       }
 
       const { data: despesas } = await despesasQuery;
