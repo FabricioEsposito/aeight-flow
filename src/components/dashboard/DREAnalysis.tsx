@@ -47,7 +47,7 @@ interface DREData {
 }
 
 interface DREAnalysisProps {
-  dateRange: { from: Date; to: Date } | null;
+  dateRange: { from: string; to: string } | null;
   centroCusto?: string[];
 }
 
