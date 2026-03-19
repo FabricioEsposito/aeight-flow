@@ -160,6 +160,7 @@ export function EditParcelaDialog({
   const hasParcelaId = !!initialData?.parcela_id;
 
   const handleSave = async () => {
+    console.log('[EditParcelaDialog] handleSave called', { initialData: !!initialData, dataVencimento: !!dataVencimento, fornecedorId, clienteId, fornecedorChanged, clienteChanged });
     if (!initialData || !dataVencimento) return;
 
     const centroCustoLegacy = rateioItems.length > 0 ? rateioItems[0].centro_custo_id : undefined;
