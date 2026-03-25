@@ -154,10 +154,11 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
       }
 
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao salvar fornecedor:', error);
       toast({
         title: "Erro ao salvar",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        description: error?.message || error?.details || "Erro desconhecido",
         variant: "destructive",
       });
     } finally {
