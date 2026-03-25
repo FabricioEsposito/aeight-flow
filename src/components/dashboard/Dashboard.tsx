@@ -148,6 +148,32 @@ export function Dashboard() {
     try {
       const dateRange = getDateRange();
       
+      // Helper para buscar todas as linhas com paginação
+      const fetchAllSimRows = async (table: 'contas_receber' | 'contas_pagar', selectStr: string) => {
+        const PAGE_SIZE = 1000;
+        let allData: any[] = [];
+        let from = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          let query = supabase.from(table).select(selectStr).range(from, from + PAGE_SIZE - 1);
+          if (dateRange) {
+            query = query
+              .gte('data_competencia', dateRange.from)
+              .lte('data_competencia', dateRange.to);
+          }
+          const { data } = await query;
+          if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            hasMore = data.length === PAGE_SIZE;
+            from += PAGE_SIZE;
+          } else {
+            hasMore = false;
+          }
+        }
+        return allData;
+      };
+
       // Buscar planos de contas
       const { data: planosContas } = await supabase
         .from('plano_contas')
@@ -162,31 +188,12 @@ export function Dashboard() {
           .map(p => p.id);
       };
 
-      // Buscar receitas - SEM filtro de centro_custo (será feito via rateio)
-      let receitasQuery = supabase
-        .from('contas_receber')
-        .select('id, valor, plano_conta_id, centro_custo, parcela_id');
-
-      if (dateRange) {
-        receitasQuery = receitasQuery
-          .gte('data_competencia', dateRange.from)
-          .lte('data_competencia', dateRange.to);
-      }
-
-      const { data: receitas } = await receitasQuery;
-
-      // Buscar despesas - SEM filtro de centro_custo (será feito via rateio)
-      let despesasQuery = supabase
-        .from('contas_pagar')
-        .select('id, valor, plano_conta_id, centro_custo, parcela_id');
-
-      if (dateRange) {
-        despesasQuery = despesasQuery
-          .gte('data_competencia', dateRange.from)
-          .lte('data_competencia', dateRange.to);
-      }
-
-      const { data: despesas } = await despesasQuery;
+      // Buscar receitas e despesas com paginação
+      const selectFields = 'id, valor, plano_conta_id, centro_custo, parcela_id';
+      const [receitas, despesas] = await Promise.all([
+        fetchAllSimRows('contas_receber', selectFields),
+        fetchAllSimRows('contas_pagar', selectFields),
+      ]);
 
       // Build rateio map: parcela_id -> { centro_custo_id, percentual }[]
       const allLancamentos = [...(receitas || []), ...(despesas || [])];
