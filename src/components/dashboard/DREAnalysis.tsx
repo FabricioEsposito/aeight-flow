@@ -83,6 +83,45 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
   const [centrosCustoNomes, setCentrosCustoNomes] = useState<string[]>([]);
 
+  // Helper to fetch all rows from a query bypassing the 1000-row limit
+  const fetchAllRows = async <T = any>(
+    table: 'contas_receber' | 'contas_pagar',
+    selectStr: string,
+    dateRange: { from: string; to: string } | null,
+    dateField: string = 'data_competencia'
+  ): Promise<T[]> => {
+    const PAGE_SIZE = 1000;
+    let allData: T[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from(table)
+        .select(selectStr)
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (dateRange) {
+        query = query
+          .gte(dateField, dateRange.from)
+          .lte(dateField, dateRange.to);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...(data as T[])];
+        hasMore = data.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allData;
+  };
+
   const fetchDREData = async () => {
     try {
       setIsLoading(true);
@@ -123,32 +162,19 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           .map(p => p.id);
       };
 
-      // Buscar receitas (regime de competência) - SEM filtro de centro_custo
-      let receitasQuery = supabase
-        .from('contas_receber')
-        .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), clientes(razao_social)');
+      // Buscar receitas (regime de competência) - com paginação
+      const receitas = await fetchAllRows(
+        'contas_receber',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), clientes(razao_social)',
+        dateRange
+      );
 
-      if (dateRange) {
-        receitasQuery = receitasQuery
-          .gte('data_competencia', dateRange.from)
-          .lte('data_competencia', dateRange.to);
-      }
-
-      // Não filtrar por centro_custo diretamente - será feito via rateio
-      const { data: receitas } = await receitasQuery;
-
-      // Buscar despesas (regime de competência) - SEM filtro de centro_custo
-      let despesasQuery = supabase
-        .from('contas_pagar')
-        .select('id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)');
-
-      if (dateRange) {
-        despesasQuery = despesasQuery
-          .gte('data_competencia', dateRange.from)
-          .lte('data_competencia', dateRange.to);
-      }
-
-      const { data: despesas } = await despesasQuery;
+      // Buscar despesas (regime de competência) - com paginação
+      const despesas = await fetchAllRows(
+        'contas_pagar',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)',
+        dateRange
+      );
 
       // Build rateio map: parcela_id -> RateioInfo[]
       const allLancamentos = [...(receitas || []), ...(despesas || [])];
