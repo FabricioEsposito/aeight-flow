@@ -102,6 +102,7 @@ interface RetencaoRow {
   valor_liquido: number;
   mes: number;
   ano: number;
+  centro_custo: string | null;
 }
 
 // ==================== COMPONENT ====================
