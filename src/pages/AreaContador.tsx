@@ -82,6 +82,8 @@ interface ExtratoRow {
   conta_bancaria_nome?: string;
   data_recebimento?: string;
   data_pagamento?: string;
+  numero_nf?: string | null;
+  link_nf?: string | null;
 }
 
 interface RetencaoRow {
