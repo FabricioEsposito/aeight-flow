@@ -218,14 +218,14 @@ function ExtratoTab() {
       const [receberPagos, receberPendentes, pagarPagos, pagarPendentes] = await Promise.all([
         fetchAllPages((from, to) =>
           supabase.from('contas_receber')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, clientes:cliente_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, numero_nf, link_nf, clientes:cliente_id(razao_social, nome_fantasia)')
             .eq('status', 'pago').not('data_recebimento', 'is', null)
             .gte('data_recebimento', periodStart).lte('data_recebimento', periodEnd)
             .order('data_recebimento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_receber')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, clientes:cliente_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, numero_nf, link_nf, clientes:cliente_id(razao_social, nome_fantasia)')
             .neq('status', 'pago').neq('status', 'cancelado')
             .gte('data_vencimento', periodStart).lte('data_vencimento', periodEnd)
             .order('data_vencimento').range(from, to)
@@ -278,6 +278,8 @@ function ExtratoTab() {
           conta_bancaria_id: r.conta_bancaria_id,
           conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
           data_recebimento: r.data_recebimento,
+          numero_nf: r.numero_nf,
+          link_nf: r.link_nf,
         };
       };
 
@@ -440,6 +442,7 @@ function ExtratoTab() {
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Cliente/Fornecedor</TableHead>
+                <TableHead>NF</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Centro de Custo</TableHead>
                 <TableHead>Conta Bancária</TableHead>
@@ -450,9 +453,9 @@ function ExtratoTab() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center py-8">Carregando...</TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum lançamento encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhum lançamento encontrado</TableCell></TableRow>
               ) : (
                 paginated.map(row => {
                   const status = getDisplayStatus(row);
@@ -461,6 +464,18 @@ function ExtratoTab() {
                       <TableCell className="whitespace-nowrap">{formatDate(row.data_vencimento)}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{row.descricao}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{row.cliente_fornecedor || '-'}</TableCell>
+                      <TableCell>
+                        {row.numero_nf ? (
+                          row.link_nf ? (
+                            <a href={row.link_nf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-xs">
+                              {row.numero_nf}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-xs">{row.numero_nf}</span>
+                          )
+                        ) : '-'}
+                      </TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{row.categoria || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.centro_custo_nome || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.conta_bancaria_nome || '-'}</TableCell>
