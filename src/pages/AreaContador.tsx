@@ -233,14 +233,14 @@ function ExtratoTab() {
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_pagar')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, link_nf, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
             .eq('status', 'pago').not('data_pagamento', 'is', null)
             .gte('data_pagamento', periodStart).lte('data_pagamento', periodEnd)
             .order('data_pagamento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_pagar')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, link_nf, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
             .neq('status', 'pago').neq('status', 'cancelado')
             .gte('data_vencimento', periodStart).lte('data_vencimento', periodEnd)
             .order('data_vencimento').range(from, to)
@@ -297,6 +297,7 @@ function ExtratoTab() {
           conta_bancaria_id: p.conta_bancaria_id,
           conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
           data_pagamento: p.data_pagamento,
+          link_nf: p.link_nf,
         };
       };
 
@@ -466,15 +467,13 @@ function ExtratoTab() {
                       <TableCell className="max-w-[200px] truncate">{row.descricao}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{row.cliente_fornecedor || '-'}</TableCell>
                       <TableCell>
-                        {row.numero_nf ? (
-                          row.link_nf ? (
-                            <button onClick={() => openStorageFile(row.link_nf!)} className="inline-flex items-center gap-1 text-primary hover:underline text-xs cursor-pointer">
-                              {row.numero_nf}
-                              <ExternalLink className="w-3 h-3" />
-                            </button>
-                          ) : (
-                            <span className="text-xs">{row.numero_nf}</span>
-                          )
+                        {row.link_nf ? (
+                          <button onClick={() => openStorageFile(row.link_nf!)} className="inline-flex items-center gap-1 text-primary hover:underline text-xs cursor-pointer">
+                            {row.numero_nf || 'Ver NF'}
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        ) : row.numero_nf ? (
+                          <span className="text-xs">{row.numero_nf}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{row.categoria || '-'}</TableCell>
