@@ -37,6 +37,7 @@ import RHBeneficios from "./pages/RHBeneficios";
 import RHAprovacoes from "./pages/RHAprovacoes";
 import RHConfirmacaoFinanceiro from "./pages/RHConfirmacaoFinanceiro";
 import FerramentasSoftware from "./pages/FerramentasSoftware";
+import AreaContador from "./pages/AreaContador";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
                 <Route path="/rh/aprovacoes" element={<ProtectedRoute><RHAprovacoes /></ProtectedRoute>} />
                 <Route path="/rh/confirmacao" element={<ProtectedRoute><RHConfirmacaoFinanceiro /></ProtectedRoute>} />
                 <Route path="/ferramentas-software" element={<ProtectedRoute><FerramentasSoftware /></ProtectedRoute>} />
+                <Route path="/area-contador" element={<ProtectedRoute><AreaContador /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </SessionTimeoutProvider>
