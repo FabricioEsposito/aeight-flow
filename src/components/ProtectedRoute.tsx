@@ -29,7 +29,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     !permissions.canAccessFinanceiro &&
     !permissions.canAccessRH &&
     !permissions.canAccessUsuarios &&
-    !permissions.canAccessSolicitacoes
+    !permissions.canAccessSolicitacoes &&
+    !permissions.canAccessContador
   );
 
   if (hasNoAccess) {

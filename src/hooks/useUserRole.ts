@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst';
+export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst' | 'contador';
 
 export interface RolePermissions {
   // Navigation access
@@ -13,6 +13,7 @@ export interface RolePermissions {
   canAccessRH: boolean;
   canAccessUsuarios: boolean;
   canAccessSolicitacoes: boolean;
+  canAccessContador: boolean;
   
   // Edit permissions
   canEditFinanceiro: boolean;
@@ -44,6 +45,7 @@ const roleLabels: Record<AppRole, string> = {
   salesperson: 'Vendedor',
   rh_manager: 'Gerente de RH',
   rh_analyst: 'Analista de RH',
+  contador: 'Contador',
 };
 
 export function useUserRole() {
@@ -87,6 +89,7 @@ export function useUserRole() {
       canAccessRH: false,
       canAccessUsuarios: false,
       canAccessSolicitacoes: false,
+      canAccessContador: false,
       canEditFinanceiro: false,
       canEditComercial: false,
       canEditCadastro: false,
@@ -111,6 +114,7 @@ export function useUserRole() {
           canAccessRH: true,
           canAccessUsuarios: true,
           canAccessSolicitacoes: true,
+          canAccessContador: true,
           canEditFinanceiro: true,
           canEditComercial: true,
           canEditCadastro: true,
@@ -132,6 +136,7 @@ export function useUserRole() {
           canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: true,
+          canAccessContador: true,
           canEditFinanceiro: true,
           canEditComercial: true,
           canEditCadastro: true,
@@ -153,6 +158,7 @@ export function useUserRole() {
           canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: true,
+          canAccessContador: false,
           canEditFinanceiro: false,
           canEditComercial: false,
           canEditCadastro: false,
@@ -174,6 +180,7 @@ export function useUserRole() {
           canAccessRH: false,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
+          canAccessContador: false,
           canEditFinanceiro: false,
           canEditComercial: true,
           canEditCadastro: false,
@@ -195,6 +202,7 @@ export function useUserRole() {
           canAccessRH: false,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
+          canAccessContador: false,
           canEditFinanceiro: false,
           canEditComercial: false,
           canEditCadastro: false,
@@ -216,6 +224,7 @@ export function useUserRole() {
           canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
+          canAccessContador: false,
           canEditFinanceiro: false,
           canEditComercial: false,
           canEditCadastro: false,
@@ -237,6 +246,7 @@ export function useUserRole() {
           canAccessRH: true,
           canAccessUsuarios: false,
           canAccessSolicitacoes: false,
+          canAccessContador: false,
           canEditFinanceiro: false,
           canEditComercial: false,
           canEditCadastro: false,
@@ -246,6 +256,28 @@ export function useUserRole() {
           canApproveRH: false,
           needsApprovalForRH: true,
           canSendHoleriteOnlyWhenPaid: true,
+          needsApprovalForFinanceiroEdits: false,
+        };
+      
+      case 'contador':
+        return {
+          canAccessDashboard: false,
+          canAccessCadastro: false,
+          canAccessComercial: false,
+          canAccessFinanceiro: false,
+          canAccessRH: false,
+          canAccessUsuarios: false,
+          canAccessSolicitacoes: false,
+          canAccessContador: true,
+          canEditFinanceiro: false,
+          canEditComercial: false,
+          canEditCadastro: false,
+          canPerformBaixas: false,
+          canApproveFinanceiroRequests: false,
+          canApproveCommissions: false,
+          canApproveRH: false,
+          needsApprovalForRH: false,
+          canSendHoleriteOnlyWhenPaid: false,
           needsApprovalForFinanceiroEdits: false,
         };
       
@@ -262,6 +294,7 @@ export function useUserRole() {
   const isSalesperson = role === 'salesperson';
   const isRHManager = role === 'rh_manager';
   const isRHAnalyst = role === 'rh_analyst';
+  const isContador = role === 'contador';
 
   const getRoleLabel = (r?: AppRole | null): string => {
     return roleLabels[r || 'user'] || 'Usuário Básico';
@@ -277,6 +310,7 @@ export function useUserRole() {
     isSalesperson,
     isRHManager,
     isRHAnalyst,
+    isContador,
     permissions,
     getRoleLabel,
     roleLabels,
