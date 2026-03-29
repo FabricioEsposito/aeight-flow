@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt } from 'lucide-react';
+import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { ContaBancariaMultiSelect } from '@/components/financeiro/ContaBancariaMultiSelect';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useExportReport } from '@/hooks/useExportReport';
@@ -52,21 +52,20 @@ const formatCnpj = (value: string) => {
   return value;
 };
 
-/** Returns: { start: 'YYYY-01-01', end: 'YYYY-MM-DD' } where end is last day of previous month */
-const getClosedPeriod = () => {
-  const today = new Date();
-  const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-  const startOfYear = new Date(today.getFullYear(), 0, 1);
-  return {
-    start: format(startOfYear, 'yyyy-MM-dd'),
-    end: format(lastDayLastMonth, 'yyyy-MM-dd'),
-  };
-};
-
 const getMonthLabel = (month: number, year: number) => {
   const d = new Date(year, month - 1, 1);
   return format(d, 'MMMM/yyyy', { locale: ptBR });
 };
+
+/** Default closed period: start of year to last day of previous month */
+const getDefaultClosedPeriod = (): { from: Date; to: Date } => {
+  const today = new Date();
+  const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+  const start = new Date(today.getFullYear(), 0, 1);
+  return { from: start, to: lastDayLastMonth };
+};
+
+const toDateStr = (d: Date) => format(d, 'yyyy-MM-dd');
 
 // ==================== TYPES ====================
 interface ExtratoRow {
@@ -92,6 +91,7 @@ interface RetencaoRow {
   cliente_cnpj: string;
   servicos: string;
   numero_nf: string | null;
+  link_nf: string | null;
   valor_bruto: number;
   irrf_valor: number;
   pis_valor: number;
@@ -105,9 +105,9 @@ interface RetencaoRow {
 // ==================== COMPONENT ====================
 export default function AreaContador() {
   const [activeTab, setActiveTab] = useState('extrato');
-  const { toast } = useToast();
-  const { exportToPDF, exportToExcel } = useExportReport();
-  const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
+  const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage } = usePermissionCheck();
+
+  const defaultPeriod = getDefaultClosedPeriod();
 
   return (
     <div className="space-y-6">
@@ -118,7 +118,7 @@ export default function AreaContador() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Área do Contador</h1>
           <p className="text-sm text-muted-foreground">
-            Período fechado: até {formatDate(getClosedPeriod().end)}
+            Período fechado: até {formatDate(toDateStr(defaultPeriod.to))}
           </p>
         </div>
       </div>
@@ -154,6 +154,9 @@ export default function AreaContador() {
 
 // ==================== EXTRATO TAB ====================
 function ExtratoTab() {
+  const defaultPeriod = getDefaultClosedPeriod();
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('periodo-personalizado');
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(defaultPeriod);
   const [lancamentos, setLancamentos] = useState<ExtratoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -166,16 +169,39 @@ function ExtratoTab() {
   const { toast } = useToast();
   const { exportToPDF, exportToExcel } = useExportReport();
 
-  const period = getClosedPeriod();
+  const periodStart = dateRange.from ? toDateStr(dateRange.from) : toDateStr(defaultPeriod.from);
+  const periodEnd = dateRange.to ? toDateStr(dateRange.to) : toDateStr(defaultPeriod.to);
+
+  const handleDateChange = useCallback((preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    if (preset === 'todo-periodo') {
+      setDateRange({ from: new Date(2020, 0, 1), to: new Date() });
+    } else if (range?.from && range?.to) {
+      setDateRange({ from: range.from, to: range.to });
+    } else {
+      // For presets like 'este-mes', compute the range
+      const today = new Date();
+      switch (preset) {
+        case 'este-mes':
+          setDateRange({ from: startOfMonth(today), to: endOfMonth(today) });
+          break;
+        case 'este-ano':
+          setDateRange({ from: startOfYear(today), to: new Date(today.getFullYear(), 11, 31) });
+          break;
+        default:
+          break;
+      }
+    }
+    setCurrentPage(1);
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [periodStart, periodEnd]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Lookup maps
       const [{ data: planoContasData }, { data: centrosCustoData }, { data: contasBancariasData }] = await Promise.all([
         supabase.from('plano_contas').select('id, codigo, descricao'),
         supabase.from('centros_custo').select('id, codigo, descricao'),
@@ -186,34 +212,33 @@ function ExtratoTab() {
       const ccMap = new Map((centrosCustoData || []).map(c => [c.id, c]));
       const cbMap = new Map((contasBancariasData || []).map(c => [c.id, c]));
 
-      // Fetch paid entries by movement date, pending by due date
       const [receberPagos, receberPendentes, pagarPagos, pagarPendentes] = await Promise.all([
         fetchAllPages((from, to) =>
           supabase.from('contas_receber')
             .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, clientes:cliente_id(razao_social, nome_fantasia)')
             .eq('status', 'pago').not('data_recebimento', 'is', null)
-            .gte('data_recebimento', period.start).lte('data_recebimento', period.end)
+            .gte('data_recebimento', periodStart).lte('data_recebimento', periodEnd)
             .order('data_recebimento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_receber')
             .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, clientes:cliente_id(razao_social, nome_fantasia)')
             .neq('status', 'pago').neq('status', 'cancelado')
-            .gte('data_vencimento', period.start).lte('data_vencimento', period.end)
+            .gte('data_vencimento', periodStart).lte('data_vencimento', periodEnd)
             .order('data_vencimento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_pagar')
             .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
             .eq('status', 'pago').not('data_pagamento', 'is', null)
-            .gte('data_pagamento', period.start).lte('data_pagamento', period.end)
+            .gte('data_pagamento', periodStart).lte('data_pagamento', periodEnd)
             .order('data_pagamento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_pagar')
             .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
             .neq('status', 'pago').neq('status', 'cancelado')
-            .gte('data_vencimento', period.start).lte('data_vencimento', period.end)
+            .gte('data_vencimento', periodStart).lte('data_vencimento', periodEnd)
             .order('data_vencimento').range(from, to)
         ),
       ]);
@@ -221,10 +246,10 @@ function ExtratoTab() {
       // Calculate opening balance
       const [entradasAnt, saidasAnt] = await Promise.all([
         fetchAllPages((from, to) =>
-          supabase.from('contas_receber').select('valor').eq('status', 'pago').lt('data_recebimento', period.start).range(from, to)
+          supabase.from('contas_receber').select('valor').eq('status', 'pago').lt('data_recebimento', periodStart).range(from, to)
         ),
         fetchAllPages((from, to) =>
-          supabase.from('contas_pagar').select('valor').eq('status', 'pago').lt('data_pagamento', period.start).range(from, to)
+          supabase.from('contas_pagar').select('valor').eq('status', 'pago').lt('data_pagamento', periodStart).range(from, to)
         ),
       ]);
 
@@ -234,11 +259,9 @@ function ExtratoTab() {
 
       const totalEntradasAnt = entradasAnt.reduce((acc: number, r: any) => acc + Number(r.valor), 0);
       const totalSaidasAnt = saidasAnt.reduce((acc: number, r: any) => acc + Number(r.valor), 0);
-      const saldoInicialCalc = saldoInicialContas + totalEntradasAnt - totalSaidasAnt;
-      setSaldoInicial(saldoInicialCalc);
+      setSaldoInicial(saldoInicialContas + totalEntradasAnt - totalSaidasAnt);
       setContasBancarias((contasBancariasData || []).filter((c: any) => c.status !== 'inativo'));
 
-      // Map to rows
       const mapReceber = (r: any): ExtratoRow => {
         const cc = r.centro_custo ? ccMap.get(r.centro_custo) : null;
         const pc = r.plano_conta_id ? planoMap.get(r.plano_conta_id) : null;
@@ -303,7 +326,7 @@ function ExtratoTab() {
 
   const totalEntradas = filtered.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
   const totalSaidas = filtered.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
-  const saldoPeriodo = totalEntradas - totalSaidas;
+  const saldoFinal = saldoInicial + totalEntradas - totalSaidas;
 
   const totalItems = filtered.length;
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -331,7 +354,7 @@ function ExtratoTab() {
         { header: 'Status', accessor: (r: ExtratoRow) => getDisplayStatus(r) },
       ],
       data: filtered,
-      dateRange: `${formatDate(period.start)} - ${formatDate(period.end)}`,
+      dateRange: `${formatDate(periodStart)} - ${formatDate(periodEnd)}`,
     });
   };
 
@@ -348,11 +371,11 @@ function ExtratoTab() {
         { header: 'Status', accessor: (r: ExtratoRow) => getDisplayStatus(r) },
       ],
       data: filtered,
-      dateRange: `${formatDate(period.start)} - ${formatDate(period.end)}`,
+      dateRange: `${formatDate(periodStart)} - ${formatDate(periodEnd)}`,
       subtotals: [
         { label: 'Total Entradas', value: totalEntradas, type: 'positive' },
         { label: 'Total Saídas', value: totalSaidas, type: 'negative' },
-        { label: 'Saldo', value: saldoPeriodo, type: saldoPeriodo >= 0 ? 'positive' : 'negative' },
+        { label: 'Saldo Final', value: saldoFinal, type: saldoFinal >= 0 ? 'positive' : 'negative' },
       ],
     });
   };
@@ -360,7 +383,11 @@ function ExtratoTab() {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Saldo Inicial</p>
+          <p className={`text-xl font-bold ${saldoInicial >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(saldoInicial)}</p>
+        </Card>
         <Card className="p-4">
           <p className="text-sm text-muted-foreground">Entradas</p>
           <p className="text-xl font-bold text-green-600">{formatCurrency(totalEntradas)}</p>
@@ -370,15 +397,20 @@ function ExtratoTab() {
           <p className="text-xl font-bold text-red-600">{formatCurrency(totalSaidas)}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Saldo do Período</p>
-          <p className={`text-xl font-bold ${saldoPeriodo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(saldoPeriodo)}
+          <p className="text-sm text-muted-foreground">Saldo Final</p>
+          <p className={`text-xl font-bold ${saldoFinal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatCurrency(saldoFinal)}
           </p>
         </Card>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
+        <DateRangeFilter
+          value={datePreset}
+          onChange={handleDateChange}
+          customRange={dateRange}
+        />
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
@@ -461,40 +493,53 @@ function ExtratoTab() {
 
 // ==================== RETENÇÕES TAB ====================
 function RetencoesTab() {
+  const defaultPeriod = getDefaultClosedPeriod();
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('periodo-personalizado');
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(defaultPeriod);
   const [retencoes, setRetencoes] = useState<RetencaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [anoFilter, setAnoFilter] = useState(new Date().getFullYear().toString());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { toast } = useToast();
   const { exportToExcel, exportToPDF } = useExportReport();
 
-  const period = getClosedPeriod();
+  const periodStart = dateRange.from ? toDateStr(dateRange.from) : toDateStr(defaultPeriod.from);
+  const periodEnd = dateRange.to ? toDateStr(dateRange.to) : toDateStr(defaultPeriod.to);
+
+  const handleDateChange = useCallback((preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    if (preset === 'todo-periodo') {
+      setDateRange({ from: new Date(2020, 0, 1), to: new Date() });
+    } else if (range?.from && range?.to) {
+      setDateRange({ from: range.from, to: range.to });
+    } else {
+      const today = new Date();
+      switch (preset) {
+        case 'este-mes':
+          setDateRange({ from: startOfMonth(today), to: endOfMonth(today) });
+          break;
+        case 'este-ano':
+          setDateRange({ from: startOfYear(today), to: new Date(today.getFullYear(), 11, 31) });
+          break;
+        default:
+          break;
+      }
+    }
+    setCurrentPage(1);
+  }, []);
 
   useEffect(() => {
     fetchRetencoes();
-  }, [anoFilter]);
+  }, [periodStart, periodEnd]);
 
   const fetchRetencoes = async () => {
     setLoading(true);
     try {
-      const ano = parseInt(anoFilter);
-      const startDate = `${ano}-01-01`;
-      // End date: min(last day of previous month, end of selected year)
-      const endDate = ano < new Date().getFullYear() ? `${ano}-12-31` : period.end;
-
-      // If year is current but no closed month yet, show nothing
-      if (ano === new Date().getFullYear() && new Date().getMonth() === 0) {
-        setRetencoes([]);
-        setLoading(false);
-        return;
-      }
-
       const data = await fetchAllPages((from, to) =>
         supabase.from('contas_receber')
           .select(`
-            id, valor, data_recebimento, numero_nf, status, parcela_id,
+            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id,
             clientes:cliente_id(razao_social, cnpj_cpf),
             parcelas_contrato:parcela_id(
               contratos:contrato_id(
@@ -506,8 +551,8 @@ function RetencoesTab() {
           .eq('status', 'pago')
           .not('data_recebimento', 'is', null)
           .not('parcela_id', 'is', null)
-          .gte('data_recebimento', startDate)
-          .lte('data_recebimento', endDate)
+          .gte('data_recebimento', periodStart)
+          .lte('data_recebimento', periodEnd)
           .order('data_recebimento')
           .range(from, to)
       );
@@ -547,7 +592,6 @@ function RetencoesTab() {
           const csllPct = contrato?.csll_percentual || 0;
           const totalPct = irrfPct + pisPct + cofinsPct + csllPct;
 
-          // Determine if valor is already net or gross
           const contratoValorBruto = contrato?.valor_bruto ? Number(contrato.valor_bruto) : 0;
           let valorBruto = valor;
           
@@ -556,7 +600,7 @@ function RetencoesTab() {
             if (contratoValorBruto > 0 && Math.abs(contratoValorBruto - brutoEstimado) <= Math.max(0.5, brutoEstimado * 0.01)) {
               valorBruto = contratoValorBruto;
             } else {
-              valorBruto = valor; // assume already gross
+              valorBruto = valor;
             }
           }
 
@@ -580,6 +624,7 @@ function RetencoesTab() {
             cliente_cnpj: (r.clientes as any)?.cnpj_cpf || '',
             servicos: servicosNomes,
             numero_nf: r.numero_nf,
+            link_nf: r.link_nf,
             valor_bruto: round2(valorBruto),
             irrf_valor: irrfValor,
             pis_valor: pisValor,
@@ -610,7 +655,6 @@ function RetencoesTab() {
     );
   }, [retencoes, searchTerm]);
 
-  // Group by month
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, RetencaoRow[]>();
     filtered.forEach(r => {
@@ -650,20 +694,20 @@ function RetencoesTab() {
   const handleExportExcel = () => {
     exportToExcel({
       title: 'Relatório de Retenções',
-      filename: `retencoes-${anoFilter}`,
+      filename: `retencoes-${format(new Date(), 'yyyy-MM-dd')}`,
       columns: exportColumns,
       data: filtered,
-      dateRange: `Ano ${anoFilter}`,
+      dateRange: `${formatDate(periodStart)} - ${formatDate(periodEnd)}`,
     });
   };
 
   const handleExportPDF = () => {
     exportToPDF({
       title: 'Relatório de Retenções',
-      filename: `retencoes-${anoFilter}`,
+      filename: `retencoes-${format(new Date(), 'yyyy-MM-dd')}`,
       columns: exportColumns,
       data: filtered,
-      dateRange: `Ano ${anoFilter}`,
+      dateRange: `${formatDate(periodStart)} - ${formatDate(periodEnd)}`,
       subtotals: [
         { label: 'Total Bruto', value: totals.bruto, type: 'positive' },
         { label: 'Total IRRF', value: totals.irrf, type: 'negative' },
@@ -674,9 +718,6 @@ function RetencoesTab() {
       ],
     });
   };
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
 
   return (
     <div className="space-y-4">
@@ -710,16 +751,15 @@ function RetencoesTab() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
+        <DateRangeFilter
+          value={datePreset}
+          onChange={handleDateChange}
+          customRange={dateRange}
+        />
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar cliente, CNPJ, NF..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
-        <Select value={anoFilter} onValueChange={v => { setAnoFilter(v); setCurrentPage(1); }}>
-          <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {yearOptions.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2"><Download className="w-4 h-4" />Exportar</Button>
@@ -787,7 +827,23 @@ function RetencoesTab() {
                             <TableCell className="max-w-[200px] truncate">{row.cliente_razao_social}</TableCell>
                             <TableCell className="whitespace-nowrap text-xs">{formatCnpj(row.cliente_cnpj)}</TableCell>
                             <TableCell className="max-w-[150px] truncate text-xs">{row.servicos}</TableCell>
-                            <TableCell>{row.numero_nf || '-'}</TableCell>
+                            <TableCell>
+                              {row.numero_nf ? (
+                                row.link_nf ? (
+                                  <a
+                                    href={row.link_nf}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                                  >
+                                    {row.numero_nf}
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                ) : (
+                                  row.numero_nf
+                                )
+                              ) : '-'}
+                            </TableCell>
                             <TableCell className="text-right font-medium">{formatCurrency(row.valor_bruto)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.irrf_valor)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.pis_valor)}</TableCell>
