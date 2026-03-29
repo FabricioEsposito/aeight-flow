@@ -118,7 +118,8 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     "Cadastro": false,
     "Comercial": false,
     "RH": false,
-    "Financeiro": false
+    "Financeiro": false,
+    "Contabilidade": false,
   });
 
   // Filter navigation based on role permissions
@@ -130,6 +131,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         if (group.name === "Comercial" && !permissions.canAccessComercial) return null;
         if (group.name === "RH" && !permissions.canAccessRH) return null;
         if (group.name === "Financeiro" && !permissions.canAccessFinanceiro) return null;
+        if (group.name === "Contabilidade" && !permissions.canAccessContador) return null;
 
         // For salesperson, only show Dashboard Comercial and Comissionamento
         if (role === 'salesperson' && group.name === "Comercial") {
@@ -254,7 +256,8 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     permissions.canAccessCadastro || 
     permissions.canAccessComercial || 
     permissions.canAccessFinanceiro ||
-    permissions.canAccessRH;
+    permissions.canAccessRH ||
+    permissions.canAccessContador;
 
   return (
     <aside className="w-64 border-r border-border bg-card flex flex-col h-full md:fixed md:left-0 md:top-0 md:h-screen">
