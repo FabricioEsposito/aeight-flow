@@ -7,13 +7,16 @@ import { useClearFiltersOnAreaChange } from "@/hooks/useSessionState";
 const Index = () => {
   useClearFiltersOnAreaChange('dashboard');
   const navigate = useNavigate();
-  const { role, loading, isCommercialManager, isSalesperson } = useUserRole();
+  const { role, loading, isCommercialManager, isSalesperson, isContador } = useUserRole();
 
   useEffect(() => {
     if (!loading && (isCommercialManager || isSalesperson)) {
       navigate("/dashboard-comercial", { replace: true });
     }
-  }, [loading, isCommercialManager, isSalesperson, navigate]);
+    if (!loading && isContador) {
+      navigate("/area-contador", { replace: true });
+    }
+  }, [loading, isCommercialManager, isSalesperson, isContador, navigate]);
 
   // Show loading while checking role
   if (loading || isCommercialManager || isSalesperson) {
