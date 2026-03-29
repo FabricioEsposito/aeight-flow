@@ -382,8 +382,8 @@ function ExtratoTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
-        <ContaBancariaMultiSelect value={contaBancariaFilter} onChange={setContaBancariaFilter} />
-        <CentroCustoFilterSelect value={centroCustoFilter} onChange={setCentroCustoFilter} />
+        <ContaBancariaMultiSelect contas={contasBancarias} selectedIds={contaBancariaFilter} onChange={setContaBancariaFilter} />
+        <CentroCustoFilterSelect value={centroCustoFilter} onValueChange={setCentroCustoFilter} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2"><Download className="w-4 h-4" />Exportar</Button>
