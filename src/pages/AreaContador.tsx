@@ -233,14 +233,14 @@ function ExtratoTab() {
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_pagar')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, link_nf, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
             .eq('status', 'pago').not('data_pagamento', 'is', null)
             .gte('data_pagamento', periodStart).lte('data_pagamento', periodEnd)
             .order('data_pagamento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_pagar')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_pagamento, fornecedor_id, link_nf, fornecedores:fornecedor_id(razao_social, nome_fantasia)')
             .neq('status', 'pago').neq('status', 'cancelado')
             .gte('data_vencimento', periodStart).lte('data_vencimento', periodEnd)
             .order('data_vencimento').range(from, to)
@@ -297,6 +297,7 @@ function ExtratoTab() {
           conta_bancaria_id: p.conta_bancaria_id,
           conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
           data_pagamento: p.data_pagamento,
+          link_nf: p.link_nf,
         };
       };
 
