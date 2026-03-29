@@ -82,6 +82,8 @@ interface ExtratoRow {
   conta_bancaria_nome?: string;
   data_recebimento?: string;
   data_pagamento?: string;
+  numero_nf?: string | null;
+  link_nf?: string | null;
 }
 
 interface RetencaoRow {
@@ -100,6 +102,7 @@ interface RetencaoRow {
   valor_liquido: number;
   mes: number;
   ano: number;
+  centro_custo: string | null;
 }
 
 // ==================== COMPONENT ====================
@@ -215,14 +218,14 @@ function ExtratoTab() {
       const [receberPagos, receberPendentes, pagarPagos, pagarPendentes] = await Promise.all([
         fetchAllPages((from, to) =>
           supabase.from('contas_receber')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, clientes:cliente_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, numero_nf, link_nf, clientes:cliente_id(razao_social, nome_fantasia)')
             .eq('status', 'pago').not('data_recebimento', 'is', null)
             .gte('data_recebimento', periodStart).lte('data_recebimento', periodEnd)
             .order('data_recebimento').range(from, to)
         ),
         fetchAllPages((from, to) =>
           supabase.from('contas_receber')
-            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, clientes:cliente_id(razao_social, nome_fantasia)')
+            .select('id, valor, data_vencimento, descricao, status, centro_custo, plano_conta_id, conta_bancaria_id, data_recebimento, cliente_id, numero_nf, link_nf, clientes:cliente_id(razao_social, nome_fantasia)')
             .neq('status', 'pago').neq('status', 'cancelado')
             .gte('data_vencimento', periodStart).lte('data_vencimento', periodEnd)
             .order('data_vencimento').range(from, to)
@@ -275,6 +278,8 @@ function ExtratoTab() {
           conta_bancaria_id: r.conta_bancaria_id,
           conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
           data_recebimento: r.data_recebimento,
+          numero_nf: r.numero_nf,
+          link_nf: r.link_nf,
         };
       };
 
@@ -437,6 +442,7 @@ function ExtratoTab() {
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Cliente/Fornecedor</TableHead>
+                <TableHead>NF</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Centro de Custo</TableHead>
                 <TableHead>Conta Bancária</TableHead>
@@ -447,9 +453,9 @@ function ExtratoTab() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center py-8">Carregando...</TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum lançamento encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhum lançamento encontrado</TableCell></TableRow>
               ) : (
                 paginated.map(row => {
                   const status = getDisplayStatus(row);
@@ -458,6 +464,18 @@ function ExtratoTab() {
                       <TableCell className="whitespace-nowrap">{formatDate(row.data_vencimento)}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{row.descricao}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{row.cliente_fornecedor || '-'}</TableCell>
+                      <TableCell>
+                        {row.numero_nf ? (
+                          row.link_nf ? (
+                            <a href={row.link_nf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-xs">
+                              {row.numero_nf}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-xs">{row.numero_nf}</span>
+                          )
+                        ) : '-'}
+                      </TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{row.categoria || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.centro_custo_nome || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.conta_bancaria_nome || '-'}</TableCell>
@@ -499,6 +517,7 @@ function RetencoesTab() {
   const [retencoes, setRetencoes] = useState<RetencaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { toast } = useToast();
@@ -539,7 +558,7 @@ function RetencoesTab() {
       const data = await fetchAllPages((from, to) =>
         supabase.from('contas_receber')
           .select(`
-            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id,
+            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo,
             clientes:cliente_id(razao_social, cnpj_cpf),
             parcelas_contrato:parcela_id(
               contratos:contrato_id(
@@ -633,6 +652,7 @@ function RetencoesTab() {
             valor_liquido: valorLiquido,
             mes: recDate.getMonth() + 1,
             ano: recDate.getFullYear(),
+            centro_custo: r.centro_custo,
           };
         });
 
@@ -646,14 +666,17 @@ function RetencoesTab() {
   };
 
   const filtered = useMemo(() => {
-    if (!searchTerm) return retencoes;
-    const term = searchTerm.toLowerCase();
-    return retencoes.filter(r =>
-      r.cliente_razao_social.toLowerCase().includes(term) ||
-      r.cliente_cnpj.includes(searchTerm) ||
-      (r.numero_nf && r.numero_nf.includes(searchTerm))
-    );
-  }, [retencoes, searchTerm]);
+    return retencoes.filter(r => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        if (!r.cliente_razao_social.toLowerCase().includes(term) &&
+            !r.cliente_cnpj.includes(searchTerm) &&
+            !(r.numero_nf && r.numero_nf.includes(searchTerm))) return false;
+      }
+      if (centroCustoFilter.length > 0 && (!r.centro_custo || !centroCustoFilter.includes(r.centro_custo))) return false;
+      return true;
+    });
+  }, [retencoes, searchTerm, centroCustoFilter]);
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, RetencaoRow[]>();
@@ -760,6 +783,7 @@ function RetencoesTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar cliente, CNPJ, NF..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
+        <CentroCustoFilterSelect value={centroCustoFilter} onValueChange={setCentroCustoFilter} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2"><Download className="w-4 h-4" />Exportar</Button>
