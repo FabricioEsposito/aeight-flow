@@ -517,6 +517,7 @@ function RetencoesTab() {
   const [retencoes, setRetencoes] = useState<RetencaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { toast } = useToast();
@@ -557,7 +558,7 @@ function RetencoesTab() {
       const data = await fetchAllPages((from, to) =>
         supabase.from('contas_receber')
           .select(`
-            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id,
+            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo,
             clientes:cliente_id(razao_social, cnpj_cpf),
             parcelas_contrato:parcela_id(
               contratos:contrato_id(
@@ -651,6 +652,7 @@ function RetencoesTab() {
             valor_liquido: valorLiquido,
             mes: recDate.getMonth() + 1,
             ano: recDate.getFullYear(),
+            centro_custo: r.centro_custo,
           };
         });
 
@@ -664,14 +666,17 @@ function RetencoesTab() {
   };
 
   const filtered = useMemo(() => {
-    if (!searchTerm) return retencoes;
-    const term = searchTerm.toLowerCase();
-    return retencoes.filter(r =>
-      r.cliente_razao_social.toLowerCase().includes(term) ||
-      r.cliente_cnpj.includes(searchTerm) ||
-      (r.numero_nf && r.numero_nf.includes(searchTerm))
-    );
-  }, [retencoes, searchTerm]);
+    return retencoes.filter(r => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        if (!r.cliente_razao_social.toLowerCase().includes(term) &&
+            !r.cliente_cnpj.includes(searchTerm) &&
+            !(r.numero_nf && r.numero_nf.includes(searchTerm))) return false;
+      }
+      if (centroCustoFilter.length > 0 && (!r.centro_custo || !centroCustoFilter.includes(r.centro_custo))) return false;
+      return true;
+    });
+  }, [retencoes, searchTerm, centroCustoFilter]);
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, RetencaoRow[]>();
@@ -778,6 +783,7 @@ function RetencoesTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar cliente, CNPJ, NF..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
+        <CentroCustoFilterSelect value={centroCustoFilter} onValueChange={setCentroCustoFilter} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2"><Download className="w-4 h-4" />Exportar</Button>
