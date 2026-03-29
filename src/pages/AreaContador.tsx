@@ -236,6 +236,7 @@ function ExtratoTab() {
       const totalSaidasAnt = saidasAnt.reduce((acc: number, r: any) => acc + Number(r.valor), 0);
       const saldoInicialCalc = saldoInicialContas + totalEntradasAnt - totalSaidasAnt;
       setSaldoInicial(saldoInicialCalc);
+      setContasBancarias((contasBancariasData || []).filter((c: any) => c.status !== 'inativo'));
 
       // Map to rows
       const mapReceber = (r: any): ExtratoRow => {
