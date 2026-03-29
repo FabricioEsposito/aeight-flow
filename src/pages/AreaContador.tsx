@@ -467,16 +467,15 @@ function ExtratoTab() {
                       <TableCell className="max-w-[200px] truncate">{row.descricao}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{row.cliente_fornecedor || '-'}</TableCell>
                       <TableCell>
-                        {row.numero_nf ? (
-                          row.link_nf ? (
-                            <button onClick={() => openStorageFile(row.link_nf!)} className="inline-flex items-center gap-1 text-primary hover:underline text-xs cursor-pointer">
-                              {row.numero_nf}
-                              <ExternalLink className="w-3 h-3" />
-                            </button>
-                          ) : (
-                            <span className="text-xs">{row.numero_nf}</span>
-                          )
+                        {row.link_nf ? (
+                          <button onClick={() => openStorageFile(row.link_nf!)} className="inline-flex items-center gap-1 text-primary hover:underline text-xs cursor-pointer">
+                            {row.numero_nf || 'Ver NF'}
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        ) : row.numero_nf ? (
+                          <span className="text-xs">{row.numero_nf}</span>
                         ) : '-'}
+                      </TableCell>
                       </TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{row.categoria || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.centro_custo_nome || '-'}</TableCell>
