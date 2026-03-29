@@ -88,6 +88,12 @@ const allNavigationGroups: NavGroup[] = [
       { title: "Ferramentas de Software", url: "/ferramentas-software", icon: Monitor },
     ]
   },
+  {
+    name: "Contabilidade",
+    items: [
+      { title: "Área do Contador", url: "/area-contador", icon: Calculator },
+    ]
+  },
 ];
 
 const allStandaloneItems: NavItem[] = [
