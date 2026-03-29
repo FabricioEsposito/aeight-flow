@@ -476,7 +476,6 @@ function ExtratoTab() {
                           <span className="text-xs">{row.numero_nf}</span>
                         ) : '-'}
                       </TableCell>
-                      </TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{row.categoria || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.centro_custo_nome || '-'}</TableCell>
                       <TableCell className="max-w-[120px] truncate text-xs">{row.conta_bancaria_nome || '-'}</TableCell>
