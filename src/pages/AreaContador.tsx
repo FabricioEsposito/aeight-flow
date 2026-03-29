@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink } from 'lucide-react';
+import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useExportReport } from '@/hooks/useExportReport';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
+import { openStorageFile } from '@/lib/storage-utils';
 
 // ==================== HELPERS ====================
 const PAGE_SIZE = 1000;
@@ -467,10 +468,10 @@ function ExtratoTab() {
                       <TableCell>
                         {row.numero_nf ? (
                           row.link_nf ? (
-                            <a href={row.link_nf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-xs">
+                            <button onClick={() => openStorageFile(row.link_nf!)} className="inline-flex items-center gap-1 text-primary hover:underline text-xs cursor-pointer">
                               {row.numero_nf}
                               <ExternalLink className="w-3 h-3" />
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-xs">{row.numero_nf}</span>
                           )
@@ -854,15 +855,13 @@ function RetencoesTab() {
                             <TableCell>
                               {row.numero_nf ? (
                                 row.link_nf ? (
-                                  <a
-                                    href={row.link_nf}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                                  <button
+                                    onClick={() => openStorageFile(row.link_nf!)}
+                                    className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer"
                                   >
                                     {row.numero_nf}
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
                                 ) : (
                                   row.numero_nf
                                 )
