@@ -1,66 +1,84 @@
 
 
-## Plano Consolidado: Holerite - Upload PDF, Template de E-mail e Envio
+## Plano: Área do Contador
 
-### 1. Migration SQL
+### Resumo
+Criar uma nova role `contador` no sistema com acesso restrito a duas áreas de leitura: **Extrato e Conciliação** (até o mês anterior fechado) e **Relatório de Retenções** (formato similar ao Controle de Faturamento, agrupado por mês de recebimento, com colunas IRRF, PIS, COFINS, CSLL).
 
-- Criar bucket `holerites` (público) no storage
-- Adicionar coluna `holerite_url` (text, nullable) na tabela `folha_pagamento`
-- RLS policies para o bucket (authenticated can upload/read/delete)
+---
 
-### 2. Simplificar EditFolhaDialog
+### 1. Criar role `contador` no banco de dados
 
-Remover do formulário:
-- **Tipo de Vínculo** (select CLT/PJ)
-- **Salário Base** (currency input)
-- **Outros Proventos** (currency input)
-- **Outros Descontos** (currency input)
+- Adicionar `'contador'` ao enum `app_role` via migration
+- Criar RLS policy na tabela `user_roles` para permitir que admins atribuam essa role
 
-O valor líquido será o valor da parcela diretamente. Manter: data de vencimento, status, observações.
+### 2. Configurar permissões da role `contador`
 
-Adicionar **FileUpload de holerite** (condicional): exibido apenas quando `plano_contas_id` for `30a56eb0-cfba-4e09-9f43-bf3cd39873bc` (2.1.2 - Salário CLT) ou `c1b3c1bf-c014-46f0-baa7-cdea1c3b0ac7` (3.1.1 - Salário CLT). Usa o componente `FileUpload` existente com bucket `holerites`.
+**Arquivo:** `src/hooks/useUserRole.ts`
 
-### 3. Edge Function `send-holerite-email`
+- Adicionar `'contador'` ao tipo `AppRole` e ao `roleLabels`
+- Adicionar nova permission flag `canAccessContador: boolean`
+- Role `contador` terá acesso somente a:
+  - `canAccessContador: true`
+  - Todas as outras permissões: `false`
+- Role `admin` e `finance_manager` também terão `canAccessContador: true` para visualizar a mesma área
 
-**Template HTML profissional** seguindo o padrão visual do `send-billing-emails`:
+### 3. Atualizar ProtectedRoute
 
-- **Header:** Gradiente roxo (`#4f46e5` → `#818cf8`), título "Holerite", subtítulo "Recursos Humanos - Aeight"
-- **Corpo:**
-  - Saudação personalizada ao fornecedor (nome fantasia ou razão social)
-  - Mensagem: "Segue em anexo o holerite referente à competência **Mês/Ano**."
-  - Card resumo com Competência e Valor Líquido
-  - Indicador de anexo (📎 PDF)
-- **Rodapé:** Contato `rh@aeight.global`, copyright Aeight
-- **Anexo:** PDF do holerite (via URL do storage)
-- **Remetente:** `rh@financeiro.aeight.global`
+**Arquivo:** `src/components/ProtectedRoute.tsx`
 
-**Lógica:**
-1. Recebe `{ folha_id }`
-2. Busca `folha_pagamento` → `fornecedor` (email) + `holerite_url`
-3. Valida que existe holerite e e-mail
-4. Envia via Resend com PDF em anexo
-5. Registra em `email_logs`
+- Incluir `canAccessContador` na checagem de `hasNoAccess` para que contadores não sejam bloqueados
 
-### 4. UI na FolhaPagamentoTab
+### 4. Criar página do Contador com duas abas
 
-- Passar `plano_contas_id` para o `EditFolhaDialog`
-- Adicionar botão de envio de e-mail (ícone Mail) na coluna de ações, visível apenas para registros com categoria Salário CLT **e** que tenham holerite anexado
-- Toast de sucesso/erro no envio
+**Arquivo:** `src/pages/AreaContador.tsx`
 
-### 5. Config
+Página com tabs:
 
-```toml
-[functions.send-holerite-email]
-verify_jwt = false
-```
+**Aba 1 - Extrato e Conciliação:**
+- Reutilizar a lógica de dados do Extrato existente
+- Filtro de data automático: sempre do início do ano até o último dia do mês anterior (ex: em março, mostra jan-fev)
+- Modo somente leitura (sem botões de editar, criar, baixar, importar)
+- Exibir as mesmas colunas do Extrato: Data, Descrição, Cliente/Fornecedor, Categoria, Centro de Custo, Conta Bancária, Entrada, Saída, Saldo
+- Filtros de conta bancária e centro de custo disponíveis
+- Exportação em Excel/PDF
 
-### Arquivos afetados
+**Aba 2 - Relatório de Retenções:**
+- Buscar dados de `contas_receber` com joins em `contratos` e `clientes`
+- Agrupado por mês de recebimento (data_recebimento) ao invés de competência
+- Colunas: Mês, Cliente, CNPJ, Serviço, NF, Valor Bruto, IRRF, PIS, COFINS, CSLL, Valor Líquido
+- Filtro por período (meses/ano)
+- Mostrar apenas parcelas com status `pago` (já recebidas)
+- Exportação em Excel/PDF
+- Usar paginação para contornar limite de 1000 rows
 
-| Arquivo | Ação |
-|---|---|
-| Migration SQL | Bucket `holerites` + coluna `holerite_url` |
-| `src/components/rh/EditFolhaDialog.tsx` | Simplificar campos, adicionar FileUpload condicional, salvar `holerite_url` |
-| `src/components/rh/FolhaPagamentoTab.tsx` | Botão enviar holerite na tabela |
-| `supabase/functions/send-holerite-email/index.ts` | Nova edge function com template |
-| `supabase/config.toml` | Registrar nova função |
+### 5. Adicionar navegação no Sidebar
+
+**Arquivo:** `src/components/layout/AppSidebar.tsx`
+
+- Criar novo grupo "Contabilidade" no sidebar
+- Item: "Área do Contador" → `/area-contador`
+- Visível apenas para roles com `canAccessContador`
+
+### 6. Adicionar rota no App.tsx
+
+**Arquivo:** `src/App.tsx`
+
+- Rota `/area-contador` → `<AreaContador />`
+- Protegida pelo `ProtectedRoute`
+
+### 7. Cadastro do Contador
+
+- O admin cadastra o contador normalmente pela tela de Usuários
+- Atribui a role `contador` ao usuário
+- O contador faz login normal e vê apenas a área dele
+
+---
+
+### Detalhes Técnicos
+
+- **Migration SQL:** `ALTER TYPE public.app_role ADD VALUE 'contador';`
+- **Paginação:** Usar helper `fetchAllRows` com `.range()` em batches de 1000 para garantir dados completos
+- **Cálculo do período fechado:** `new Date()` → pegar mês atual → subtrair 1 → último dia desse mês como data final
+- **Retenções:** Calcular valores usando os percentuais do contrato vinculado (`irrf_percentual`, `pis_percentual`, `cofins_percentual`, `csll_percentual`) aplicados ao `valor` da parcela recebida
 
