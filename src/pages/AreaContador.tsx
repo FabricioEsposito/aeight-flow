@@ -146,7 +146,7 @@ export default function AreaContador() {
       <PermissionDeniedDialog
         open={showPermissionDenied}
         onOpenChange={setShowPermissionDenied}
-        message={permissionDeniedMessage}
+        description={permissionDeniedMessage}
       />
     </div>
   );
@@ -158,6 +158,7 @@ function ExtratoTab() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [contaBancariaFilter, setContaBancariaFilter] = useState<string[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number }>>([]);
   const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
