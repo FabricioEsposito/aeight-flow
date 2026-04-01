@@ -20,9 +20,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface AppHeaderProps {
   onMenuToggle?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-export function AppHeader({ onMenuToggle }: AppHeaderProps) {
+export function AppHeader({ onMenuToggle, sidebarCollapsed }: AppHeaderProps) {
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const { theme, toggleTheme } = useTheme();
