@@ -1,4 +1,4 @@
-import { User, LogOut, Clock, Menu, Sun, Moon } from "lucide-react";
+import { User, LogOut, Clock, Menu, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
