@@ -48,17 +48,28 @@ export function AppHeader({ onMenuToggle, sidebarCollapsed }: AppHeaderProps) {
 
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
-      {/* Mobile menu button */}
+      {/* Menu toggle button */}
       <div className="flex items-center gap-4">
         {onMenuToggle && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={onMenuToggle}
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onMenuToggle}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen className="w-5 h-5" />
+                ) : (
+                  <PanelLeftClose className="w-5 h-5 hidden md:block" />
+                )}
+                <Menu className="w-5 h-5 md:hidden" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
 
