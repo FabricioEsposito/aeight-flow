@@ -413,16 +413,27 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       try {
-        const emailResponse = await resend.emails.send({
+        const ccEmails = ["financeiro@aeight.global"];
+        const emailPayload = {
           from: "Financeiro Aeight <faturamento@financeiro.aeight.global>",
           to: primeiraParcelaCliente.cliente_emails,
-          cc: ["financeiro@aeight.global"],
+          cc: ccEmails,
           subject: subject,
           html: htmlContent,
           ...(attachments.length > 0 && { attachments }),
+        };
+
+        console.log(`[BILLING-EMAIL] Sending to ${primeiraParcelaCliente.cliente_nome}:`, {
+          to: primeiraParcelaCliente.cliente_emails,
+          cc: ccEmails,
+          subject: subject,
+          attachmentsCount: attachments.length,
+          parcelasCount: parcelas.length,
         });
 
-        console.log(`Email sent to ${primeiraParcelaCliente.cliente_nome}:`, emailResponse);
+        const emailResponse = await resend.emails.send(emailPayload);
+
+        console.log(`[BILLING-EMAIL] Response for ${primeiraParcelaCliente.cliente_nome}:`, JSON.stringify(emailResponse));
 
         // Check if email was actually sent (no error in response)
         if (emailResponse.error) {
