@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink, FileText } from 'lucide-react';
+import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink, FileText, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
