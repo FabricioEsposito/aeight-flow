@@ -1,67 +1,57 @@
 
 
-## Plano: Área de Documentos do Contador (Upload de Extratos Bancários)
+## Plano: Exportação de Folha para Pagamento em Lote + Dados Bancários no Cadastro
 
 ### Resumo
-Adicionar uma terceira aba na Área do Contador chamada **"Documentos"**, onde o admin/financeiro pode fazer upload de extratos bancários (PDFs, planilhas) organizados por conta bancária e mês, e o contador pode visualizar e fazer download desses arquivos.
+Adicionar campos bancários ao cadastro de fornecedores (banco, agência, conta, tipo conta, tipo transferência) com busca de bancos via API Bankly, e exportar a folha de pagamento em Excel no formato exigido para pagamentos em lote bancário.
 
 ---
 
-### 1. Criar bucket de storage `contador-docs`
+### 1. Migration: Adicionar colunas bancárias na tabela `fornecedores`
 
-**Migration SQL:**
-```sql
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('contador-docs', 'contador-docs', false);
-```
-
-RLS policies no `storage.objects`:
-- **SELECT**: usuários autenticados com roles `admin`, `finance_manager`, `finance_analyst`, ou `contador`
-- **INSERT/UPDATE/DELETE**: apenas `admin`, `finance_manager`, `finance_analyst`
-
-### 2. Criar tabela `contador_documentos`
-
-**Migration SQL** para registrar metadados dos arquivos:
+Novas colunas (todas nullable):
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
-| id | uuid PK | |
-| nome_arquivo | text | Nome original do arquivo |
-| storage_path | text | Caminho no bucket |
-| conta_bancaria_id | uuid | Conta bancária relacionada |
-| mes_referencia | integer | Mês (1-12) |
-| ano_referencia | integer | Ano |
-| descricao | text (nullable) | Observação opcional |
-| uploaded_by | uuid | Quem fez o upload |
-| created_at | timestamptz | |
+| banco_codigo | varchar | Código do banco (3 dígitos, ex: 001) |
+| banco_nome | varchar | Nome do banco (para exibição no cadastro) |
+| agencia | varchar | Número da agência |
+| conta | varchar | Número da conta |
+| tipo_conta | varchar | "corrente" ou "poupanca" |
+| tipo_transferencia | varchar | "TED", "TEF" ou "PIX" |
 
-RLS:
-- **SELECT**: roles `admin`, `finance_manager`, `finance_analyst`, `contador`
-- **INSERT/DELETE**: roles `admin`, `finance_manager`, `finance_analyst`
+### 2. Edge Function: Proxy para API Bankly
 
-### 3. Adicionar aba "Documentos" na página AreaContador
+**Arquivo:** `supabase/functions/bank-list/index.ts`
 
-**Arquivo:** `src/pages/AreaContador.tsx`
+- Proxy para `GET https://api-mtls.sandbox.bankly.com.br/banklist`
+- Retorna lista de bancos para busca por código ou nome no frontend
 
-- Nova `TabsTrigger` com ícone `FileText` e label "Documentos"
-- Componente `DocumentosTab` com:
-  - **Filtros**: conta bancária, mês/ano de referência
-  - **Tabela**: Nome do arquivo, Conta Bancária, Mês/Ano, Data do upload, Ações (download)
-  - **Botão de upload** (visível apenas para admin/finance): selecionar arquivo, escolher conta bancária e mês/ano, fazer upload para o bucket `contador-docs` e salvar registro na tabela
-  - **Download**: usa `openStorageFile` (URL assinada) para arquivos privados
+### 3. Formulário de Fornecedor: Campos bancários
 
-### 4. Lógica de upload e download
+**Arquivo:** `src/components/fornecedores/FornecedorForm.tsx`
 
-- Upload: `supabase.storage.from('contador-docs').upload(path, file)` com path no formato `{ano}/{mes}/{conta_bancaria_id}/{filename}`
-- Download: reutilizar `openStorageFile` existente em `src/lib/storage-utils.ts`
-- Deletar: admin pode remover arquivos (remove do storage + deleta registro da tabela)
+- Nova seção "Dados Bancários":
+  - **Banco**: autocomplete com busca via edge function (código + nome)
+  - **Agência**, **Conta**: inputs texto
+  - **Tipo de Conta**: select (Corrente / Poupança)
+  - **Tipo de Transferência**: select (TED / TEF / PIX)
 
----
+### 4. Exportação Excel na Folha de Pagamento
 
-### Detalhes Técnicos
+**Arquivo:** `src/components/rh/FolhaPagamentoTab.tsx`
 
-- O contador terá acesso somente leitura (visualizar e baixar) — sem botões de upload ou exclusão
-- Admin e finance_manager verão botões de upload e exclusão
-- A verificação de permissão usará `useUserRole` para condicionar a UI
-- Arquivos aceitos: PDF, XLS, XLSX, CSV, OFX
+Botão "Exportar Pagamento em Lote" gerando Excel com as colunas:
+
+| Coluna no Excel | Origem |
+|---|---|
+| Banco do Favorecido | **Somente o código de 3 dígitos** (`banco_codigo`) |
+| Agência do Favorecido | `agencia` |
+| Conta do Favorecido | `conta` |
+| Tipo de Conta do Favorecido | `tipo_conta` |
+| Nome / Razão Social do Favorecido | Nome do fornecedor |
+| CPF/CNPJ do Favorecido | CNPJ/CPF do fornecedor |
+| Tipo de Transferência | `tipo_transferencia` |
+| Valor | Valor da parcela |
+| Data de Pagamento | `data_vencimento` formatada dd/mm/aaaa |
 
