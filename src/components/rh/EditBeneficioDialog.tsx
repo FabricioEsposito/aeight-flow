@@ -69,7 +69,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
     // Validate rateio
     if (centroCustoRateio.length > 0) {
       const total = centroCustoRateio.reduce((acc, item) => acc + item.percentual, 0);
-      if (Math.abs(total - 100) > 0.01) {
+      if (Math.abs(total - 100) > 0.5) {
         toast({ title: 'Erro', description: 'A soma dos percentuais de centro de custo deve ser 100%.', variant: 'destructive' });
         return;
       }
