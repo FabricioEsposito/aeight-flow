@@ -544,8 +544,8 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="corrente">Corrente</SelectItem>
-                      <SelectItem value="poupanca">Poupança</SelectItem>
+                      <SelectItem value="corrente">Conta Corrente</SelectItem>
+                      <SelectItem value="poupanca">Conta Poupança</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
