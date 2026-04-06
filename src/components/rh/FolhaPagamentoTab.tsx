@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Edit, CheckSquare, Mail, FileText, Loader2, Send, FileSpreadsheet, AlertTriangle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -33,6 +33,7 @@ import {
   startOfYear, endOfYear, subDays, subMonths, format,
   startOfDay, endOfDay
 } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 export interface FolhaParcelaRecord {
   parcela_id: string;
@@ -378,6 +379,70 @@ export function FolhaPagamentoTab() {
     if (range) setCustomDateRange(range);
   };
 
+  const handleExportBatchPayment = async () => {
+    try {
+      if (sortedRecords.length === 0) {
+        toast({ title: 'Aviso', description: 'Não há registros para exportar.', variant: 'destructive' });
+        return;
+      }
+
+      // Fetch bank data for all fornecedores in current records
+      const fornecedorIds = [...new Set(sortedRecords.map(r => r.fornecedor_id))];
+      const { data: fornecedores } = await supabase
+        .from('fornecedores')
+        .select('id, razao_social, cnpj_cpf, banco_codigo, banco_nome, agencia, conta, tipo_conta_bancaria, tipo_transferencia')
+        .in('id', fornecedorIds);
+
+      const fornecedorMap = new Map<string, any>();
+      (fornecedores || []).forEach(f => fornecedorMap.set(f.id, f));
+
+      const worksheetData = sortedRecords.map(r => {
+        const forn = fornecedorMap.get(r.fornecedor_id);
+        const [y, m, d] = r.data_vencimento.split('-');
+        const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Poupança' : (forn?.tipo_conta_bancaria || '');
+        return {
+          'Banco do Favorecido': forn?.banco_codigo || '',
+          'Agência do Favorecido': forn?.agencia || '',
+          'Conta do Favorecido': forn?.conta || '',
+          'Tipo de Conta do Favorecido': tipoContaLabel,
+          'Nome / Razão Social do Favorecido': forn?.razao_social || r.fornecedor_razao_social,
+          'CPF/CNPJ do Favorecido': forn?.cnpj_cpf || r.fornecedor_cnpj,
+          'Tipo de Transferência': forn?.tipo_transferencia || '',
+          'Valor': r.valor,
+          'Data de Pagamento': `${d}/${m}/${y}`,
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(worksheetData);
+
+      // Column widths
+      ws['!cols'] = [
+        { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 12 },
+        { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
+      ];
+
+      // Format valor column as number
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r + 1; R <= range.e.r; R++) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: 7 }); // Valor column
+        const cell = ws[cellRef];
+        if (cell) {
+          cell.t = 'n';
+          cell.z = '#,##0.00';
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Pagamento em Lote');
+      XLSX.writeFile(wb, `pagamento_lote_${format(new Date(), 'yyyy-MM-dd')}.xls`);
+
+      toast({ title: 'Sucesso', description: 'Planilha de pagamento em lote exportada com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast({ title: 'Erro', description: 'Não foi possível exportar a planilha.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -422,6 +487,10 @@ export function FolhaPagamentoTab() {
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportDialogOpen(true)}>
             <FileSpreadsheet className="w-4 h-4" />
             Importar Planilha
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportBatchPayment}>
+            <Download className="w-4 h-4" />
+            Exportar Pagamento em Lote
           </Button>
         </div>
 
