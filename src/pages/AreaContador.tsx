@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink, FileText } from 'lucide-react';
+import { Calculator, Download, Search, FileSpreadsheet, FileDown, BarChart3, Receipt, ExternalLink, FileText, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { useExportReport } from '@/hooks/useExportReport';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { openStorageFile } from '@/lib/storage-utils';
+import DocumentosTab from '@/components/contador/DocumentosTab';
 
 // ==================== HELPERS ====================
 const PAGE_SIZE = 1000;
@@ -137,6 +138,10 @@ export default function AreaContador() {
             <Receipt className="w-4 h-4" />
             Relatório de Retenções
           </TabsTrigger>
+          <TabsTrigger value="documentos" className="gap-2">
+            <FolderOpen className="w-4 h-4" />
+            Documentos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="extrato">
@@ -144,6 +149,9 @@ export default function AreaContador() {
         </TabsContent>
         <TabsContent value="retencoes">
           <RetencoesTab />
+        </TabsContent>
+        <TabsContent value="documentos">
+          <DocumentosTab />
         </TabsContent>
       </Tabs>
 
