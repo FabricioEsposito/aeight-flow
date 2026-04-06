@@ -1171,11 +1171,15 @@ export type Database = {
       }
       fornecedores: {
         Row: {
+          agencia: string | null
           bairro: string | null
+          banco_codigo: string | null
+          banco_nome: string | null
           cep: string | null
           cidade: string | null
           cnpj_cpf: string
           complemento: string | null
+          conta: string | null
           created_at: string
           email: string[] | null
           endereco: string | null
@@ -1185,16 +1189,22 @@ export type Database = {
           razao_social: string
           status: Database["public"]["Enums"]["status_geral"]
           telefone: string | null
+          tipo_conta_bancaria: string | null
           tipo_pessoa: Database["public"]["Enums"]["pessoa_tipo"]
+          tipo_transferencia: string | null
           uf: string | null
           updated_at: string
         }
         Insert: {
+          agencia?: string | null
           bairro?: string | null
+          banco_codigo?: string | null
+          banco_nome?: string | null
           cep?: string | null
           cidade?: string | null
           cnpj_cpf: string
           complemento?: string | null
+          conta?: string | null
           created_at?: string
           email?: string[] | null
           endereco?: string | null
@@ -1204,16 +1214,22 @@ export type Database = {
           razao_social: string
           status?: Database["public"]["Enums"]["status_geral"]
           telefone?: string | null
+          tipo_conta_bancaria?: string | null
           tipo_pessoa: Database["public"]["Enums"]["pessoa_tipo"]
+          tipo_transferencia?: string | null
           uf?: string | null
           updated_at?: string
         }
         Update: {
+          agencia?: string | null
           bairro?: string | null
+          banco_codigo?: string | null
+          banco_nome?: string | null
           cep?: string | null
           cidade?: string | null
           cnpj_cpf?: string
           complemento?: string | null
+          conta?: string | null
           created_at?: string
           email?: string[] | null
           endereco?: string | null
@@ -1223,7 +1239,9 @@ export type Database = {
           razao_social?: string
           status?: Database["public"]["Enums"]["status_geral"]
           telefone?: string | null
+          tipo_conta_bancaria?: string | null
           tipo_pessoa?: Database["public"]["Enums"]["pessoa_tipo"]
+          tipo_transferencia?: string | null
           uf?: string | null
           updated_at?: string
         }
