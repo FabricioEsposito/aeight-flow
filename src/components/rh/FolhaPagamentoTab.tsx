@@ -33,6 +33,7 @@ import {
   startOfYear, endOfYear, subDays, subMonths, format,
   startOfDay, endOfDay
 } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 export interface FolhaParcelaRecord {
   parcela_id: string;
