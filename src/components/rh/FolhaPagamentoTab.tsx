@@ -488,6 +488,10 @@ export function FolhaPagamentoTab() {
             <FileSpreadsheet className="w-4 h-4" />
             Importar Planilha
           </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportBatchPayment}>
+            <Download className="w-4 h-4" />
+            Exportar Pagamento em Lote
+          </Button>
         </div>
 
         {someSelected && (
