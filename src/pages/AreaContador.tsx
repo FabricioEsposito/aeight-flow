@@ -138,6 +138,10 @@ export default function AreaContador() {
             <Receipt className="w-4 h-4" />
             Relatório de Retenções
           </TabsTrigger>
+          <TabsTrigger value="documentos" className="gap-2">
+            <FolderOpen className="w-4 h-4" />
+            Documentos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="extrato">
@@ -145,6 +149,9 @@ export default function AreaContador() {
         </TabsContent>
         <TabsContent value="retencoes">
           <RetencoesTab />
+        </TabsContent>
+        <TabsContent value="documentos">
+          <DocumentosTab />
         </TabsContent>
       </Tabs>
 
