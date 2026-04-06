@@ -212,6 +212,50 @@ export type Database = {
           },
         ]
       }
+      contador_documentos: {
+        Row: {
+          ano_referencia: number
+          conta_bancaria_id: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          mes_referencia: number
+          nome_arquivo: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          ano_referencia: number
+          conta_bancaria_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          mes_referencia: number
+          nome_arquivo: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          ano_referencia?: number
+          conta_bancaria_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          mes_referencia?: number
+          nome_arquivo?: string
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contador_documentos_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contas_bancarias: {
         Row: {
           banco: string
