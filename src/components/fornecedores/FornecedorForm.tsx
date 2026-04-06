@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,6 +11,19 @@ import { Search, Save, X, Loader2, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCnpjApi } from "@/hooks/useCnpjApi";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const fornecedorSchema = z.object({
   razao_social: z.string().min(1, "Razão Social é obrigatória"),
@@ -26,9 +39,20 @@ const fornecedorSchema = z.object({
   cep: z.string().optional(),
   telefone: z.string().optional(),
   emails: z.array(z.string().email("E-mail inválido").or(z.literal(""))).optional(),
+  banco_codigo: z.string().optional(),
+  banco_nome: z.string().optional(),
+  agencia: z.string().optional(),
+  conta: z.string().optional(),
+  tipo_conta_bancaria: z.string().optional(),
+  tipo_transferencia: z.string().optional(),
 });
 
 type FornecedorFormData = z.infer<typeof fornecedorSchema>;
+
+interface BankItem {
+  code: string;
+  name: string;
+}
 
 interface FornecedorFormProps {
   fornecedor?: any;
@@ -44,6 +68,15 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
   const { toast } = useToast();
   const { buscarCnpj, isLoading: isSearchingCNPJ } = useCnpjApi();
 
+  // Bank search state
+  const [bankList, setBankList] = useState<BankItem[]>([]);
+  const [bankSearch, setBankSearch] = useState('');
+  const [bankOpen, setBankOpen] = useState(false);
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [selectedBank, setSelectedBank] = useState<BankItem | null>(
+    fornecedor?.banco_codigo ? { code: fornecedor.banco_codigo, name: fornecedor.banco_nome || '' } : null
+  );
+
   const {
     register,
     handleSubmit,
@@ -56,11 +89,49 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
       ...fornecedor,
       emails: fornecedor?.email && Array.isArray(fornecedor.email) ? fornecedor.email : [""],
       tipo_pessoa: fornecedor?.tipo_pessoa || "juridica",
+      banco_codigo: fornecedor?.banco_codigo || "",
+      banco_nome: fornecedor?.banco_nome || "",
+      agencia: fornecedor?.agencia || "",
+      conta: fornecedor?.conta || "",
+      tipo_conta_bancaria: fornecedor?.tipo_conta_bancaria || "",
+      tipo_transferencia: fornecedor?.tipo_transferencia || "",
     },
   });
 
   const cnpjValue = watch("cnpj_cpf");
   const tipoPessoa = watch("tipo_pessoa");
+  const tipoContaBancaria = watch("tipo_conta_bancaria");
+  const tipoTransferencia = watch("tipo_transferencia");
+
+  // Fetch bank list
+  const fetchBankList = useCallback(async () => {
+    if (bankList.length > 0) return;
+    setLoadingBanks(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('bank-list');
+      if (error) throw error;
+      if (Array.isArray(data)) {
+        setBankList(data.map((b: any) => ({
+          code: String(b.code || b.compe || '').padStart(3, '0'),
+          name: b.name || b.fullName || b.longName || '',
+        })));
+      }
+    } catch (err) {
+      console.error('Erro ao buscar lista de bancos:', err);
+    } finally {
+      setLoadingBanks(false);
+    }
+  }, [bankList.length]);
+
+  useEffect(() => {
+    if (bankOpen && bankList.length === 0) {
+      fetchBankList();
+    }
+  }, [bankOpen, fetchBankList]);
+
+  const filteredBanks = bankList.filter(b =>
+    b.code.includes(bankSearch) || b.name.toLowerCase().includes(bankSearch.toLowerCase())
+  ).slice(0, 50);
 
   const buscarDadosCNPJ = async () => {
     const dados = await buscarCnpj(cnpjValue);
@@ -107,11 +178,19 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
 
     try {
       const emailsFiltered = emails.filter(email => email.trim() !== "");
-      const submitData = {
+      const submitData: any = {
         ...data,
         email: emailsFiltered.length > 0 ? emailsFiltered : null,
       };
-      delete (submitData as any).emails;
+      delete submitData.emails;
+
+      // Clean empty bank fields
+      if (!submitData.banco_codigo) submitData.banco_codigo = null;
+      if (!submitData.banco_nome) submitData.banco_nome = null;
+      if (!submitData.agencia) submitData.agencia = null;
+      if (!submitData.conta) submitData.conta = null;
+      if (!submitData.tipo_conta_bancaria) submitData.tipo_conta_bancaria = null;
+      if (!submitData.tipo_transferencia) submitData.tipo_transferencia = null;
 
       if (fornecedor?.id) {
         const { error } = await supabase
@@ -142,7 +221,13 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
             cep: submitData.cep,
             telefone: submitData.telefone,
             email: submitData.email,
-            status: "ativo"
+            status: "ativo",
+            banco_codigo: submitData.banco_codigo,
+            banco_nome: submitData.banco_nome,
+            agencia: submitData.agencia,
+            conta: submitData.conta,
+            tipo_conta_bancaria: submitData.tipo_conta_bancaria,
+            tipo_transferencia: submitData.tipo_transferencia,
           });
 
         if (error) throw error;
@@ -367,6 +452,119 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Seção: Dados Bancários */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-foreground border-b pb-1">
+                Dados Bancários
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Banco</Label>
+                  <Popover open={bankOpen} onOpenChange={setBankOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between h-8 text-sm font-normal"
+                      >
+                        {selectedBank
+                          ? `${selectedBank.code} - ${selectedBank.name}`
+                          : "Selecione o banco..."
+                        }
+                        <Search className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder="Buscar por código ou nome..."
+                          value={bankSearch}
+                          onValueChange={setBankSearch}
+                        />
+                        <CommandList>
+                          {loadingBanks ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              <span className="text-sm text-muted-foreground">Carregando bancos...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <CommandEmpty>Nenhum banco encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {filteredBanks.map((bank) => (
+                                  <CommandItem
+                                    key={bank.code}
+                                    value={`${bank.code} ${bank.name}`}
+                                    onSelect={() => {
+                                      setSelectedBank(bank);
+                                      setValue("banco_codigo", bank.code);
+                                      setValue("banco_nome", bank.name);
+                                      setBankOpen(false);
+                                      setBankSearch('');
+                                    }}
+                                  >
+                                    <span className="font-mono mr-2">{bank.code}</span>
+                                    <span className="truncate">{bank.name}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Agência</Label>
+                    <Input {...register("agencia")} placeholder="0001" className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Conta</Label>
+                    <Input {...register("conta")} placeholder="12345-6" className="h-8 text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Tipo de Conta</Label>
+                  <Select
+                    value={tipoContaBancaria || ""}
+                    onValueChange={(value) => setValue("tipo_conta_bancaria", value)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="corrente">Corrente</SelectItem>
+                      <SelectItem value="poupanca">Poupança</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Tipo de Transferência</Label>
+                  <Select
+                    value={tipoTransferencia || ""}
+                    onValueChange={(value) => setValue("tipo_transferencia", value)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TED">TED</SelectItem>
+                      <SelectItem value="TEF">TEF</SelectItem>
+                      <SelectItem value="PIX">PIX</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
