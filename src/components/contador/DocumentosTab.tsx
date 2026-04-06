@@ -1,17 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { format, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Upload, Download, Trash2, FileText, Search } from 'lucide-react';
+import { Upload, Download, Trash2, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TablePagination } from '@/components/ui/table-pagination';
+import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -28,20 +24,16 @@ interface Documento {
   descricao: string | null;
   uploaded_by: string;
   created_at: string;
-  conta_bancaria?: { banco: string; descricao: string } | null;
+}
+
+interface ContaBancaria {
+  id: string;
+  banco: string;
+  descricao: string;
 }
 
 const ACCEPTED_TYPES = '.pdf,.xls,.xlsx,.csv,.ofx';
 const BUCKET = 'contador-docs';
-
-const meses = [
-  { value: '1', label: 'Janeiro' }, { value: '2', label: 'Fevereiro' },
-  { value: '3', label: 'Março' }, { value: '4', label: 'Abril' },
-  { value: '5', label: 'Maio' }, { value: '6', label: 'Junho' },
-  { value: '7', label: 'Julho' }, { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Setembro' }, { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' }, { value: '12', label: 'Dezembro' },
-];
 
 export default function DocumentosTab() {
   const { user } = useAuth();
@@ -52,23 +44,32 @@ export default function DocumentosTab() {
   const canDelete = isAdmin || isFinanceManager;
 
   const [documentos, setDocumentos] = useState<Documento[]>([]);
-  const [contasBancarias, setContasBancarias] = useState<any[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterConta, setFilterConta] = useState('all');
-  const [filterAno, setFilterAno] = useState(String(new Date().getFullYear()));
-  const [filterMes, setFilterMes] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
-  // Upload dialog state
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadConta, setUploadConta] = useState('');
-  const [uploadMes, setUploadMes] = useState(String(new Date().getMonth() + 1));
-  const [uploadAno, setUploadAno] = useState(String(new Date().getFullYear()));
-  const [uploadDescricao, setUploadDescricao] = useState('');
-  const [uploading, setUploading] = useState(false);
+  // Date filter - default to current month
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('este-mes');
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleDateChange = useCallback((preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    const today = new Date();
+    if (preset === 'todo-periodo') {
+      setDateRange({ from: new Date(2020, 0, 1), to: today });
+    } else if (preset === 'este-mes') {
+      setDateRange({ from: startOfMonth(today), to: endOfMonth(today) });
+    } else if (preset === 'este-ano') {
+      setDateRange({ from: new Date(today.getFullYear(), 0, 1), to: new Date(today.getFullYear(), 11, 31) });
+    } else if (range?.from && range?.to) {
+      setDateRange({ from: range.from, to: range.to });
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -76,12 +77,12 @@ export default function DocumentosTab() {
       const [{ data: docs }, { data: contas }] = await Promise.all([
         supabase
           .from('contador_documentos')
-          .select('*, conta_bancaria:conta_bancaria_id(banco, descricao)')
+          .select('*')
           .order('created_at', { ascending: false }),
         supabase.from('contas_bancarias').select('id, banco, descricao, status').eq('status', 'ativo').order('descricao'),
       ]);
       setDocumentos((docs as any) || []);
-      setContasBancarias(contas || []);
+      setContasBancarias((contas || []) as ContaBancaria[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -91,59 +92,86 @@ export default function DocumentosTab() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filtered = documentos.filter(d => {
-    if (searchTerm && !d.nome_arquivo.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !(d.descricao || '').toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    if (filterConta !== 'all' && d.conta_bancaria_id !== filterConta) return false;
-    if (filterAno !== 'all' && d.ano_referencia !== Number(filterAno)) return false;
-    if (filterMes !== 'all' && d.mes_referencia !== Number(filterMes)) return false;
-    return true;
-  });
+  // Generate month slots within the selected date range
+  const monthSlots = useMemo(() => {
+    if (!dateRange.from || !dateRange.to) return [];
+    const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to });
+    return months.map(d => ({
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+      label: format(d, 'MMMM/yyyy', { locale: ptBR }),
+    }));
+  }, [dateRange]);
 
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  // Build grid rows: one per bank account × month
+  const gridRows = useMemo(() => {
+    const rows: Array<{
+      key: string;
+      conta: ContaBancaria;
+      month: number;
+      year: number;
+      monthLabel: string;
+      docs: Documento[];
+    }> = [];
 
-  const handleUpload = async () => {
-    if (!uploadFile || !uploadConta) {
-      toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
-      return;
+    for (const conta of contasBancarias) {
+      for (const slot of monthSlots) {
+        const docs = documentos.filter(d =>
+          d.conta_bancaria_id === conta.id &&
+          d.mes_referencia === slot.month &&
+          d.ano_referencia === slot.year
+        );
+        rows.push({
+          key: `${conta.id}-${slot.year}-${slot.month}`,
+          conta,
+          month: slot.month,
+          year: slot.year,
+          monthLabel: slot.label,
+          docs,
+        });
+      }
     }
-    setUploading(true);
-    try {
-      const ext = uploadFile.name.split('.').pop();
-      const storagePath = `${uploadAno}/${uploadMes}/${uploadConta}/${Date.now()}.${ext}`;
+    return rows;
+  }, [contasBancarias, monthSlots, documentos]);
 
-      const { error: storageErr } = await supabase.storage.from(BUCKET).upload(storagePath, uploadFile);
+  const handleFileUpload = async (contaId: string, month: number, year: number, file: File) => {
+    const key = `${contaId}-${year}-${month}`;
+    setUploadingKey(key);
+    try {
+      const ext = file.name.split('.').pop();
+      const storagePath = `${year}/${month}/${contaId}/${Date.now()}.${ext}`;
+
+      const { error: storageErr } = await supabase.storage.from(BUCKET).upload(storagePath, file);
       if (storageErr) throw storageErr;
 
       const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
 
       const { error: dbErr } = await supabase.from('contador_documentos').insert({
-        nome_arquivo: uploadFile.name,
+        nome_arquivo: file.name,
         storage_path: urlData.publicUrl,
-        conta_bancaria_id: uploadConta,
-        mes_referencia: Number(uploadMes),
-        ano_referencia: Number(uploadAno),
-        descricao: uploadDescricao || null,
+        conta_bancaria_id: contaId,
+        mes_referencia: month,
+        ano_referencia: year,
         uploaded_by: user?.id || '',
       });
       if (dbErr) throw dbErr;
 
       toast({ title: 'Documento enviado com sucesso!' });
-      setShowUpload(false);
-      resetUploadForm();
       fetchData();
     } catch (err: any) {
       console.error(err);
-      toast({ title: 'Erro ao enviar documento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao enviar', description: err.message, variant: 'destructive' });
     } finally {
-      setUploading(false);
+      setUploadingKey(null);
+      // Reset file input
+      const inputRef = fileInputRefs.current[key];
+      if (inputRef) inputRef.value = '';
     }
   };
 
   const handleDelete = async (doc: Documento) => {
     if (!confirm(`Excluir "${doc.nome_arquivo}"?`)) return;
     try {
-      // Extract path from URL for storage deletion
       const pathMatch = doc.storage_path.match(/contador-docs\/(.+?)(\?|$)/);
       if (pathMatch?.[1]) {
         await supabase.storage.from(BUCKET).remove([decodeURIComponent(pathMatch[1])]);
@@ -161,76 +189,33 @@ export default function DocumentosTab() {
     openStorageFile(doc.storage_path, BUCKET);
   };
 
-  const resetUploadForm = () => {
-    setUploadFile(null);
-    setUploadConta('');
-    setUploadMes(String(new Date().getMonth() + 1));
-    setUploadAno(String(new Date().getFullYear()));
-    setUploadDescricao('');
-  };
-
-  const getMonthLabel = (m: number) => meses.find(x => x.value === String(m))?.label || '';
-
-  const years = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i));
+  // Stats
+  const totalSlots = gridRows.length;
+  const filledSlots = gridRows.filter(r => r.docs.length > 0).length;
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Filter bar */}
       <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Buscar</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Nome do arquivo..."
-                value={searchTerm}
-                onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-9"
-              />
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">Período:</span>
+            <DateRangeFilter
+              value={datePreset}
+              onChange={handleDateChange}
+              customRange={dateRange}
+            />
           </div>
-
-          <div className="w-[200px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Conta Bancária</Label>
-            <Select value={filterConta} onValueChange={v => { setFilterConta(v); setCurrentPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {contasBancarias.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.banco} - {c.descricao}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Badge variant={filledSlots === totalSlots ? 'default' : 'secondary'} className="gap-1">
+              {filledSlots === totalSlots ? (
+                <CheckCircle2 className="w-3 h-3" />
+              ) : (
+                <AlertCircle className="w-3 h-3" />
+              )}
+              {filledSlots}/{totalSlots} extratos enviados
+            </Badge>
           </div>
-
-          <div className="w-[140px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Ano</Label>
-            <Select value={filterAno} onValueChange={v => { setFilterAno(v); setCurrentPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="w-[160px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Mês</Label>
-            <Select value={filterMes} onValueChange={v => { setFilterMes(v); setCurrentPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {meses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {canUpload && (
-            <Button onClick={() => setShowUpload(true)} className="gap-2">
-              <Upload className="w-4 h-4" /> Enviar Documento
-            </Button>
-          )}
         </div>
       </Card>
 
@@ -239,120 +224,112 @@ export default function DocumentosTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Arquivo</TableHead>
               <TableHead>Conta Bancária</TableHead>
-              <TableHead>Referência</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Data Upload</TableHead>
+              <TableHead>Mês/Ano</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Documentos</TableHead>
+              {canUpload && <TableHead>Enviar</TableHead>}
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
-            ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum documento encontrado</TableCell></TableRow>
-            ) : paginated.map(doc => (
-              <TableRow key={doc.id}>
+              <TableRow>
+                <TableCell colSpan={canUpload ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                  Carregando...
+                </TableCell>
+              </TableRow>
+            ) : gridRows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={canUpload ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                  Nenhuma conta bancária encontrada para o período
+                </TableCell>
+              </TableRow>
+            ) : gridRows.map(row => (
+              <TableRow key={row.key} className={row.docs.length === 0 ? 'bg-muted/30' : ''}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-sm">{doc.nome_arquivo}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm">
-                  {doc.conta_bancaria ? `${(doc.conta_bancaria as any).banco} - ${(doc.conta_bancaria as any).descricao}` : '-'}
+                  <span className="font-medium text-sm">{row.conta.banco} - {row.conta.descricao}</span>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{getMonthLabel(doc.mes_referencia)}/{doc.ano_referencia}</Badge>
+                  <span className="text-sm capitalize">{row.monthLabel}</span>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{doc.descricao || '-'}</TableCell>
-                <TableCell className="text-sm">{format(new Date(doc.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                <TableCell>
+                  {row.docs.length > 0 ? (
+                    <Badge variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Enviado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="gap-1 text-muted-foreground">
+                      <AlertCircle className="w-3 h-3" />
+                      Pendente
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.docs.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {row.docs.map(doc => (
+                        <div key={doc.id} className="flex items-center gap-2 text-sm">
+                          <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate max-w-[200px]">{doc.nome_arquivo}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(doc.created_at), 'dd/MM HH:mm')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                {canUpload && (
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept={ACCEPTED_TYPES}
+                        className="hidden"
+                        ref={el => { fileInputRefs.current[row.key] = el; }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(row.conta.id, row.month, row.year, file);
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={uploadingKey === row.key}
+                        onClick={() => fileInputRefs.current[row.key]?.click()}
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploadingKey === row.key ? 'Enviando...' : 'Upload'}
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title="Download">
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    {canDelete && (
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(doc)} title="Excluir" className="text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                    {row.docs.map(doc => (
+                      <React.Fragment key={doc.id}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title={`Download ${doc.nome_arquivo}`}>
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        {canDelete && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(doc)} title="Excluir" className="text-destructive hover:text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </React.Fragment>
+                    ))}
                   </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        {filtered.length > itemsPerPage && (
-          <div className="p-4 border-t">
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={filtered.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={v => { setItemsPerPage(v); setCurrentPage(1); }}
-            />
-          </div>
-        )}
       </Card>
-
-      {/* Upload Dialog */}
-      <Dialog open={showUpload} onOpenChange={setShowUpload}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enviar Documento</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Arquivo *</Label>
-              <Input type="file" accept={ACCEPTED_TYPES} onChange={e => setUploadFile(e.target.files?.[0] || null)} />
-              <p className="text-xs text-muted-foreground mt-1">PDF, XLS, XLSX, CSV, OFX</p>
-            </div>
-            <div>
-              <Label>Conta Bancária *</Label>
-              <Select value={uploadConta} onValueChange={setUploadConta}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {contasBancarias.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.banco} - {c.descricao}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Mês *</Label>
-                <Select value={uploadMes} onValueChange={setUploadMes}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {meses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Ano *</Label>
-                <Select value={uploadAno} onValueChange={setUploadAno}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Descrição (opcional)</Label>
-              <Textarea value={uploadDescricao} onChange={e => setUploadDescricao(e.target.value)} placeholder="Ex: Extrato Itaú março 2025" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUpload(false)}>Cancelar</Button>
-            <Button onClick={handleUpload} disabled={uploading}>
-              {uploading ? 'Enviando...' : 'Enviar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
