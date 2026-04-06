@@ -19,6 +19,7 @@ import { useExportReport } from '@/hooks/useExportReport';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { openStorageFile } from '@/lib/storage-utils';
+import DocumentosTab from '@/components/contador/DocumentosTab';
 
 // ==================== HELPERS ====================
 const PAGE_SIZE = 1000;
