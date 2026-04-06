@@ -248,7 +248,7 @@ export default function DocumentosTab() {
             ) : gridRows.map(row => (
               <TableRow key={row.key} className={row.docs.length === 0 ? 'bg-muted/30' : ''}>
                 <TableCell>
-                  <span className="font-medium text-sm">{row.conta.banco} - {row.conta.descricao}</span>
+                  <span className="font-medium text-sm">{row.conta.descricao}</span>
                 </TableCell>
                 <TableCell>
                   <span className="text-sm capitalize">{row.monthLabel}</span>
