@@ -570,6 +570,7 @@ export default function Extrato() {
           link_nf: r.link_nf,
           link_boleto: r.link_boleto,
           observacoes: r.observacoes,
+          servico_id: (r as any).servico_id || null,
         };
 
         if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
