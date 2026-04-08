@@ -105,6 +105,7 @@ interface RetencaoRow {
   mes: number;
   ano: number;
   centro_custo: string | null;
+  conta_bancaria_nome?: string;
 }
 
 // ==================== COMPONENT ====================
