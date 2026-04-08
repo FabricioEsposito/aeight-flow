@@ -303,7 +303,7 @@ function ExtratoTab() {
           centro_custo_nome: cc ? `${cc.codigo} - ${cc.descricao}` : undefined,
           categoria: pc ? `${pc.codigo} - ${pc.descricao}` : undefined,
           conta_bancaria_id: p.conta_bancaria_id,
-          conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
+          conta_bancaria_nome: cb ? cb.descricao : undefined,
           data_pagamento: p.data_pagamento,
           link_nf: p.link_nf,
         };
