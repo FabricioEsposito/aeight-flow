@@ -99,7 +99,7 @@ export default function Extrato() {
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
-  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | 'change-bank-account' | null>(null);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | 'change-bank-account' | 'change-service' | 'change-category' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
