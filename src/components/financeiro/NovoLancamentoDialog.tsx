@@ -144,12 +144,13 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           plano_conta_id: categoriaId || null,
           centro_custo: centroCustoLegacy,
           conta_bancaria_id: contaBancariaId || null,
+          servico_id: servicoId || null,
           status: recebidoPago ? 'pago' : 'pendente',
           data_pagamento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
           observacoes: observacoes || null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
-        }).select('id').single();
+        } as any).select('id').single();
 
         if (error) throw error;
         if (data) await saveRateio(data.id, 'despesa');
