@@ -315,6 +315,7 @@ export type Database = {
           observacoes: string | null
           parcela_id: string | null
           plano_conta_id: string | null
+          servico_id: string | null
           status: string | null
           updated_at: string | null
           valor: number
@@ -339,6 +340,7 @@ export type Database = {
           observacoes?: string | null
           parcela_id?: string | null
           plano_conta_id?: string | null
+          servico_id?: string | null
           status?: string | null
           updated_at?: string | null
           valor: number
@@ -363,6 +365,7 @@ export type Database = {
           observacoes?: string | null
           parcela_id?: string | null
           plano_conta_id?: string | null
+          servico_id?: string | null
           status?: string | null
           updated_at?: string | null
           valor?: number
@@ -397,6 +400,13 @@ export type Database = {
             referencedRelation: "plano_contas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contas_pagar_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contas_receber: {
@@ -420,6 +430,7 @@ export type Database = {
           observacoes: string | null
           parcela_id: string | null
           plano_conta_id: string | null
+          servico_id: string | null
           status: string | null
           updated_at: string | null
           valor: number
@@ -445,6 +456,7 @@ export type Database = {
           observacoes?: string | null
           parcela_id?: string | null
           plano_conta_id?: string | null
+          servico_id?: string | null
           status?: string | null
           updated_at?: string | null
           valor: number
@@ -470,6 +482,7 @@ export type Database = {
           observacoes?: string | null
           parcela_id?: string | null
           plano_conta_id?: string | null
+          servico_id?: string | null
           status?: string | null
           updated_at?: string | null
           valor?: number
@@ -502,6 +515,13 @@ export type Database = {
             columns: ["plano_conta_id"]
             isOneToOne: false
             referencedRelation: "plano_contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
             referencedColumns: ["id"]
           },
         ]
