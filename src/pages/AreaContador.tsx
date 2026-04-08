@@ -893,7 +893,7 @@ function RetencoesTab() {
                           </TableRow>
                         ))}
                         <TableRow className="bg-muted/30 border-b-2">
-                          <TableCell colSpan={5} className="text-right font-semibold text-xs">Subtotal {getMonthLabel(mn, yr)}:</TableCell>
+                          <TableCell colSpan={6} className="text-right font-semibold text-xs">Subtotal {getMonthLabel(mn, yr)}:</TableCell>
                           <TableCell className="text-right font-semibold">{formatCurrency(monthTotals.bruto)}</TableCell>
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.irrf)}</TableCell>
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.pis)}</TableCell>
