@@ -2200,6 +2200,25 @@ export default function Extrato() {
                   <Landmark className="w-4 h-4 mr-2" />
                   Alterar Conta
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('change-service');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  Alterar Serviço
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('change-category');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  Alterar Categoria
                 {isAdmin && (
                   <Button
                     size="sm"
