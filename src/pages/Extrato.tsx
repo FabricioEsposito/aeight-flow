@@ -1667,13 +1667,13 @@ export default function Extrato() {
           title: "Sucesso",
           description: `Conta bancária alterada para ${selectedLancamentos.length} lançamento(s)!`,
         });
-      } else if (actionType === 'change-service') {
+      } else if (batchActionType === 'change-service') {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           await supabase.from(table).update({ servico_id: data.servicoId || null } as any).eq('id', lanc.id);
         }
         toast({ title: "Sucesso", description: `Serviço alterado para ${selectedLancamentos.length} lançamento(s)!` });
-      } else if (actionType === 'change-category' && data?.categoriaId) {
+      } else if (batchActionType === 'change-category' && data?.categoriaId) {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           await supabase.from(table).update({ plano_conta_id: data.categoriaId }).eq('id', lanc.id);
