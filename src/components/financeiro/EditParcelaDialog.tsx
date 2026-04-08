@@ -189,6 +189,7 @@ export function EditParcelaDialog({
       cliente_id: tipo === 'entrada' ? clienteId : undefined,
       fornecedor_changed: fornecedorChanged,
       cliente_changed: clienteChanged,
+      servico_id: servicoId || null,
     };
 
     // Save rateio
