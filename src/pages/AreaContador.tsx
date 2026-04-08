@@ -855,7 +855,7 @@ function RetencoesTab() {
                     return (
                       <React.Fragment key={monthKey}>
                         <TableRow className="bg-muted/50">
-                          <TableCell colSpan={11} className="font-semibold text-sm capitalize">
+                          <TableCell colSpan={12} className="font-semibold text-sm capitalize">
                             {getMonthLabel(mn, yr)}
                             <span className="ml-2 text-xs text-muted-foreground font-normal">
                               ({rows.length} {rows.length === 1 ? 'lançamento' : 'lançamentos'})
