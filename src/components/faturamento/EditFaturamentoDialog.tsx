@@ -7,6 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { FileUpload } from '@/components/ui/file-upload';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+
 interface Faturamento {
   id: string;
   data_competencia: string;
@@ -53,6 +60,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   const [linkNf, setLinkNf] = useState('');
   const [linkBoleto, setLinkBoleto] = useState('');
   const [valorBruto, setValorBruto] = useState(0);
+  const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -62,6 +70,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setLinkNf(faturamento.link_nf || '');
       setLinkBoleto(faturamento.link_boleto || '');
       setValorBruto(faturamento.valor_bruto);
+      setDataVencimento(parseISO(faturamento.data_vencimento + 'T00:00:00'));
     }
   }, [faturamento]);
 
@@ -94,23 +103,32 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setLoading(true);
       const valorAlterado = valorBruto !== faturamento.valor_bruto;
       const valorLiquidoCalculado = impostos.valorLiquido;
+      const novaDataVencimento = dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : faturamento.data_vencimento;
+      const dataVencimentoAlterada = novaDataVencimento !== faturamento.data_vencimento;
 
-      // 1. Atualizar contas_receber com valor líquido calculado
+      // 1. Atualizar contas_receber
+      const updateCR: any = {
+        numero_nf: numeroNf || null,
+        link_nf: linkNf || null,
+        link_boleto: linkBoleto || null,
+        valor: valorLiquidoCalculado,
+      };
+      if (dataVencimentoAlterada) {
+        updateCR.data_vencimento = novaDataVencimento;
+        if (!updateCR.data_vencimento_original) {
+          updateCR.data_vencimento_original = faturamento.data_vencimento;
+        }
+      }
+
       const { error: crError } = await supabase
         .from('contas_receber')
-        .update({
-          numero_nf: numeroNf || null,
-          link_nf: linkNf || null,
-          link_boleto: linkBoleto || null,
-          valor: valorLiquidoCalculado,
-        })
+        .update(updateCR)
         .eq('id', faturamento.id);
 
       if (crError) throw crError;
 
-      // 2. Se o valor foi alterado, atualizar contrato, parcela e movimentações
-      if (valorAlterado) {
-        // Buscar a parcela_id da conta_receber
+      // 2. Propagar alterações para parcela, contrato e movimentações
+      if (valorAlterado || dataVencimentoAlterada) {
         const { data: contaReceber, error: fetchError } = await supabase
           .from('contas_receber')
           .select('parcela_id')
@@ -120,53 +138,71 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
         if (fetchError) throw fetchError;
 
         if (contaReceber?.parcela_id) {
-          // Atualizar a parcela do contrato
-          const { error: parcelaError } = await supabase
-            .from('parcelas_contrato')
-            .update({ valor: valorLiquidoCalculado })
-            .eq('id', contaReceber.parcela_id);
+          const parcelaUpdate: any = {};
+          if (valorAlterado) parcelaUpdate.valor = valorLiquidoCalculado;
+          if (dataVencimentoAlterada) parcelaUpdate.data_vencimento = novaDataVencimento;
 
-          if (parcelaError) throw parcelaError;
+          if (Object.keys(parcelaUpdate).length > 0) {
+            const { error: parcelaError } = await supabase
+              .from('parcelas_contrato')
+              .update(parcelaUpdate)
+              .eq('id', contaReceber.parcela_id);
 
-          // Buscar contrato_id da parcela para atualizar o contrato
-          const { data: parcela, error: parcelaFetchError } = await supabase
-            .from('parcelas_contrato')
-            .select('contrato_id')
-            .eq('id', contaReceber.parcela_id)
-            .single();
+            if (parcelaError) throw parcelaError;
+          }
 
-          if (!parcelaFetchError && parcela?.contrato_id) {
-            // Atualizar valor_bruto e valor_total no contrato
-            const { error: contratoError } = await supabase
-              .from('contratos')
-              .update({ 
-                valor_bruto: valorBruto,
-                valor_total: valorLiquidoCalculado
-              })
-              .eq('id', parcela.contrato_id);
+          // Atualizar contrato se valor mudou
+          if (valorAlterado) {
+            const { data: parcela, error: parcelaFetchError } = await supabase
+              .from('parcelas_contrato')
+              .select('contrato_id')
+              .eq('id', contaReceber.parcela_id)
+              .single();
 
-            if (contratoError) {
-              console.error('Erro ao atualizar contrato:', contratoError);
+            if (!parcelaFetchError && parcela?.contrato_id) {
+              const { error: contratoError } = await supabase
+                .from('contratos')
+                .update({ 
+                  valor_bruto: valorBruto,
+                  valor_total: valorLiquidoCalculado
+                })
+                .eq('id', parcela.contrato_id);
+
+              if (contratoError) {
+                console.error('Erro ao atualizar contrato:', contratoError);
+              }
             }
           }
         }
 
         // Atualizar movimentação correspondente (se existir e o status for pago)
         if (faturamento.status === 'pago' || faturamento.status === 'recebido') {
-          const { error: movError } = await supabase
-            .from('movimentacoes')
-            .update({ valor: valorLiquidoCalculado })
-            .eq('conta_receber_id', faturamento.id);
+          const movUpdate: any = {};
+          if (valorAlterado) movUpdate.valor = valorLiquidoCalculado;
+          if (dataVencimentoAlterada) movUpdate.data_movimento = novaDataVencimento;
 
-          if (movError) {
-            console.error('Erro ao atualizar movimentação:', movError);
+          if (Object.keys(movUpdate).length > 0) {
+            const { error: movError } = await supabase
+              .from('movimentacoes')
+              .update(movUpdate)
+              .eq('conta_receber_id', faturamento.id);
+
+            if (movError) {
+              console.error('Erro ao atualizar movimentação:', movError);
+            }
           }
         }
       }
 
+      const messages: string[] = [];
+      if (dataVencimentoAlterada) messages.push('data de vencimento');
+      if (valorAlterado) messages.push('valor');
+      
       toast({
         title: "Sucesso",
-        description: "Faturamento atualizado com sucesso!",
+        description: messages.length > 0 
+          ? `Faturamento atualizado! Alterações propagadas: ${messages.join(', ')}.`
+          : "Faturamento atualizado com sucesso!",
       });
 
       onSuccess();
@@ -204,6 +240,38 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           <div className="space-y-2">
             <Label className="text-muted-foreground">Contrato</Label>
             <p className="font-medium">{faturamento.numero_contrato || 'N/A'}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Data de Vencimento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dataVencimento && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dataVencimento}
+                  onSelect={setDataVencimento}
+                  locale={ptBR}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {dataVencimento && format(dataVencimento, 'yyyy-MM-dd') !== faturamento.data_vencimento && (
+              <p className="text-xs text-amber-600">
+                Alteração será propagada para contas a receber, parcela e extrato.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
