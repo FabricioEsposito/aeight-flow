@@ -66,6 +66,7 @@ export interface EditParcelaData {
   cliente_id?: string;
   fornecedor_changed?: boolean;
   cliente_changed?: boolean;
+  servico_id?: string | null;
 }
 
 export function EditParcelaDialog({
