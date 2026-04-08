@@ -7,6 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { FileUpload } from '@/components/ui/file-upload';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+
 interface Faturamento {
   id: string;
   data_competencia: string;
@@ -53,6 +60,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   const [linkNf, setLinkNf] = useState('');
   const [linkBoleto, setLinkBoleto] = useState('');
   const [valorBruto, setValorBruto] = useState(0);
+  const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -62,6 +70,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setLinkNf(faturamento.link_nf || '');
       setLinkBoleto(faturamento.link_boleto || '');
       setValorBruto(faturamento.valor_bruto);
+      setDataVencimento(parseISO(faturamento.data_vencimento + 'T00:00:00'));
     }
   }, [faturamento]);
 
