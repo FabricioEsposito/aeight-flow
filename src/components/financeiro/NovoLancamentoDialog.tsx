@@ -46,6 +46,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
   const [recebidoPago, setRecebidoPago] = useState(false);
   const [informarNsu, setInformarNsu] = useState(false);
   const [nsu, setNsu] = useState('');
+  const [servicoId, setServicoId] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
