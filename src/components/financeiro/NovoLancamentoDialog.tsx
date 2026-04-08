@@ -19,6 +19,7 @@ import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
+import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
 interface NovoLancamentoDialogProps {
@@ -45,6 +46,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
   const [recebidoPago, setRecebidoPago] = useState(false);
   const [informarNsu, setInformarNsu] = useState(false);
   const [nsu, setNsu] = useState('');
+  const [servicoId, setServicoId] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setRecebidoPago(false);
     setInformarNsu(false);
     setNsu('');
+    setServicoId('');
     setObservacoes('');
     setLinkNf(null);
     setLinkBoleto(null);
@@ -119,13 +122,14 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           plano_conta_id: categoriaId || null,
           centro_custo: centroCustoLegacy,
           conta_bancaria_id: contaBancariaId || null,
+          servico_id: servicoId || null,
           status: recebidoPago ? 'pago' : 'pendente',
           data_recebimento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
           observacoes: observacoes || null,
           numero_nf: informarNsu ? nsu : null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
-        }).select('id').single();
+        } as any).select('id').single();
 
         if (error) throw error;
         if (data) await saveRateio(data.id, 'receita');
@@ -140,12 +144,13 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
           plano_conta_id: categoriaId || null,
           centro_custo: centroCustoLegacy,
           conta_bancaria_id: contaBancariaId || null,
+          servico_id: servicoId || null,
           status: recebidoPago ? 'pago' : 'pendente',
           data_pagamento: recebidoPago ? format(dataMovimento, 'yyyy-MM-dd') : null,
           observacoes: observacoes || null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
-        }).select('id').single();
+        } as any).select('id').single();
 
         if (error) throw error;
         if (data) await saveRateio(data.id, 'despesa');
@@ -246,6 +251,17 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Serviço</Label>
+                  <ServicoSelect
+                    value={servicoId}
+                    onChange={setServicoId}
+                    showNoneOption
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código de referência</Label>
                   <Input
@@ -485,6 +501,17 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Serviço</Label>
+                  <ServicoSelect
+                    value={servicoId}
+                    onChange={setServicoId}
+                    showNoneOption
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código de referência</Label>
                   <Input

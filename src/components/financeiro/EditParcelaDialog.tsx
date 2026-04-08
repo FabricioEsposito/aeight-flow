@@ -15,6 +15,7 @@ import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FileUpload } from '@/components/ui/file-upload';
+import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +43,7 @@ interface EditParcelaDialogProps {
     fornecedor_id?: string;
     cliente_id?: string;
     parcela_id?: string | null;
+    servico_id?: string | null;
   };
 }
 
@@ -64,6 +66,7 @@ export interface EditParcelaData {
   cliente_id?: string;
   fornecedor_changed?: boolean;
   cliente_changed?: boolean;
+  servico_id?: string | null;
 }
 
 export function EditParcelaDialog({
@@ -86,6 +89,7 @@ export function EditParcelaDialog({
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
   const [fornecedorId, setFornecedorId] = useState<string>('');
   const [clienteId, setClienteId] = useState<string>('');
+  const [servicoId, setServicoId] = useState<string>('');
   const [originalFornecedorId, setOriginalFornecedorId] = useState<string>('');
   const [originalClienteId, setOriginalClienteId] = useState<string>('');
 
@@ -103,6 +107,7 @@ export function EditParcelaDialog({
       setLinkBoleto(initialData.link_boleto || null);
       setFornecedorId(initialData.fornecedor_id || '');
       setClienteId(initialData.cliente_id || '');
+      setServicoId(initialData.servico_id || '');
       setOriginalFornecedorId(initialData.fornecedor_id || '');
       setOriginalClienteId(initialData.cliente_id || '');
 
@@ -184,6 +189,7 @@ export function EditParcelaDialog({
       cliente_id: tipo === 'entrada' ? clienteId : undefined,
       fornecedor_changed: fornecedorChanged,
       cliente_changed: clienteChanged,
+      servico_id: servicoId || null,
     };
 
     // Save rateio
@@ -350,6 +356,15 @@ export function EditParcelaDialog({
                 value={planoContaId === 'none' ? '' : planoContaId} 
                 onChange={setPlanoContaId}
                 tipo={tipo}
+              />
+          </div>
+
+          <div className="space-y-2">
+              <Label>Serviço</Label>
+              <ServicoSelect
+                value={servicoId}
+                onChange={setServicoId}
+                showNoneOption
               />
           </div>
 

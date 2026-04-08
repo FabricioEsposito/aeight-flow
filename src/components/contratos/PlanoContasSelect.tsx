@@ -12,7 +12,7 @@ interface PlanoConta {
 interface PlanoContasSelectProps {
   value: string;
   onChange: (value: string) => void;
-  tipo: 'entrada' | 'saida';
+  tipo?: 'entrada' | 'saida';
   disabled?: boolean;
 }
 

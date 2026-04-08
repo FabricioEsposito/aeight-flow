@@ -73,6 +73,7 @@ interface LancamentoExtrato {
   observacoes?: string | null;
   folha_status?: string | null;
   is_folha_funcionario?: boolean;
+  servico_id?: string | null;
 }
 
 export default function Extrato() {
@@ -98,7 +99,7 @@ export default function Extrato() {
   const [selectedLancamento, setSelectedLancamento] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
-  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | 'change-bank-account' | null>(null);
+  const [batchActionType, setBatchActionType] = useState<'change-date' | 'mark-paid' | 'clone' | 'delete' | 'change-bank-account' | 'change-service' | 'change-category' | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
@@ -569,6 +570,7 @@ export default function Extrato() {
           link_nf: r.link_nf,
           link_boleto: r.link_boleto,
           observacoes: r.observacoes,
+          servico_id: (r as any).servico_id || null,
         };
 
         if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
@@ -642,6 +644,7 @@ export default function Extrato() {
           link_boleto: p.link_boleto,
           observacoes: p.observacoes,
           is_folha_funcionario: p.parcelas_contrato?.contratos?.is_folha_funcionario || false,
+          servico_id: (p as any).servico_id || null,
         };
 
         if (p.parcelas_contrato?.contratos?.servicos && Array.isArray(p.parcelas_contrato.contratos.servicos) && p.parcelas_contrato.contratos.servicos.length > 0) {
@@ -1207,6 +1210,7 @@ export default function Extrato() {
         desconto: data.desconto,
         valor: data.valor_total,
         valor_original: data.valor_original,
+        servico_id: data.servico_id || null,
         [dateField]: data.data_movimentacao || null,
       };
       
@@ -1665,6 +1669,18 @@ export default function Extrato() {
           title: "Sucesso",
           description: `Conta bancária alterada para ${selectedLancamentos.length} lançamento(s)!`,
         });
+      } else if (batchActionType === 'change-service') {
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          await supabase.from(table).update({ servico_id: data.servicoId || null } as any).eq('id', lanc.id);
+        }
+        toast({ title: "Sucesso", description: `Serviço alterado para ${selectedLancamentos.length} lançamento(s)!` });
+      } else if (batchActionType === 'change-category' && data?.categoriaId) {
+        for (const lanc of selectedLancamentos) {
+          const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
+          await supabase.from(table).update({ plano_conta_id: data.categoriaId }).eq('id', lanc.id);
+        }
+        toast({ title: "Sucesso", description: `Categoria alterada para ${selectedLancamentos.length} lançamento(s)!` });
       }
       
       setSelectedIds(new Set());
@@ -2183,6 +2199,26 @@ export default function Extrato() {
                 >
                   <Landmark className="w-4 h-4 mr-2" />
                   Alterar Conta
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('change-service');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  Alterar Serviço
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setBatchActionType('change-category');
+                    setBatchDialogOpen(true);
+                  }}
+                >
+                  Alterar Categoria
                 </Button>
                 {isAdmin && (
                   <Button
