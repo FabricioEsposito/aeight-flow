@@ -274,6 +274,8 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Valor Bruto</Label>
             <CurrencyInput
               value={valorBruto}
               onChange={setValorBruto}
