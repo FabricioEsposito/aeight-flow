@@ -15,6 +15,7 @@ import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FileUpload } from '@/components/ui/file-upload';
+import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
