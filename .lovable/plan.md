@@ -1,44 +1,43 @@
 
 
-## Plano: Exportar Pagamento em Lote no Extrato
+## Plano: Leitura de Código de Barras de Boletos via OCR.space
 
 ### Resumo
-Adicionar um botao "Exportar Pagamento em Lote" na area de Extrato e Conciliacao, gerando uma planilha Excel no mesmo formato usado na Folha de Pagamento, com dados bancarios dos fornecedores.
+Criar uma Edge Function que recebe o arquivo do boleto armazenado no Supabase Storage, envia para a API do OCR.space para extrair a linha digitável, e adicionar essa coluna na planilha de "Exportar Pagamento em Lote" do Extrato.
 
-### Escopo
-A exportacao se aplica apenas aos lancamentos de **saida** (contas a pagar), pois sao esses que possuem fornecedores com dados bancarios cadastrados. Lancamentos de entrada (contas a receber) serao ignorados na exportacao.
+### Passo 1 — Configurar a chave de API
+Salvar a chave da API OCR.space como secret `OCR_SPACE_API_KEY` no projeto Supabase, para uso na Edge Function.
 
-### Formato da Planilha (identico ao da Folha)
+### Passo 2 — Criar Edge Function `ocr-boleto`
+**Arquivo:** `supabase/functions/ocr-boleto/index.ts`
 
-| Coluna | Origem |
-|---|---|
-| Banco do Favorecido | codigo 3 digitos do fornecedor |
-| Agencia do Favorecido | agencia do fornecedor |
-| Conta do Favorecido | conta do fornecedor |
-| Tipo de Conta do Favorecido | Corrente / Poupanca |
-| Nome / Razao Social do Favorecido | razao_social do fornecedor |
-| CPF/CNPJ do Favorecido | cnpj_cpf do fornecedor |
-| Tipo de Transferencia | tipo_transferencia do fornecedor |
-| Valor | valor do lancamento |
-| Data de Pagamento | data_vencimento formatada dd/mm/aaaa |
+- Recebe o `file_path` (caminho do boleto no storage) via POST
+- Baixa o arquivo do bucket privado usando o Service Role Key
+- Envia o arquivo para `https://api.ocr.space/parse/image` com parâmetros:
+  - `isOverlayRequired: false`
+  - `detectOrientation: true`  
+  - `OCREngine: 2` (melhor para documentos)
+- Extrai a linha digitável do texto retornado (regex para padrão de 47 ou 48 dígitos com pontos/espaços)
+- Retorna `{ linha_digitavel: "..." }`
 
----
+### Passo 3 — Atualizar exportação no Extrato
+**Arquivo:** `src/pages/Extrato.tsx`
 
-### Alteracoes Tecnicas
+Na função `handleExportBatchPayment`:
+1. Para cada lançamento pendente que possua `link_boleto`, chamar a Edge Function `ocr-boleto`
+2. Aguardar todas as respostas (em paralelo com `Promise.allSettled`)
+3. Adicionar coluna **"Linha Digitável"** (coluna J) na planilha Excel com o valor extraído
+4. Exibir loading/progresso durante o processamento OCR
+5. Se a leitura falhar para algum boleto, deixar a célula vazia
 
-**Arquivo: `src/pages/Extrato.tsx`**
+### Formato Final da Planilha
 
-1. Adicionar um botao "Exportar Pagamento em Lote" na barra de acoes (proximo aos botoes de exportar PDF/Excel existentes ou na area de acoes em lote).
+| A | B | C | D | E | F | G | H | I | J |
+|---|---|---|---|---|---|---|---|---|---|
+| Banco | Agência | Conta | Tipo Conta | Nome | CPF/CNPJ | Tipo Transf. | Valor | Data Pgto | Linha Digitável |
 
-2. Implementar funcao `handleExportBatchPayment`:
-   - Filtrar `lancamentos` visíveis que sejam do tipo `saida` (origem === 'pagar') e com status `pendente`.
-   - Coletar os `fornecedor_id` unicos desses lancamentos (o campo ja existe nos dados carregados das `contas_pagar`).
-   - Buscar dados bancarios dos fornecedores via query ao Supabase (`banco_codigo, agencia, conta, tipo_conta_bancaria, tipo_transferencia, razao_social, cnpj_cpf`).
-   - Montar a planilha no formato acima usando a lib `xlsx` (ja importada no projeto).
-   - Gerar arquivo `pagamento_lote_extrato_YYYY-MM-DD.xls`.
-
-3. Garantir que o `fornecedor_id` esteja disponivel no objeto `LancamentoExtrato` para lancamentos de saida (ja esta sendo mapeado na query atual via join com `fornecedores`). Caso nao esteja exposto diretamente, adicionar o campo ao mapeamento de dados.
-
-### Observacao
-A logica sera essencialmente a mesma da `handleExportBatchPayment` da FolhaPagamentoTab, adaptada para usar a estrutura de dados do Extrato.
+### Observações
+- Lançamentos sem boleto anexado terão a coluna "Linha Digitável" vazia
+- A API OCR.space tem limite de 25K chamadas/mês no plano gratuito
+- O processamento pode levar alguns segundos por boleto, então será exibido um indicador de carregamento
 
