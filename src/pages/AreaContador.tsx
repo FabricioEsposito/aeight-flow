@@ -721,6 +721,7 @@ function RetencoesTab() {
     { header: 'CNPJ', accessor: (r: RetencaoRow) => formatCnpj(r.cliente_cnpj) },
     { header: 'Serviço', accessor: (r: RetencaoRow) => r.servicos },
     { header: 'NF', accessor: (r: RetencaoRow) => r.numero_nf || '-' },
+    { header: 'Banco Recebido', accessor: (r: RetencaoRow) => r.conta_bancaria_nome || '-' },
     { header: 'Valor Bruto', accessor: (r: RetencaoRow) => r.valor_bruto, type: 'currency' as const },
     { header: 'IRRF', accessor: (r: RetencaoRow) => r.irrf_valor, type: 'currency' as const },
     { header: 'PIS', accessor: (r: RetencaoRow) => r.pis_valor, type: 'currency' as const },
