@@ -399,7 +399,7 @@ export function FolhaPagamentoTab() {
       const worksheetData = sortedRecords.map(r => {
         const forn = fornecedorMap.get(r.fornecedor_id);
         const [y, m, d] = r.data_vencimento.split('-');
-        const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Poupança' : (forn?.tipo_conta_bancaria || '');
+        const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Conta Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Conta Poupança' : (forn?.tipo_conta_bancaria || '');
         return {
           'Banco do Favorecido': forn?.banco_codigo || '',
           'Agência do Favorecido': forn?.agencia || '',

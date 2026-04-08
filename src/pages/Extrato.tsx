@@ -369,7 +369,7 @@ export default function Extrato() {
       const worksheetData = pendentesParaPagar.map(l => {
         const forn = l.fornecedor_id ? fornecedorMap.get(l.fornecedor_id) : null;
         const [y, m, d] = l.data_vencimento.split('-');
-        const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Poupança' : (forn?.tipo_conta_bancaria || '');
+        const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Conta Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Conta Poupança' : (forn?.tipo_conta_bancaria || '');
         return {
           'Banco do Favorecido': forn?.banco_codigo || '',
           'Agência do Favorecido': forn?.agencia || '',
