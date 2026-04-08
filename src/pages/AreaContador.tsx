@@ -906,7 +906,7 @@ function RetencoesTab() {
                   })}
                   {/* Grand Total */}
                   <TableRow className="bg-primary/5 font-bold">
-                    <TableCell colSpan={5} className="text-right">TOTAL GERAL:</TableCell>
+                    <TableCell colSpan={6} className="text-right">TOTAL GERAL:</TableCell>
                     <TableCell className="text-right">{formatCurrency(totals.bruto)}</TableCell>
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.irrf)}</TableCell>
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.pis)}</TableCell>
