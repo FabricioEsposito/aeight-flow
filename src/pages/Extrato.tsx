@@ -2219,6 +2219,7 @@ export default function Extrato() {
                   }}
                 >
                   Alterar Categoria
+                </Button>
                 {isAdmin && (
                   <Button
                     size="sm"
