@@ -349,7 +349,61 @@ export default function Extrato() {
     });
   };
 
-  const getDateRange = () => {
+  const handleExportBatchPayment = async () => {
+    try {
+      const pendentesParaPagar = sortedLancamentos.filter(l => l.origem === 'pagar' && l.status === 'pendente');
+      if (pendentesParaPagar.length === 0) {
+        toast({ title: 'Aviso', description: 'Não há lançamentos de saída pendentes para exportar.', variant: 'destructive' });
+        return;
+      }
+
+      const fornecedorIds = [...new Set(pendentesParaPagar.map(l => l.fornecedor_id).filter(Boolean))] as string[];
+      const { data: fornecedores } = await supabase
+        .from('fornecedores')
+        .select('id, razao_social, cnpj_cpf, banco_codigo, agencia, conta, tipo_conta_bancaria, tipo_transferencia')
+        .in('id', fornecedorIds);
+
+      const fornecedorMap = new Map<string, any>();
+      (fornecedores || []).forEach(f => fornecedorMap.set(f.id, f));
+
+      const worksheetData = pendentesParaPagar.map(l => {
+        const forn = l.fornecedor_id ? fornecedorMap.get(l.fornecedor_id) : null;
+        const [y, m, d] = l.data_vencimento.split('-');
+        const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Poupança' : (forn?.tipo_conta_bancaria || '');
+        return {
+          'Banco do Favorecido': forn?.banco_codigo || '',
+          'Agência do Favorecido': forn?.agencia || '',
+          'Conta do Favorecido': forn?.conta || '',
+          'Tipo de Conta do Favorecido': tipoContaLabel,
+          'Nome / Razão Social do Favorecido': forn?.razao_social || l.cliente_fornecedor || '',
+          'CPF/CNPJ do Favorecido': forn?.cnpj_cpf || '',
+          'Tipo de Transferência': forn?.tipo_transferencia || '',
+          'Valor': l.valor,
+          'Data de Pagamento': `${d}/${m}/${y}`,
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(worksheetData);
+      ws['!cols'] = [
+        { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 12 },
+        { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
+      ];
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r + 1; R <= range.e.r; R++) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: 7 });
+        const cell = ws[cellRef];
+        if (cell) { cell.t = 'n'; cell.z = '#,##0.00'; }
+      }
+      XLSX.utils.book_append_sheet(wb, ws, 'Pagamento em Lote');
+      XLSX.writeFile(wb, `pagamento_lote_extrato_${format(new Date(), 'yyyy-MM-dd')}.xls`);
+      toast({ title: 'Sucesso', description: 'Planilha de pagamento em lote exportada com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast({ title: 'Erro', description: 'Não foi possível exportar a planilha.', variant: 'destructive' });
+    }
+  };
+
     const today = new Date();
     
     switch (datePreset) {
