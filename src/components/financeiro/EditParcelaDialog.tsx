@@ -359,6 +359,15 @@ export function EditParcelaDialog({
               />
           </div>
 
+          <div className="space-y-2">
+              <Label>Serviço</Label>
+              <ServicoSelect
+                value={servicoId}
+                onChange={setServicoId}
+                showNoneOption
+              />
+          </div>
+
           <CentroCustoRateio
             value={rateioItems}
             onChange={setRateioItems}
