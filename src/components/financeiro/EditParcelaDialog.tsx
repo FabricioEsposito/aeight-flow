@@ -89,6 +89,7 @@ export function EditParcelaDialog({
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
   const [fornecedorId, setFornecedorId] = useState<string>('');
   const [clienteId, setClienteId] = useState<string>('');
+  const [servicoId, setServicoId] = useState<string>('');
   const [originalFornecedorId, setOriginalFornecedorId] = useState<string>('');
   const [originalClienteId, setOriginalClienteId] = useState<string>('');
 
