@@ -883,6 +883,7 @@ function RetencoesTab() {
                                 )
                               ) : '-'}
                             </TableCell>
+                            <TableCell className="max-w-[120px] truncate text-xs">{row.conta_bancaria_nome || '-'}</TableCell>
                             <TableCell className="text-right font-medium">{formatCurrency(row.valor_bruto)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.irrf_valor)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.pis_valor)}</TableCell>
