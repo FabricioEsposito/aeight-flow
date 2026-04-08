@@ -404,6 +404,7 @@ export default function Extrato() {
     }
   };
 
+  const getDateRange = () => {
     const today = new Date();
     
     switch (datePreset) {
