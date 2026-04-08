@@ -43,6 +43,7 @@ interface EditParcelaDialogProps {
     fornecedor_id?: string;
     cliente_id?: string;
     parcela_id?: string | null;
+    servico_id?: string | null;
   };
 }
 
