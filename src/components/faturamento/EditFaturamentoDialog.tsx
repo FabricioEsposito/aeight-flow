@@ -243,7 +243,37 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label>Valor Bruto</Label>
+            <Label>Data de Vencimento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dataVencimento && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dataVencimento}
+                  onSelect={setDataVencimento}
+                  locale={ptBR}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {dataVencimento && format(dataVencimento, 'yyyy-MM-dd') !== faturamento.data_vencimento && (
+              <p className="text-xs text-amber-600">
+                Alteração será propagada para contas a receber, parcela e extrato.
+              </p>
+            )}
+          </div>
+
             <CurrencyInput
               value={valorBruto}
               onChange={setValorBruto}
