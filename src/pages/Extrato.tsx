@@ -646,6 +646,7 @@ export default function Extrato() {
           observacoes: p.observacoes,
           is_folha_funcionario: p.parcelas_contrato?.contratos?.is_folha_funcionario || false,
           servico_id: (p as any).servico_id || null,
+          fornecedor_id: p.fornecedor_id || null,
         };
 
         if (p.parcelas_contrato?.contratos?.servicos && Array.isArray(p.parcelas_contrato.contratos.servicos) && p.parcelas_contrato.contratos.servicos.length > 0) {
