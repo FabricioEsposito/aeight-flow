@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.cotacao-moeda]
 verify_jwt = false
+
+[functions.ocr-boleto]
+verify_jwt = false

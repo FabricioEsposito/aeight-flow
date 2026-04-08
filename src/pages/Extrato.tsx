@@ -349,6 +349,21 @@ export default function Extrato() {
     });
   };
 
+  const [ocrProgress, setOcrProgress] = useState<{ current: number; total: number } | null>(null);
+
+  const extractFilePathFromUrl = (url: string, bucket: string): string | null => {
+    try {
+      const urlObj = new URL(url);
+      const publicPath = urlObj.pathname.split(`/storage/v1/object/public/${bucket}/`);
+      if (publicPath[1]) return decodeURIComponent(publicPath[1].split('?')[0]);
+      const signedPath = urlObj.pathname.split(`/storage/v1/object/sign/${bucket}/`);
+      if (signedPath[1]) return decodeURIComponent(signedPath[1].split('?')[0]);
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleExportBatchPayment = async () => {
     try {
       const pendentesParaPagar = filteredLancamentos.filter(l => l.origem === 'pagar' && l.status === 'pendente');
@@ -366,6 +381,37 @@ export default function Extrato() {
       const fornecedorMap = new Map<string, any>();
       (fornecedores || []).forEach(f => fornecedorMap.set(f.id, f));
 
+      // OCR processing for boletos
+      const boletosToProcess = pendentesParaPagar.filter(l => l.link_boleto);
+      const linhaDigitavelMap = new Map<string, string>();
+
+      if (boletosToProcess.length > 0) {
+        setOcrProgress({ current: 0, total: boletosToProcess.length });
+        toast({ title: 'Processando boletos...', description: `Lendo ${boletosToProcess.length} boleto(s) via OCR. Aguarde...` });
+
+        const ocrPromises = boletosToProcess.map(async (l, idx) => {
+          try {
+            const filePath = extractFilePathFromUrl(l.link_boleto!, 'faturamento-docs');
+            if (!filePath) return;
+
+            const { data, error } = await supabase.functions.invoke('ocr-boleto', {
+              body: { file_path: filePath, bucket: 'faturamento-docs' },
+            });
+
+            if (!error && data?.linha_digitavel) {
+              linhaDigitavelMap.set(l.id, data.linha_digitavel);
+            }
+          } catch (e) {
+            console.error('OCR error for', l.id, e);
+          } finally {
+            setOcrProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
+          }
+        });
+
+        await Promise.allSettled(ocrPromises);
+        setOcrProgress(null);
+      }
+
       const worksheetData = pendentesParaPagar.map(l => {
         const forn = l.fornecedor_id ? fornecedorMap.get(l.fornecedor_id) : null;
         const [y, m, d] = l.data_vencimento.split('-');
@@ -380,14 +426,15 @@ export default function Extrato() {
           'Tipo de Transferência': forn?.tipo_transferencia || '',
           'Valor': l.valor,
           'Data de Pagamento': `${d}/${m}/${y}`,
+          'Linha Digitável': linhaDigitavelMap.get(l.id) || '',
         };
       });
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(worksheetData);
       ws['!cols'] = [
-        { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 12 },
-        { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
+        { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 18 },
+        { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 55 },
       ];
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
       for (let R = range.s.r + 1; R <= range.e.r; R++) {
@@ -397,9 +444,16 @@ export default function Extrato() {
       }
       XLSX.utils.book_append_sheet(wb, ws, 'Pagamento em Lote');
       XLSX.writeFile(wb, `pagamento_lote_extrato_${format(new Date(), 'yyyy-MM-dd')}.xls`);
-      toast({ title: 'Sucesso', description: 'Planilha de pagamento em lote exportada com sucesso!' });
+
+      const totalOcr = boletosToProcess.length;
+      const successOcr = linhaDigitavelMap.size;
+      const desc = totalOcr > 0
+        ? `Planilha exportada! ${successOcr}/${totalOcr} linha(s) digitável(is) extraída(s).`
+        : 'Planilha de pagamento em lote exportada com sucesso!';
+      toast({ title: 'Sucesso', description: desc });
     } catch (error) {
       console.error('Erro ao exportar:', error);
+      setOcrProgress(null);
       toast({ title: 'Erro', description: 'Não foi possível exportar a planilha.', variant: 'destructive' });
     }
   };
