@@ -822,6 +822,7 @@ function RetencoesTab() {
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Serviço</TableHead>
                 <TableHead>NF</TableHead>
+                <TableHead>Banco Recebido</TableHead>
                 <TableHead className="text-right">Valor Bruto</TableHead>
                 <TableHead className="text-right">IRRF</TableHead>
                 <TableHead className="text-right">PIS</TableHead>
