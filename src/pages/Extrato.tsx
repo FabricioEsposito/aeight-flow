@@ -1208,6 +1208,7 @@ export default function Extrato() {
         desconto: data.desconto,
         valor: data.valor_total,
         valor_original: data.valor_original,
+        servico_id: data.servico_id || null,
         [dateField]: data.data_movimentacao || null,
       };
       
