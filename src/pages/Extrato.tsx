@@ -35,6 +35,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TablePagination } from '@/components/ui/table-pagination';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
 
