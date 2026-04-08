@@ -88,6 +88,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
     setRecebidoPago(false);
     setInformarNsu(false);
     setNsu('');
+    setServicoId('');
     setObservacoes('');
     setLinkNf(null);
     setLinkBoleto(null);
