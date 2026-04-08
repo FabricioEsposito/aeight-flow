@@ -107,6 +107,7 @@ export function EditParcelaDialog({
       setLinkBoleto(initialData.link_boleto || null);
       setFornecedorId(initialData.fornecedor_id || '');
       setClienteId(initialData.cliente_id || '');
+      setServicoId(initialData.servico_id || '');
       setOriginalFornecedorId(initialData.fornecedor_id || '');
       setOriginalClienteId(initialData.cliente_id || '');
 
