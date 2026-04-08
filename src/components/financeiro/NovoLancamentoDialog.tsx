@@ -502,6 +502,17 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Serviço</Label>
+                  <ServicoSelect
+                    value={servicoId}
+                    onChange={setServicoId}
+                    showNoneOption
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Código de referência</Label>
                   <Input
                     value={codigoReferencia}
