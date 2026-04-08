@@ -351,7 +351,7 @@ export default function Extrato() {
 
   const handleExportBatchPayment = async () => {
     try {
-      const pendentesParaPagar = sortedLancamentos.filter(l => l.origem === 'pagar' && l.status === 'pendente');
+      const pendentesParaPagar = filteredLancamentos.filter(l => l.origem === 'pagar' && l.status === 'pendente');
       if (pendentesParaPagar.length === 0) {
         toast({ title: 'Aviso', description: 'Não há lançamentos de saída pendentes para exportar.', variant: 'destructive' });
         return;
