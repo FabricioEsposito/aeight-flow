@@ -285,7 +285,7 @@ function ExtratoTab() {
           centro_custo_nome: cc ? `${cc.codigo} - ${cc.descricao}` : undefined,
           categoria: pc ? `${pc.codigo} - ${pc.descricao}` : undefined,
           conta_bancaria_id: r.conta_bancaria_id,
-          conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
+          conta_bancaria_nome: cb ? cb.descricao : undefined,
           data_recebimento: r.data_recebimento,
           numero_nf: r.numero_nf,
           link_nf: r.link_nf,
