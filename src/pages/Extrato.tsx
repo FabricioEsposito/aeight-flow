@@ -73,6 +73,7 @@ interface LancamentoExtrato {
   observacoes?: string | null;
   folha_status?: string | null;
   is_folha_funcionario?: boolean;
+  servico_id?: string | null;
 }
 
 export default function Extrato() {
