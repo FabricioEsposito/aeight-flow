@@ -833,9 +833,9 @@ function RetencoesTab() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={11} className="text-center py-8">Carregando...</TableCell></TableRow>
+               <TableRow><TableCell colSpan={12} className="text-center py-8">Carregando...</TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhuma retenção encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhuma retenção encontrada</TableCell></TableRow>
               ) : (
                 <>
                   {groupedByMonth.map(([monthKey, rows]) => {
