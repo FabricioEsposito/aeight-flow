@@ -19,6 +19,7 @@ import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
+import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
 interface NovoLancamentoDialogProps {
