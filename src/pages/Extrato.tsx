@@ -1953,6 +1953,10 @@ export default function Extrato() {
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Exportar Excel (.xls)
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportBatchPayment}>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Pagamento em Lote
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
