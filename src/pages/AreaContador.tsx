@@ -564,10 +564,15 @@ function RetencoesTab() {
   const fetchRetencoes = async () => {
     setLoading(true);
     try {
+      const [{ data: contasBancariasData }] = await Promise.all([
+        supabase.from('contas_bancarias').select('id, descricao'),
+      ]);
+      const cbMap = new Map((contasBancariasData || []).map((c: any) => [c.id, c]));
+
       const data = await fetchAllPages((from, to) =>
         supabase.from('contas_receber')
           .select(`
-            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo,
+            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo, conta_bancaria_id,
             clientes:cliente_id(razao_social, cnpj_cpf),
             parcelas_contrato:parcela_id(
               contratos:contrato_id(
