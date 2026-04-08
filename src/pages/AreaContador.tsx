@@ -667,6 +667,7 @@ function RetencoesTab() {
             mes: recDate.getMonth() + 1,
             ano: recDate.getFullYear(),
             centro_custo: r.centro_custo,
+            conta_bancaria_nome: r.conta_bancaria_id ? cbMap.get(r.conta_bancaria_id)?.descricao : undefined,
           };
         });
 
