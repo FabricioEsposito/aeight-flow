@@ -105,6 +105,7 @@ interface RetencaoRow {
   mes: number;
   ano: number;
   centro_custo: string | null;
+  conta_bancaria_nome?: string;
 }
 
 // ==================== COMPONENT ====================
@@ -285,7 +286,7 @@ function ExtratoTab() {
           centro_custo_nome: cc ? `${cc.codigo} - ${cc.descricao}` : undefined,
           categoria: pc ? `${pc.codigo} - ${pc.descricao}` : undefined,
           conta_bancaria_id: r.conta_bancaria_id,
-          conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
+          conta_bancaria_nome: cb ? cb.descricao : undefined,
           data_recebimento: r.data_recebimento,
           numero_nf: r.numero_nf,
           link_nf: r.link_nf,
@@ -303,7 +304,7 @@ function ExtratoTab() {
           centro_custo_nome: cc ? `${cc.codigo} - ${cc.descricao}` : undefined,
           categoria: pc ? `${pc.codigo} - ${pc.descricao}` : undefined,
           conta_bancaria_id: p.conta_bancaria_id,
-          conta_bancaria_nome: cb ? `${cb.banco} - ${cb.descricao}` : undefined,
+          conta_bancaria_nome: cb ? cb.descricao : undefined,
           data_pagamento: p.data_pagamento,
           link_nf: p.link_nf,
         };
@@ -563,10 +564,15 @@ function RetencoesTab() {
   const fetchRetencoes = async () => {
     setLoading(true);
     try {
+      const [{ data: contasBancariasData }] = await Promise.all([
+        supabase.from('contas_bancarias').select('id, descricao'),
+      ]);
+      const cbMap = new Map((contasBancariasData || []).map((c: any) => [c.id, c]));
+
       const data = await fetchAllPages((from, to) =>
         supabase.from('contas_receber')
           .select(`
-            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo,
+            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo, conta_bancaria_id,
             clientes:cliente_id(razao_social, cnpj_cpf),
             parcelas_contrato:parcela_id(
               contratos:contrato_id(
@@ -661,6 +667,7 @@ function RetencoesTab() {
             mes: recDate.getMonth() + 1,
             ano: recDate.getFullYear(),
             centro_custo: r.centro_custo,
+            conta_bancaria_nome: r.conta_bancaria_id ? cbMap.get(r.conta_bancaria_id)?.descricao : undefined,
           };
         });
 
@@ -714,6 +721,7 @@ function RetencoesTab() {
     { header: 'CNPJ', accessor: (r: RetencaoRow) => formatCnpj(r.cliente_cnpj) },
     { header: 'Serviço', accessor: (r: RetencaoRow) => r.servicos },
     { header: 'NF', accessor: (r: RetencaoRow) => r.numero_nf || '-' },
+    { header: 'Banco Recebido', accessor: (r: RetencaoRow) => r.conta_bancaria_nome || '-' },
     { header: 'Valor Bruto', accessor: (r: RetencaoRow) => r.valor_bruto, type: 'currency' as const },
     { header: 'IRRF', accessor: (r: RetencaoRow) => r.irrf_valor, type: 'currency' as const },
     { header: 'PIS', accessor: (r: RetencaoRow) => r.pis_valor, type: 'currency' as const },
@@ -814,6 +822,7 @@ function RetencoesTab() {
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Serviço</TableHead>
                 <TableHead>NF</TableHead>
+                <TableHead>Banco Recebido</TableHead>
                 <TableHead className="text-right">Valor Bruto</TableHead>
                 <TableHead className="text-right">IRRF</TableHead>
                 <TableHead className="text-right">PIS</TableHead>
@@ -824,9 +833,9 @@ function RetencoesTab() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={11} className="text-center py-8">Carregando...</TableCell></TableRow>
+               <TableRow><TableCell colSpan={12} className="text-center py-8">Carregando...</TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhuma retenção encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhuma retenção encontrada</TableCell></TableRow>
               ) : (
                 <>
                   {groupedByMonth.map(([monthKey, rows]) => {
@@ -846,7 +855,7 @@ function RetencoesTab() {
                     return (
                       <React.Fragment key={monthKey}>
                         <TableRow className="bg-muted/50">
-                          <TableCell colSpan={11} className="font-semibold text-sm capitalize">
+                          <TableCell colSpan={12} className="font-semibold text-sm capitalize">
                             {getMonthLabel(mn, yr)}
                             <span className="ml-2 text-xs text-muted-foreground font-normal">
                               ({rows.length} {rows.length === 1 ? 'lançamento' : 'lançamentos'})
@@ -874,6 +883,7 @@ function RetencoesTab() {
                                 )
                               ) : '-'}
                             </TableCell>
+                            <TableCell className="max-w-[120px] truncate text-xs">{row.conta_bancaria_nome || '-'}</TableCell>
                             <TableCell className="text-right font-medium">{formatCurrency(row.valor_bruto)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.irrf_valor)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.pis_valor)}</TableCell>
@@ -883,7 +893,7 @@ function RetencoesTab() {
                           </TableRow>
                         ))}
                         <TableRow className="bg-muted/30 border-b-2">
-                          <TableCell colSpan={5} className="text-right font-semibold text-xs">Subtotal {getMonthLabel(mn, yr)}:</TableCell>
+                          <TableCell colSpan={6} className="text-right font-semibold text-xs">Subtotal {getMonthLabel(mn, yr)}:</TableCell>
                           <TableCell className="text-right font-semibold">{formatCurrency(monthTotals.bruto)}</TableCell>
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.irrf)}</TableCell>
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.pis)}</TableCell>
@@ -896,7 +906,7 @@ function RetencoesTab() {
                   })}
                   {/* Grand Total */}
                   <TableRow className="bg-primary/5 font-bold">
-                    <TableCell colSpan={5} className="text-right">TOTAL GERAL:</TableCell>
+                    <TableCell colSpan={6} className="text-right">TOTAL GERAL:</TableCell>
                     <TableCell className="text-right">{formatCurrency(totals.bruto)}</TableCell>
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.irrf)}</TableCell>
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.pis)}</TableCell>
