@@ -26,6 +26,8 @@ interface ContaBancaria {
   tipo_conta: 'corrente' | 'poupanca' | 'investimento';
   banco: string;
   descricao: string;
+  agencia: string | null;
+  conta: string | null;
   saldo_inicial: number;
   saldo_atual: number;
   data_inicio: string;
@@ -49,6 +51,8 @@ export default function ContasBancarias() {
       tipo_conta: 'corrente' as 'corrente' | 'poupanca' | 'investimento',
       banco: '',
       descricao: '',
+      agencia: '',
+      conta: '',
       saldo_inicial: 0,
       saldo_atual: 0,
       data_inicio: new Date().toISOString().split('T')[0],
@@ -133,6 +137,8 @@ export default function ContasBancarias() {
       tipo_conta: conta.tipo_conta,
       banco: conta.banco,
       descricao: conta.descricao,
+      agencia: conta.agencia || '',
+      conta: conta.conta || '',
       saldo_inicial: conta.saldo_inicial,
       saldo_atual: conta.saldo_atual,
       data_inicio: conta.data_inicio,
@@ -319,6 +325,36 @@ export default function ContasBancarias() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
+                    name="agencia"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Agência</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: 1234" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="conta"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Conta</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: 12345-6" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
                     name="saldo_inicial"
                     render={({ field }) => (
                       <FormItem>
@@ -407,8 +443,12 @@ export default function ContasBancarias() {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Banco</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Agência</TableHead>
+                <TableHead>Conta</TableHead>
                 <TableHead>Saldo Inicial</TableHead>
                 <TableHead>Saldo Atual</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -427,6 +467,8 @@ export default function ContasBancarias() {
                   </TableCell>
                   <TableCell>{conta.banco}</TableCell>
                   <TableCell className="font-medium">{conta.descricao}</TableCell>
+                  <TableCell>{conta.agencia || '-'}</TableCell>
+                  <TableCell>{conta.conta || '-'}</TableCell>
                   <TableCell>{formatCurrency(conta.saldo_inicial)}</TableCell>
                   <TableCell className={conta.saldo_atual >= 0 ? 'text-emerald-600' : 'text-destructive'}>
                     {formatCurrency(conta.saldo_atual)}

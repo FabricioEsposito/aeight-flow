@@ -258,7 +258,9 @@ export type Database = {
       }
       contas_bancarias: {
         Row: {
+          agencia: string | null
           banco: string
+          conta: string | null
           created_at: string
           data_inicio: string
           descricao: string
@@ -270,7 +272,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agencia?: string | null
           banco: string
+          conta?: string | null
           created_at?: string
           data_inicio: string
           descricao: string
@@ -282,7 +286,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agencia?: string | null
           banco?: string
+          conta?: string | null
           created_at?: string
           data_inicio?: string
           descricao?: string
