@@ -443,8 +443,12 @@ export default function ContasBancarias() {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Banco</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Agência</TableHead>
+                <TableHead>Conta</TableHead>
                 <TableHead>Saldo Inicial</TableHead>
                 <TableHead>Saldo Atual</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -463,6 +467,8 @@ export default function ContasBancarias() {
                   </TableCell>
                   <TableCell>{conta.banco}</TableCell>
                   <TableCell className="font-medium">{conta.descricao}</TableCell>
+                  <TableCell>{conta.agencia || '-'}</TableCell>
+                  <TableCell>{conta.conta || '-'}</TableCell>
                   <TableCell>{formatCurrency(conta.saldo_inicial)}</TableCell>
                   <TableCell className={conta.saldo_atual >= 0 ? 'text-emerald-600' : 'text-destructive'}>
                     {formatCurrency(conta.saldo_atual)}
