@@ -381,6 +381,14 @@ export default function Extrato() {
       const fornecedorMap = new Map<string, any>();
       (fornecedores || []).forEach(f => fornecedorMap.set(f.id, f));
 
+      // Fetch source bank account details
+      const contaBancariaIds = [...new Set(pendentesParaPagar.map(l => l.conta_bancaria_id).filter(Boolean))] as string[];
+      const { data: contasBancarias } = contaBancariaIds.length > 0
+        ? await supabase.from('contas_bancarias').select('id, agencia, conta').in('id', contaBancariaIds)
+        : { data: [] };
+      const contaBancariaMap = new Map<string, any>();
+      (contasBancarias || []).forEach(cb => contaBancariaMap.set(cb.id, cb));
+
       // OCR processing for boletos
       const boletosToProcess = pendentesParaPagar.filter(l => l.link_boleto);
       const linhaDigitavelMap = new Map<string, string>();
