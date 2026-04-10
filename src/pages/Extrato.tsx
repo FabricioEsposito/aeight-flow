@@ -422,6 +422,7 @@ export default function Extrato() {
 
       const worksheetData = pendentesParaPagar.map(l => {
         const forn = l.fornecedor_id ? fornecedorMap.get(l.fornecedor_id) : null;
+        const cb = l.conta_bancaria_id ? contaBancariaMap.get(l.conta_bancaria_id) : null;
         const [y, m, d] = l.data_vencimento.split('-');
         const tipoContaLabel = forn?.tipo_conta_bancaria === 'corrente' ? 'Conta Corrente' : forn?.tipo_conta_bancaria === 'poupanca' ? 'Conta Poupança' : (forn?.tipo_conta_bancaria || '');
         return {
@@ -434,6 +435,8 @@ export default function Extrato() {
           'Tipo de Transferência': forn?.tipo_transferencia || '',
           'Valor': l.valor,
           'Data de Pagamento': `${d}/${m}/${y}`,
+          'Agência Origem': cb?.agencia || '',
+          'Conta Origem': cb?.conta || '',
           'Linha Digitável': linhaDigitavelMap.get(l.id) || '',
         };
       });
@@ -442,7 +445,8 @@ export default function Extrato() {
       const ws = XLSX.utils.json_to_sheet(worksheetData);
       ws['!cols'] = [
         { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 18 },
-        { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 55 },
+        { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
+        { wch: 12 }, { wch: 15 }, { wch: 55 },
       ];
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
       for (let R = range.s.r + 1; R <= range.e.r; R++) {
