@@ -4,6 +4,7 @@ import { AppHeader } from "./AppHeader";
 import { useIsTabletOrMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -55,6 +56,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
+      <OnboardingOverlay />
     </div>
   );
 }

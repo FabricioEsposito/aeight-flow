@@ -52,6 +52,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <OnboardingProvider>
             <SessionTimeoutProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </SessionTimeoutProvider>
+            </OnboardingProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
