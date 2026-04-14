@@ -21,6 +21,7 @@ import { FornecedorForm } from '@/components/fornecedores/FornecedorForm';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface Fornecedor {
   id: string;
@@ -36,6 +37,7 @@ interface Fornecedor {
 }
 
 export default function Fornecedores() {
+  useContextualTutorial('fornecedores');
   useClearFiltersOnAreaChange('fornecedores');
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);

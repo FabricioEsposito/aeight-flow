@@ -26,6 +26,7 @@ import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
 interface ContaPagar {
@@ -71,6 +72,7 @@ interface CentroCusto {
 }
 
 export default function ContasPagar() {
+  useContextualTutorial('contas-pagar');
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);

@@ -23,6 +23,7 @@ import { EnviarEmailFaturamentoDialog } from '@/components/faturamento/EnviarEma
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface Faturamento {
   id: string;
@@ -60,6 +61,7 @@ interface Faturamento {
 }
 
 export default function ControleFaturamento() {
+  useContextualTutorial('faturamento');
   const [faturamentos, setFaturamentos] = useState<Faturamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('faturamento', 'search', '');

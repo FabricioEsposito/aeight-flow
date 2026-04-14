@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useClearFiltersOnAreaChange } from "@/hooks/useSessionState";
+import { useContextualTutorial } from "@/hooks/useContextualTutorial";
 
 const Index = () => {
+  useContextualTutorial('dashboard');
   useClearFiltersOnAreaChange('dashboard');
   const navigate = useNavigate();
   const { role, loading, isCommercialManager, isSalesperson, isContador } = useUserRole();

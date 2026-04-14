@@ -23,6 +23,7 @@ import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { addMonths, differenceInMonths } from 'date-fns';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface ItemContrato {
   id: string;
@@ -35,6 +36,7 @@ interface ItemContrato {
 }
 
 export default function NovoContrato() {
+  useContextualTutorial('contratos-venda');
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();

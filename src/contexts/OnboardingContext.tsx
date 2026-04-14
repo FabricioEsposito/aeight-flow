@@ -145,6 +145,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setDismissedTutorials([]);
     saveDismissed([]);
     localStorage.removeItem(CHECKLIST_KEY);
+    localStorage.removeItem('onboarding_auto_shown');
   }, []);
 
   return (

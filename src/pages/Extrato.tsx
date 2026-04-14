@@ -38,7 +38,7 @@ import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
-
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface LancamentoExtrato {
   id: string;
@@ -79,6 +79,7 @@ interface LancamentoExtrato {
 }
 
 export default function Extrato() {
+  useContextualTutorial('extrato');
   const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number; saldo_inicial: number; data_inicio: string }>>([]);
   const [movimentacoesAnteriores, setMovimentacoesAnteriores] = useState<Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }>>([]);
