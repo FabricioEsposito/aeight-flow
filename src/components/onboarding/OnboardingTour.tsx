@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, SkipForward } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, SkipForward, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 import type { Tutorial } from '@/contexts/OnboardingContext';
 
 interface OnboardingTourProps {
@@ -12,6 +13,7 @@ interface OnboardingTourProps {
 
 export function OnboardingTour({ tutorial, onComplete, onSkip }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const { dismissTutorial } = useOnboarding();
   const steps = tutorial.steps;
   const step = steps[currentStep];
   const progressValue = ((currentStep + 1) / steps.length) * 100;
@@ -30,12 +32,15 @@ export function OnboardingTour({ tutorial, onComplete, onSkip }: OnboardingTourP
     }
   }, [currentStep]);
 
+  const handleDismissForever = useCallback(() => {
+    dismissTutorial(tutorial.id);
+    onSkip();
+  }, [dismissTutorial, tutorial.id, onSkip]);
+
   return (
     <>
-      {/* Overlay */}
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9998]" onClick={onSkip} />
 
-      {/* Tour Card */}
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
         <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg animate-in fade-in-0 zoom-in-95">
           {/* Header */}
@@ -64,15 +69,26 @@ export function OnboardingTour({ tutorial, onComplete, onSkip }: OnboardingTourP
 
           {/* Actions */}
           <div className="flex items-center justify-between px-6 pb-5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onSkip}
-              className="text-muted-foreground"
-            >
-              <SkipForward className="w-4 h-4 mr-1.5" />
-              Pular tutorial
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onSkip}
+                className="text-muted-foreground"
+              >
+                <SkipForward className="w-4 h-4 mr-1.5" />
+                Pular
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDismissForever}
+                className="text-muted-foreground"
+              >
+                <EyeOff className="w-4 h-4 mr-1.5" />
+                Não mostrar mais
+              </Button>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
