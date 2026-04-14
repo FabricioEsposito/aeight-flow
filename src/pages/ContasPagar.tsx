@@ -72,6 +72,7 @@ interface CentroCusto {
 }
 
 export default function ContasPagar() {
+  useContextualTutorial('contas-pagar');
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);

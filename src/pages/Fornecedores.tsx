@@ -37,6 +37,7 @@ interface Fornecedor {
 }
 
 export default function Fornecedores() {
+  useContextualTutorial('fornecedores');
   useClearFiltersOnAreaChange('fornecedores');
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);

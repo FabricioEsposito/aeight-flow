@@ -84,6 +84,7 @@ interface CentroCusto {
 }
 
 export default function ContasReceber() {
+  useContextualTutorial('contas-receber');
   const [contas, setContas] = useState<ContaReceber[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);

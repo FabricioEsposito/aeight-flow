@@ -52,6 +52,7 @@ interface Contrato {
 }
 
 export default function Contratos() {
+  useContextualTutorial('contratos-venda');
   const navigate = useNavigate();
   const { toast } = useToast();
   const { exportToExcel } = useExportReport();

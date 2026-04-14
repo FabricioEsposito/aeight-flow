@@ -36,6 +36,7 @@ interface ItemContrato {
 }
 
 export default function NovoContrato() {
+  useContextualTutorial('contratos-venda');
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();

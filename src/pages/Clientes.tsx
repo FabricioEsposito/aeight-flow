@@ -37,6 +37,7 @@ interface Cliente {
 }
 
 export default function Clientes() {
+  useContextualTutorial('clientes');
   useClearFiltersOnAreaChange('clientes');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);

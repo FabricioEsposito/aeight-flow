@@ -61,6 +61,7 @@ interface Faturamento {
 }
 
 export default function ControleFaturamento() {
+  useContextualTutorial('faturamento');
   const [faturamentos, setFaturamentos] = useState<Faturamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useSessionState<string>('faturamento', 'search', '');
