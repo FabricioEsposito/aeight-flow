@@ -643,10 +643,22 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             }
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setChatOpen(true)} className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          Consultar IA
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDespExtraordinaria(!showDespExtraordinaria)}
+            className="gap-2 text-muted-foreground"
+            title={showDespExtraordinaria ? 'Ocultar Despesa Extraordinária' : 'Exibir Despesa Extraordinária'}
+          >
+            {showDespExtraordinaria ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <span className="text-xs">Extraordinária</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setChatOpen(true)} className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Consultar IA
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg overflow-hidden">
