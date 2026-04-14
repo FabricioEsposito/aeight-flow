@@ -99,6 +99,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       let query = supabase
         .from(table)
         .select(selectStr)
+        .neq('status', 'cancelado')
         .range(from, from + PAGE_SIZE - 1);
 
       if (dateRange) {
