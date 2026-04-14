@@ -68,6 +68,12 @@ export default function Tutoriais() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" asChild>
+            <a href="/Tutorial_Sistema_Completo.pdf" download>
+              <Download className="w-4 h-4 mr-1.5" />
+              Baixar PDF
+            </a>
+          </Button>
           <Button variant="outline" size="sm" onClick={reopenChecklist}>
             <ListChecks className="w-4 h-4 mr-1.5" />
             Checklist
