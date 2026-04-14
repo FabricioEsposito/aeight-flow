@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { checklistItems, tutorials } from './tourSteps';
 import { useNavigate } from 'react-router-dom';
-import type { Tutorial } from '@/hooks/useOnboarding';
+import type { Tutorial } from '@/contexts/OnboardingContext';
 
 interface OnboardingChecklistProps {
   onDismiss: () => void;
