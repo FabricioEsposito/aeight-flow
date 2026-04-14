@@ -694,6 +694,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
           {/* Resultado do Exercício */}
           {renderLine('Resultado do Exercício', dreData.resultadoExercicio, true, dreData.resultadoExercicio < 0)}
+
+          {/* Despesa Extraordinária */}
+          {renderLine('Despesa Extraordinária', dreData.despExtraordinaria, false, true, true, 'despExtraordinaria')}
+          {renderDetails('despExtraordinaria', dreData.despExtraordinariaDetalhes)}
         </div>
       </CardContent>
     </Card>
