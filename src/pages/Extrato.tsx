@@ -38,7 +38,7 @@ import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { calcularFluxoCaixa, prepararMovimentacoes } from '@/lib/fluxo-caixa-utils';
 import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCustoRateio';
-
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface LancamentoExtrato {
   id: string;
