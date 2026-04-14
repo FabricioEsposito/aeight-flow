@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 
 const STORAGE_KEY = 'onboarding_progress';
 const CHECKLIST_KEY = 'onboarding_checklist_seen';
+const DISMISSED_KEY = 'onboarding_dismissed_tutorials';
 
 export interface TourStep {
   id: string;
@@ -30,8 +31,13 @@ interface OnboardingContextType {
   activeTour: Tutorial | null;
   showChecklist: boolean;
   completedCount: number;
+  dismissedTutorials: string[];
   completeTutorial: (id: string) => void;
   isTutorialCompleted: (id: string) => boolean;
+  isTutorialDismissed: (id: string) => boolean;
+  dismissTutorial: (id: string) => void;
+  dismissAllTutorials: () => void;
+  restoreDismissedTutorials: () => void;
   startTour: (tutorial: Tutorial) => void;
   endTour: () => void;
   dismissChecklist: () => void;
@@ -53,10 +59,23 @@ const saveProgress = (progress: OnboardingProgress) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
 };
 
+const getDismissed = (): string[] => {
+  try {
+    const stored = localStorage.getItem(DISMISSED_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return [];
+};
+
+const saveDismissed = (ids: string[]) => {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+};
+
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState<OnboardingProgress>(getProgress);
   const [activeTour, setActiveTour] = useState<Tutorial | null>(null);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [dismissedTutorials, setDismissedTutorials] = useState<string[]>(getDismissed);
 
   useEffect(() => {
     const seen = localStorage.getItem(CHECKLIST_KEY);
@@ -77,6 +96,29 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const isTutorialCompleted = useCallback((tutorialId: string) => {
     return progress.completedTutorials.includes(tutorialId);
   }, [progress.completedTutorials]);
+
+  const isTutorialDismissed = useCallback((tutorialId: string) => {
+    return dismissedTutorials.includes(tutorialId);
+  }, [dismissedTutorials]);
+
+  const dismissTutorial = useCallback((tutorialId: string) => {
+    setDismissedTutorials(prev => {
+      const updated = [...new Set([...prev, tutorialId])];
+      saveDismissed(updated);
+      return updated;
+    });
+  }, []);
+
+  const dismissAllTutorials = useCallback(() => {
+    // Import tutorials list dynamically isn't needed, we just set a global flag
+    setDismissedTutorials(['__all__']);
+    saveDismissed(['__all__']);
+  }, []);
+
+  const restoreDismissedTutorials = useCallback(() => {
+    setDismissedTutorials([]);
+    saveDismissed([]);
+  }, []);
 
   const startTour = useCallback((tutorial: Tutorial) => {
     setActiveTour(tutorial);
@@ -100,6 +142,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     const reset: OnboardingProgress = { completedTutorials: [] };
     saveProgress(reset);
     setProgress(reset);
+    setDismissedTutorials([]);
+    saveDismissed([]);
     localStorage.removeItem(CHECKLIST_KEY);
   }, []);
 
@@ -109,8 +153,13 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       activeTour,
       showChecklist,
       completedCount: progress.completedTutorials.length,
+      dismissedTutorials,
       completeTutorial,
       isTutorialCompleted,
+      isTutorialDismissed,
+      dismissTutorial,
+      dismissAllTutorials,
+      restoreDismissedTutorials,
       startTour,
       endTour,
       dismissChecklist,
