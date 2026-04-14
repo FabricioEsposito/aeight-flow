@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Home, Users, FileText, TrendingUp, TrendingDown, BarChart3,
   Receipt, Briefcase, ShoppingCart, CheckCircle2, Play, RotateCcw,
-  GraduationCap, ListChecks, EyeOff, Eye
+  GraduationCap, ListChecks, EyeOff, Eye, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
