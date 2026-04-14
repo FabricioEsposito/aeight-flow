@@ -575,9 +575,9 @@ export function Dashboard() {
 
       setFaturamentoData(faturamentoChartData);
 
-      // Faturamento por Cliente (ordenado do maior para o menor)
+      // Faturamento por Cliente - apenas Receita de Serviços (plano 1.1)
       const faturamentoPorCliente = contasReceber
-        ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago'))
+        ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago') && receitaServicosIds.includes(c.plano_conta_id || ''))
         .reduce((acc: Record<string, { cliente: string; valor: number }>, c) => {
           const clienteId = c.cliente_id || 'sem_cliente';
           const clienteData = c.clientes as any;
