@@ -494,9 +494,9 @@ export function Dashboard() {
 
       const receitaServicosIds = planoContas?.map(pc => pc.id) || [];
 
-      // Calculate stats
+      // Calculate stats - Faturamento considera apenas Receita de Serviços (plano 1.1)
       const faturamento = contasReceber
-        ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago'))
+        ?.filter(c => c.data_competencia && (c.status === 'pendente' || c.status === 'vencido' || c.status === 'pago') && receitaServicosIds.includes(c.plano_conta_id || ''))
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasReceberTotal = contasReceber
