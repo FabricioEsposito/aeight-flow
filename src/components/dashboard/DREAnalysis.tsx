@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles, Eye, EyeOff } from "lucide-react";
 import { DREChatDialog } from "./DREChatDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +57,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [dreData, setDreData] = useState<DREData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // Helper to format "YYYY-MM-DD" string to display format
@@ -642,10 +643,22 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             }
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setChatOpen(true)} className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          Consultar IA
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDespExtraordinaria(!showDespExtraordinaria)}
+            className="gap-2 text-muted-foreground"
+            title={showDespExtraordinaria ? 'Ocultar Despesa Extraordinária' : 'Exibir Despesa Extraordinária'}
+          >
+            {showDespExtraordinaria ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <span className="text-xs">Extraordinária</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setChatOpen(true)} className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Consultar IA
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg overflow-hidden">
@@ -696,8 +709,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {renderLine('Resultado do Exercício', dreData.resultadoExercicio, true, dreData.resultadoExercicio < 0)}
 
           {/* Despesa Extraordinária */}
-          {renderLine('Despesa Extraordinária', dreData.despExtraordinaria, false, true, true, 'despExtraordinaria')}
-          {renderDetails('despExtraordinaria', dreData.despExtraordinariaDetalhes)}
+          {showDespExtraordinaria && (
+            <>
+              {renderLine('Despesa Extraordinária', dreData.despExtraordinaria, false, true, true, 'despExtraordinaria')}
+              {renderDetails('despExtraordinaria', dreData.despExtraordinariaDetalhes)}
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
