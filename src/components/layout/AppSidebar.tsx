@@ -22,7 +22,8 @@ import {
   DollarSign,
   UserCheck,
   Briefcase,
-  Calculator
+  Calculator,
+  GraduationCap
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -100,6 +101,7 @@ const allStandaloneItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Solicitações", url: "/solicitacoes", icon: ClipboardList },
   { title: "Usuários", url: "/usuarios", icon: UserCog, adminOnly: true },
+  { title: "Tutoriais", url: "/tutoriais", icon: GraduationCap },
 ];
 
 interface AppSidebarProps {
