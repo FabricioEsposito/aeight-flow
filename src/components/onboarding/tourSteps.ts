@@ -62,6 +62,41 @@ export const tutorials: Tutorial[] = [
     ],
   },
   {
+    id: 'fornecedores',
+    title: 'Cadastrar Fornecedores',
+    description: 'Aprenda a cadastrar e gerenciar seus fornecedores no sistema.',
+    area: 'Cadastro',
+    icon: 'Users',
+    route: '/fornecedores',
+    steps: [
+      {
+        id: 'fornecedores-1',
+        title: 'Lista de Fornecedores',
+        description: 'Nesta página você visualiza todos os fornecedores cadastrados. Use a barra de busca para encontrar fornecedores por razão social, nome fantasia ou CNPJ/CPF.',
+      },
+      {
+        id: 'fornecedores-2',
+        title: 'Novo Fornecedor',
+        description: 'Clique no botão "Novo Fornecedor" para abrir o formulário. Preencha os dados como razão social, CNPJ/CPF, e-mail e telefone.',
+      },
+      {
+        id: 'fornecedores-3',
+        title: 'Consulta Automática de CNPJ',
+        description: 'Assim como em clientes, ao digitar um CNPJ o sistema preenche automaticamente os dados da empresa.',
+      },
+      {
+        id: 'fornecedores-4',
+        title: 'Dados Bancários',
+        description: 'Cadastre os dados bancários do fornecedor (banco, agência, conta, tipo de conta e tipo de transferência) para facilitar pagamentos e exportações financeiras.',
+      },
+      {
+        id: 'fornecedores-5',
+        title: 'Status do Fornecedor',
+        description: 'Fornecedores podem estar ativos ou inativos. Inativos não aparecem nas seleções de contratos e lançamentos de contas a pagar.',
+      },
+    ],
+  },
+  {
     id: 'contratos',
     title: 'Criar Contratos',
     description: 'Saiba como criar e gerenciar contratos de receita e despesa.',
