@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import type { Tutorial } from '@/hooks/useOnboarding';
+import type { Tutorial } from '@/contexts/OnboardingContext';
 
 interface OnboardingTourProps {
   tutorial: Tutorial;

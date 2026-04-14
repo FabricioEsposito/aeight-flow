@@ -1,4 +1,4 @@
-import type { Tutorial } from '@/hooks/useOnboarding';
+import type { Tutorial } from '@/contexts/OnboardingContext';
 
 export const tutorials: Tutorial[] = [
   {
