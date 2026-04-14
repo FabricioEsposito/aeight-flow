@@ -79,6 +79,7 @@ interface LancamentoExtrato {
 }
 
 export default function Extrato() {
+  useContextualTutorial('extrato');
   const [lancamentos, setLancamentos] = useState<LancamentoExtrato[]>([]);
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string; saldo_atual: number; saldo_inicial: number; data_inicio: string }>>([]);
   const [movimentacoesAnteriores, setMovimentacoesAnteriores] = useState<Array<{ valor: number; conta_bancaria_id: string | null; tipo: 'entrada' | 'saida' }>>([]);

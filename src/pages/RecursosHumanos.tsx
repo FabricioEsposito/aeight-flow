@@ -7,6 +7,7 @@ import { AprovacaoRHPanel } from '@/components/rh/AprovacaoRHPanel';
 import { ConfirmacaoFinanceiroRHDialog } from '@/components/rh/ConfirmacaoFinanceiroRHDialog';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 export default function RecursosHumanos() {
   const [activeTab, setActiveTab] = useSessionState<string>('rh', 'activeTab', 'dashboard');

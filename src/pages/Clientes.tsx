@@ -21,6 +21,7 @@ import { ClienteForm } from '@/components/clientes/ClienteForm';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface Cliente {
   id: string;

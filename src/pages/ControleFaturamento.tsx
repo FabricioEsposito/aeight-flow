@@ -23,6 +23,7 @@ import { EnviarEmailFaturamentoDialog } from '@/components/faturamento/EnviarEma
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface Faturamento {
   id: string;

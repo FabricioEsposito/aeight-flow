@@ -17,6 +17,7 @@ import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRa
 import { TablePagination } from '@/components/ui/table-pagination';
 import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilterSelect';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, format } from 'date-fns';
+import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 
 interface CentroCusto {
   id: string;
