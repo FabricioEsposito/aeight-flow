@@ -1,5 +1,4 @@
 import React from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { tutorials } from '@/components/onboarding/tourSteps';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
