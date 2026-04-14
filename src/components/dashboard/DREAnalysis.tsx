@@ -44,6 +44,8 @@ interface DREData {
   ebit: number;
   provisaoCsllIrrf: number;
   resultadoExercicio: number;
+  despExtraordinaria: number;
+  despExtraordinariaDetalhes: DetalheItem[];
 }
 
 interface DREAnalysisProps {
