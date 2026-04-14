@@ -1,43 +1,55 @@
 
 
-## Plano: Leitura de Código de Barras de Boletos via OCR.space
+## Plano: Guia Interativo para Novos Usuarios
 
 ### Resumo
-Criar uma Edge Function que recebe o arquivo do boleto armazenado no Supabase Storage, envia para a API do OCR.space para extrair a linha digitável, e adicionar essa coluna na planilha de "Exportar Pagamento em Lote" do Extrato.
+Criar um sistema de onboarding interativo dentro do app com tour guiado, tooltips e checklist de progresso para novos usuarios aprenderem a usar o sistema.
 
-### Passo 1 — Configurar a chave de API
-Salvar a chave da API OCR.space como secret `OCR_SPACE_API_KEY` no projeto Supabase, para uso na Edge Function.
+### Componentes
 
-### Passo 2 — Criar Edge Function `ocr-boleto`
-**Arquivo:** `supabase/functions/ocr-boleto/index.ts`
+**1. Pagina de Tutoriais (`/tutoriais`)**
+- Uma pagina acessivel pelo sidebar com lista de tutoriais organizados por area (Cadastro, Financeiro, RH, Comercial, etc.)
+- Cada tutorial e um card clicavel que inicia o tour guiado da respectiva area
+- Barra de progresso mostrando quantos tutoriais o usuario ja completou
+- Marcacao de "concluido" salva no localStorage
 
-- Recebe o `file_path` (caminho do boleto no storage) via POST
-- Baixa o arquivo do bucket privado usando o Service Role Key
-- Envia o arquivo para `https://api.ocr.space/parse/image` com parâmetros:
-  - `isOverlayRequired: false`
-  - `detectOrientation: true`  
-  - `OCREngine: 2` (melhor para documentos)
-- Extrai a linha digitável do texto retornado (regex para padrão de 47 ou 48 dígitos com pontos/espaços)
-- Retorna `{ linha_digitavel: "..." }`
+**2. Componente de Tour Guiado (`OnboardingTour`)**
+- Overlay com highlight no elemento alvo + tooltip explicativo com setas
+- Botoes "Proximo", "Anterior" e "Pular"
+- Steps configurados por area do sistema (ex: "Como cadastrar um cliente", "Como criar um contrato", "Como gerar pagamento em lote")
+- Indicador de progresso (step 2 de 5)
 
-### Passo 3 — Atualizar exportação no Extrato
-**Arquivo:** `src/pages/Extrato.tsx`
+**3. Checklist de Primeiro Acesso**
+- Dialog/modal que aparece na primeira vez que o usuario loga
+- Lista de tarefas iniciais: "Cadastrar primeiro cliente", "Conhecer o dashboard", "Entender contas a receber"
+- Cada item linka para o tour correspondente
+- Pode ser reaberto pela pagina de tutoriais
 
-Na função `handleExportBatchPayment`:
-1. Para cada lançamento pendente que possua `link_boleto`, chamar a Edge Function `ocr-boleto`
-2. Aguardar todas as respostas (em paralelo com `Promise.allSettled`)
-3. Adicionar coluna **"Linha Digitável"** (coluna J) na planilha Excel com o valor extraído
-4. Exibir loading/progresso durante o processamento OCR
-5. Se a leitura falhar para algum boleto, deixar a célula vazia
+**4. Botao de Ajuda no Header**
+- Icone de `HelpCircle` no AppHeader ao lado do tema
+- Abre dropdown com: "Ver tutoriais", "Iniciar tour desta pagina", "Checklist de onboarding"
 
-### Formato Final da Planilha
+### Estrutura dos Tours por Area
 
-| A | B | C | D | E | F | G | H | I | J |
-|---|---|---|---|---|---|---|---|---|---|
-| Banco | Agência | Conta | Tipo Conta | Nome | CPF/CNPJ | Tipo Transf. | Valor | Data Pgto | Linha Digitável |
+| Area | Steps |
+|------|-------|
+| Dashboard | Cards de resumo, graficos, filtros |
+| Cadastro | Criar cliente, fornecedor, contrato |
+| Financeiro | Contas a receber/pagar, extrato, exportar pagamento |
+| RH | Folha de pagamento, beneficios, aprovacoes |
+| Comercial | Dashboard comercial, vendedores, comissoes |
+| Faturamento | Controle, edicao, envio de email |
 
-### Observações
-- Lançamentos sem boleto anexado terão a coluna "Linha Digitável" vazia
-- A API OCR.space tem limite de 25K chamadas/mês no plano gratuito
-- O processamento pode levar alguns segundos por boleto, então será exibido um indicador de carregamento
+### Detalhes Tecnicos
+
+- **Biblioteca**: Implementacao custom usando `position: fixed` overlay com `z-index` alto e calculo de posicao do elemento alvo via `getBoundingClientRect()`
+- **Persistencia**: `localStorage` para salvar progresso dos tutoriais e estado do checklist
+- **Rota**: `/tutoriais` adicionada ao `App.tsx` e ao sidebar
+- **Arquivos novos**:
+  - `src/pages/Tutoriais.tsx` — pagina principal
+  - `src/components/onboarding/OnboardingTour.tsx` — componente do tour
+  - `src/components/onboarding/OnboardingChecklist.tsx` — checklist
+  - `src/components/onboarding/tourSteps.ts` — configuracao dos steps por area
+  - `src/hooks/useOnboarding.ts` — hook para estado do onboarding
+- **Sidebar**: Novo item "Tutoriais" com icone `GraduationCap` no grupo principal
 
