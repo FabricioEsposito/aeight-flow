@@ -44,6 +44,8 @@ interface DREData {
   ebit: number;
   provisaoCsllIrrf: number;
   resultadoExercicio: number;
+  despExtraordinaria: number;
+  despExtraordinariaDetalhes: DetalheItem[];
 }
 
 interface DREAnalysisProps {
@@ -400,6 +402,15 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         'despesa'
       );
 
+      // Processar Despesa Extraordinária (8.1)
+      const despExtraIds = getAccountIds('8.1');
+      const { detalhes: despExtraDetalhes, total: despExtraTotal } = agruparDetalhes(
+        despesas,
+        despExtraIds,
+        planosContas,
+        'despesa'
+      );
+
       // Calcular indicadores
       const margemContribuicao = receitaTotal > 0 ? ((receitaTotal - cmvTotal) / receitaTotal) * 100 : 0;
       const ebtida = receitaTotal - cmvTotal - despAdmTotal;
@@ -429,6 +440,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         ebit,
         provisaoCsllIrrf,
         resultadoExercicio,
+        despExtraordinaria: despExtraTotal,
+        despExtraordinariaDetalhes: despExtraDetalhes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
@@ -681,6 +694,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
           {/* Resultado do Exercício */}
           {renderLine('Resultado do Exercício', dreData.resultadoExercicio, true, dreData.resultadoExercicio < 0)}
+
+          {/* Despesa Extraordinária */}
+          {renderLine('Despesa Extraordinária', dreData.despExtraordinaria, false, true, true, 'despExtraordinaria')}
+          {renderDetails('despExtraordinaria', dreData.despExtraordinariaDetalhes)}
         </div>
       </CardContent>
     </Card>
