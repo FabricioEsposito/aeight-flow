@@ -402,6 +402,15 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         'despesa'
       );
 
+      // Processar Despesa Extraordinária (8.1)
+      const despExtraIds = getAccountIds('8.1');
+      const { detalhes: despExtraDetalhes, total: despExtraTotal } = agruparDetalhes(
+        despesas,
+        despExtraIds,
+        planosContas,
+        'despesa'
+      );
+
       // Calcular indicadores
       const margemContribuicao = receitaTotal > 0 ? ((receitaTotal - cmvTotal) / receitaTotal) * 100 : 0;
       const ebtida = receitaTotal - cmvTotal - despAdmTotal;
@@ -431,6 +440,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         ebit,
         provisaoCsllIrrf,
         resultadoExercicio,
+        despExtraordinaria: despExtraTotal,
+        despExtraordinariaDetalhes: despExtraDetalhes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
