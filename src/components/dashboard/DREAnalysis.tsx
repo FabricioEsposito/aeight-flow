@@ -57,6 +57,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [dreData, setDreData] = useState<DREData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // Helper to format "YYYY-MM-DD" string to display format
