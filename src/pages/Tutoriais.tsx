@@ -11,6 +11,7 @@ import {
   GraduationCap, ListChecks, EyeOff, Eye, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import tutorialPdfUrl from '@/assets/Tutorial_Sistema_Completo.pdf?url';
 
 const iconMap: Record<string, React.ElementType> = {
   Home, Users, FileText, TrendingUp, TrendingDown, BarChart3,
@@ -70,8 +71,9 @@ export default function Tutoriais() {
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => {
             const link = document.createElement('a');
-            link.href = '/Tutorial_Sistema_Completo.pdf';
+            link.href = tutorialPdfUrl;
             link.download = 'Tutorial_Sistema_Completo.pdf';
+            link.rel = 'noopener';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
