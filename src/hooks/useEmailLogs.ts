@@ -65,9 +65,10 @@ export function useEmailLogs() {
     }
   };
 
-  // OTIMIZAÇÃO: Agora sempre retorna 1 (1 e-mail por dia por cliente)
-  const getMaxEmailsPerDay = (_diasAtraso: number): number => {
-    return 1; // Sempre 1 e-mail por dia
+  // Máximo de e-mails por dia: nível 3 (8+ dias) = 2, demais = 1
+  const getMaxEmailsPerDay = (diasAtraso: number): number => {
+    if (diasAtraso >= 8) return 2; // Congelamento: 11h e 17h
+    return 1; // Demais: apenas 11h
   };
 
   // Buscar total de e-mails enviados hoje

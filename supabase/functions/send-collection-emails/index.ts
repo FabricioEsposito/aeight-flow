@@ -155,13 +155,14 @@ function isWithinSendWindow(diasAtraso: number): boolean {
   return false;
 }
 
-// Get which send slot we're in (simplified: only slot 1 now)
+// Get which send slot we're in
 function getCurrentSendSlot(): number {
   const now = new Date();
   const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const currentHour = brasilTime.getHours();
   
-  if (currentHour >= 11) return 1;
+  if (currentHour >= 17) return 2; // Segundo slot (17h) - apenas nível 3
+  if (currentHour >= 11) return 1; // Primeiro slot (11h) - todos os níveis
   return 0;
 }
 
