@@ -95,14 +95,20 @@ function getEmailTemplate(diasAtraso: number): EmailTemplate {
   }
 }
 
-// OTIMIZAÇÃO: Agora só enviamos 1x por dia às 11h
-function getAllowedSendTimes(_diasAtraso: number): number[] {
-  return [11]; // Apenas 11h para todos os níveis
+// Horários de envio por nível de atraso
+function getAllowedSendTimes(diasAtraso: number): number[] {
+  if (diasAtraso >= 8) {
+    return [11, 17]; // Nível 3 (congelamento): 11h e 17h
+  }
+  return [11]; // Níveis 1-2: apenas 11h
 }
 
-// OTIMIZAÇÃO: Máximo de 1 e-mail por cliente por dia
-function getMaxEmailsPerDay(_diasAtraso: number): number {
-  return 1; // Sempre 1 e-mail por dia
+// Máximo de e-mails por cliente por dia
+function getMaxEmailsPerDay(diasAtraso: number): number {
+  if (diasAtraso >= 8) {
+    return 2; // Nível 3: 2 e-mails por dia (11h e 17h)
+  }
+  return 1; // Níveis 1-2: 1 e-mail por dia
 }
 
 // AJUSTADO: financeiro@aeight.global SEMPRE em cópia, sócios apenas 8+ dias
@@ -149,13 +155,14 @@ function isWithinSendWindow(diasAtraso: number): boolean {
   return false;
 }
 
-// Get which send slot we're in (simplified: only slot 1 now)
+// Get which send slot we're in
 function getCurrentSendSlot(): number {
   const now = new Date();
   const brasilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const currentHour = brasilTime.getHours();
   
-  if (currentHour >= 11) return 1;
+  if (currentHour >= 17) return 2; // Segundo slot (17h) - apenas nível 3
+  if (currentHour >= 11) return 1; // Primeiro slot (11h) - todos os níveis
   return 0;
 }
 
