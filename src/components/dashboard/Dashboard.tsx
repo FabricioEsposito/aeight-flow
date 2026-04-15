@@ -596,32 +596,102 @@ export function Dashboard() {
       setFaturamentoClienteData(faturamentoClienteChartData);
 
       // Buscar contas bancárias para cálculo de fluxo de caixa
-      let contasBancariasQuery = supabase
+      const { data: contasBancariasData } = await supabase
         .from('contas_bancarias')
         .select('id, saldo_atual, saldo_inicial, data_inicio')
         .eq('status', 'ativo');
 
-      const { data: contasBancariasData } = await contasBancariasQuery;
+      // Helper para buscar todas as páginas (evitar limite de 1000 linhas)
+      const fetchAllFluxoPages = async <T,>(
+        queryFn: (from: number, to: number) => any
+      ): Promise<T[]> => {
+        const PAGE_SIZE = 1000;
+        let allData: T[] = [];
+        let from = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data } = await queryFn(from, from + PAGE_SIZE - 1);
+          if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            hasMore = data.length === PAGE_SIZE;
+            from += PAGE_SIZE;
+          } else {
+            hasMore = false;
+          }
+        }
+        return allData;
+      };
 
-      // Buscar movimentações PAGAS anteriores ao período
+      // Buscar movimentações PAGAS anteriores ao período + pendentes anteriores (igual ao Extrato)
       let movimentacoesAnteriores: Array<{ valor: number; tipo: 'entrada' | 'saida'; conta_bancaria_id: string | null }> = [];
+      let pendentesAnterioresFluxo: Array<{ valor: number; data_movimento: string; tipo: 'entrada' | 'saida'; status: 'pendente'; conta_bancaria_id: string | null }> = [];
 
       if (dateRange) {
-        const { data: entradasAnteriores } = await supabase
-          .from('contas_receber')
-          .select('valor, conta_bancaria_id')
-          .eq('status', 'pago')
-          .lt('data_recebimento', dateRange.from);
+        const todayStr = formatDateLocal(new Date());
 
-        const { data: saidasAnteriores } = await supabase
-          .from('contas_pagar')
-          .select('valor, conta_bancaria_id')
-          .eq('status', 'pago')
-          .lt('data_pagamento', dateRange.from);
+        const [entradasAnteriores, saidasAnteriores, pendentesReceberAnt, pendentesPagarAnt] = await Promise.all([
+          fetchAllFluxoPages<{ valor: number; conta_bancaria_id: string | null }>((from, to) =>
+            supabase
+              .from('contas_receber')
+              .select('valor, conta_bancaria_id')
+              .eq('status', 'pago')
+              .lt('data_recebimento', dateRange.from)
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllFluxoPages<{ valor: number; conta_bancaria_id: string | null }>((from, to) =>
+            supabase
+              .from('contas_pagar')
+              .select('valor, conta_bancaria_id')
+              .eq('status', 'pago')
+              .lt('data_pagamento', dateRange.from)
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllFluxoPages<{ valor: number; data_vencimento: string; conta_bancaria_id: string | null }>((from, to) =>
+            supabase
+              .from('contas_receber')
+              .select('valor, data_vencimento, conta_bancaria_id')
+              .neq('status', 'pago')
+              .neq('status', 'cancelado')
+              .gte('data_vencimento', todayStr)
+              .lt('data_vencimento', dateRange.from)
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllFluxoPages<{ valor: number; data_vencimento: string; conta_bancaria_id: string | null }>((from, to) =>
+            supabase
+              .from('contas_pagar')
+              .select('valor, data_vencimento, conta_bancaria_id')
+              .neq('status', 'pago')
+              .neq('status', 'cancelado')
+              .gte('data_vencimento', todayStr)
+              .lt('data_vencimento', dateRange.from)
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+        ]);
 
         movimentacoesAnteriores = [
-          ...(entradasAnteriores || []).map(e => ({ valor: Number(e.valor), tipo: 'entrada' as const, conta_bancaria_id: e.conta_bancaria_id })),
-          ...(saidasAnteriores || []).map(s => ({ valor: Number(s.valor), tipo: 'saida' as const, conta_bancaria_id: s.conta_bancaria_id }))
+          ...entradasAnteriores.map(e => ({ valor: Number(e.valor), tipo: 'entrada' as const, conta_bancaria_id: e.conta_bancaria_id })),
+          ...saidasAnteriores.map(s => ({ valor: Number(s.valor), tipo: 'saida' as const, conta_bancaria_id: s.conta_bancaria_id }))
+        ];
+
+        pendentesAnterioresFluxo = [
+          ...pendentesReceberAnt.map(e => ({
+            valor: Number(e.valor),
+            data_movimento: e.data_vencimento,
+            tipo: 'entrada' as const,
+            status: 'pendente' as const,
+            conta_bancaria_id: e.conta_bancaria_id,
+          })),
+          ...pendentesPagarAnt.map(s => ({
+            valor: Number(s.valor),
+            data_movimento: s.data_vencimento,
+            tipo: 'saida' as const,
+            status: 'pendente' as const,
+            conta_bancaria_id: s.conta_bancaria_id,
+          })),
         ];
       }
 
@@ -643,7 +713,7 @@ export function Dashboard() {
         }))
       );
 
-      // Calcular fluxo de caixa usando a função unificada
+      // Calcular fluxo de caixa usando a função unificada (igual ao Extrato)
       let fluxoResult = null;
       if (dateRange) {
         fluxoResult = calcularFluxoCaixa({
@@ -652,11 +722,12 @@ export function Dashboard() {
           contasBancarias: (contasBancariasData || []).map(c => ({
             id: c.id,
             saldo_inicial: Number(c.saldo_inicial),
-            data_inicio: ''
+            data_inicio: c.data_inicio || ''
           })),
           contasBancariasIds: selectedContaBancaria,
           movimentacoesAnteriores,
-          movimentacoesNoPeriodo
+          movimentacoesNoPeriodo,
+          pendentesAnteriores: pendentesAnterioresFluxo,
         });
       }
 
