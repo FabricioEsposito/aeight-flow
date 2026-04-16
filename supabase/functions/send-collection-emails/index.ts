@@ -48,6 +48,16 @@ interface EmailTemplate {
   freezeWarningColor: string;
 }
 
+interface ResendSendResponse {
+  data?: {
+    id?: string;
+  } | null;
+  error?: {
+    message?: string;
+    name?: string;
+  } | null;
+}
+
 // Get email template based on days overdue
 function getEmailTemplate(diasAtraso: number): EmailTemplate {
   if (diasAtraso <= 5) {
@@ -176,6 +186,19 @@ function formatCurrency(value: number): string {
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
   return date.toLocaleDateString("pt-BR");
+}
+
+function assertResendEmailSent(response: ResendSendResponse, context: string): string {
+  if (response?.error) {
+    throw new Error(`${context}: ${response.error.message || response.error.name || "Erro retornado pelo Resend"}`);
+  }
+
+  const emailId = response?.data?.id;
+  if (!emailId) {
+    throw new Error(`${context}: Resend não confirmou o envio do e-mail`);
+  }
+
+  return emailId;
 }
 
 // Build dynamic email subject
@@ -498,8 +521,10 @@ serve(async (req: Request): Promise<Response> => {
             html: htmlContent,
           });
 
+          const emailId = assertResendEmailSent(emailResponse as ResendSendResponse, `Teste ${level.label}`);
+
           console.log(`Test email sent for ${level.label}:`, emailResponse);
-          testResults.push({ level: level.label, success: true, id: emailResponse.data?.id });
+          testResults.push({ level: level.label, success: true, id: emailId });
         } catch (error: any) {
           console.error(`Error sending test email for ${level.label}:`, error);
           testResults.push({ level: level.label, success: false, error: error.message });
@@ -797,8 +822,12 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const emailResponse = await resend.emails.send(emailPayload);
+        const emailId = assertResendEmailSent(
+          emailResponse as ResendSendResponse,
+          `Falha no envio para ${clienteData.cliente_nome}`
+        );
 
-        console.log(`Email sent to ${clienteData.cliente_nome} (TO: ${primaryEmail}, CC: ${allCcRecipients.join(", ")}):`, emailResponse);
+        console.log(`Email sent to ${clienteData.cliente_nome} (id: ${emailId}, TO: ${primaryEmail}, CC: ${allCcRecipients.join(", ")}):`, emailResponse);
 
         // Log apenas 1 registro por cliente (não mais por cada email)
         const { error: logError } = await supabase.from("email_logs").insert({
