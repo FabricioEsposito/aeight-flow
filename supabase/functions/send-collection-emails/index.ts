@@ -58,6 +58,11 @@ interface ResendSendResponse {
   } | null;
 }
 
+interface EmailAttachment {
+  filename: string;
+  path: string;
+}
+
 // Get email template based on days overdue
 function getEmailTemplate(diasAtraso: number): EmailTemplate {
   if (diasAtraso <= 5) {
@@ -214,38 +219,104 @@ function buildEmailSubject(
   return `${template.urgencyTag} ${cliente.cliente_nome} - NF ${nfDisplay} - Aviso de Cobrança - ${formatCurrency(cliente.total_vencido)} - ${ccDisplay}`;
 }
 
-// Build attachments from parcela links
-function buildAttachments(parcelas: ParcelaVencida[]): Array<{ path: string; filename: string }> {
-  const attachments: Array<{ path: string; filename: string }> = [];
-  const addedUrls = new Set<string>();
-  
-  for (const parcela of parcelas) {
-    // Add NF if available and not already added
-    if (parcela.link_nf && !addedUrls.has(parcela.link_nf)) {
-      const nfFilename = parcela.numero_nf 
-        ? `NF_${parcela.numero_nf}.pdf`
-        : `NF_${formatDate(parcela.data_vencimento).replace(/\//g, '-')}.pdf`;
-      
-      attachments.push({
-        path: parcela.link_nf,
-        filename: nfFilename,
-      });
-      addedUrls.add(parcela.link_nf);
+function extractStoragePathFromUrl(url: string, bucket: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const pathname = decodeURIComponent(urlObj.pathname);
+    const patterns = [
+      `/storage/v1/object/public/${bucket}/`,
+      `/storage/v1/object/sign/${bucket}/`,
+      `/storage/v1/object/authenticated/${bucket}/`,
+      `/storage/v1/object/${bucket}/`,
+    ];
+
+    for (const pattern of patterns) {
+      const idx = pathname.indexOf(pattern);
+      if (idx !== -1) {
+        return pathname.substring(idx + pattern.length);
+      }
     }
-    
-    // Add Boleto if available and not already added
-    if (parcela.link_boleto && !addedUrls.has(parcela.link_boleto)) {
-      const boletoFilename = `Boleto_${formatDate(parcela.data_vencimento).replace(/\//g, '-')}.pdf`;
-      
-      attachments.push({
-        path: parcela.link_boleto,
-        filename: boletoFilename,
-      });
-      addedUrls.add(parcela.link_boleto);
-    }
+
+    return null;
+  } catch {
+    return null;
   }
-  
-  return attachments;
+}
+
+async function createSignedAttachmentUrl(
+  supabase: any,
+  url: string,
+  bucket: string,
+): Promise<string | null> {
+  const storagePath = extractStoragePathFromUrl(url, bucket);
+
+  if (!storagePath) {
+    if (/^https?:\/\//i.test(url)) {
+      return url;
+    }
+
+    console.error(`[COLLECTION-EMAIL] Could not extract storage path from URL: ${url}`);
+    return null;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(storagePath, 3600);
+
+  if (error || !data?.signedUrl) {
+    console.error(`[COLLECTION-EMAIL] Error creating signed URL for ${storagePath}:`, error);
+    return null;
+  }
+
+  return data.signedUrl;
+}
+
+// Build attachments from parcela links using signed URLs for private storage files
+async function buildAttachments(parcelas: ParcelaVencida[], supabase: any): Promise<EmailAttachment[]> {
+  const attachmentCandidates = parcelas.flatMap((parcela) => {
+    const dueDateLabel = formatDate(parcela.data_vencimento).replace(/\//g, '-');
+    const candidates: Array<{ filename: string; sourceUrl: string; uniqueKey: string }> = [];
+
+    if (parcela.link_nf) {
+      const storagePath = extractStoragePathFromUrl(parcela.link_nf, 'faturamento-docs') ?? parcela.link_nf;
+      candidates.push({
+        sourceUrl: parcela.link_nf,
+        uniqueKey: `nf:${storagePath}`,
+        filename: parcela.numero_nf
+          ? `NF_${parcela.numero_nf}.pdf`
+          : `NF_${dueDateLabel}.pdf`,
+      });
+    }
+
+    if (parcela.link_boleto) {
+      const storagePath = extractStoragePathFromUrl(parcela.link_boleto, 'faturamento-docs') ?? parcela.link_boleto;
+      candidates.push({
+        sourceUrl: parcela.link_boleto,
+        uniqueKey: `boleto:${storagePath}`,
+        filename: `Boleto_${dueDateLabel}.pdf`,
+      });
+    }
+
+    return candidates;
+  });
+
+  const uniqueCandidates = attachmentCandidates.filter((candidate, index, array) =>
+    array.findIndex((item) => item.uniqueKey === candidate.uniqueKey) === index,
+  );
+
+  const resolvedAttachments = await Promise.all(
+    uniqueCandidates.map(async (candidate) => {
+      const signedUrl = await createSignedAttachmentUrl(supabase, candidate.sourceUrl, 'faturamento-docs');
+      if (!signedUrl) return null;
+
+      return {
+        filename: candidate.filename,
+        path: signedUrl,
+      } satisfies EmailAttachment;
+    }),
+  );
+
+  return resolvedAttachments.filter((attachment): attachment is EmailAttachment => Boolean(attachment));
 }
 
 function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): string {
@@ -788,7 +859,7 @@ serve(async (req: Request): Promise<Response> => {
       const ccRecipients = getCcRecipients(diasAtraso);
       
       // Build attachments from parcelas
-      const attachments = buildAttachments(clienteData.parcelas);
+      const attachments = await buildAttachments(clienteData.parcelas, supabase);
 
       // OTIMIZAÇÃO: Consolidar e-mails - primeiro como TO, resto como CC do cliente
       const primaryEmail = clienteData.emails[0];
