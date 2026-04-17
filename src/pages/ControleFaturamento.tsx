@@ -24,6 +24,7 @@ import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilt
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useContextualTutorial } from '@/hooks/useContextualTutorial';
+import * as XLSX from 'xlsx';
 
 interface Faturamento {
   id: string;
