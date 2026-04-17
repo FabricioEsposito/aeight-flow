@@ -35,6 +35,13 @@ interface Faturamento {
   cliente_nome_fantasia: string | null;
   cliente_cnpj: string;
   cliente_emails?: string[];
+  cliente_endereco?: string | null;
+  cliente_numero?: string | null;
+  cliente_complemento?: string | null;
+  cliente_bairro?: string | null;
+  cliente_cidade?: string | null;
+  cliente_uf?: string | null;
+  cliente_cep?: string | null;
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
   link_nf: string | null;
