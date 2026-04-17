@@ -150,7 +150,7 @@ export default function ControleFaturamento() {
         .from('contas_receber')
         .select(`
           *,
-          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf, email),
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf, email, endereco, numero, complemento, bairro, cidade, uf, cep),
           parcelas_contrato:parcela_id (
             contrato_id,
             contratos:contrato_id (
