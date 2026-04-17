@@ -24,6 +24,7 @@ import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilt
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useContextualTutorial } from '@/hooks/useContextualTutorial';
+import * as XLSX from 'xlsx';
 
 interface Faturamento {
   id: string;
@@ -34,6 +35,13 @@ interface Faturamento {
   cliente_nome_fantasia: string | null;
   cliente_cnpj: string;
   cliente_emails?: string[];
+  cliente_endereco?: string | null;
+  cliente_numero?: string | null;
+  cliente_complemento?: string | null;
+  cliente_bairro?: string | null;
+  cliente_cidade?: string | null;
+  cliente_uf?: string | null;
+  cliente_cep?: string | null;
   servicos_detalhes: Array<{ codigo: string; nome: string }>;
   numero_nf: string | null;
   link_nf: string | null;
@@ -142,7 +150,7 @@ export default function ControleFaturamento() {
         .from('contas_receber')
         .select(`
           *,
-          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf, email),
+          clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf, email, endereco, numero, complemento, bairro, cidade, uf, cep),
           parcelas_contrato:parcela_id (
             contrato_id,
             contratos:contrato_id (
@@ -268,6 +276,13 @@ export default function ControleFaturamento() {
           cliente_nome_fantasia: item.clientes?.nome_fantasia || null,
           cliente_cnpj: item.clientes?.cnpj_cpf || 'N/A',
           cliente_emails: item.clientes?.email || [],
+          cliente_endereco: item.clientes?.endereco || null,
+          cliente_numero: item.clientes?.numero || null,
+          cliente_complemento: item.clientes?.complemento || null,
+          cliente_bairro: item.clientes?.bairro || null,
+          cliente_cidade: item.clientes?.cidade || null,
+          cliente_uf: item.clientes?.uf || null,
+          cliente_cep: item.clientes?.cep || null,
           servicos_detalhes: servicosDetalhes,
           numero_nf: item.numero_nf,
           link_nf: item.link_nf,
@@ -503,6 +518,78 @@ export default function ControleFaturamento() {
     });
   };
 
+  const handleExportBoletosLote = () => {
+    // Filtra somente registros com CNPJ e nº NF (exigência do banco)
+    const validos = filteredFaturamentos.filter(f => !!f.cliente_cnpj && f.cliente_cnpj !== 'N/A' && !!f.numero_nf);
+    const skipped = filteredFaturamentos.length - validos.length;
+
+    if (validos.length === 0) {
+      toast({
+        title: 'Nenhum registro válido',
+        description: 'Não há lançamentos com CNPJ e Nº NF preenchidos para exportar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const formatBRL = (v: number) =>
+      v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatDateBR = (d: string) => {
+      const dt = new Date(d + 'T00:00:00');
+      return format(dt, 'dd/MM/yyyy');
+    };
+    const onlyDigits = (v?: string | null) => (v ? v.replace(/\D/g, '') : '');
+
+    const rows = validos.map((f) => ({
+      'CNPJ ou CPF': onlyDigits(f.cliente_cnpj),
+      'Nome / Razao Social': f.cliente_razao_social || '',
+      'Telefone com DDD': '',
+      'Email': '',
+      'Notificação': 'SemNotificacao',
+      'CEP': onlyDigits(f.cliente_cep),
+      'Endereço': f.cliente_endereco || '',
+      'Número': f.cliente_numero || '',
+      'Complemento': f.cliente_complemento || '',
+      'Bairro': f.cliente_bairro || '',
+      'Cidade': f.cliente_cidade || '',
+      'Estado': f.cliente_uf || '',
+      'Seu número': f.numero_nf || '',
+      'Valor do boleto (R$)': formatBRL(f.valor_liquido),
+      'Vencimento': formatDateBR(f.data_vencimento),
+      'Prazo para cancelamento': '90',
+      'Prazo para negativação': '0',
+      'Instruções': 'APÓS O VENCIMENTO COBRAR MULTA DE 10,00% APÓS O VENCIMENTO COBRAR JUROS DE 10.00%',
+      'Tipo de juros': 'Porcentagem por mês',
+      'Taxa de juros': '1,00',
+      'Tipo de multa': 'Porcentagem',
+      'Taxa da multa': '10,00',
+      'Tipo de desconto': 'SemDesconto',
+      'Taxa de desconto': '0,00',
+      'Data limite de desconto': '',
+    }));
+
+    const headers = [
+      'CNPJ ou CPF', 'Nome / Razao Social', 'Telefone com DDD', 'Email', 'Notificação',
+      'CEP', 'Endereço', 'Número', 'Complemento', 'Bairro', 'Cidade', 'Estado',
+      'Seu número', 'Valor do boleto (R$)', 'Vencimento', 'Prazo para cancelamento',
+      'Prazo para negativação', 'Instruções', 'Tipo de juros', 'Taxa de juros',
+      'Tipo de multa', 'Taxa da multa', 'Tipo de desconto', 'Taxa de desconto',
+      'Data limite de desconto',
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Boletos');
+    XLSX.writeFile(wb, `boletos_lote_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+    toast({
+      title: 'Exportação concluída',
+      description: skipped > 0
+        ? `${validos.length} boleto(s) exportado(s). ${skipped} ignorado(s) por falta de CNPJ ou Nº NF.`
+        : `${validos.length} boleto(s) exportado(s) com sucesso.`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -526,10 +613,23 @@ export default function ControleFaturamento() {
               <Badge variant="secondary" className="ml-1">{selectedIds.size}</Badge>
             </Button>
           )}
-          <Button variant="outline" onClick={handleExportExcel}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar Excel
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Excel
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportExcel}>
+                Exportar Excel (Detalhado)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportBoletosLote}>
+                Exportar Boletos em Lote (Banco)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
