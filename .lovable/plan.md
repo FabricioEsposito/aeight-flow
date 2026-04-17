@@ -1,55 +1,65 @@
 
 
-## Plano: Guia Interativo para Novos Usuarios
+## Goal
+Add a new export option in **Controle de Faturamento** that generates an Excel file in the exact format required by the user's bank for batch boleto issuance.
 
-### Resumo
-Criar um sistema de onboarding interativo dentro do app com tour guiado, tooltips e checklist de progresso para novos usuarios aprenderem a usar o sistema.
+## Approach
 
-### Componentes
+**Split the existing "Exportar Excel" button into a dropdown** with two options:
+1. **Exportar Excel (Detalhado)** — current report (unchanged)
+2. **Exportar Boletos em Lote (Banco)** — new format
 
-**1. Pagina de Tutoriais (`/tutoriais`)**
-- Uma pagina acessivel pelo sidebar com lista de tutoriais organizados por area (Cadastro, Financeiro, RH, Comercial, etc.)
-- Cada tutorial e um card clicavel que inicia o tour guiado da respectiva area
-- Barra de progresso mostrando quantos tutoriais o usuario ja completou
-- Marcacao de "concluido" salva no localStorage
+The new export will:
+- Fetch additional client address fields (`endereco`, `numero`, `complemento`, `bairro`, `cidade`, `uf`, `cep`) which aren't currently loaded into the `Faturamento` interface
+- Build a worksheet with the **exact 25 columns** specified by the user
+- Apply the fixed values per spec
 
-**2. Componente de Tour Guiado (`OnboardingTour`)**
-- Overlay com highlight no elemento alvo + tooltip explicativo com setas
-- Botoes "Proximo", "Anterior" e "Pular"
-- Steps configurados por area do sistema (ex: "Como cadastrar um cliente", "Como criar um contrato", "Como gerar pagamento em lote")
-- Indicador de progresso (step 2 de 5)
+## New Excel column mapping
 
-**3. Checklist de Primeiro Acesso**
-- Dialog/modal que aparece na primeira vez que o usuario loga
-- Lista de tarefas iniciais: "Cadastrar primeiro cliente", "Conhecer o dashboard", "Entender contas a receber"
-- Cada item linka para o tour correspondente
-- Pode ser reaberto pela pagina de tutoriais
+| # | Column | Source / Value |
+|---|---|---|
+| 1 | CNPJ ou CPF | `clientes.cnpj_cpf` (digits only) |
+| 2 | Nome / Razao Social | `clientes.razao_social` |
+| 3 | Telefone com DDD | (vazio) |
+| 4 | Email | (vazio) |
+| 5 | Notificação | `SemNotificacao` |
+| 6 | CEP | `clientes.cep` (digits only) |
+| 7 | Endereço | `clientes.endereco` |
+| 8 | Número | `clientes.numero` |
+| 9 | Complemento | `clientes.complemento` |
+| 10 | Bairro | `clientes.bairro` |
+| 11 | Cidade | `clientes.cidade` |
+| 12 | Estado | `clientes.uf` |
+| 13 | Seu número | `numero_nf` |
+| 14 | Valor do boleto (R$) | `valor_liquido` (formatted `1.457,15`) |
+| 15 | Vencimento | `data_vencimento` (DD/MM/YYYY) |
+| 16 | Prazo para cancelamento | `90` |
+| 17 | Prazo para negativação | `0` |
+| 18 | Instruções | `APÓS O VENCIMENTO COBRAR MULTA DE 10,00% APÓS O VENCIMENTO COBRAR JUROS DE 10.00%` |
+| 19 | Tipo de juros | `Porcentagem por mês` |
+| 20 | Taxa de juros | `1,00` |
+| 21 | Tipo de multa | `Porcentagem` |
+| 22 | Taxa da multa | `10,00` |
+| 23 | Tipo de desconto | `SemDesconto` |
+| 24 | Taxa de desconto | `0,00` |
+| 25 | Data limite de desconto | (vazio) |
 
-**4. Botao de Ajuda no Header**
-- Icone de `HelpCircle` no AppHeader ao lado do tema
-- Abre dropdown com: "Ver tutoriais", "Iniciar tour desta pagina", "Checklist de onboarding"
+> Note on item 20: the user did not specify a juros rate. I'll use **1,00** matching the example template — this can be adjusted later if needed.
 
-### Estrutura dos Tours por Area
+## Technical changes
 
-| Area | Steps |
-|------|-------|
-| Dashboard | Cards de resumo, graficos, filtros |
-| Cadastro | Criar cliente, fornecedor, contrato |
-| Financeiro | Contas a receber/pagar, extrato, exportar pagamento |
-| RH | Folha de pagamento, beneficios, aprovacoes |
-| Comercial | Dashboard comercial, vendedores, comissoes |
-| Faturamento | Controle, edicao, envio de email |
+**File: `src/pages/ControleFaturamento.tsx`**
+1. Extend the `Faturamento` interface and the Supabase query (`clientes:cliente_id` select) to include `endereco, numero, complemento, bairro, cidade, uf, cep`.
+2. Replace the single `Exportar Excel` button with a `DropdownMenu` containing both export options.
+3. Add a new `handleExportBoletosLote()` function that:
+   - Uses respect to the **current filters** (date range, status, centro de custo, search) — exporting only `filteredFaturamentos`
+   - Builds raw worksheet via `XLSX` directly (since `useExportReport` formats values inconsistently for this bank-required layout — strings must be raw, currency with comma decimal, etc.)
+   - Generates filename `boletos_lote_YYYY-MM-DD.xls`
 
-### Detalhes Tecnicos
+**Filtering for valid records:** Only include rows that have a `cliente_cnpj` and `numero_nf` (otherwise the bank import will reject them). A toast will warn if any rows are skipped.
 
-- **Biblioteca**: Implementacao custom usando `position: fixed` overlay com `z-index` alto e calculo de posicao do elemento alvo via `getBoundingClientRect()`
-- **Persistencia**: `localStorage` para salvar progresso dos tutoriais e estado do checklist
-- **Rota**: `/tutoriais` adicionada ao `App.tsx` e ao sidebar
-- **Arquivos novos**:
-  - `src/pages/Tutoriais.tsx` — pagina principal
-  - `src/components/onboarding/OnboardingTour.tsx` — componente do tour
-  - `src/components/onboarding/OnboardingChecklist.tsx` — checklist
-  - `src/components/onboarding/tourSteps.ts` — configuracao dos steps por area
-  - `src/hooks/useOnboarding.ts` — hook para estado do onboarding
-- **Sidebar**: Novo item "Tutoriais" com icone `GraduationCap` no grupo principal
+## Out of scope
+- No DB schema changes
+- No changes to other export flows
+- The existing detailed Excel export remains untouched
 
