@@ -518,6 +518,78 @@ export default function ControleFaturamento() {
     });
   };
 
+  const handleExportBoletosLote = () => {
+    // Filtra somente registros com CNPJ e nº NF (exigência do banco)
+    const validos = filteredFaturamentos.filter(f => !!f.cliente_cnpj && f.cliente_cnpj !== 'N/A' && !!f.numero_nf);
+    const skipped = filteredFaturamentos.length - validos.length;
+
+    if (validos.length === 0) {
+      toast({
+        title: 'Nenhum registro válido',
+        description: 'Não há lançamentos com CNPJ e Nº NF preenchidos para exportar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const formatBRL = (v: number) =>
+      v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatDateBR = (d: string) => {
+      const dt = new Date(d + 'T00:00:00');
+      return format(dt, 'dd/MM/yyyy');
+    };
+    const onlyDigits = (v?: string | null) => (v ? v.replace(/\D/g, '') : '');
+
+    const rows = validos.map((f) => ({
+      'CNPJ ou CPF': onlyDigits(f.cliente_cnpj),
+      'Nome / Razao Social': f.cliente_razao_social || '',
+      'Telefone com DDD': '',
+      'Email': '',
+      'Notificação': 'SemNotificacao',
+      'CEP': onlyDigits(f.cliente_cep),
+      'Endereço': f.cliente_endereco || '',
+      'Número': f.cliente_numero || '',
+      'Complemento': f.cliente_complemento || '',
+      'Bairro': f.cliente_bairro || '',
+      'Cidade': f.cliente_cidade || '',
+      'Estado': f.cliente_uf || '',
+      'Seu número': f.numero_nf || '',
+      'Valor do boleto (R$)': formatBRL(f.valor_liquido),
+      'Vencimento': formatDateBR(f.data_vencimento),
+      'Prazo para cancelamento': '90',
+      'Prazo para negativação': '0',
+      'Instruções': 'APÓS O VENCIMENTO COBRAR MULTA DE 10,00% APÓS O VENCIMENTO COBRAR JUROS DE 10.00%',
+      'Tipo de juros': 'Porcentagem por mês',
+      'Taxa de juros': '1,00',
+      'Tipo de multa': 'Porcentagem',
+      'Taxa da multa': '10,00',
+      'Tipo de desconto': 'SemDesconto',
+      'Taxa de desconto': '0,00',
+      'Data limite de desconto': '',
+    }));
+
+    const headers = [
+      'CNPJ ou CPF', 'Nome / Razao Social', 'Telefone com DDD', 'Email', 'Notificação',
+      'CEP', 'Endereço', 'Número', 'Complemento', 'Bairro', 'Cidade', 'Estado',
+      'Seu número', 'Valor do boleto (R$)', 'Vencimento', 'Prazo para cancelamento',
+      'Prazo para negativação', 'Instruções', 'Tipo de juros', 'Taxa de juros',
+      'Tipo de multa', 'Taxa da multa', 'Tipo de desconto', 'Taxa de desconto',
+      'Data limite de desconto',
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Boletos');
+    XLSX.writeFile(wb, `boletos_lote_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+    toast({
+      title: 'Exportação concluída',
+      description: skipped > 0
+        ? `${validos.length} boleto(s) exportado(s). ${skipped} ignorado(s) por falta de CNPJ ou Nº NF.`
+        : `${validos.length} boleto(s) exportado(s) com sucesso.`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
