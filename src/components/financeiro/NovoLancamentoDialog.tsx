@@ -416,7 +416,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                 </TabsContent>
                 <TabsContent value="anexo" className="space-y-4 pt-2">
                   <FileUpload
-                    bucket="contratos"
+                    bucket="faturamento-docs"
                     path={`nf/${Date.now()}-nf.pdf`}
                     value={linkNf}
                     onChange={setLinkNf}
@@ -424,7 +424,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                     label="Nota Fiscal"
                   />
                   <FileUpload
-                    bucket="contratos"
+                    bucket="faturamento-docs"
                     path={`boletos/${Date.now()}-boleto.pdf`}
                     value={linkBoleto}
                     onChange={setLinkBoleto}
@@ -655,7 +655,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                 </TabsContent>
                 <TabsContent value="anexo" className="space-y-4 pt-2">
                   <FileUpload
-                    bucket="contratos"
+                    bucket="faturamento-docs"
                     path={`nf/${Date.now()}-nf.pdf`}
                     value={linkNf}
                     onChange={setLinkNf}
@@ -663,7 +663,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancame
                     label="Nota Fiscal"
                   />
                   <FileUpload
-                    bucket="contratos"
+                    bucket="faturamento-docs"
                     path={`boletos/${Date.now()}-boleto.pdf`}
                     value={linkBoleto}
                     onChange={setLinkBoleto}
