@@ -613,10 +613,23 @@ export default function ControleFaturamento() {
               <Badge variant="secondary" className="ml-1">{selectedIds.size}</Badge>
             </Button>
           )}
-          <Button variant="outline" onClick={handleExportExcel}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar Excel
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Excel
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportExcel}>
+                Exportar Excel (Detalhado)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportBoletosLote}>
+                Exportar Boletos em Lote (Banco)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
