@@ -311,6 +311,7 @@ function buildCobrancaHtml(opts: {
 
 // =================== Cenários de teste ===================
 
+// Dados reais cadastrados em contas_bancarias (status = ativo)
 const dadosB8one: DadosBancarios = {
   banco: "Itaú Unibanco S.A",
   agencia: "2937",
@@ -320,19 +321,19 @@ const dadosB8one: DadosBancarios = {
 };
 
 const dadosLomadee: DadosBancarios = {
-  banco: "BTG Pactual",
+  banco: "BANCO BTG PACTUAL S.A",
   agencia: "0050",
-  conta: "12345-6",
+  conta: "1561521-4",
   tipo_conta: "corrente",
   descricao: "Banco BTG Pactual - Matriz Lomadee",
 };
 
 const dadosCryah: DadosBancarios = {
-  banco: "Banco Bradesco S.A",
-  agencia: "1234",
-  conta: "56789-0",
+  banco: "BANCO BTG PACTUAL S.A",
+  agencia: "0050",
+  conta: "1878646-7",
   tipo_conta: "corrente",
-  descricao: "Banco Bradesco - Matriz Cryah",
+  descricao: "Banco BTG Pactual - Matriz Cryah",
 };
 
 serve(async (req: Request): Promise<Response> => {
