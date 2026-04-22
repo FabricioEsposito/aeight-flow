@@ -327,6 +327,14 @@ const dadosLomadee: DadosBancarios = {
   descricao: "Banco BTG Pactual - Matriz Lomadee",
 };
 
+const dadosCryah: DadosBancarios = {
+  banco: "Banco Bradesco S.A",
+  agencia: "1234",
+  conta: "56789-0",
+  tipo_conta: "corrente",
+  descricao: "Banco Bradesco - Matriz Cryah",
+};
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
