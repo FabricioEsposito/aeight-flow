@@ -417,8 +417,21 @@ serve(async (req: Request): Promise<Response> => {
 
       const parcelaContrato = conta.parcelas_contrato as any;
       const contrato = parcelaContrato?.contratos;
-      const parcelaBruto = parcelaContrato?.valor || conta.valor;
-      
+
+      // Calcular valor BRUTO usando mesma lógica do Controle de Faturamento:
+      // valor lançado é o LÍQUIDO; bruto = líquido / (1 - taxaImpostos)
+      const pisPct = Number(contrato?.pis_percentual || 0);
+      const cofinsPct = Number(contrato?.cofins_percentual || 0);
+      const irrfPct = Number(contrato?.irrf_percentual || 0);
+      const csllPct = Number(contrato?.csll_percentual || 0);
+      const taxaImpostos = (pisPct + cofinsPct + irrfPct + csllPct) / 100;
+      const valorLancado = Number(conta.valor || 0);
+      const round2 = (v: number) => Math.round(v * 100) / 100;
+      let parcelaBruto = valorLancado;
+      if (taxaImpostos > 0 && taxaImpostos < 1) {
+        parcelaBruto = round2(valorLancado / (1 - taxaImpostos));
+      }
+
       let servicoNome = "";
       if (contrato?.servicos && Array.isArray(contrato.servicos) && contrato.servicos.length > 0) {
         const primeiroServico = contrato.servicos[0];
