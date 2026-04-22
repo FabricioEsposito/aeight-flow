@@ -537,8 +537,10 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
           <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: ${totalTextColor};">${formatCurrency(cliente.total_vencido)}</p>
         </div>
 
+        ${buildAllDadosBancariosHtml(cliente.parcelas)}
+
         ${attachmentNotice}
-        
+
         <p style="font-size: 15px; margin: 0 0 16px 0; color: #4b5563; ${template.showFreezeWarning ? 'font-weight: 600;' : ''}">
           ${template.warningMessage}
         </p>
@@ -793,7 +795,10 @@ serve(async (req: Request): Promise<Response> => {
           contratos(
             numero_contrato,
             servicos,
-            centro_custo
+            centro_custo,
+            tipo_pagamento,
+            conta_bancaria_id,
+            contas_bancarias(banco, agencia, conta, tipo_conta, descricao)
           )
         )
       `)
@@ -844,6 +849,8 @@ serve(async (req: Request): Promise<Response> => {
       let contratoNumero = "";
       let servicoNome = "";
       let centroCustoNome = "";
+      let tipoPagamento: string | null = null;
+      let dadosBancarios: DadosBancarios | null = null;
       
       // Try to get centro_custo from conta first, then from contract
       let centroCustoId = conta.centro_custo;
@@ -860,6 +867,17 @@ serve(async (req: Request): Promise<Response> => {
           // Use contract's centro_custo if conta doesn't have one
           if (!centroCustoId && parcela.contratos.centro_custo) {
             centroCustoId = parcela.contratos.centro_custo;
+          }
+          tipoPagamento = parcela.contratos.tipo_pagamento || null;
+          const cb = parcela.contratos.contas_bancarias;
+          if (cb) {
+            dadosBancarios = {
+              banco: cb.banco || "",
+              agencia: cb.agencia || null,
+              conta: cb.conta || null,
+              tipo_conta: cb.tipo_conta || null,
+              descricao: cb.descricao || "",
+            };
           }
         }
       }
@@ -881,6 +899,8 @@ serve(async (req: Request): Promise<Response> => {
         link_nf: conta.link_nf,
         link_boleto: conta.link_boleto,
         centro_custo: centroCustoNome,
+        tipo_pagamento: tipoPagamento,
+        dados_bancarios: dadosBancarios,
       };
 
       if (!clientesMap.has(cliente.id)) {
