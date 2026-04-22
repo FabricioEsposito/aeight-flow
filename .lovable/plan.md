@@ -1,65 +1,57 @@
 
 
-## Goal
-Add a new export option in **Controle de Faturamento** that generates an Excel file in the exact format required by the user's bank for batch boleto issuance.
+## Adicionar Razão Social e CNPJ da Titular nos Dados Bancários dos E-mails
 
-## Approach
+### Objetivo
+Complementar o bloco "Dados para Pagamento" (PIX/Transferência) dos e-mails de **faturamento** e **cobrança** com a **Razão Social** e o **CNPJ** da pessoa jurídica titular da conta bancária, derivados a partir do nome da conta cadastrada.
 
-**Split the existing "Exportar Excel" button into a dropdown** with two options:
-1. **Exportar Excel (Detalhado)** — current report (unchanged)
-2. **Exportar Boletos em Lote (Banco)** — new format
+### Mapeamento (entidade titular por sufixo da conta)
 
-The new export will:
-- Fetch additional client address fields (`endereco`, `numero`, `complemento`, `bairro`, `cidade`, `uf`, `cep`) which aren't currently loaded into the `Faturamento` interface
-- Build a worksheet with the **exact 25 columns** specified by the user
-- Apply the fixed values per spec
-
-## New Excel column mapping
-
-| # | Column | Source / Value |
+| Sufixo no `descricao` da conta | Razão Social | CNPJ |
 |---|---|---|
-| 1 | CNPJ ou CPF | `clientes.cnpj_cpf` (digits only) |
-| 2 | Nome / Razao Social | `clientes.razao_social` |
-| 3 | Telefone com DDD | (vazio) |
-| 4 | Email | (vazio) |
-| 5 | Notificação | `SemNotificacao` |
-| 6 | CEP | `clientes.cep` (digits only) |
-| 7 | Endereço | `clientes.endereco` |
-| 8 | Número | `clientes.numero` |
-| 9 | Complemento | `clientes.complemento` |
-| 10 | Bairro | `clientes.bairro` |
-| 11 | Cidade | `clientes.cidade` |
-| 12 | Estado | `clientes.uf` |
-| 13 | Seu número | `numero_nf` |
-| 14 | Valor do boleto (R$) | `valor_liquido` (formatted `1.457,15`) |
-| 15 | Vencimento | `data_vencimento` (DD/MM/YYYY) |
-| 16 | Prazo para cancelamento | `90` |
-| 17 | Prazo para negativação | `0` |
-| 18 | Instruções | `APÓS O VENCIMENTO COBRAR MULTA DE 10,00% APÓS O VENCIMENTO COBRAR JUROS DE 10.00%` |
-| 19 | Tipo de juros | `Porcentagem por mês` |
-| 20 | Taxa de juros | `1,00` |
-| 21 | Tipo de multa | `Porcentagem` |
-| 22 | Taxa da multa | `10,00` |
-| 23 | Tipo de desconto | `SemDesconto` |
-| 24 | Taxa de desconto | `0,00` |
-| 25 | Data limite de desconto | (vazio) |
+| `Matriz b8one` (e `Conta Garantia b8one`) | B8ONE CONSULTORIA TECNICA EM TI LTDA | 31.044.681/0001-13 |
+| `Filial b8one` | B8ONE CONSULTORIA TECNICA EM TI LTDA | 31.044.681/0002-02 |
+| `Matriz Lomadee` | PLUGONE CONSULTORIA TECNICA EM TI LTDA | 38.442.433/0001-70 |
+| `Matriz Cryah` | CRYAH AGENCIA DIGITAL LTDA | 12.104.320/0001-70 |
+| qualquer outro | (omite Razão Social/CNPJ, mostra apenas dados bancários) | — |
 
-> Note on item 20: the user did not specify a juros rate. I'll use **1,00** matching the example template — this can be adjusted later if needed.
+A resolução é feita **no código da edge function**, lendo o campo `contas_bancarias.descricao` e batendo o sufixo. Não há mudança de schema nem cadastro adicional — a relação entidade ↔ conta é determinística pela nomenclatura já existente.
 
-## Technical changes
+### Mockup do bloco atualizado (PIX / Transferência)
 
-**File: `src/pages/ControleFaturamento.tsx`**
-1. Extend the `Faturamento` interface and the Supabase query (`clientes:cliente_id` select) to include `endereco, numero, complemento, bairro, cidade, uf, cep`.
-2. Replace the single `Exportar Excel` button with a `DropdownMenu` containing both export options.
-3. Add a new `handleExportBoletosLote()` function that:
-   - Uses respect to the **current filters** (date range, status, centro de custo, search) — exporting only `filteredFaturamentos`
-   - Builds raw worksheet via `XLSX` directly (since `useExportReport` formats values inconsistently for this bank-required layout — strings must be raw, currency with comma decimal, etc.)
-   - Generates filename `boletos_lote_YYYY-MM-DD.xls`
+```text
+┌──────────── DADOS PARA PAGAMENTO ────────────┐
+│ 💳  Forma de Pagamento: PIX                  │
+│                                              │
+│  Titular:        Banco Itaú - Matriz b8one   │
+│  Razão Social:   B8ONE CONSULTORIA TECNICA   │
+│                  EM TI LTDA                  │
+│  CNPJ:           31.044.681/0001-13          │
+│                                              │
+│  Banco:    Itaú Unibanco S.A                 │
+│  Agência:  2937                              │
+│  Conta:    21551-3 (Conta Corrente)          │
+│                                              │
+│  Após o pagamento, envie o comprovante para  │
+│  financeiro@aeight.global                    │
+└──────────────────────────────────────────────┘
+```
 
-**Filtering for valid records:** Only include rows that have a `cliente_cnpj` and `numero_nf` (otherwise the bank import will reject them). A toast will warn if any rows are skipped.
+Quando a conta não for de uma das matrizes/filiais mapeadas, as linhas **Razão Social** e **CNPJ** são omitidas — o restante do bloco aparece normalmente.
 
-## Out of scope
-- No DB schema changes
-- No changes to other export flows
-- The existing detailed Excel export remains untouched
+### Detalhes técnicos
+
+**Arquivos a alterar (já planejados na etapa anterior):**
+- `supabase/functions/send-billing-emails/index.ts`
+- `supabase/functions/send-collection-emails/index.ts`
+
+**Mudanças adicionais nesta etapa:**
+1. Criar helper `resolveTitularPJ(descricaoConta: string)` que retorna `{ razao_social, cnpj } | null` aplicando a tabela acima (match por `endsWith` case-insensitive nos sufixos).
+2. Estender o helper `buildDadosBancariosHtml(...)` para receber também o resultado de `resolveTitularPJ` e renderizar as linhas extras quando presentes.
+3. Sem alterações de schema, sem nova consulta — o `descricao` já vem do join com `contas_bancarias` previsto no plano anterior.
+
+### Fora do escopo
+- Alterar a nomenclatura das contas bancárias.
+- Cadastrar dados PJ no banco (`contas_bancarias` não terá novos campos).
+- E-mails com tipo `boleto` (continuam inalterados).
 
