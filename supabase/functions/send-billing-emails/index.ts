@@ -417,8 +417,21 @@ serve(async (req: Request): Promise<Response> => {
 
       const parcelaContrato = conta.parcelas_contrato as any;
       const contrato = parcelaContrato?.contratos;
-      const parcelaBruto = parcelaContrato?.valor || conta.valor;
-      
+
+      // Calcular valor BRUTO usando mesma lógica do Controle de Faturamento:
+      // valor lançado é o LÍQUIDO; bruto = líquido / (1 - taxaImpostos)
+      const pisPct = Number(contrato?.pis_percentual || 0);
+      const cofinsPct = Number(contrato?.cofins_percentual || 0);
+      const irrfPct = Number(contrato?.irrf_percentual || 0);
+      const csllPct = Number(contrato?.csll_percentual || 0);
+      const taxaImpostos = (pisPct + cofinsPct + irrfPct + csllPct) / 100;
+      const valorLancado = Number(conta.valor || 0);
+      const round2 = (v: number) => Math.round(v * 100) / 100;
+      let parcelaBruto = valorLancado;
+      if (taxaImpostos > 0 && taxaImpostos < 1) {
+        parcelaBruto = round2(valorLancado / (1 - taxaImpostos));
+      }
+
       let servicoNome = "";
       if (contrato?.servicos && Array.isArray(contrato.servicos) && contrato.servicos.length > 0) {
         const primeiroServico = contrato.servicos[0];
@@ -463,10 +476,15 @@ serve(async (req: Request): Promise<Response> => {
       };
 
 
-      if (!parcelasPorCliente.has(cliente.id)) {
-        parcelasPorCliente.set(cliente.id, []);
+      // Agrupar por cliente + conta bancária (cada conta = empresa/CC distinta)
+      // Isso garante que contratos com contas/centros de custo diferentes recebam e-mails separados
+      const contaBancariaId = (contrato?.conta_bancaria_id as string | undefined) || "sem-conta";
+      const groupKey = `${cliente.id}::${contaBancariaId}`;
+
+      if (!parcelasPorCliente.has(groupKey)) {
+        parcelasPorCliente.set(groupKey, []);
       }
-      parcelasPorCliente.get(cliente.id)!.push(parcela);
+      parcelasPorCliente.get(groupKey)!.push(parcela);
     }
 
     let totalSent = 0;
@@ -477,9 +495,9 @@ serve(async (req: Request): Promise<Response> => {
     // Helper function to delay between requests to avoid rate limiting
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Send one email per client
+    // Send one email per client+conta bancária group
     let isFirstEmail = true;
-    for (const [clienteId, parcelas] of parcelasPorCliente) {
+    for (const [groupKey, parcelas] of parcelasPorCliente) {
       if (parcelas.length === 0) continue;
 
       // Add delay between emails to avoid Resend rate limit (2 requests/second)
@@ -488,6 +506,7 @@ serve(async (req: Request): Promise<Response> => {
       }
       isFirstEmail = false;
       const primeiraParcelaCliente = parcelas[0];
+      const clienteId = primeiraParcelaCliente.cliente_id;
       
       if (primeiraParcelaCliente.cliente_emails.length === 0) {
         console.log(`Client ${primeiraParcelaCliente.cliente_nome} has no email, skipping`);
