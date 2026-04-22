@@ -429,6 +429,15 @@ serve(async (req: Request): Promise<Response> => {
       const centroCustoId = contrato?.centro_custo || conta.centro_custo;
       const centroCustoNome = centroCustoId ? (centrosCustoMap.get(centroCustoId) || "") : "";
 
+      const contaBancaria = contrato?.contas_bancarias as any;
+      const dadosBancarios: DadosBancarios | null = contaBancaria ? {
+        banco: contaBancaria.banco || "",
+        agencia: contaBancaria.agencia || null,
+        conta: contaBancaria.conta || null,
+        tipo_conta: contaBancaria.tipo_conta || null,
+        descricao: contaBancaria.descricao || "",
+      } : null;
+
       const parcela: ParcelaFaturamento = {
         id: conta.id,
         numero_nf: conta.numero_nf,
@@ -449,7 +458,10 @@ serve(async (req: Request): Promise<Response> => {
         cofins_percentual: contrato?.cofins_percentual || 0,
         irrf_percentual: contrato?.irrf_percentual || 0,
         csll_percentual: contrato?.csll_percentual || 0,
+        tipo_pagamento: contrato?.tipo_pagamento || null,
+        dados_bancarios: dadosBancarios,
       };
+
 
       if (!parcelasPorCliente.has(cliente.id)) {
         parcelasPorCliente.set(cliente.id, []);
