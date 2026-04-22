@@ -370,7 +370,10 @@ serve(async (req: Request): Promise<Response> => {
             pis_percentual,
             cofins_percentual,
             irrf_percentual,
-            csll_percentual
+            csll_percentual,
+            tipo_pagamento,
+            conta_bancaria_id,
+            contas_bancarias(banco, agencia, conta, tipo_conta, descricao)
           )
         )
       `)
@@ -387,6 +390,7 @@ serve(async (req: Request): Promise<Response> => {
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
 
     // Fetch all services for mapping
     const { data: servicos } = await supabase.from("servicos").select("id, codigo, nome");
