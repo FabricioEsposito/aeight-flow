@@ -342,7 +342,7 @@ serve(async (req: Request): Promise<Response> => {
       {
         from: fromEmail,
         to: [to],
-        subject: "[TESTE] Faturamento PIX - B8ONE Matriz",
+        subject: "[TESTE] Faturamento Aeight | CLIENTE EXEMPLO LTDA | NF 1433 | CC: 001 - B8ONE",
         html: buildFaturamentoHtml({
           clienteNome: "CLIENTE EXEMPLO LTDA",
           numeroNf: "1433",
@@ -363,7 +363,7 @@ serve(async (req: Request): Promise<Response> => {
       {
         from: fromEmail,
         to: [to],
-        subject: "[TESTE] Faturamento Transferência - Lomadee Matriz (Plugone)",
+        subject: "[TESTE] Faturamento Aeight | CLIENTE EXEMPLO 2 LTDA | NF 2623 | CC: 003 - LOMADEE",
         html: buildFaturamentoHtml({
           clienteNome: "CLIENTE EXEMPLO 2 LTDA",
           numeroNf: "2623",
@@ -384,7 +384,7 @@ serve(async (req: Request): Promise<Response> => {
       {
         from: fromEmail,
         to: [to],
-        subject: "[TESTE][Importante] Cobrança PIX - B8ONE Matriz",
+        subject: "[TESTE][Importante] CLIENTE EXEMPLO LTDA - NF 1433 - Aviso de Cobrança - R$ 70.038,38 - 001 - B8ONE",
         html: buildCobrancaHtml({
           clienteNome: "CLIENTE EXEMPLO LTDA",
           numeroNf: "1433",
@@ -400,7 +400,7 @@ serve(async (req: Request): Promise<Response> => {
       {
         from: fromEmail,
         to: [to],
-        subject: "[TESTE][Importante] Cobrança Transferência - Lomadee Matriz (Plugone)",
+        subject: "[TESTE][Importante] CLIENTE EXEMPLO 2 LTDA - NF 2623 - Aviso de Cobrança - R$ 6.835,00 - 003 - LOMADEE",
         html: buildCobrancaHtml({
           clienteNome: "CLIENTE EXEMPLO 2 LTDA",
           numeroNf: "2623",
