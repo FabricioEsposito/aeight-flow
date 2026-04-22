@@ -980,6 +980,21 @@ export default function EditarContratoCompleto() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label>Tipo de Pagamento *</Label>
+            <Select value={tipoPagamento} onValueChange={setTipoPagamento}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="pix">PIX</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
+                <SelectItem value="boleto">Boleto</SelectItem>
+                <SelectItem value="cartao">Cartão de Crédito</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label>Conta Bancária</Label>
             <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
               <SelectTrigger>
