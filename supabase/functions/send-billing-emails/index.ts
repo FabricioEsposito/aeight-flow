@@ -251,9 +251,9 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
           </table>
         </div>
 
-        
-        
-        <!-- Total -->
+
+        ${buildDadosBancariosHtml(primeiraParcelaCliente.tipo_pagamento, primeiraParcelaCliente.dados_bancarios)}
+
         <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
             <div style="text-align: center; flex: 1;">
