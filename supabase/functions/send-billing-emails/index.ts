@@ -476,10 +476,15 @@ serve(async (req: Request): Promise<Response> => {
       };
 
 
-      if (!parcelasPorCliente.has(cliente.id)) {
-        parcelasPorCliente.set(cliente.id, []);
+      // Agrupar por cliente + conta bancária (cada conta = empresa/CC distinta)
+      // Isso garante que contratos com contas/centros de custo diferentes recebam e-mails separados
+      const contaBancariaId = (contrato?.conta_bancaria_id as string | undefined) || "sem-conta";
+      const groupKey = `${cliente.id}::${contaBancariaId}`;
+
+      if (!parcelasPorCliente.has(groupKey)) {
+        parcelasPorCliente.set(groupKey, []);
       }
-      parcelasPorCliente.get(cliente.id)!.push(parcela);
+      parcelasPorCliente.get(groupKey)!.push(parcela);
     }
 
     let totalSent = 0;
