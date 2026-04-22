@@ -242,31 +242,38 @@ export default function ControleFaturamento() {
           Math.abs(a - b) <= Math.max(abs, Math.abs(b) * rel);
 
         const contratoValorBruto = contrato?.valor_bruto ? Number(contrato.valor_bruto) : 0;
+        const contratoValorTotal = contrato?.valor_total ? Number(contrato.valor_total) : 0;
         const hasContratoBruto = contratoValorBruto > 0;
 
         // Regra:
-        // Parcelas de contrato são geradas a partir do valor LÍQUIDO (já com impostos deduzidos
-        // em NovoContrato/EditarContrato). Portanto, quando há retenções, o `valor` da parcela
-        // representa o valor LÍQUIDO e o BRUTO é calculado por: bruto = liquido / (1 - taxa).
-        // Caso especial: se o `valor_original` indicar que o lançado é o próprio bruto
-        // (ex.: lançamento manual ou edição que persistiu o bruto), respeitamos isso.
+        // Parcelas de contrato armazenam o valor LÍQUIDO (já com retenções deduzidas em
+        // NovoContrato/EditarContrato). O BRUTO é proporcional: valor_bruto_contrato * (valor_parcela / valor_total_contrato).
+        // Caso especial: se conseguimos detectar que o lançado já é o bruto (ex.: edição manual
+        // que persistiu o bruto e o contrato não tem o líquido equivalente), recalculamos o líquido.
         let valorBruto = valorLancado;
         let valorLiquido = valorLancado;
 
         if (taxaImpostos > 0 && taxaImpostos < 1) {
           const brutoEstimadoAPartirDoLiquido = valorLancado / (1 - taxaImpostos);
 
-          // Se o valor_original bate com o valor lançado, então o lançado é o bruto.
-          const lancadoEhBruto = valorOriginal !== null && within(valorOriginal, valorLancado);
+          // Bruto proporcional baseado na razão valor_parcela / valor_total_contrato (líquido)
+          const brutoProporcional = hasContratoBruto && contratoValorTotal > 0
+            ? contratoValorBruto * (valorLancado / contratoValorTotal)
+            : brutoEstimadoAPartirDoLiquido;
+
+          // Detecta se o lançado já é o bruto: só quando o lançado bate com o bruto proporcional
+          // E não bate com o líquido proporcional esperado.
+          const liquidoProporcionalEsperado = brutoProporcional * (1 - taxaImpostos);
+          const lancadoEhBruto = hasContratoBruto
+            && within(valorLancado, brutoProporcional)
+            && !within(valorLancado, liquidoProporcionalEsperado);
 
           if (lancadoEhBruto) {
             valorBruto = valorLancado;
             valorLiquido = round2(valorBruto * (1 - taxaImpostos));
           } else {
-            // Padrão: parcela armazena o líquido — derivamos o bruto.
-            // Preferimos o valor_original quando ele bate com o bruto estimado (mais preciso).
-            const originalBateComBrutoEstimado = valorOriginal !== null && within(valorOriginal, brutoEstimadoAPartirDoLiquido);
-            valorBruto = originalBateComBrutoEstimado ? (valorOriginal as number) : brutoEstimadoAPartirDoLiquido;
+            // Padrão: parcela é líquido — bruto = proporcional do contrato (ou estimado)
+            valorBruto = brutoProporcional;
             valorLiquido = valorLancado;
           }
         }
