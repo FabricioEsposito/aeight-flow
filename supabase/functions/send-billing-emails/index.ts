@@ -9,6 +9,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface DadosBancarios {
+  banco: string;
+  agencia: string | null;
+  conta: string | null;
+  tipo_conta: string | null;
+  descricao: string;
+}
+
 interface ParcelaFaturamento {
   id: string;
   numero_nf: string;
@@ -29,6 +37,102 @@ interface ParcelaFaturamento {
   cofins_percentual: number;
   irrf_percentual: number;
   csll_percentual: number;
+  tipo_pagamento: string | null;
+  dados_bancarios: DadosBancarios | null;
+}
+
+// Resolve titular PJ baseado no sufixo da descrição da conta bancária
+function resolveTitularPJ(descricaoConta: string): { razao_social: string; cnpj: string } | null {
+  if (!descricaoConta) return null;
+  const desc = descricaoConta.toLowerCase().trim();
+
+  if (desc.endsWith("matriz b8one") || desc.endsWith("conta garantia b8one")) {
+    return { razao_social: "B8ONE CONSULTORIA TECNICA EM TI LTDA", cnpj: "31.044.681/0001-13" };
+  }
+  if (desc.endsWith("filial b8one")) {
+    return { razao_social: "B8ONE CONSULTORIA TECNICA EM TI LTDA", cnpj: "31.044.681/0002-02" };
+  }
+  if (desc.endsWith("matriz lomadee")) {
+    return { razao_social: "PLUGONE CONSULTORIA TECNICA EM TI LTDA", cnpj: "38.442.433/0001-70" };
+  }
+  if (desc.endsWith("matriz cryah")) {
+    return { razao_social: "CRYAH AGENCIA DIGITAL LTDA", cnpj: "12.104.320/0001-70" };
+  }
+  return null;
+}
+
+function tipoContaLabel(tipo: string | null): string {
+  if (tipo === "corrente") return "Conta Corrente";
+  if (tipo === "poupanca") return "Conta Poupança";
+  if (tipo === "investimento") return "Conta Investimento";
+  return "";
+}
+
+function tipoPagamentoLabel(tipo: string | null): string {
+  if (!tipo) return "";
+  const t = tipo.toLowerCase();
+  if (t === "pix") return "PIX";
+  if (t === "transferencia" || t === "transferência") return "Transferência";
+  return tipo;
+}
+
+function buildDadosBancariosHtml(tipoPagamento: string | null, dados: DadosBancarios | null): string {
+  if (!tipoPagamento || !dados) return "";
+  const t = tipoPagamento.toLowerCase();
+  if (t !== "pix" && t !== "transferencia" && t !== "transferência") return "";
+
+  const titular = resolveTitularPJ(dados.descricao);
+  const tipoContaTxt = tipoContaLabel(dados.tipo_conta);
+  const contaCompleta = dados.conta
+    ? `${dados.conta}${tipoContaTxt ? ` (${tipoContaTxt})` : ""}`
+    : "-";
+
+  const titularPJHtml = titular ? `
+    <tr>
+      <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Razão Social:</td>
+      <td style="padding: 6px 12px; font-size: 14px; color: #0f172a;">${titular.razao_social}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">CNPJ:</td>
+      <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${titular.cnpj}</td>
+    </tr>
+  ` : "";
+
+  return `
+    <div style="background-color: #ffffff; border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+      <p style="margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #1e40af;">
+        💳 Forma de Pagamento: ${tipoPagamentoLabel(tipoPagamento)}
+      </p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #475569;">
+        Realize o pagamento na conta bancária abaixo:
+      </p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tbody>
+          <tr>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top; width: 130px;">Titular:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #0f172a;">${dados.descricao}</td>
+          </tr>
+          ${titularPJHtml}
+          <tr><td colspan="2" style="padding: 4px 0;"></td></tr>
+          <tr>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Banco:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #0f172a;">${dados.banco}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Agência:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${dados.agencia || "-"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Conta:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${contaCompleta}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin: 16px 0 0 0; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        Após o pagamento, envie o comprovante para <strong>financeiro@aeight.global</strong>.
+      </p>
+    </div>
+  `;
 }
 
 function formatCurrency(value: number): string {
