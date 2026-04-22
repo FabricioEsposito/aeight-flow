@@ -301,6 +301,33 @@ export function BatchEditContratosDialog({
               </Select>
             )}
           </div>
+
+          {/* Forma de Pagamento */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="update-tipo-pagamento"
+                checked={updateTipoPagamento}
+                onCheckedChange={(checked) => setUpdateTipoPagamento(checked === true)}
+              />
+              <Label htmlFor="update-tipo-pagamento" className="font-medium cursor-pointer">
+                Forma de Pagamento
+              </Label>
+            </div>
+            {updateTipoPagamento && (
+              <Select value={tipoPagamento} onValueChange={setTipoPagamento}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a forma de pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="cartao">Cartão de Crédito</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
