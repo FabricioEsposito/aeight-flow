@@ -495,9 +495,9 @@ serve(async (req: Request): Promise<Response> => {
     // Helper function to delay between requests to avoid rate limiting
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Send one email per client
+    // Send one email per client+conta bancária group
     let isFirstEmail = true;
-    for (const [clienteId, parcelas] of parcelasPorCliente) {
+    for (const [groupKey, parcelas] of parcelasPorCliente) {
       if (parcelas.length === 0) continue;
 
       // Add delay between emails to avoid Resend rate limit (2 requests/second)
@@ -506,6 +506,7 @@ serve(async (req: Request): Promise<Response> => {
       }
       isFirstEmail = false;
       const primeiraParcelaCliente = parcelas[0];
+      const clienteId = primeiraParcelaCliente.cliente_id;
       
       if (primeiraParcelaCliente.cliente_emails.length === 0) {
         console.log(`Client ${primeiraParcelaCliente.cliente_nome} has no email, skipping`);
