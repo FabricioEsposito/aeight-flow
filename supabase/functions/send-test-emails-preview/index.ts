@@ -327,6 +327,14 @@ const dadosLomadee: DadosBancarios = {
   descricao: "Banco BTG Pactual - Matriz Lomadee",
 };
 
+const dadosCryah: DadosBancarios = {
+  banco: "Banco Bradesco S.A",
+  agencia: "1234",
+  conta: "56789-0",
+  tipo_conta: "corrente",
+  descricao: "Banco Bradesco - Matriz Cryah",
+};
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -411,6 +419,43 @@ serve(async (req: Request): Promise<Response> => {
           valor: 6835,
           tipoPagamento: "transferencia",
           dadosBancarios: dadosLomadee,
+        }),
+      },
+      {
+        from: fromEmail,
+        to: [to],
+        subject: "[TESTE] Faturamento Aeight | CLIENTE EXEMPLO 3 LTDA | NF 3811 | CC: 005 - CRYAH",
+        html: buildFaturamentoHtml({
+          clienteNome: "CLIENTE EXEMPLO 3 LTDA",
+          numeroNf: "3811",
+          contratoNumero: "CV810344251",
+          servicoNome: "Desenvolvimento Web",
+          dataCompetencia: "2026-04-01",
+          dataVencimento: "2026-05-20",
+          valorBruto: 12500,
+          valorLiquido: 11680,
+          pisPct: 0.65,
+          cofinsPct: 3,
+          irrfPct: 1.5,
+          csllPct: 1,
+          tipoPagamento: "pix",
+          dadosBancarios: dadosCryah,
+        }),
+      },
+      {
+        from: fromEmail,
+        to: [to],
+        subject: "[TESTE][Importante] CLIENTE EXEMPLO 3 LTDA - NF 3811 - Aviso de Cobrança - R$ 11.680,00 - 005 - CRYAH",
+        html: buildCobrancaHtml({
+          clienteNome: "CLIENTE EXEMPLO 3 LTDA",
+          numeroNf: "3811",
+          contratoNumero: "CV810344251",
+          servicoNome: "Desenvolvimento Web",
+          dataVencimento: "2026-04-15",
+          diasAtraso: 3,
+          valor: 11680,
+          tipoPagamento: "pix",
+          dadosBancarios: dadosCryah,
         }),
       },
     ];
