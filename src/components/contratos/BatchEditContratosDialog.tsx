@@ -43,12 +43,14 @@ export function BatchEditContratosDialog({
   const [centroCusto, setCentroCusto] = useState<string>('');
   const [importancia, setImportancia] = useState<string>('');
   const [vendedorResponsavel, setVendedorResponsavel] = useState<string>('');
+  const [tipoPagamento, setTipoPagamento] = useState<string>('');
 
   // Field enabled state
   const [updateContaBancaria, setUpdateContaBancaria] = useState(false);
   const [updateCentroCusto, setUpdateCentroCusto] = useState(false);
   const [updateImportancia, setUpdateImportancia] = useState(false);
   const [updateVendedor, setUpdateVendedor] = useState(false);
+  const [updateTipoPagamento, setUpdateTipoPagamento] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -58,10 +60,12 @@ export function BatchEditContratosDialog({
       setCentroCusto('');
       setImportancia('');
       setVendedorResponsavel('');
+      setTipoPagamento('');
       setUpdateContaBancaria(false);
       setUpdateCentroCusto(false);
       setUpdateImportancia(false);
       setUpdateVendedor(false);
+      setUpdateTipoPagamento(false);
     }
   }, [open]);
 
