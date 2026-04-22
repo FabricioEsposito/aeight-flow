@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.ocr-boleto]
 verify_jwt = false
+
+[functions.send-test-emails-preview]
+verify_jwt = false
