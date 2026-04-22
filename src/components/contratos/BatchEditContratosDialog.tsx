@@ -43,12 +43,14 @@ export function BatchEditContratosDialog({
   const [centroCusto, setCentroCusto] = useState<string>('');
   const [importancia, setImportancia] = useState<string>('');
   const [vendedorResponsavel, setVendedorResponsavel] = useState<string>('');
+  const [tipoPagamento, setTipoPagamento] = useState<string>('');
 
   // Field enabled state
   const [updateContaBancaria, setUpdateContaBancaria] = useState(false);
   const [updateCentroCusto, setUpdateCentroCusto] = useState(false);
   const [updateImportancia, setUpdateImportancia] = useState(false);
   const [updateVendedor, setUpdateVendedor] = useState(false);
+  const [updateTipoPagamento, setUpdateTipoPagamento] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -58,10 +60,12 @@ export function BatchEditContratosDialog({
       setCentroCusto('');
       setImportancia('');
       setVendedorResponsavel('');
+      setTipoPagamento('');
       setUpdateContaBancaria(false);
       setUpdateCentroCusto(false);
       setUpdateImportancia(false);
       setUpdateVendedor(false);
+      setUpdateTipoPagamento(false);
     }
   }, [open]);
 
@@ -76,7 +80,7 @@ export function BatchEditContratosDialog({
   };
 
   const handleSubmit = async () => {
-    if (!updateContaBancaria && !updateCentroCusto && !updateImportancia && !updateVendedor) {
+    if (!updateContaBancaria && !updateCentroCusto && !updateImportancia && !updateVendedor && !updateTipoPagamento) {
       toast({
         title: 'Atenção',
         description: 'Selecione pelo menos um campo para atualizar.',
@@ -100,6 +104,9 @@ export function BatchEditContratosDialog({
       }
       if (updateVendedor) {
         updates.vendedor_responsavel = vendedorResponsavel || null;
+      }
+      if (updateTipoPagamento && tipoPagamento) {
+        updates.tipo_pagamento = tipoPagamento;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -290,6 +297,33 @@ export function BatchEditContratosDialog({
                       {vendedor.nome}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Forma de Pagamento */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="update-tipo-pagamento"
+                checked={updateTipoPagamento}
+                onCheckedChange={(checked) => setUpdateTipoPagamento(checked === true)}
+              />
+              <Label htmlFor="update-tipo-pagamento" className="font-medium cursor-pointer">
+                Forma de Pagamento
+              </Label>
+            </div>
+            {updateTipoPagamento && (
+              <Select value={tipoPagamento} onValueChange={setTipoPagamento}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a forma de pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="cartao">Cartão de Crédito</SelectItem>
                 </SelectContent>
               </Select>
             )}
