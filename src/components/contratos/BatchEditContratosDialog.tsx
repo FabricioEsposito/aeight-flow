@@ -80,7 +80,7 @@ export function BatchEditContratosDialog({
   };
 
   const handleSubmit = async () => {
-    if (!updateContaBancaria && !updateCentroCusto && !updateImportancia && !updateVendedor) {
+    if (!updateContaBancaria && !updateCentroCusto && !updateImportancia && !updateVendedor && !updateTipoPagamento) {
       toast({
         title: 'Atenção',
         description: 'Selecione pelo menos um campo para atualizar.',
@@ -104,6 +104,9 @@ export function BatchEditContratosDialog({
       }
       if (updateVendedor) {
         updates.vendedor_responsavel = vendedorResponsavel || null;
+      }
+      if (updateTipoPagamento && tipoPagamento) {
+        updates.tipo_pagamento = tipoPagamento;
       }
 
       if (Object.keys(updates).length === 0) {
