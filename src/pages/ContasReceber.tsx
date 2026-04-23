@@ -385,15 +385,15 @@ export default function ContasReceber() {
     if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de parcelas. Entre em contato com o administrador.')) {
       return;
     }
-    if (currentStatus !== 'pago') {
+    if (currentStatus === 'pago' || currentStatus === 'cancelado') {
+      setStatusChangeData({ id, currentStatus });
+      setStatusChangeDialogOpen(true);
+    } else {
       const conta = contas.find(c => c.id === id);
       if (conta) {
         setPartialPaymentConta(conta);
         setPartialPaymentDialogOpen(true);
       }
-    } else {
-      setStatusChangeData({ id, currentStatus });
-      setStatusChangeDialogOpen(true);
     }
   };
 
@@ -1058,11 +1058,13 @@ export default function ContasReceber() {
                   <TableCell className="text-right">
                     <ActionsDropdown
                       status={conta.status}
-                      onMarkAsPaid={() => handleToggleStatusClick(conta.id, 'pendente')}
-                      onMarkAsOpen={() => handleToggleStatusClick(conta.id, 'pago')}
+                      isAvulso={!conta.parcela_id}
+                      onMarkAsPaid={() => handleToggleStatusClick(conta.id, conta.status)}
+                      onMarkAsOpen={() => handleToggleStatusClick(conta.id, conta.status)}
                       onView={() => handleView(conta)}
                       onEdit={() => handleEdit(conta)}
                       onDelete={() => handleDeleteConfirm(conta.id)}
+                      onCancel={() => handleCancelClick(conta)}
                     />
                   </TableCell>
                 </TableRow>
@@ -1190,6 +1192,13 @@ export default function ContasReceber() {
         open={showPermissionDenied}
         onOpenChange={setShowPermissionDenied}
         description={permissionDeniedMessage}
+      />
+
+      <CancelarParcelaDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        parcela={cancelConta}
+        onConfirm={handleCancelParcela}
       />
     </div>
   );
