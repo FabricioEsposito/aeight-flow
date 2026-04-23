@@ -420,6 +420,103 @@ export default function EditarContratoCompleto() {
     }
   };
 
+  const handleOpenCancelParcela = (parcela: any) => {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para cancelar parcelas. Entre em contato com o administrador ou gerente financeiro.')) {
+      return;
+    }
+    setCancelParcela({
+      id: parcela.id,
+      tipo: tipoContrato === 'venda' ? 'receber' : 'pagar',
+      parcela_id: parcela.id,
+      descricao: `Parcela ${parcela.numero_parcela} - Contrato ${numeroContrato}`,
+      cliente_fornecedor: undefined,
+      numero_parcela: parcela.numero_parcela,
+      data_vencimento: parcela.data_vencimento,
+      valor: parcela.valor,
+    });
+    setCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancelParcela = async (motivo: string) => {
+    if (!cancelParcela) return;
+    try {
+      const table = cancelParcela.tipo === 'receber' ? 'contas_receber' : 'contas_pagar';
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData.user?.email || userData.user?.id || 'Sistema';
+      const stamp = new Date().toLocaleString('pt-BR');
+      const cancelNote = `\n[Cancelamento ${stamp} por ${userEmail}] ${motivo}`;
+
+      const { data: existing } = await supabase
+        .from(table)
+        .select('id, observacoes, status')
+        .eq('parcela_id', cancelParcela.parcela_id!)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.status === 'pago') {
+          toast({
+            title: 'Não permitido',
+            description: 'Parcelas pagas não podem ser canceladas. Volte para "em aberto" antes.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        const novasObs = `${existing.observacoes || ''}${cancelNote}`.trim();
+        const { error: updErr } = await supabase
+          .from(table)
+          .update({ status: 'cancelado', observacoes: novasObs })
+          .eq('id', existing.id);
+        if (updErr) throw updErr;
+      }
+
+      const { error: parcelaErr } = await supabase
+        .from('parcelas_contrato')
+        .update({ status: 'cancelado' })
+        .eq('id', cancelParcela.parcela_id!);
+      if (parcelaErr) throw parcelaErr;
+
+      toast({ title: 'Parcela cancelada', description: 'A parcela foi marcada como cancelada.' });
+      setCancelDialogOpen(false);
+      setCancelParcela(null);
+      fetchParcelas();
+    } catch (err: any) {
+      console.error('Erro ao cancelar parcela:', err);
+      toast({
+        title: 'Erro ao cancelar parcela',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleReabrirParcela = async (parcela: any) => {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para reabrir parcelas.')) {
+      return;
+    }
+    try {
+      const table = tipoContrato === 'venda' ? 'contas_receber' : 'contas_pagar';
+      await supabase
+        .from(table)
+        .update({ status: 'pendente' })
+        .eq('parcela_id', parcela.id);
+
+      await supabase
+        .from('parcelas_contrato')
+        .update({ status: 'pendente' })
+        .eq('id', parcela.id);
+
+      toast({ title: 'Parcela reaberta', description: 'A parcela voltou para o status pendente.' });
+      fetchParcelas();
+    } catch (err: any) {
+      console.error('Erro ao reabrir parcela:', err);
+      toast({
+        title: 'Erro ao reabrir parcela',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleReprocessarParcelas = async () => {
     setReprocessing(true);
     try {
