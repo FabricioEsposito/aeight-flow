@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
+import { CancelarParcelaDialog, CancelarParcelaInfo } from '@/components/financeiro/CancelarParcelaDialog';
 
 
 interface ContaReceber {
@@ -106,6 +107,8 @@ export default function ContasReceber() {
   const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
   const [partialPaymentConta, setPartialPaymentConta] = useState<ContaReceber | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelConta, setCancelConta] = useState<CancelarParcelaInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
@@ -199,8 +202,8 @@ export default function ContasReceber() {
       const contasFiltradasPorContrato = (data || []).filter((conta: any) => {
         // Lançamentos pagos sempre aparecem
         if (conta.status === 'pago') return true;
-        // Lançamentos cancelados não aparecem
-        if (conta.status === 'cancelado') return false;
+        // Lançamentos cancelados continuam visíveis na lista para auditoria
+        if (conta.status === 'cancelado') return true;
         
         const contrato = conta.parcelas_contrato?.contratos;
         // Se não tem contrato vinculado, mostrar
