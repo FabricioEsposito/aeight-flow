@@ -32,6 +32,7 @@ import { CentroCustoFilterSelect } from '@/components/financeiro/CentroCustoFilt
 import { AuditoriaSaldoDialog } from '@/components/financeiro/AuditoriaSaldoDialog';
 import { openStorageFile } from '@/lib/storage-utils';
 import { ImportarLancamentosDialog } from '@/components/financeiro/ImportarLancamentosDialog';
+import { ConciliarExtratoDialog } from '@/components/financeiro/ConciliarExtratoDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -115,6 +116,7 @@ export default function Extrato() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [conciliarDialogOpen, setConciliarDialogOpen] = useState(false);
   const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string; nivel: number }>>([]);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
@@ -2116,6 +2118,12 @@ export default function Extrato() {
             <Upload className="w-4 h-4 mr-2" />
             Importar Excel
           </Button>
+          {(isAdmin || permissions?.canPerformBaixas) && (
+            <Button variant="outline" onClick={() => setConciliarDialogOpen(true)}>
+              <FileCheck className="w-4 h-4 mr-2" />
+              Conciliar extrato
+            </Button>
+          )}
           <Button onClick={() => setNovoLancamentoOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Lançamento
@@ -2733,6 +2741,12 @@ export default function Extrato() {
       <ImportarLancamentosDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
+        onSuccess={fetchLancamentos}
+      />
+
+      <ConciliarExtratoDialog
+        open={conciliarDialogOpen}
+        onOpenChange={setConciliarDialogOpen}
         onSuccess={fetchLancamentos}
       />
 

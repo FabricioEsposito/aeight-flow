@@ -868,6 +868,92 @@ export type Database = {
           },
         ]
       }
+      extrato_transacoes: {
+        Row: {
+          conta_pagar_id: string | null
+          conta_receber_id: string | null
+          created_at: string
+          data_movimento: string
+          descricao: string | null
+          extrato_importado_id: string
+          fitid: string | null
+          id: string
+          status: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          conta_pagar_id?: string | null
+          conta_receber_id?: string | null
+          created_at?: string
+          data_movimento: string
+          descricao?: string | null
+          extrato_importado_id: string
+          fitid?: string | null
+          id?: string
+          status?: string
+          tipo: string
+          valor: number
+        }
+        Update: {
+          conta_pagar_id?: string | null
+          conta_receber_id?: string | null
+          created_at?: string
+          data_movimento?: string
+          descricao?: string | null
+          extrato_importado_id?: string
+          fitid?: string | null
+          id?: string
+          status?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extrato_transacoes_extrato_importado_id_fkey"
+            columns: ["extrato_importado_id"]
+            isOneToOne: false
+            referencedRelation: "extratos_importados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extratos_importados: {
+        Row: {
+          conta_bancaria_id: string
+          created_at: string
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          id: string
+          nome_arquivo: string
+          total_conciliadas: number
+          total_transacoes: number
+        }
+        Insert: {
+          conta_bancaria_id: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          nome_arquivo: string
+          total_conciliadas?: number
+          total_transacoes?: number
+        }
+        Update: {
+          conta_bancaria_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          nome_arquivo?: string
+          total_conciliadas?: number
+          total_transacoes?: number
+        }
+        Relationships: []
+      }
       ferramentas_licencas_centros_custo: {
         Row: {
           centro_custo_id: string
