@@ -685,8 +685,7 @@ export default function ContasReceber() {
     }
   };
 
-
-    if (status === 'pago') return 'default';
+  const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'cancelado') return 'destructive';
     
     const hoje = new Date();
