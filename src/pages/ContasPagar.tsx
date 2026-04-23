@@ -607,11 +607,63 @@ export default function ContasPagar() {
     }
   };
 
-  useEffect(() => {
-    fetchContas();
-    fetchContasBancarias();
-    fetchCentrosCusto();
-  }, []);
+  const handleCancelClick = (conta: ContaPagar) => {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para cancelar parcelas. Entre em contato com o administrador ou gerente financeiro.')) {
+      return;
+    }
+    if (!conta.parcela_id) return;
+    setCancelConta({
+      id: conta.id,
+      tipo: 'pagar',
+      parcela_id: conta.parcela_id,
+      descricao: conta.descricao,
+      cliente_fornecedor: conta.fornecedores?.nome_fantasia || conta.fornecedores?.razao_social || '',
+      numero_parcela: conta.numero_parcela,
+      data_vencimento: conta.data_vencimento,
+      valor: conta.valor_parcela,
+    });
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelParcela = async (motivo: string) => {
+    if (!cancelConta) return;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData.user?.email || userData.user?.id || 'Sistema';
+      const stamp = new Date().toLocaleString('pt-BR');
+      const cancelNote = `\n[Cancelamento ${stamp} por ${userEmail}] ${motivo}`;
+
+      const { data: existing } = await supabase
+        .from('contas_pagar')
+        .select('observacoes')
+        .eq('id', cancelConta.id)
+        .maybeSingle();
+
+      const novasObs = `${existing?.observacoes || ''}${cancelNote}`.trim();
+
+      const { error } = await supabase
+        .from('contas_pagar')
+        .update({ status: 'cancelado', observacoes: novasObs })
+        .eq('id', cancelConta.id);
+      if (error) throw error;
+
+      if (cancelConta.parcela_id) {
+        await supabase
+          .from('parcelas_contrato')
+          .update({ status: 'cancelado' })
+          .eq('id', cancelConta.parcela_id);
+      }
+
+      toast({ title: 'Parcela cancelada', description: 'A parcela foi marcada como cancelada.' });
+      fetchContas();
+    } catch (err) {
+      console.error('Erro ao cancelar parcela:', err);
+      toast({ title: 'Erro', description: 'Não foi possível cancelar a parcela.', variant: 'destructive' });
+    } finally {
+      setCancelConta(null);
+    }
+  };
+
   const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'default';
     if (status === 'cancelado') return 'destructive';
