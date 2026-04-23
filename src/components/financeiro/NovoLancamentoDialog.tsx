@@ -69,6 +69,19 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
     if (open) {
       fetchContasBancarias();
       resetForm();
+      if (prefilled) {
+        if (prefilled.tipo) setTipoLancamento(prefilled.tipo);
+        if (prefilled.data) {
+          const d = new Date(prefilled.data + 'T00:00:00');
+          setDataCompetencia(d);
+          setDataVencimento(d);
+          setDataMovimento(d);
+        }
+        if (prefilled.valor != null) setValor(prefilled.valor);
+        if (prefilled.descricao) setDescricao(prefilled.descricao);
+        if (prefilled.conta_bancaria_id) setContaBancariaId(prefilled.conta_bancaria_id);
+        if (prefilled.marcarPago) setRecebidoPago(true);
+      }
     }
   }, [open]);
 
