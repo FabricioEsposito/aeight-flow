@@ -1,57 +1,49 @@
 
 
-## Adicionar Razão Social e CNPJ da Titular nos Dados Bancários dos E-mails
+## Cancelar parcela de contrato
 
-### Objetivo
-Complementar o bloco "Dados para Pagamento" (PIX/Transferência) dos e-mails de **faturamento** e **cobrança** com a **Razão Social** e o **CNPJ** da pessoa jurídica titular da conta bancária, derivados a partir do nome da conta cadastrada.
+Adicionar a ação **"Cancelar parcela"** nas listagens de parcelas vinculadas a contratos, permitindo marcar uma parcela específica como `cancelado` sem precisar inativar o contrato inteiro.
 
-### Mapeamento (entidade titular por sufixo da conta)
+### Onde a ação aparece
 
-| Sufixo no `descricao` da conta | Razão Social | CNPJ |
-|---|---|---|
-| `Matriz b8one` (e `Conta Garantia b8one`) | B8ONE CONSULTORIA TECNICA EM TI LTDA | 31.044.681/0001-13 |
-| `Filial b8one` | B8ONE CONSULTORIA TECNICA EM TI LTDA | 31.044.681/0002-02 |
-| `Matriz Lomadee` | PLUGONE CONSULTORIA TECNICA EM TI LTDA | 38.442.433/0001-70 |
-| `Matriz Cryah` | CRYAH AGENCIA DIGITAL LTDA | 12.104.320/0001-70 |
-| qualquer outro | (omite Razão Social/CNPJ, mostra apenas dados bancários) | — |
+1. **Contas a Receber** (`/contas-receber`) — menu de ações de cada linha
+2. **Contas a Pagar** (`/contas-pagar`) — menu de ações de cada linha
+3. **Extrato e Conciliações** (`/extrato`) — menu de ações de cada linha
 
-A resolução é feita **no código da edge function**, lendo o campo `contas_bancarias.descricao` e batendo o sufixo. Não há mudança de schema nem cadastro adicional — a relação entidade ↔ conta é determinística pela nomenclatura já existente.
+### Comportamento
 
-### Mockup do bloco atualizado (PIX / Transferência)
+- **Quem pode usar**: somente `admin` e `finance_manager` (mesma regra dos outros ajustes financeiros sensíveis).
+- **Quando aparece**: apenas para parcelas vinculadas a contrato (`parcela_id` preenchido) e com status `pendente` ou `vencido`. Parcelas `pago` não podem ser canceladas (precisam primeiro voltar para "em aberto"). Lançamentos avulsos continuam usando "Excluir lançamento".
+- **Confirmação**: diálogo de confirmação obrigatório com:
+  - Resumo da parcela (cliente/fornecedor, número da parcela, vencimento, valor)
+  - Campo de **motivo do cancelamento** (texto livre, obrigatório)
+  - Aviso de que a ação não exclui o registro — o status fica como **Cancelado** e some das visões financeiras
+- **Reverter**: para reabrir uma parcela cancelada, o usuário usa a ação "Voltar em aberto" já existente (será habilitada também para status `cancelado`).
 
-```text
-┌──────────── DADOS PARA PAGAMENTO ────────────┐
-│ 💳  Forma de Pagamento: PIX                  │
-│                                              │
-│  Titular:        Banco Itaú - Matriz b8one   │
-│  Razão Social:   B8ONE CONSULTORIA TECNICA   │
-│                  EM TI LTDA                  │
-│  CNPJ:           31.044.681/0001-13          │
-│                                              │
-│  Banco:    Itaú Unibanco S.A                 │
-│  Agência:  2937                              │
-│  Conta:    21551-3 (Conta Corrente)          │
-│                                              │
-│  Após o pagamento, envie o comprovante para  │
-│  financeiro@aeight.global                    │
-└──────────────────────────────────────────────┘
-```
+### Efeitos no banco
 
-Quando a conta não for de uma das matrizes/filiais mapeadas, as linhas **Razão Social** e **CNPJ** são omitidas — o restante do bloco aparece normalmente.
+Para cada parcela cancelada, atualizar em uma transação:
+1. `parcelas_contrato.status` → `cancelado`
+2. `contas_receber.status` ou `contas_pagar.status` correspondente (mesmo `parcela_id`) → `cancelado`
+3. Salvar o motivo em `observacoes` da conta (anexado com prefixo "Cancelamento: …" + data + usuário)
+
+### Visibilidade após cancelamento
+
+Já está coberto pela lógica existente do sistema — registros com status `cancelado` são automaticamente excluídos de:
+- Extrato, Dashboard, DRE, Fluxo de Caixa
+- Controle de Faturamento, Régua de Cobrança, Comissionamento
+- Relatórios PDF/Excel
+
+A parcela continua visível nas listas de Contas a Pagar/Receber com badge **"Cancelado"** (vermelho), permitindo auditoria e a ação de reabertura.
 
 ### Detalhes técnicos
 
-**Arquivos a alterar (já planejados na etapa anterior):**
-- `supabase/functions/send-billing-emails/index.ts`
-- `supabase/functions/send-collection-emails/index.ts`
+**Arquivos a alterar:**
+- `src/components/financeiro/ActionsDropdown.tsx`: adicionar prop `onCancel` e item "Cancelar parcela" (visível quando `!isAvulso && status !== 'pago' && status !== 'cancelado'`); habilitar "Voltar em aberto" também para status `cancelado`.
+- `src/components/financeiro/ExtratoActionsDropdown.tsx`: mesma adição.
+- `src/pages/ContasReceber.tsx`, `src/pages/ContasPagar.tsx`, `src/pages/Extrato.tsx`: handler `handleCancelParcela`, integração com `usePermissionCheck` (`canPerformBaixas`), refetch após sucesso.
+- **Novo componente** `src/components/financeiro/CancelarParcelaDialog.tsx`: diálogo de confirmação com textarea obrigatório de motivo.
+- Badge de status: garantir que "Cancelado" apareça com `variant="destructive"` nas três telas (já existe em ContasPagar; replicar onde faltar).
 
-**Mudanças adicionais nesta etapa:**
-1. Criar helper `resolveTitularPJ(descricaoConta: string)` que retorna `{ razao_social, cnpj } | null` aplicando a tabela acima (match por `endsWith` case-insensitive nos sufixos).
-2. Estender o helper `buildDadosBancariosHtml(...)` para receber também o resultado de `resolveTitularPJ` e renderizar as linhas extras quando presentes.
-3. Sem alterações de schema, sem nova consulta — o `descricao` já vem do join com `contas_bancarias` previsto no plano anterior.
-
-### Fora do escopo
-- Alterar a nomenclatura das contas bancárias.
-- Cadastrar dados PJ no banco (`contas_bancarias` não terá novos campos).
-- E-mails com tipo `boleto` (continuam inalterados).
+**Sem migrations**: o status `cancelado` já existe no enum `status_pagamento` e nas RLS policies de update.
 
