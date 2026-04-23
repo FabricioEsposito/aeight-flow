@@ -363,7 +363,7 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
                 </div>
                 <div className="border rounded-md p-3">
                   <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 text-amber-500" /> Para revisão
+                    <AlertCircle className="w-3 h-3 text-warning" /> Para revisão
                   </div>
                   <div className="text-2xl font-semibold">{stats.sugerido}</div>
                 </div>
