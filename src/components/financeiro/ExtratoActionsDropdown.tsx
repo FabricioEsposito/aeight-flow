@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, CheckCircle, XCircle, Eye, Copy, Trash2 } from 'lucide-react';
+import { MoreVertical, Edit, CheckCircle, XCircle, Eye, Copy, Trash2, Ban } from 'lucide-react';
 
 interface ExtratoActionsDropdownProps {
   tipo: 'entrada' | 'saida';
@@ -19,6 +19,7 @@ interface ExtratoActionsDropdownProps {
   onView: () => void;
   onClone: () => void;
   onDelete?: () => void;
+  onCancel?: () => void;
 }
 
 export function ExtratoActionsDropdown({
@@ -31,8 +32,14 @@ export function ExtratoActionsDropdown({
   onView,
   onClone,
   onDelete,
+  onCancel,
 }: ExtratoActionsDropdownProps) {
   const isPaid = status === 'pago' || status === 'recebido';
+  const isCancelled = status === 'cancelado';
+  const canEdit = !isPaid && !isCancelled;
+  const canMarkPaid = !isPaid && !isCancelled;
+  const canReopen = isPaid || isCancelled;
+  const canCancel = !!onCancel && !isAvulso && !isPaid && !isCancelled;
 
   return (
     <DropdownMenu>
@@ -42,19 +49,21 @@ export function ExtratoActionsDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 bg-background z-50">
-        <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
-          <Edit className="mr-2 h-4 w-4" />
-          Editar lançamento
-        </DropdownMenuItem>
+        {canEdit && (
+          <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
+            <Edit className="mr-2 h-4 w-4" />
+            Editar lançamento
+          </DropdownMenuItem>
+        )}
 
-        {!isPaid && (
+        {canMarkPaid && (
           <DropdownMenuItem onClick={onMarkAsPaid} className="cursor-pointer">
             <CheckCircle className="mr-2 h-4 w-4" />
             {tipo === 'entrada' ? 'Marcar como recebido' : 'Marcar como pago'}
           </DropdownMenuItem>
         )}
 
-        {isPaid && (
+        {canReopen && (
           <DropdownMenuItem onClick={onMarkAsOpen} className="cursor-pointer">
             <XCircle className="mr-2 h-4 w-4" />
             Voltar para em aberto
@@ -72,6 +81,16 @@ export function ExtratoActionsDropdown({
           <Copy className="mr-2 h-4 w-4" />
           Clonar lançamento
         </DropdownMenuItem>
+
+        {canCancel && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onCancel} className="cursor-pointer text-destructive">
+              <Ban className="mr-2 h-4 w-4" />
+              Cancelar parcela
+            </DropdownMenuItem>
+          </>
+        )}
 
         {isAvulso && onDelete && (
           <>
