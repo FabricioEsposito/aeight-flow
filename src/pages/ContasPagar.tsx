@@ -1029,7 +1029,16 @@ export default function ContasPagar() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <ActionsDropdown status={conta.status_pagamento} onMarkAsPaid={() => handleToggleStatusClick(conta.id, 'pendente')} onMarkAsOpen={() => handleToggleStatusClick(conta.id, 'pago')} onView={() => handleView(conta)} onEdit={() => handleEdit(conta)} onDelete={() => handleDeleteConfirm(conta.id)} />
+                    <ActionsDropdown
+                      status={conta.status_pagamento}
+                      isAvulso={!conta.parcela_id}
+                      onMarkAsPaid={() => handleToggleStatusClick(conta.id, conta.status_pagamento)}
+                      onMarkAsOpen={() => handleToggleStatusClick(conta.id, conta.status_pagamento)}
+                      onView={() => handleView(conta)}
+                      onEdit={() => handleEdit(conta)}
+                      onDelete={() => handleDeleteConfirm(conta.id)}
+                      onCancel={() => handleCancelClick(conta)}
+                    />
                   </TableCell>
                 </TableRow>)}
             </TableBody>
@@ -1148,6 +1157,13 @@ export default function ContasPagar() {
         open={showPermissionDenied}
         onOpenChange={setShowPermissionDenied}
         description={permissionDeniedMessage}
+      />
+
+      <CancelarParcelaDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        parcela={cancelConta}
+        onConfirm={handleCancelParcela}
       />
     </div>;
 }
