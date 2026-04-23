@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, MoreVertical, X, CheckCircle, Undo2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, MoreVertical, X, CheckCircle, Undo2, RefreshCw, Ban, RotateCcw } from 'lucide-react';
+import { CancelarParcelaDialog, CancelarParcelaInfo } from '@/components/financeiro/CancelarParcelaDialog';
+import { usePermissionCheck } from '@/hooks/usePermissionCheck';
+import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
