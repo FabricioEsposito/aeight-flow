@@ -664,6 +664,12 @@ export default function ContasPagar() {
     }
   };
 
+  useEffect(() => {
+    fetchContas();
+    fetchContasBancarias();
+    fetchCentrosCusto();
+  }, []);
+
   const getStatusVariant = (status: string, dataVencimento: string) => {
     if (status === 'pago') return 'default';
     if (status === 'cancelado') return 'destructive';
