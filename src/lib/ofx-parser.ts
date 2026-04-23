@@ -13,10 +13,24 @@ export interface OfxTransaction {
   descricao: string;
 }
 
+export interface ParseError {
+  /** Índice (1-based) na sequência lida do arquivo (linha da planilha ou bloco do OFX) */
+  linha: number;
+  motivo: string;
+  /** Conteúdo bruto da linha/bloco para diagnóstico (limitado a ~200 chars) */
+  raw?: string;
+}
+
 export interface ParsedExtrato {
   transacoes: OfxTransaction[];
   data_inicio: string | null;
   data_fim: string | null;
+  /** Linhas/blocos descartados durante o parsing, com motivo */
+  erros: ParseError[];
+  /** Total de blocos/linhas considerados (válidos + erros) */
+  totalLidos: number;
+  /** Formato detectado */
+  formato: 'ofx' | 'csv' | 'xlsx' | 'desconhecido';
 }
 
 function parseOfxDate(raw: string): string | null {
@@ -41,7 +55,13 @@ function extractTagValue(block: string, tag: string): string | null {
   return null;
 }
 
+function truncateRaw(s: string): string {
+  const trimmed = s.replace(/\s+/g, ' ').trim();
+  return trimmed.length > 200 ? trimmed.slice(0, 197) + '...' : trimmed;
+}
+
 export function parseOfx(content: string): ParsedExtrato {
+  const erros: ParseError[] = [];
   // Remove header SGML (linhas antes do primeiro <)
   const ofxStart = content.indexOf('<OFX>');
   const body = ofxStart >= 0 ? content.slice(ofxStart) : content;
@@ -52,20 +72,46 @@ export function parseOfx(content: string): ParsedExtrato {
 
   // Extrai blocos <STMTTRN>...</STMTTRN>
   const transacoes: OfxTransaction[] = [];
+  const blocosLidos: string[] = [];
   const trnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
   let match: RegExpExecArray | null;
   while ((match = trnRegex.exec(body)) !== null) {
-    const block = match[1];
+    blocosLidos.push(match[1]);
+  }
+
+  // Se não houve fechamento, tenta SGML antigo (sem </STMTTRN>)
+  if (blocosLidos.length === 0) {
+    const sgmlRegex = /<STMTTRN>([\s\S]*?)(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi;
+    while ((match = sgmlRegex.exec(body)) !== null) {
+      blocosLidos.push(match[1]);
+    }
+  }
+
+  blocosLidos.forEach((block, idx) => {
+    const linha = idx + 1;
     const trntype = (extractTagValue(block, 'TRNTYPE') || '').toUpperCase();
     const dtposted = parseOfxDate(extractTagValue(block, 'DTPOSTED') || '');
     const trnamtRaw = extractTagValue(block, 'TRNAMT');
     const fitid = extractTagValue(block, 'FITID');
     const memo = extractTagValue(block, 'MEMO') || extractTagValue(block, 'NAME') || '';
 
-    if (!dtposted || !trnamtRaw) continue;
-
+    if (!dtposted) {
+      erros.push({ linha, motivo: 'Data (DTPOSTED) ausente ou inválida', raw: truncateRaw(block) });
+      return;
+    }
+    if (!trnamtRaw) {
+      erros.push({ linha, motivo: 'Valor (TRNAMT) ausente', raw: truncateRaw(block) });
+      return;
+    }
     const valorNum = parseFloat(trnamtRaw.replace(',', '.'));
-    if (isNaN(valorNum)) continue;
+    if (isNaN(valorNum)) {
+      erros.push({ linha, motivo: `Valor inválido: "${trnamtRaw}"`, raw: truncateRaw(block) });
+      return;
+    }
+    if (valorNum === 0) {
+      erros.push({ linha, motivo: 'Valor zero — transação ignorada', raw: truncateRaw(block) });
+      return;
+    }
 
     const tipo: 'entrada' | 'saida' =
       trntype === 'CREDIT' || trntype === 'DEP' || (trntype === '' && valorNum > 0)
@@ -83,38 +129,13 @@ export function parseOfx(content: string): ParsedExtrato {
       tipo,
       descricao: memo.trim(),
     });
-  }
-
-  // Se ainda não há transações, tenta blocos sem fechamento (SGML antigo)
-  if (transacoes.length === 0) {
-    const sgmlRegex = /<STMTTRN>([\s\S]*?)(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi;
-    while ((match = sgmlRegex.exec(body)) !== null) {
-      const block = match[1];
-      const trntype = (extractTagValue(block, 'TRNTYPE') || '').toUpperCase();
-      const dtposted = parseOfxDate(extractTagValue(block, 'DTPOSTED') || '');
-      const trnamtRaw = extractTagValue(block, 'TRNAMT');
-      const fitid = extractTagValue(block, 'FITID');
-      const memo = extractTagValue(block, 'MEMO') || extractTagValue(block, 'NAME') || '';
-
-      if (!dtposted || !trnamtRaw) continue;
-      const valorNum = parseFloat(trnamtRaw.replace(',', '.'));
-      if (isNaN(valorNum)) continue;
-      const tipo: 'entrada' | 'saida' =
-        trntype === 'CREDIT' || trntype === 'DEP' ? 'entrada'
-        : trntype === 'DEBIT' || trntype === 'PAYMENT' || trntype === 'XFER' ? 'saida'
-        : valorNum >= 0 ? 'entrada' : 'saida';
-      transacoes.push({
-        fitid: fitid || null,
-        data_movimento: dtposted,
-        valor: Math.abs(valorNum),
-        tipo,
-        descricao: memo.trim(),
-      });
-    }
-  }
+  });
 
   return {
     transacoes,
+    erros,
+    totalLidos: blocosLidos.length,
+    formato: 'ofx',
     data_inicio: dtStart || (transacoes[0]?.data_movimento ?? null),
     data_fim: dtEnd || (transacoes[transacoes.length - 1]?.data_movimento ?? null),
   };
@@ -171,7 +192,8 @@ function normalizeNumber(raw: any): number | null {
  * Espera colunas: data, valor, descricao (case-insensitive, aceita variações).
  * Valor positivo = entrada; valor negativo = saída.
  */
-export function parseSpreadsheetExtrato(buffer: ArrayBuffer): ParsedExtrato {
+export function parseSpreadsheetExtrato(buffer: ArrayBuffer, formato: 'csv' | 'xlsx' = 'xlsx'): ParsedExtrato {
+  const erros: ParseError[] = [];
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
@@ -185,19 +207,54 @@ export function parseSpreadsheetExtrato(buffer: ArrayBuffer): ParsedExtrato {
     return undefined;
   };
 
+  // Validação de colunas mínimas (uma única vez, baseada na primeira linha)
+  if (rows.length === 0) {
+    return { transacoes: [], erros: [{ linha: 0, motivo: 'Arquivo vazio ou sem cabeçalho reconhecível' }], totalLidos: 0, formato, data_inicio: null, data_fim: null };
+  }
+  const sample = rows[0];
+  const hasData = !!findKey(sample, ['data', 'data_movimento', 'data movimento', 'date']);
+  const hasValor = !!findKey(sample, ['valor', 'value', 'amount']);
+  if (!hasData || !hasValor) {
+    erros.push({
+      linha: 0,
+      motivo: `Cabeçalho inválido. Colunas obrigatórias: "data" e "valor". Detectadas: ${Object.keys(sample).join(', ')}`,
+    });
+  }
+
   const transacoes: OfxTransaction[] = [];
-  for (const row of rows) {
+  rows.forEach((row, idx) => {
+    const linha = idx + 2; // +1 header +1 base 1
     const dataKey = findKey(row, ['data', 'data_movimento', 'data movimento', 'date']);
     const valorKey = findKey(row, ['valor', 'value', 'amount']);
     const descKey = findKey(row, ['descricao', 'descrição', 'description', 'memo', 'historico', 'histórico']);
     const tipoKey = findKey(row, ['tipo', 'type']);
 
+    const rawSnapshot = truncateRaw(JSON.stringify(row));
     const data = dataKey ? normalizeDate(row[dataKey]) : null;
     const valorRaw = valorKey ? normalizeNumber(row[valorKey]) : null;
     const descricao = descKey ? String(row[descKey] || '').trim() : '';
     const tipoRaw = tipoKey ? String(row[tipoKey] || '').trim().toLowerCase() : '';
 
-    if (!data || valorRaw == null) continue;
+    if (!dataKey) {
+      erros.push({ linha, motivo: 'Coluna "data" não encontrada', raw: rawSnapshot });
+      return;
+    }
+    if (!data) {
+      erros.push({ linha, motivo: `Data inválida: "${row[dataKey]}"`, raw: rawSnapshot });
+      return;
+    }
+    if (!valorKey) {
+      erros.push({ linha, motivo: 'Coluna "valor" não encontrada', raw: rawSnapshot });
+      return;
+    }
+    if (valorRaw == null) {
+      erros.push({ linha, motivo: `Valor inválido: "${row[valorKey]}"`, raw: rawSnapshot });
+      return;
+    }
+    if (valorRaw === 0) {
+      erros.push({ linha, motivo: 'Valor zero — transação ignorada', raw: rawSnapshot });
+      return;
+    }
 
     let tipo: 'entrada' | 'saida';
     if (tipoRaw === 'entrada' || tipoRaw === 'credit' || tipoRaw === 'credito' || tipoRaw === 'crédito') {
@@ -215,11 +272,14 @@ export function parseSpreadsheetExtrato(buffer: ArrayBuffer): ParsedExtrato {
       tipo,
       descricao,
     });
-  }
+  });
 
   const datas = transacoes.map(t => t.data_movimento).sort();
   return {
     transacoes,
+    erros,
+    totalLidos: rows.length,
+    formato,
     data_inicio: datas[0] ?? null,
     data_fim: datas[datas.length - 1] ?? null,
   };
@@ -231,9 +291,13 @@ export async function parseExtratoFile(file: File): Promise<ParsedExtrato> {
     const text = await file.text();
     return parseOfx(text);
   }
-  if (lower.endsWith('.csv') || lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+  if (lower.endsWith('.csv')) {
     const buffer = await file.arrayBuffer();
-    return parseSpreadsheetExtrato(buffer);
+    return parseSpreadsheetExtrato(buffer, 'csv');
+  }
+  if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+    const buffer = await file.arrayBuffer();
+    return parseSpreadsheetExtrato(buffer, 'xlsx');
   }
   // Tenta como OFX por padrão
   const text = await file.text();

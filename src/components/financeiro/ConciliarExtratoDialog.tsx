@@ -3,13 +3,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect';
-import { Loader2, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Upload, AlertCircle, CheckCircle2, ArrowLeft, FileWarning, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { parseExtratoFile, type OfxTransaction } from '@/lib/ofx-parser';
+import { parseExtratoFile, type OfxTransaction, type ParsedExtrato } from '@/lib/ofx-parser';
 import { matchTransacoes, type CandidateLancamento, type TransacaoComMatches } from '@/lib/conciliacao-matcher';
 import { ConciliacaoMatchingTable } from './ConciliacaoMatchingTable';
 import { NovoLancamentoDialog, type PrefilledLancamentoData } from './NovoLancamentoDialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   open: boolean;
@@ -17,7 +20,7 @@ interface Props {
   onSuccess: () => void;
 }
 
-type Step = 'upload' | 'review' | 'processing';
+type Step = 'upload' | 'preview' | 'review' | 'processing';
 
 export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props) {
   const { toast } = useToast();
@@ -25,6 +28,8 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [parsed, setParsed] = useState<ParsedExtrato | null>(null);
   const [items, setItems] = useState<TransacaoComMatches[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [extratoImportadoId, setExtratoImportadoId] = useState<string | null>(null);
@@ -39,6 +44,7 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
       setStep('upload');
       setContaBancariaId('');
       setFile(null);
+      setParsed(null);
       setItems([]);
       setSelectedIds(new Set());
       setExtratoImportadoId(null);
@@ -56,28 +62,38 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
     return { total: items.length, matchUnico, sugerido, semMatch };
   }, [items]);
 
-  const handleProcessFile = async () => {
+  const handlePreviewFile = async () => {
     if (!contaBancariaId || !file) {
       toast({ title: 'Preencha todos os campos', description: 'Selecione a conta bancária e o arquivo.', variant: 'destructive' });
       return;
     }
+    setPreviewing(true);
+    try {
+      const result = await parseExtratoFile(file);
+      setParsed(result);
+      setStep('preview');
+    } catch (e: any) {
+      console.error('Erro ao ler arquivo:', e);
+      toast({ title: 'Erro ao ler arquivo', description: e.message, variant: 'destructive' });
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!parsed || !file) return;
+    if (parsed.transacoes.length === 0) {
+      toast({ title: 'Nenhuma transação válida', description: 'Corrija o arquivo e tente novamente.', variant: 'destructive' });
+      return;
+    }
     setParsing(true);
     try {
-      const parsed = await parseExtratoFile(file);
-      if (parsed.transacoes.length === 0) {
-        toast({ title: 'Nenhuma transação encontrada', description: 'O arquivo não contém transações reconhecíveis.', variant: 'destructive' });
-        setParsing(false);
-        return;
-      }
-
       // Buscar candidatos pendentes/vencidos no range das datas ±15 dias
       const datas = parsed.transacoes.map(t => t.data_movimento).sort();
       const dataMin = new Date(datas[0] + 'T00:00:00');
       dataMin.setDate(dataMin.getDate() - 15);
       const dataMax = new Date(datas[datas.length - 1] + 'T00:00:00');
       dataMax.setDate(dataMax.getDate() + 15);
-      const minStr = dataMin.toISOString().slice(0, 10);
-      const maxStr = dataMax.toISOString().slice(0, 10);
 
       const [receberRes, pagarRes] = await Promise.all([
         supabase
@@ -226,7 +242,6 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
   const handleNovoLancSaved = async () => {
     setNovoLancOpen(false);
     if (pendingNovoIndex == null) return;
-    // Marca a transação como conciliada com novo lançamento (visualmente)
     setItems(prev => prev.map(i => i.index === pendingNovoIndex
       ? { ...i, createdLancamentoId: { id: 'novo', origem: i.transacao.tipo === 'entrada' ? 'receber' : 'pagar' } }
       : i,
@@ -247,7 +262,6 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
       const receberUpdates = toProcess.filter(i => i.transacao.tipo === 'entrada');
       const pagarUpdates = toProcess.filter(i => i.transacao.tipo === 'saida');
 
-      // Atualiza contas_receber em paralelo
       await Promise.all(receberUpdates.map(item =>
         supabase
           .from('contas_receber')
@@ -259,7 +273,6 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
           .eq('id', item.selectedCandidateId!),
       ));
 
-      // Atualiza contas_pagar
       await Promise.all(pagarUpdates.map(item =>
         supabase
           .from('contas_pagar')
@@ -271,7 +284,6 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
           .eq('id', item.selectedCandidateId!),
       ));
 
-      // Atualiza parcelas vinculadas para "pago"
       const parcelasIds: string[] = [];
       const candidatesById = new Map<string, CandidateLancamento>();
       for (const i of items) {
@@ -285,7 +297,6 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
         await supabase.from('parcelas_contrato').update({ status: 'pago' }).in('id', parcelasIds);
       }
 
-      // Atualiza estatística do extrato_importado
       if (extratoImportadoId) {
         await supabase
           .from('extratos_importados')
@@ -305,6 +316,12 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
     } finally {
       setConfirming(false);
     }
+  };
+
+  const formatBR = (ymd: string | null) => {
+    if (!ymd) return '—';
+    const [y, m, d] = ymd.split('-');
+    return `${d}/${m}/${y}`;
   };
 
   return (
@@ -339,6 +356,126 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
                 <p className="text-xs text-muted-foreground">
                   Formatos aceitos: .ofx (padrão dos bancos brasileiros), .csv, .xlsx, .xls. Para planilhas use as colunas: <code>data</code>, <code>valor</code>, <code>descricao</code> (valor positivo = entrada; negativo = saída).
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  O arquivo será analisado e você poderá revisar as transações lidas antes de confirmar a importação.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === 'preview' && parsed && (
+            <div className="space-y-4 py-4">
+              {/* Cards de resumo do parsing */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Linhas/blocos lidos</div>
+                  <div className="text-2xl font-semibold">{parsed.totalLidos}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Formato: {parsed.formato.toUpperCase()}</div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-success" /> Válidas
+                  </div>
+                  <div className="text-2xl font-semibold text-success">{parsed.transacoes.length}</div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <FileWarning className="w-3 h-3 text-destructive" /> Com erro
+                  </div>
+                  <div className={`text-2xl font-semibold ${parsed.erros.length > 0 ? 'text-destructive' : ''}`}>
+                    {parsed.erros.length}
+                  </div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Período detectado</div>
+                  <div className="text-sm font-medium mt-1">
+                    {formatBR(parsed.data_inicio)} a {formatBR(parsed.data_fim)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Erros de parsing */}
+              {parsed.erros.length > 0 && (
+                <div className="border border-destructive/40 rounded-md">
+                  <div className="px-3 py-2 bg-destructive/5 border-b border-destructive/40 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-destructive" />
+                    <span className="text-sm font-medium">
+                      {parsed.erros.length} {parsed.erros.length === 1 ? 'linha foi descartada' : 'linhas foram descartadas'} durante a leitura
+                    </span>
+                  </div>
+                  <ScrollArea className="max-h-[200px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-20">Linha</TableHead>
+                          <TableHead className="w-[300px]">Motivo</TableHead>
+                          <TableHead>Conteúdo</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {parsed.erros.map((erro, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <Badge variant="outline">{erro.linha || '—'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-destructive">{erro.motivo}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground font-mono">{erro.raw || '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {/* Tabela de transações lidas */}
+              <div className="border rounded-md">
+                <div className="px-3 py-2 bg-muted/30 border-b flex items-center gap-2">
+                  <Eye className="w-4 h-4" />
+                  <span className="text-sm font-medium">Pré-visualização das transações que serão importadas</span>
+                </div>
+                {parsed.transacoes.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    Nenhuma transação válida foi encontrada no arquivo.
+                  </div>
+                ) : (
+                  <ScrollArea className="max-h-[320px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">#</TableHead>
+                          <TableHead className="w-28">Data</TableHead>
+                          <TableHead className="w-24">Tipo</TableHead>
+                          <TableHead className="w-32 text-right">Valor</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead className="w-32">FITID</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {parsed.transacoes.map((t, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                            <TableCell className="text-sm">{formatBR(t.data_movimento)}</TableCell>
+                            <TableCell>
+                              <Badge variant={t.tipo === 'entrada' ? 'default' : 'secondary'}>
+                                {t.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right text-sm font-medium">
+                              {t.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </TableCell>
+                            <TableCell className="text-sm truncate max-w-[400px]" title={t.descricao}>
+                              {t.descricao || <span className="text-muted-foreground italic">sem descrição</span>}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground font-mono truncate max-w-[120px]" title={t.fitid || ''}>
+                              {t.fitid || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                )}
               </div>
             </div>
           )}
@@ -389,8 +526,25 @@ export function ConciliarExtratoDialog({ open, onOpenChange, onSuccess }: Props)
             {step === 'upload' && (
               <>
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                <Button onClick={handleProcessFile} disabled={!contaBancariaId || !file || parsing}>
-                  {parsing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando...</> : <><Upload className="w-4 h-4 mr-2" /> Processar arquivo</>}
+                <Button onClick={handlePreviewFile} disabled={!contaBancariaId || !file || previewing}>
+                  {previewing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Lendo arquivo...</> : <><Eye className="w-4 h-4 mr-2" /> Pré-visualizar</>}
+                </Button>
+              </>
+            )}
+            {step === 'preview' && (
+              <>
+                <Button variant="outline" onClick={() => { setStep('upload'); setParsed(null); }} disabled={parsing}>
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
+                </Button>
+                <Button
+                  onClick={handleConfirmImport}
+                  disabled={parsing || !parsed || parsed.transacoes.length === 0}
+                >
+                  {parsing ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando...</>
+                  ) : (
+                    <><Upload className="w-4 h-4 mr-2" /> Importar {parsed?.transacoes.length ?? 0} transação(ões)</>
+                  )}
                 </Button>
               </>
             )}
