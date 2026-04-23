@@ -2835,6 +2835,13 @@ export default function Extrato() {
         onConfirm={handlePartialPayment}
       />
 
+      <CancelarParcelaDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        parcela={cancelLancamento}
+        onConfirm={handleCancelParcela}
+      />
+
       <PermissionDeniedDialog
         open={showPermissionDenied}
         onOpenChange={setShowPermissionDenied}
