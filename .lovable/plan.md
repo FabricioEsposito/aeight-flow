@@ -1,49 +1,82 @@
 
 
-## Cancelar parcela de contrato
+## Conciliação automática via OFX — dentro do Extrato
 
-Adicionar a ação **"Cancelar parcela"** nas listagens de parcelas vinculadas a contratos, permitindo marcar uma parcela específica como `cancelado` sem precisar inativar o contrato inteiro.
+Adicionar a importação e conciliação automática de extrato bancário **dentro da própria página `/extrato`**, sem criar nova rota. O fluxo cruza cada lançamento do banco com as parcelas pendentes do sistema (sugerindo baixas) e, para transações sem match, abre o mesmo formulário de "Novo Lançamento" pré-preenchido — exatamente como já acontece na importação via planilha.
 
-### Onde a ação aparece
+### Onde fica
 
-1. **Contas a Receber** (`/contas-receber`) — menu de ações de cada linha
-2. **Contas a Pagar** (`/contas-pagar`) — menu de ações de cada linha
-3. **Extrato e Conciliações** (`/extrato`) — menu de ações de cada linha
+Novo botão **"Conciliar extrato"** no cabeçalho de `/extrato`, ao lado dos botões existentes ("Novo Lançamento", "Importar Lançamentos", "Exportar"). Sem alterações no menu lateral.
 
-### Comportamento
+### Fluxo do usuário
 
-- **Quem pode usar**: somente `admin` e `finance_manager` (mesma regra dos outros ajustes financeiros sensíveis).
-- **Quando aparece**: apenas para parcelas vinculadas a contrato (`parcela_id` preenchido) e com status `pendente` ou `vencido`. Parcelas `pago` não podem ser canceladas (precisam primeiro voltar para "em aberto"). Lançamentos avulsos continuam usando "Excluir lançamento".
-- **Confirmação**: diálogo de confirmação obrigatório com:
-  - Resumo da parcela (cliente/fornecedor, número da parcela, vencimento, valor)
-  - Campo de **motivo do cancelamento** (texto livre, obrigatório)
-  - Aviso de que a ação não exclui o registro — o status fica como **Cancelado** e some das visões financeiras
-- **Reverter**: para reabrir uma parcela cancelada, o usuário usa a ação "Voltar em aberto" já existente (será habilitada também para status `cancelado`).
+1. Em **Extrato e Conciliações**, clique em **"Conciliar extrato"**
+2. Diálogo passo 1: selecione a **conta bancária** e faça upload do arquivo `.ofx` (ou `.csv`/`.xlsx` no template padrão já usado em "Importar Lançamentos")
+3. O sistema lê todas as transações e procura candidatos em `contas_receber`/`contas_pagar` da mesma conta bancária com status `pendente`/`vencido`
+4. Diálogo passo 2 — tabela de revisão com 3 grupos:
+   - **Match único** (1 candidato com score ≥ 80) — pré-selecionado, basta confirmar para baixar
+   - **Múltiplos candidatos** (score 50–79 ou >1 candidato) — escolha qual parcela bater no dropdown da linha
+   - **Sem match** — botão **"Criar lançamento"** que abre o `NovoLancamentoDialog` já pré-preenchido com data, valor, descrição e tipo (entrada/saída) da transação do extrato; após salvar, a transação volta para a tabela como "conciliada com novo lançamento"
+5. Botão **"Confirmar selecionados"** processa em lote:
+   - Itens com match marcados → status `pago`/`recebido`, `data_pagamento`/`data_recebimento` = data da transação OFX, `conta_bancaria_id` = a da importação
+   - Itens "sem match" sem ação → ficam ignorados (não criam nada)
 
-### Efeitos no banco
+### Critérios de matching (score 0–100)
 
-Para cada parcela cancelada, atualizar em uma transação:
-1. `parcelas_contrato.status` → `cancelado`
-2. `contas_receber.status` ou `contas_pagar.status` correspondente (mesmo `parcela_id`) → `cancelado`
-3. Salvar o motivo em `observacoes` da conta (anexado com prefixo "Cancelamento: …" + data + usuário)
+- **Valor exato** (±R$ 0,01): +60 (±R$ 1,00: +40)
+- **Vencimento** dentro de ±7 dias da data do extrato: +20 (±1 dia: +30)
+- **Descrição** do extrato contém nome/CNPJ do cliente/fornecedor: +15
+- **Tipo** bate (entrada → contas_receber; saída → contas_pagar): obrigatório
 
-### Visibilidade após cancelamento
+Score ≥ 80 = match exato. 50–79 = sugerido com revisão. <50 = sem match.
 
-Já está coberto pela lógica existente do sistema — registros com status `cancelado` são automaticamente excluídos de:
-- Extrato, Dashboard, DRE, Fluxo de Caixa
-- Controle de Faturamento, Régua de Cobrança, Comissionamento
-- Relatórios PDF/Excel
+### Lançamentos avulsos pré-preenchidos
 
-A parcela continua visível nas listas de Contas a Pagar/Receber com badge **"Cancelado"** (vermelho), permitindo auditoria e a ação de reabertura.
+Quando o usuário clica **"Criar lançamento"** numa transação sem match, o `NovoLancamentoDialog` abre com:
+- **Tipo**: entrada/saída conforme OFX
+- **Data de competência** e **vencimento**: data da transação
+- **Data de pagamento/recebimento**: data da transação (já marcado como pago)
+- **Valor**: valor da transação
+- **Descrição**: descrição do OFX (editável)
+- **Conta bancária**: a da importação (travada)
+- **Status**: pago/recebido
+- Cliente/fornecedor, plano de contas, centro de custo: o usuário preenche
+
+Mesmo padrão da importação por planilha já existente.
+
+### Permissões
+
+- **Admin** e **finance_manager**: importam e confirmam
+- **finance_analyst**: importa e revisa, mas confirmação final exige aprovador (mesmo padrão dos demais ajustes financeiros)
+- Demais papéis: botão oculto
 
 ### Detalhes técnicos
 
-**Arquivos a alterar:**
-- `src/components/financeiro/ActionsDropdown.tsx`: adicionar prop `onCancel` e item "Cancelar parcela" (visível quando `!isAvulso && status !== 'pago' && status !== 'cancelado'`); habilitar "Voltar em aberto" também para status `cancelado`.
-- `src/components/financeiro/ExtratoActionsDropdown.tsx`: mesma adição.
-- `src/pages/ContasReceber.tsx`, `src/pages/ContasPagar.tsx`, `src/pages/Extrato.tsx`: handler `handleCancelParcela`, integração com `usePermissionCheck` (`canPerformBaixas`), refetch após sucesso.
-- **Novo componente** `src/components/financeiro/CancelarParcelaDialog.tsx`: diálogo de confirmação com textarea obrigatório de motivo.
-- Badge de status: garantir que "Cancelado" apareça com `variant="destructive"` nas três telas (já existe em ContasPagar; replicar onde faltar).
+**Sem nova rota, sem novo item de menu**.
 
-**Sem migrations**: o status `cancelado` já existe no enum `status_pagamento` e nas RLS policies de update.
+**Nova tabela `extratos_importados`**:
+- `id`, `conta_bancaria_id`, `nome_arquivo`, `data_inicio`, `data_fim`, `total_transacoes`, `total_conciliadas`, `created_by`, `created_at`
+
+**Nova tabela `extrato_transacoes`**:
+- `id`, `extrato_importado_id`, `fitid` (ID único do OFX, evita duplicatas em re-importações), `data_movimento`, `valor`, `tipo`, `descricao`, `status` (pendente/conciliado/ignorado), `conta_receber_id`, `conta_pagar_id`, `created_at`
+
+RLS: select para `authenticated`; insert/update para `admin` + `finance_manager` + `finance_analyst`.
+
+**Parser OFX**: biblioteca `node-ofx-parser` (puro JS, lê OFX 1.x SGML e 2.x XML). CSV/Excel reaproveitam o parser de `ImportarLancamentosDialog`.
+
+**Algoritmo de match**: roda no client após upload — uma query única busca candidatos pendentes da conta no range ±15 dias e o score é calculado em memória.
+
+**Arquivos novos**:
+- `src/components/financeiro/ConciliarExtratoDialog.tsx` — diálogo de 2 passos (upload + revisão)
+- `src/components/financeiro/ConciliacaoMatchingTable.tsx` — tabela com grupos e ações por linha
+- `src/lib/ofx-parser.ts` — parsing de OFX/CSV/Excel
+- `src/lib/conciliacao-matcher.ts` — algoritmo de score
+
+**Arquivos a alterar**:
+- `src/pages/Extrato.tsx` — novo botão "Conciliar extrato" no header e renderização do diálogo
+- `src/components/financeiro/NovoLancamentoDialog.tsx` — aceitar prop `prefilledData` (data, valor, descrição, tipo, conta_bancaria_id, status) para abrir já preenchido a partir da conciliação
+
+**Migrations**: criar as 2 tabelas com RLS.
+
+**Sem custos externos**: parser roda no client. As tabelas ficam prontas para receber dados de uma futura integração Open Finance (Pluggy/Belvo) sem refazer a UI.
 
