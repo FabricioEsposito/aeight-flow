@@ -20,6 +20,7 @@ import { ViewInfoDialog } from '@/components/financeiro/ViewInfoDialog';
 import { EditParcelaDialog, EditParcelaData } from '@/components/financeiro/EditParcelaDialog';
 import { SolicitarAjusteDialog } from '@/components/financeiro/SolicitarAjusteDialog';
 import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
+import { CancelarParcelaDialog, CancelarParcelaInfo } from '@/components/financeiro/CancelarParcelaDialog';
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
@@ -109,6 +110,8 @@ export default function Extrato() {
   const [lancamentoToDelete, setLancamentoToDelete] = useState<LancamentoExtrato | null>(null);
   const [statusChangeData, setStatusChangeData] = useState<{ lancamento: LancamentoExtrato; newStatus: string } | null>(null);
   const [partialPaymentLancamento, setPartialPaymentLancamento] = useState<LancamentoExtrato | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelLancamento, setCancelLancamento] = useState<CancelarParcelaInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -951,6 +954,63 @@ export default function Extrato() {
     }
     setStatusChangeData({ lancamento, newStatus: 'pendente' });
     setStatusChangeDialogOpen(true);
+  };
+
+  const handleCancelClick = (lanc: LancamentoExtrato) => {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para cancelar parcelas. Entre em contato com o administrador ou gerente financeiro.')) {
+      return;
+    }
+    if (!lanc.parcela_id) return;
+    setCancelLancamento({
+      id: lanc.id,
+      tipo: lanc.origem,
+      parcela_id: lanc.parcela_id,
+      descricao: lanc.descricao,
+      cliente_fornecedor: lanc.cliente_fornecedor,
+      data_vencimento: lanc.data_vencimento,
+      valor: lanc.valor,
+    });
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelParcela = async (motivo: string) => {
+    if (!cancelLancamento) return;
+    try {
+      const table = cancelLancamento.tipo === 'receber' ? 'contas_receber' : 'contas_pagar';
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData.user?.email || userData.user?.id || 'Sistema';
+      const stamp = new Date().toLocaleString('pt-BR');
+      const cancelNote = `\n[Cancelamento ${stamp} por ${userEmail}] ${motivo}`;
+
+      const { data: existing } = await supabase
+        .from(table)
+        .select('observacoes')
+        .eq('id', cancelLancamento.id)
+        .maybeSingle();
+
+      const novasObs = `${(existing as any)?.observacoes || ''}${cancelNote}`.trim();
+
+      const { error } = await supabase
+        .from(table)
+        .update({ status: 'cancelado', observacoes: novasObs })
+        .eq('id', cancelLancamento.id);
+      if (error) throw error;
+
+      if (cancelLancamento.parcela_id) {
+        await supabase
+          .from('parcelas_contrato')
+          .update({ status: 'cancelado' })
+          .eq('id', cancelLancamento.parcela_id);
+      }
+
+      toast({ title: 'Parcela cancelada', description: 'A parcela foi marcada como cancelada.' });
+      fetchLancamentos();
+    } catch (err) {
+      console.error('Erro ao cancelar parcela:', err);
+      toast({ title: 'Erro', description: 'Não foi possível cancelar a parcela.', variant: 'destructive' });
+    } finally {
+      setCancelLancamento(null);
+    }
   };
 
   const handlePartialPayment = async (data: {
@@ -2636,6 +2696,7 @@ export default function Extrato() {
                         onView={() => handleView(lanc)}
                         onClone={() => handleClone(lanc)}
                         onDelete={!lanc.parcela_id ? () => handleDeleteConfirm(lanc) : undefined}
+                        onCancel={lanc.parcela_id ? () => handleCancelClick(lanc) : undefined}
                       />
                     </TableCell>
                   </TableRow>
