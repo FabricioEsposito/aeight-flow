@@ -29,6 +29,7 @@ import { useCentroCustoRateio, CentroCustoRateioItem } from '@/hooks/useCentroCu
 import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
+import { CancelarParcelaDialog, CancelarParcelaInfo } from '@/components/financeiro/CancelarParcelaDialog';
 interface ContaPagar {
   id: string;
   descricao: string;
@@ -97,6 +98,8 @@ export default function ContasPagar() {
   const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
   const [partialPaymentConta, setPartialPaymentConta] = useState<ContaPagar | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelConta, setCancelConta] = useState<CancelarParcelaInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
@@ -188,8 +191,8 @@ export default function ContasPagar() {
       const contasFiltradasPorContrato = (data || []).filter((item: any) => {
         // Lançamentos pagos sempre aparecem
         if (item.status === 'pago') return true;
-        // Lançamentos cancelados não aparecem
-        if (item.status === 'cancelado') return false;
+        // Lançamentos cancelados continuam visíveis na lista para auditoria
+        if (item.status === 'cancelado') return true;
         
         const contrato = item.parcelas_contrato?.contratos;
         // Se não tem contrato vinculado, mostrar
@@ -349,17 +352,17 @@ export default function ContasPagar() {
     if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de parcelas. Entre em contato com o administrador.')) {
       return;
     }
-    if (currentStatus !== 'pago') {
+    if (currentStatus === 'pago' || currentStatus === 'cancelado') {
+      // Reabrir lançamento (pago OU cancelado) — confirmação simples
+      setStatusChangeData({ id, currentStatus });
+      setStatusChangeDialogOpen(true);
+    } else {
       // Marking as paid - open partial payment dialog
       const conta = contas.find(c => c.id === id);
       if (conta) {
         setPartialPaymentConta(conta);
         setPartialPaymentDialogOpen(true);
       }
-    } else {
-      // Marking as open - simple confirmation
-      setStatusChangeData({ id, currentStatus });
-      setStatusChangeDialogOpen(true);
     }
   };
 
