@@ -22,13 +22,24 @@ import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect
 import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
+export interface PrefilledLancamentoData {
+  tipo?: 'receita' | 'despesa';
+  data?: string; // YYYY-MM-DD — usado para competência, vencimento e movimento
+  valor?: number;
+  descricao?: string;
+  conta_bancaria_id?: string;
+  lockContaBancaria?: boolean;
+  marcarPago?: boolean;
+}
+
 interface NovoLancamentoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
+  prefilled?: PrefilledLancamentoData | null;
 }
 
-export function NovoLancamentoDialog({ open, onOpenChange, onSave }: NovoLancamentoDialogProps) {
+export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: NovoLancamentoDialogProps) {
   const [tipoLancamento, setTipoLancamento] = useState<'receita' | 'despesa'>('receita');
   const [clienteId, setClienteId] = useState('');
   const [fornecedorId, setFornecedorId] = useState('');
