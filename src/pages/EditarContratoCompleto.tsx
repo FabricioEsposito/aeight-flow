@@ -1166,6 +1166,10 @@ export default function EditarContratoCompleto() {
                       <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                         Go Live
                       </Badge>
+                    ) : parcela.status === 'cancelado' ? (
+                      <Badge variant="destructive">Cancelado</Badge>
+                    ) : parcela.status === 'pago' ? (
+                      <Badge variant="default">Pago</Badge>
                     ) : (
                       <Badge variant="secondary">
                         {parcela.status === 'pendente' ? 'Pendente' : parcela.status}
@@ -1173,25 +1177,50 @@ export default function EditarContratoCompleto() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {parcela.status === 'aguardando_conclusao' ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenGoLiveDialog(parcela.id)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Concluir Go Live
-                      </Button>
-                    ) : (parcela as any).isGoLive && parcela.status === 'pendente' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleReverterGoLive(parcela.id)}
-                      >
-                        <Undo2 className="h-4 w-4 mr-2" />
-                        Reverter para Go Live
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-2 flex-wrap">
+                      {parcela.status === 'aguardando_conclusao' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenGoLiveDialog(parcela.id)}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Concluir Go Live
+                        </Button>
+                      ) : (parcela as any).isGoLive && parcela.status === 'pendente' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReverterGoLive(parcela.id)}
+                        >
+                          <Undo2 className="h-4 w-4 mr-2" />
+                          Reverter para Go Live
+                        </Button>
+                      )}
+
+                      {parcela.status !== 'pago' && parcela.status !== 'cancelado' && parcela.status !== 'aguardando_conclusao' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenCancelParcela(parcela)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Ban className="h-4 w-4 mr-2" />
+                          Cancelar parcela
+                        </Button>
+                      )}
+
+                      {parcela.status === 'cancelado' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReabrirParcela(parcela)}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Voltar em aberto
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -1235,6 +1264,19 @@ export default function EditarContratoCompleto() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CancelarParcelaDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        parcela={cancelParcela}
+        onConfirm={handleConfirmCancelParcela}
+      />
+
+      <PermissionDeniedDialog
+        open={showPermissionDenied}
+        onOpenChange={setShowPermissionDenied}
+        description={permissionDeniedMessage}
+      />
     </div>
   );
 }
