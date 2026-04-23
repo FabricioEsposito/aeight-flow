@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PartialPaymentDialog } from '@/components/financeiro/PartialPaymentDialog';
+import { CancelarParcelaDialog, CancelarParcelaInfo } from '@/components/financeiro/CancelarParcelaDialog';
 
 
 interface ContaReceber {
@@ -106,6 +107,8 @@ export default function ContasReceber() {
   const [statusChangeData, setStatusChangeData] = useState<{ id: string; currentStatus: string } | null>(null);
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
   const [partialPaymentConta, setPartialPaymentConta] = useState<ContaReceber | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelConta, setCancelConta] = useState<CancelarParcelaInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
@@ -199,8 +202,8 @@ export default function ContasReceber() {
       const contasFiltradasPorContrato = (data || []).filter((conta: any) => {
         // Lançamentos pagos sempre aparecem
         if (conta.status === 'pago') return true;
-        // Lançamentos cancelados não aparecem
-        if (conta.status === 'cancelado') return false;
+        // Lançamentos cancelados continuam visíveis na lista para auditoria
+        if (conta.status === 'cancelado') return true;
         
         const contrato = conta.parcelas_contrato?.contratos;
         // Se não tem contrato vinculado, mostrar
@@ -382,15 +385,15 @@ export default function ContasReceber() {
     if (!checkPermission('canEditFinanceiro', 'Você não tem permissão para alterar o status de parcelas. Entre em contato com o administrador.')) {
       return;
     }
-    if (currentStatus !== 'pago') {
+    if (currentStatus === 'pago' || currentStatus === 'cancelado') {
+      setStatusChangeData({ id, currentStatus });
+      setStatusChangeDialogOpen(true);
+    } else {
       const conta = contas.find(c => c.id === id);
       if (conta) {
         setPartialPaymentConta(conta);
         setPartialPaymentDialogOpen(true);
       }
-    } else {
-      setStatusChangeData({ id, currentStatus });
-      setStatusChangeDialogOpen(true);
     }
   };
 
@@ -626,8 +629,63 @@ export default function ContasReceber() {
     }
   };
 
+  const handleCancelClick = (conta: ContaReceber) => {
+    if (!checkPermission('canPerformBaixas', 'Você não tem permissão para cancelar parcelas. Entre em contato com o administrador ou gerente financeiro.')) {
+      return;
+    }
+    if (!conta.parcela_id) return;
+    setCancelConta({
+      id: conta.id,
+      tipo: 'receber',
+      parcela_id: conta.parcela_id,
+      descricao: conta.descricao,
+      cliente_fornecedor: conta.clientes?.nome_fantasia || conta.clientes?.razao_social || '',
+      data_vencimento: conta.data_vencimento,
+      valor: conta.valor,
+    });
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelParcela = async (motivo: string) => {
+    if (!cancelConta) return;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData.user?.email || userData.user?.id || 'Sistema';
+      const stamp = new Date().toLocaleString('pt-BR');
+      const cancelNote = `\n[Cancelamento ${stamp} por ${userEmail}] ${motivo}`;
+
+      const { data: existing } = await supabase
+        .from('contas_receber')
+        .select('observacoes')
+        .eq('id', cancelConta.id)
+        .maybeSingle();
+
+      const novasObs = `${existing?.observacoes || ''}${cancelNote}`.trim();
+
+      const { error } = await supabase
+        .from('contas_receber')
+        .update({ status: 'cancelado', observacoes: novasObs })
+        .eq('id', cancelConta.id);
+      if (error) throw error;
+
+      if (cancelConta.parcela_id) {
+        await supabase
+          .from('parcelas_contrato')
+          .update({ status: 'cancelado' })
+          .eq('id', cancelConta.parcela_id);
+      }
+
+      toast({ title: 'Parcela cancelada', description: 'A parcela foi marcada como cancelada.' });
+      fetchContas();
+    } catch (err) {
+      console.error('Erro ao cancelar parcela:', err);
+      toast({ title: 'Erro', description: 'Não foi possível cancelar a parcela.', variant: 'destructive' });
+    } finally {
+      setCancelConta(null);
+    }
+  };
+
   const getStatusVariant = (status: string, dataVencimento: string) => {
-    if (status === 'pago') return 'default';
     if (status === 'cancelado') return 'destructive';
     
     const hoje = new Date();
@@ -1000,11 +1058,13 @@ export default function ContasReceber() {
                   <TableCell className="text-right">
                     <ActionsDropdown
                       status={conta.status}
-                      onMarkAsPaid={() => handleToggleStatusClick(conta.id, 'pendente')}
-                      onMarkAsOpen={() => handleToggleStatusClick(conta.id, 'pago')}
+                      isAvulso={!conta.parcela_id}
+                      onMarkAsPaid={() => handleToggleStatusClick(conta.id, conta.status)}
+                      onMarkAsOpen={() => handleToggleStatusClick(conta.id, conta.status)}
                       onView={() => handleView(conta)}
                       onEdit={() => handleEdit(conta)}
                       onDelete={() => handleDeleteConfirm(conta.id)}
+                      onCancel={() => handleCancelClick(conta)}
                     />
                   </TableCell>
                 </TableRow>
@@ -1132,6 +1192,13 @@ export default function ContasReceber() {
         open={showPermissionDenied}
         onOpenChange={setShowPermissionDenied}
         description={permissionDeniedMessage}
+      />
+
+      <CancelarParcelaDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        parcela={cancelConta}
+        onConfirm={handleCancelParcela}
       />
     </div>
   );
