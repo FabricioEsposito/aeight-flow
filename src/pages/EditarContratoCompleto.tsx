@@ -88,6 +88,9 @@ export default function EditarContratoCompleto() {
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
   const [parcelas, setParcelas] = useState<any[]>([]);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelParcela, setCancelParcela] = useState<CancelarParcelaInfo | null>(null);
+  const { checkPermission, showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage } = usePermissionCheck();
 
   useEffect(() => {
     if (id) {
