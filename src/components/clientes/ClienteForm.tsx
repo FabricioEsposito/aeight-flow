@@ -34,7 +34,7 @@ type ClienteFormData = z.infer<typeof clienteSchema>;
 interface ClienteFormProps {
   cliente?: any;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdId?: string) => void;
 }
 
 export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
@@ -127,7 +127,7 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
           description: "As informações foram atualizadas com sucesso.",
         });
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("clientes")
           .insert({
             cnpj_cpf: submitData.cnpj_cpf || "",
@@ -144,7 +144,9 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
             telefone: submitData.telefone,
             email: submitData.email,
             status: "ativo"
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
 
@@ -152,6 +154,9 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
           title: "Cliente cadastrado!",
           description: "O cliente foi cadastrado com sucesso.",
         });
+
+        onSuccess(inserted?.id);
+        return;
       }
 
       onSuccess();
