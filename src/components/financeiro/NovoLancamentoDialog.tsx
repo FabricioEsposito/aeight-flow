@@ -217,7 +217,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Cliente</Label>
-                  <ClienteSelect value={clienteId} onChange={setClienteId} />
+                  <ClienteSelect value={clienteId} onChange={setClienteId} allowCreate />
                 </div>
 
                 <div className="space-y-2">
@@ -467,7 +467,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Fornecedor</Label>
-                  <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} />
+                  <FornecedorSelect value={fornecedorId} onChange={setFornecedorId} allowCreate />
                 </div>
 
                 <div className="space-y-2">
