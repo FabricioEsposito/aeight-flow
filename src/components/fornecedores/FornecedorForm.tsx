@@ -57,7 +57,7 @@ interface BankItem {
 interface FornecedorFormProps {
   fornecedor?: any;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdId?: string) => void;
 }
 
 export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFormProps) {
@@ -205,7 +205,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           description: "As informações foram atualizadas com sucesso.",
         });
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("fornecedores")
           .insert({
             cnpj_cpf: submitData.cnpj_cpf,
@@ -228,7 +228,9 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
             conta: submitData.conta,
             tipo_conta_bancaria: submitData.tipo_conta_bancaria,
             tipo_transferencia: submitData.tipo_transferencia,
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
 
@@ -236,6 +238,9 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
           title: "Fornecedor cadastrado!",
           description: "O fornecedor foi cadastrado com sucesso.",
         });
+
+        onSuccess(inserted?.id);
+        return;
       }
 
       onSuccess();
