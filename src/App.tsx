@@ -40,6 +40,7 @@ import RHConfirmacaoFinanceiro from "./pages/RHConfirmacaoFinanceiro";
 import FerramentasSoftware from "./pages/FerramentasSoftware";
 import AreaContador from "./pages/AreaContador";
 import Tutoriais from "./pages/Tutoriais";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
             <SessionTimeoutProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/install" element={<Install />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
                 <Route path="/fornecedores" element={<ProtectedRoute><Fornecedores /></ProtectedRoute>} />
