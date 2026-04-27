@@ -1,4 +1,4 @@
-import { User, LogOut, Clock, Menu, PanelLeftClose, PanelLeftOpen, Sun, Moon, HelpCircle, GraduationCap, ListChecks, BookOpen } from "lucide-react";
+import { User, LogOut, Clock, Menu, PanelLeftClose, PanelLeftOpen, Sun, Moon, HelpCircle, GraduationCap, ListChecks, BookOpen, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -156,6 +156,10 @@ export function AppHeader({ onMenuToggle, sidebarCollapsed }: AppHeaderProps) {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/configuracoes')}>
               Configurações
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/install')}>
+              <Download className="w-4 h-4 mr-2" />
+              Instalar app
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
