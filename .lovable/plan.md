@@ -1,82 +1,83 @@
+## Versão Mobile via PWA (Progressive Web App)
 
+Tornar o aeight-flow instalável em qualquer celular (iPhone/Android) diretamente pelo navegador, mantendo 100% das funcionalidades atuais e com a mesma base de código.
 
-## Conciliação automática via OFX — dentro do Extrato
+### O que o usuário vai ganhar
 
-Adicionar a importação e conciliação automática de extrato bancário **dentro da própria página `/extrato`**, sem criar nova rota. O fluxo cruza cada lançamento do banco com as parcelas pendentes do sistema (sugerindo baixas) e, para transações sem match, abre o mesmo formulário de "Novo Lançamento" pré-preenchido — exatamente como já acontece na importação via planilha.
+1. **Ícone do app na tela inicial** do celular (com o logo A&EIGHT)
+2. **Abertura em tela cheia**, sem barra do navegador — visual de app nativo
+3. **Splash screen** ao abrir
+4. **Tela `/install`** com instruções passo a passo de instalação para iPhone e Android
+5. **Botão "Instalar app"** que aparece automaticamente quando o navegador suporta o prompt nativo (Android/Chrome)
+6. **Funciona offline para navegação básica** (cache do shell da aplicação) — operações que dependem de dados continuam exigindo internet
 
-### Onde fica
+### Escopo técnico
 
-Novo botão **"Conciliar extrato"** no cabeçalho de `/extrato`, ao lado dos botões existentes ("Novo Lançamento", "Importar Lançamentos", "Exportar"). Sem alterações no menu lateral.
+#### 1. Configuração PWA
+- Instalar `vite-plugin-pwa` e configurar em `vite.config.ts`:
+  - `registerType: "autoUpdate"`
+  - `devOptions: { enabled: false }` (evita interferência no preview do Lovable)
+  - `navigateFallbackDenylist: [/^\/~oauth/, /^\/auth/]` (rotas de autenticação não cacheadas)
+- Manifest (`manifest.webmanifest`) com:
+  - `name: "A&EIGHT Flow"`, `short_name: "A&EIGHT"`
+  - `display: "standalone"`, `orientation: "portrait"`
+  - `theme_color` e `background_color` alinhados ao tema A&EIGHT (azul #2563EB / fundo escuro)
+  - `start_url: "/"`, `scope: "/"`
 
-### Fluxo do usuário
+#### 2. Ícones e splash
+- Gerar ícones em múltiplas resoluções (192x192, 512x512, maskable, apple-touch-icon 180x180) a partir do logo atual
+- Adicionar tags `<link rel="apple-touch-icon">` e meta tags iOS (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`) em `index.html`
 
-1. Em **Extrato e Conciliações**, clique em **"Conciliar extrato"**
-2. Diálogo passo 1: selecione a **conta bancária** e faça upload do arquivo `.ofx` (ou `.csv`/`.xlsx` no template padrão já usado em "Importar Lançamentos")
-3. O sistema lê todas as transações e procura candidatos em `contas_receber`/`contas_pagar` da mesma conta bancária com status `pendente`/`vencido`
-4. Diálogo passo 2 — tabela de revisão com 3 grupos:
-   - **Match único** (1 candidato com score ≥ 80) — pré-selecionado, basta confirmar para baixar
-   - **Múltiplos candidatos** (score 50–79 ou >1 candidato) — escolha qual parcela bater no dropdown da linha
-   - **Sem match** — botão **"Criar lançamento"** que abre o `NovoLancamentoDialog` já pré-preenchido com data, valor, descrição e tipo (entrada/saída) da transação do extrato; após salvar, a transação volta para a tabela como "conciliada com novo lançamento"
-5. Botão **"Confirmar selecionados"** processa em lote:
-   - Itens com match marcados → status `pago`/`recebido`, `data_pagamento`/`data_recebimento` = data da transação OFX, `conta_bancaria_id` = a da importação
-   - Itens "sem match" sem ação → ficam ignorados (não criam nada)
+#### 3. Guard de registro do Service Worker
+- Em `src/main.tsx`, registrar SW **somente** quando não estiver em iframe e não for host de preview Lovable. Em ambientes de preview, desregistrar SWs existentes para evitar cache stale.
 
-### Critérios de matching (score 0–100)
+#### 4. Página `/install`
+- Nova rota pública `/install` com:
+  - Detecção de plataforma (iOS Safari, Android Chrome, desktop)
+  - Instruções visuais por plataforma
+  - Botão "Instalar agora" usando o evento `beforeinstallprompt` (Android)
+  - Para iOS: instruções "Compartilhar → Adicionar à Tela de Início"
+- Link para `/install` no menu do usuário (avatar) e/ou banner discreto em telas mobile
 
-- **Valor exato** (±R$ 0,01): +60 (±R$ 1,00: +40)
-- **Vencimento** dentro de ±7 dias da data do extrato: +20 (±1 dia: +30)
-- **Descrição** do extrato contém nome/CNPJ do cliente/fornecedor: +15
-- **Tipo** bate (entrada → contas_receber; saída → contas_pagar): obrigatório
+#### 5. Ajustes de responsividade prioritários
+Revisão das áreas mais usadas no celular para garantir boa experiência:
+- **Extrato**: tabela com scroll horizontal otimizado, cards de resumo empilhados, botões de ação acessíveis com polegar
+- **Aprovações (RH e Financeiro)**: cards verticais ao invés de tabelas largas no mobile
+- **Dashboards**: gráficos responsivos já existem, validar legibilidade
+- **Diálogos** (Novo Lançamento, Conciliar Extrato): garantir que ocupem tela cheia em mobile com scroll interno
 
-Score ≥ 80 = match exato. 50–79 = sugerido com revisão. <50 = sem match.
+#### 6. Aviso ao usuário sobre comportamento no editor
+- Documentar (no chat, ao concluir) que o PWA **só funciona em produção** (`https://aeight-flow.lovable.app` ou domínio customizado), não no preview do Lovable. Isso é uma limitação proposital para evitar problemas de cache durante o desenvolvimento.
 
-### Lançamentos avulsos pré-preenchidos
+### Arquivos a criar/editar
 
-Quando o usuário clica **"Criar lançamento"** numa transação sem match, o `NovoLancamentoDialog` abre com:
-- **Tipo**: entrada/saída conforme OFX
-- **Data de competência** e **vencimento**: data da transação
-- **Data de pagamento/recebimento**: data da transação (já marcado como pago)
-- **Valor**: valor da transação
-- **Descrição**: descrição do OFX (editável)
-- **Conta bancária**: a da importação (travada)
-- **Status**: pago/recebido
-- Cliente/fornecedor, plano de contas, centro de custo: o usuário preenche
+**Criar:**
+- `public/icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`
+- `src/pages/Install.tsx` — página de instalação com instruções por plataforma
+- `src/hooks/usePwaInstall.ts` — hook que captura `beforeinstallprompt` e expõe função `promptInstall()`
 
-Mesmo padrão da importação por planilha já existente.
+**Editar:**
+- `vite.config.ts` — adicionar `VitePWA` com config segura para Lovable
+- `index.html` — meta tags iOS, theme-color, apple-touch-icon
+- `src/main.tsx` — guard de registro de SW (não registrar em iframe/preview)
+- `src/App.tsx` — adicionar rota `/install` (pública, sem ProtectedRoute)
+- `src/components/layout/AppHeader.tsx` ou menu do usuário — link "Instalar app"
+- `package.json` — adicionar dependência `vite-plugin-pwa`
 
-### Permissões
+**Não mexer:**
+- Lógica de negócio existente (Extrato, Conciliação, Contratos, RH, etc.) permanece intacta
+- Autenticação Supabase já é compatível com PWA
 
-- **Admin** e **finance_manager**: importam e confirmam
-- **finance_analyst**: importa e revisa, mas confirmação final exige aprovador (mesmo padrão dos demais ajustes financeiros)
-- Demais papéis: botão oculto
+### Fluxo de uso final
 
-### Detalhes técnicos
+1. Usuário acessa `https://aeight-flow.lovable.app` pelo celular
+2. **Android/Chrome**: aparece prompt automático "Instalar app" ou ele acessa `/install` e clica em "Instalar agora"
+3. **iPhone/Safari**: acessa `/install`, segue instruções "Compartilhar → Adicionar à Tela de Início"
+4. Ícone A&EIGHT aparece na tela inicial
+5. Ao tocar no ícone, app abre em tela cheia com splash screen, login Supabase e acesso a todas as funcionalidades
 
-**Sem nova rota, sem novo item de menu**.
+### Próximo passo (após aprovação)
 
-**Nova tabela `extratos_importados`**:
-- `id`, `conta_bancaria_id`, `nome_arquivo`, `data_inicio`, `data_fim`, `total_transacoes`, `total_conciliadas`, `created_by`, `created_at`
+Implemento tudo acima, faço o build e te oriento a clicar em **Publish → Update** para que a versão PWA fique ativa em `aeight-flow.lovable.app`. Após isso, basta abrir esse link no celular para instalar.
 
-**Nova tabela `extrato_transacoes`**:
-- `id`, `extrato_importado_id`, `fitid` (ID único do OFX, evita duplicatas em re-importações), `data_movimento`, `valor`, `tipo`, `descricao`, `status` (pendente/conciliado/ignorado), `conta_receber_id`, `conta_pagar_id`, `created_at`
-
-RLS: select para `authenticated`; insert/update para `admin` + `finance_manager` + `finance_analyst`.
-
-**Parser OFX**: biblioteca `node-ofx-parser` (puro JS, lê OFX 1.x SGML e 2.x XML). CSV/Excel reaproveitam o parser de `ImportarLancamentosDialog`.
-
-**Algoritmo de match**: roda no client após upload — uma query única busca candidatos pendentes da conta no range ±15 dias e o score é calculado em memória.
-
-**Arquivos novos**:
-- `src/components/financeiro/ConciliarExtratoDialog.tsx` — diálogo de 2 passos (upload + revisão)
-- `src/components/financeiro/ConciliacaoMatchingTable.tsx` — tabela com grupos e ações por linha
-- `src/lib/ofx-parser.ts` — parsing de OFX/CSV/Excel
-- `src/lib/conciliacao-matcher.ts` — algoritmo de score
-
-**Arquivos a alterar**:
-- `src/pages/Extrato.tsx` — novo botão "Conciliar extrato" no header e renderização do diálogo
-- `src/components/financeiro/NovoLancamentoDialog.tsx` — aceitar prop `prefilledData` (data, valor, descrição, tipo, conta_bancaria_id, status) para abrir já preenchido a partir da conciliação
-
-**Migrations**: criar as 2 tabelas com RLS.
-
-**Sem custos externos**: parser roda no client. As tabelas ficam prontas para receber dados de uma futura integração Open Finance (Pluggy/Belvo) sem refazer a UI.
-
+Se mais para frente você quiser publicar nas lojas (App Store/Google Play), adicionamos o Capacitor por cima desta base — sem retrabalho.
