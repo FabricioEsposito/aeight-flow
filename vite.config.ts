@@ -20,11 +20,11 @@ export default defineConfig(({ mode }) => ({
         enabled: false,
       },
       includeAssets: [
-        "favicon-a8-blue-v4.png",
-        "favicon-a8-blue-v4.ico",
-        "icons/icon-a8-blue-v4-192.png",
-        "icons/icon-a8-blue-v4-512.png",
-        "icons/apple-touch-icon-a8-blue-v4.png",
+        "favicon-ampersand-black.png",
+        "favicon-ampersand-black.ico",
+        "icons/icon-ampersand-black-192.png",
+        "icons/icon-ampersand-black-512.png",
+        "icons/apple-touch-icon-ampersand-black.png",
       ],
       workbox: {
         // Never cache auth/oauth routes — they must always hit the network
@@ -48,19 +48,19 @@ export default defineConfig(({ mode }) => ({
         lang: "pt-BR",
         icons: [
           {
-            src: "/icons/icon-a8-blue-v4-192.png",
+            src: "/icons/icon-ampersand-black-192.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any",
           },
           {
-            src: "/icons/icon-a8-blue-v4-512.png",
+            src: "/icons/icon-ampersand-black-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any",
           },
           {
-            src: "/icons/icon-a8-blue-v4-maskable-512.png",
+            src: "/icons/icon-ampersand-black-maskable-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
