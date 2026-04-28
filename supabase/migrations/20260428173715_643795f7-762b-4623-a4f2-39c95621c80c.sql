@@ -1,0 +1,1 @@
+ALTER TABLE public.clientes ALTER COLUMN cnpj_cpf DROP NOT NULL;
