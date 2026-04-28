@@ -266,8 +266,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
       {/* Header with A&EIGHT branding */}
       <header className="p-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-sm">
-            <Building2 className="w-5 h-5 text-primary-foreground" />
+          <div className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center shadow-sm overflow-hidden">
+            <img
+              src="/favicon-ampersand-black.png"
+              alt="A&EIGHT"
+              className="w-7 h-7 object-contain"
+            />
           </div>
           <div>
             <h2 className="font-bold text-lg text-foreground tracking-tight">A&EIGHT</h2>
