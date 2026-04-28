@@ -14,7 +14,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="A&amp;EIGHT" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-aeight-black.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-a8-blue-v3.png" />
 
     <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,8 +31,25 @@
     <meta name="twitter:title" content="A&amp;EIGHT ERP">
     <meta property="og:description" content="Sistema ERP completo para A&amp;EIGHT - Gestão de clientes, fornecedores, contratos e finanças">
     <meta name="twitter:description" content="Sistema ERP completo para A&amp;EIGHT - Gestão de clientes, fornecedores, contratos e finanças">
-    <link rel="icon" type="image/png" href="/favicon-aeight-black.png">
-    <link rel="shortcut icon" href="/favicon-aeight-black.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-a8-blue-v3.png">
+    <link rel="shortcut icon" href="/favicon-a8-blue-v3.ico">
+    <script>
+      // Force favicon refresh when browsers keep an old cached icon.
+      (() => {
+        const hrefs = ["/favicon-a8-blue-v3.png", "/favicon-a8-blue-v3.ico"];
+        document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon']").forEach((el) => el.remove());
+        hrefs.forEach((href) => {
+          const link = document.createElement("link");
+          link.rel = href.endsWith(".ico") ? "shortcut icon" : "icon";
+          link.href = `${href}?v=${Date.now()}`;
+          if (href.endsWith(".png")) {
+            link.type = "image/png";
+            link.sizes = "192x192";
+          }
+          document.head.appendChild(link);
+        });
+      })();
+    </script>
   </head>
 
   <body>
