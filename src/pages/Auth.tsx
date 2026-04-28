@@ -271,8 +271,12 @@ export default function Auth() {
         <CardHeader className="space-y-4 pb-6">
           {/* Logo */}
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-xl bg-gradient-primary flex items-center justify-center shadow-primary">
-              <Building2 className="w-8 h-8 text-primary-foreground" />
+            <div className="w-16 h-16 rounded-xl bg-background border border-border flex items-center justify-center shadow-sm overflow-hidden">
+              <img
+                src="/favicon-ampersand-black.png"
+                alt="A&EIGHT"
+                className="w-12 h-12 object-contain"
+              />
             </div>
           </div>
           
