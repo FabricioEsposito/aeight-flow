@@ -130,7 +130,7 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
         const { data: inserted, error } = await supabase
           .from("clientes")
           .insert({
-            cnpj_cpf: submitData.cnpj_cpf || "",
+            cnpj_cpf: submitData.cnpj_cpf && submitData.cnpj_cpf.trim() !== "" ? submitData.cnpj_cpf : null,
             razao_social: submitData.razao_social,
             nome_fantasia: submitData.nome_fantasia,
             tipo_pessoa: submitData.tipo_pessoa,
