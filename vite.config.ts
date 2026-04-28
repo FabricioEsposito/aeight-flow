@@ -20,9 +20,11 @@ export default defineConfig(({ mode }) => ({
         enabled: false,
       },
       includeAssets: [
-        "icons/icon-192.png",
-        "icons/icon-512.png",
-        "icons/apple-touch-icon.png",
+        "favicon-aeight-black.png",
+        "favicon-aeight-black.ico",
+        "icons/icon-aeight-black-192.png",
+        "icons/icon-aeight-black-512.png",
+        "icons/apple-touch-icon-aeight-black.png",
       ],
       workbox: {
         // Never cache auth/oauth routes — they must always hit the network
@@ -46,19 +48,19 @@ export default defineConfig(({ mode }) => ({
         lang: "pt-BR",
         icons: [
           {
-            src: "/icons/icon-192.png",
+            src: "/icons/icon-aeight-black-192.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any",
           },
           {
-            src: "/icons/icon-512.png",
+            src: "/icons/icon-aeight-black-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any",
           },
           {
-            src: "/icons/icon-maskable-512.png",
+            src: "/icons/icon-aeight-black-maskable-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
