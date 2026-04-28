@@ -28,6 +28,14 @@ if (isPreviewHost || isInIframe) {
       .then((regs) => regs.forEach((r) => r.unregister()))
       .catch(() => {});
   }
+
+  // Clear old PWA caches in preview so stale favicons/icons do not persist.
+  if ("caches" in window) {
+    window.caches
+      .keys()
+      .then((keys) => keys.forEach((key) => window.caches.delete(key)))
+      .catch(() => {});
+  }
 } else if ("serviceWorker" in navigator) {
   // Production-only: dynamic import so the virtual module is tree-shaken from preview builds
   import("virtual:pwa-register")
