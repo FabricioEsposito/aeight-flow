@@ -169,14 +169,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência) - com paginação
       const receitas = await fetchAllRows(
         'contas_receber',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), clientes(razao_social)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, plano_contas(codigo, descricao), clientes(razao_social)',
         dateRange
       );
 
       // Buscar despesas (regime de competência) - com paginação
       const despesas = await fetchAllRows(
         'contas_pagar',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, plano_contas(codigo, descricao), fornecedores(razao_social)',
         dateRange
       );
 
