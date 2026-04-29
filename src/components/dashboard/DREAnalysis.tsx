@@ -53,8 +53,20 @@ interface DREAnalysisProps {
   centroCusto?: string[];
 }
 
+interface DREMensal {
+  meses: string[]; // ex: ['2025-01', '2025-02']
+  linhas: Array<{
+    label: string;
+    isTotal?: boolean;
+    isNegative?: boolean;
+    isPercent?: boolean;
+    valores: number[]; // por mês
+  }>;
+}
+
 export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [dreData, setDreData] = useState<DREData | null>(null);
+  const [dreMensal, setDreMensal] = useState<DREMensal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
