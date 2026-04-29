@@ -250,7 +250,7 @@ export default function Extrato() {
     { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => row.status === 'pago' ? (row.data_recebimento || row.data_pagamento || '') : '', type: 'date' as const },
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'Entrada' : 'Saída' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
-    { header: 'Descrição', accessor: 'descricao' },
+    { header: 'CNPJ/CPF', accessor: (row: LancamentoExtrato) => row.cnpj_cpf || '-' },
     { header: 'Serviço', accessor: (row: LancamentoExtrato) => {
       if (row.servicos_detalhes && row.servicos_detalhes.length > 0) {
         return row.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ');
