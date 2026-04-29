@@ -803,6 +803,76 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         </div>
       </CardContent>
     </Card>
+
+    {dreMensal && dreMensal.meses.length > 0 && (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>DRE Mensal Comparativo</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Comparativo mês a mês dentro do período filtrado ({dreMensal.meses.length} mês{dreMensal.meses.length > 1 ? 'es' : ''})
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-3 px-4 font-bold sticky left-0 bg-primary z-10 min-w-[240px]">Linha</th>
+                  {dreMensal.meses.map(mes => {
+                    const [y, m] = mes.split('-');
+                    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+                    return (
+                      <th key={mes} className="text-right py-3 px-4 font-bold min-w-[130px] whitespace-nowrap">
+                        {months[parseInt(m) - 1]}/{y}
+                      </th>
+                    );
+                  })}
+                  <th className="text-right py-3 px-4 font-bold min-w-[140px] whitespace-nowrap bg-primary/80">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dreMensal.linhas
+                  .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
+                  .map((linha, idx) => {
+                    const total = linha.isPercent
+                      ? null
+                      : linha.valores.reduce((s, v) => s + v, 0);
+                    return (
+                      <tr key={idx} className={cn("border-b border-border hover:bg-muted/50", linha.isTotal && "bg-muted/30")}>
+                        <td className={cn("py-2 px-4 sticky left-0 bg-background z-10", linha.isTotal && "font-bold bg-muted/30")}>
+                          {linha.label}
+                        </td>
+                        {linha.valores.map((v, i) => (
+                          <td key={i} className={cn(
+                            "text-right py-2 px-4 tabular-nums whitespace-nowrap",
+                            linha.isTotal && "font-bold",
+                            linha.isNegative && v !== 0 && "text-destructive",
+                            !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
+                          )}>
+                            {linha.isPercent
+                              ? `${v.toFixed(2)}%`
+                              : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                          </td>
+                        ))}
+                        <td className={cn(
+                          "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20",
+                          linha.isNegative && total !== null && total !== 0 && "text-destructive",
+                          !linha.isNegative && linha.isTotal && total !== null && total < 0 && "text-destructive"
+                        )}>
+                          {linha.isPercent
+                            ? '—'
+                            : (linha.isNegative && (total ?? 0) > 0 ? '-' : '') + formatCurrency(Math.abs(total ?? 0))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
     <DREChatDialog open={chatOpen} onOpenChange={setChatOpen} dreData={chatDreData} />
     </>
   );
