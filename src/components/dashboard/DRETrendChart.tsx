@@ -23,10 +23,21 @@ interface DRETrendChartProps {
   format: "currency" | "percent";
   /** cor do valor real (hex/hsl) */
   valueColor?: string;
-  /** cor da linha de tendência */
+  /** cor da linha de meta */
   trendColor?: string;
-  /** percentual padrão sugerido para a linha de tendência (ex: 5 = +5% ao mês) */
-  defaultGrowthPercent?: number;
+  /**
+   * Meta ideal (alvo) fixa.
+   * - Se format='percent': é o % alvo direto (ex: 40 = 40%).
+   * - Se format='currency' e referenceValores não informado: é o valor absoluto alvo em R$.
+   * - Se format='currency' e referenceValores informado: é o % da referência (ex: 20 => 20% da receita do mês).
+   */
+  defaultTargetPercent?: number;
+  /** Valores de referência por mês (ex: receita) usados para calcular meta = % * referencia */
+  referenceValores?: number[];
+  /** Rótulo da meta (ex: "Meta ideal (40%)") — se omitido, gerado automaticamente */
+  targetLabel?: string;
+  /** Texto do input (ex: "Meta ideal (%)") */
+  inputLabel?: string;
 }
 
 const monthsAbbr = [
@@ -52,25 +63,44 @@ export function DRETrendChart({
   format,
   valueColor = "hsl(var(--primary))",
   trendColor = "hsl(var(--destructive))",
-  defaultGrowthPercent = 5,
+  defaultTargetPercent = 40,
+  referenceValores,
+  targetLabel,
+  inputLabel = "Meta ideal (%)",
 }: DRETrendChartProps) {
-  const [growthPercent, setGrowthPercent] = useState<number>(defaultGrowthPercent);
+  const [targetPercent, setTargetPercent] = useState<number>(defaultTargetPercent);
+
+  const usesReference = format === "currency" && Array.isArray(referenceValores);
 
   const chartData = useMemo(() => {
     if (!meses.length) return [];
-    // Base da tendência = primeiro valor do período
-    const base = valores[0] ?? 0;
-    const factor = 1 + growthPercent / 100;
-
-    return meses.map((mes, i) => ({
-      mes: formatMes(mes),
-      valor: valores[i] ?? 0,
-      tendencia: base * Math.pow(factor, i),
-    }));
-  }, [meses, valores, growthPercent]);
+    return meses.map((mes, i) => {
+      let meta: number;
+      if (format === "percent") {
+        meta = targetPercent;
+      } else if (usesReference) {
+        meta = (referenceValores![i] ?? 0) * (targetPercent / 100);
+      } else {
+        meta = targetPercent; // valor absoluto fixo
+      }
+      return {
+        mes: formatMes(mes),
+        valor: valores[i] ?? 0,
+        meta,
+      };
+    });
+  }, [meses, valores, targetPercent, format, usesReference, referenceValores]);
 
   const formatValue = (v: number) =>
     format === "currency" ? formatCurrency(v) : formatPercent(v);
+
+  const computedTargetLabel =
+    targetLabel ??
+    (format === "percent"
+      ? `Meta ideal (${targetPercent}%)`
+      : usesReference
+      ? `Meta ideal (${targetPercent}% da Receita)`
+      : `Meta ideal (${formatCurrency(targetPercent)})`);
 
   if (!meses.length) return null;
 
@@ -85,15 +115,15 @@ export function DRETrendChart({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Label htmlFor={`growth-${title}`} className="text-sm whitespace-nowrap">
-              Tendência (% ao mês):
+            <Label htmlFor={`target-${title}`} className="text-sm whitespace-nowrap">
+              {inputLabel}:
             </Label>
             <Input
-              id={`growth-${title}`}
+              id={`target-${title}`}
               type="number"
-              step="0.1"
-              value={growthPercent}
-              onChange={(e) => setGrowthPercent(parseFloat(e.target.value) || 0)}
+              step="0.5"
+              value={targetPercent}
+              onChange={(e) => setTargetPercent(parseFloat(e.target.value) || 0)}
               className="w-24"
             />
           </div>
@@ -137,8 +167,8 @@ export function DRETrendChart({
               )}
               <Line
                 type="monotone"
-                dataKey="tendencia"
-                name={`Tendência (+${growthPercent}%/mês)`}
+                dataKey="meta"
+                name={computedTargetLabel}
                 stroke={trendColor}
                 strokeWidth={2}
                 strokeDasharray="6 4"
