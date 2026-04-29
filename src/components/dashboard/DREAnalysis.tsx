@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles, Eye, EyeOff } from "lucide-react";
 import { DREChatDialog } from "./DREChatDialog";
 import { DRETrendChart } from "./DRETrendChart";
