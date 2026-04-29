@@ -832,10 +832,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 </tr>
                 <tr className="bg-primary text-primary-foreground text-xs">
                   {dreMensal.meses.map(mes => (
-                    <>
-                      <th key={`${mes}-v`} className="text-right py-2 px-4 font-medium whitespace-nowrap border-l border-primary-foreground/20">Valor</th>
-                      <th key={`${mes}-av`} className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80">AV%</th>
-                    </>
+                    <Fragment key={mes}>
+                      <th className="text-right py-2 px-4 font-medium whitespace-nowrap border-l border-primary-foreground/20">Valor</th>
+                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80">AV%</th>
+                    </Fragment>
                   ))}
                   <th className="text-right py-2 px-4 font-medium whitespace-nowrap bg-primary/80 border-l border-primary-foreground/20">Valor</th>
                   <th className="text-right py-2 px-2 font-medium whitespace-nowrap bg-primary/80 opacity-80">AV%</th>
