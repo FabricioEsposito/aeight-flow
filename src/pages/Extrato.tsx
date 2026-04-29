@@ -53,6 +53,7 @@ interface LancamentoExtrato {
   origem: 'receber' | 'pagar';
   parcela_id?: string | null;
   cliente_fornecedor?: string;
+  cnpj_cpf?: string;
   numero_contrato?: string;
   servicos_contrato?: string[] | null;
   servicos_detalhes?: Array<{ codigo: string; nome: string }>;
@@ -221,8 +222,7 @@ export default function Extrato() {
     { header: 'Vencimento', accessor: (row: LancamentoExtrato) => row.data_vencimento, type: 'date' as const },
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'E' : 'S' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
-    { header: 'Descrição', accessor: 'descricao' },
-    { header: 'C. Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
+    { header: 'CNPJ/CPF', accessor: (row: LancamentoExtrato) => row.cnpj_cpf || '-' },
     { header: 'Conta', accessor: (row: LancamentoExtrato) => {
       // Exibe apenas a descrição da conta, removendo o nome do banco
       const fullName = row.conta_bancaria_nome || '-';
@@ -250,7 +250,7 @@ export default function Extrato() {
     { header: 'Data Movimentação', accessor: (row: LancamentoExtrato) => row.status === 'pago' ? (row.data_recebimento || row.data_pagamento || '') : '', type: 'date' as const },
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'Entrada' : 'Saída' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
-    { header: 'Descrição', accessor: 'descricao' },
+    { header: 'CNPJ/CPF', accessor: (row: LancamentoExtrato) => row.cnpj_cpf || '-' },
     { header: 'Serviço', accessor: (row: LancamentoExtrato) => {
       if (row.servicos_detalhes && row.servicos_detalhes.length > 0) {
         return row.servicos_detalhes.map(s => `${s.codigo} - ${s.nome}`).join(', ');
@@ -681,6 +681,7 @@ export default function Extrato() {
           origem: 'receber' as const,
           parcela_id: r.parcela_id,
           cliente_fornecedor: r.clientes?.nome_fantasia || r.clientes?.razao_social,
+          cnpj_cpf: r.clientes?.cnpj_cpf,
           numero_contrato: r.parcelas_contrato?.contratos?.numero_contrato,
           servicos_contrato: r.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: r.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
@@ -755,6 +756,7 @@ export default function Extrato() {
           origem: 'pagar' as const,
           parcela_id: p.parcela_id,
           cliente_fornecedor: p.fornecedores?.nome_fantasia || p.fornecedores?.razao_social,
+          cnpj_cpf: p.fornecedores?.cnpj_cpf,
           numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
           servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
