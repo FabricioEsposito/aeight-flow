@@ -431,6 +431,78 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const provisaoCsllIrrf = ebit > 0 ? ebit * 0.34 : 0;
       const resultadoExercicio = ebit - provisaoCsllIrrf;
 
+      // ============= Cálculo mensal comparativo =============
+      const buildMesesList = (): string[] => {
+        if (!dateRange) {
+          const set = new Set<string>();
+          [...receitas, ...despesas].forEach((l: any) => {
+            if (l.data_competencia) set.add(l.data_competencia.slice(0, 7));
+          });
+          return Array.from(set).sort();
+        }
+        const result: string[] = [];
+        const [fy, fm] = dateRange.from.split('-').map(Number);
+        const [ty, tm] = dateRange.to.split('-').map(Number);
+        let y = fy, m = fm;
+        while (y < ty || (y === ty && m <= tm)) {
+          result.push(`${y}-${String(m).padStart(2, '0')}`);
+          m++;
+          if (m > 12) { m = 1; y++; }
+        }
+        return result;
+      };
+
+      const mesesList = buildMesesList();
+
+      const somarPorMes = (lancamentos: any[], accountIds: string[]): number[] => {
+        const totais = new Array(mesesList.length).fill(0);
+        lancamentos?.forEach((l: any) => {
+          if (!l.plano_conta_id || !accountIds.includes(l.plano_conta_id)) return;
+          if (!l.data_competencia) return;
+          const mes = l.data_competencia.slice(0, 7);
+          const idx = mesesList.indexOf(mes);
+          if (idx === -1) return;
+          const effective = getEffectiveValue(l);
+          if (!effective) return;
+          totais[idx] += effective.valor;
+        });
+        return totais;
+      };
+
+      const receitaMes = somarPorMes(receitas, receitaIds);
+      const cmvMes = somarPorMes(despesas, cmvIds);
+      const despAdmMes = somarPorMes(despesas, despAdmIds);
+      const impostosMes = somarPorMes(despesas, impostosIds);
+      const despFinMes = somarPorMes(despesas, despFinIds);
+      const emprestimosMes = somarPorMes(despesas, emprestimosIds);
+      const despExtraMes = somarPorMes(despesas, despExtraIds);
+
+      const margemMes = receitaMes.map((r, i) => r > 0 ? ((r - cmvMes[i]) / r) * 100 : 0);
+      const ebtidaMes = receitaMes.map((r, i) => r - cmvMes[i] - despAdmMes[i]);
+      const ebitMes = ebtidaMes.map((e, i) => e - impostosMes[i] - emprestimosMes[i] - despFinMes[i]);
+      const provisaoMes = ebitMes.map(e => e > 0 ? e * 0.34 : 0);
+      const resultadoMes = ebitMes.map((e, i) => e - provisaoMes[i]);
+
+      setDreMensal({
+        meses: mesesList,
+        linhas: [
+          { label: 'Receita', valores: receitaMes },
+          { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true },
+          { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
+          { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true },
+          { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
+          { label: 'Impostos', valores: impostosMes, isNegative: true },
+          { label: 'Empréstimo', valores: emprestimosMes, isNegative: true },
+          { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true },
+          { label: 'EBIT', valores: ebitMes, isTotal: true },
+          { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
+          { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
+          { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true },
+          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
+        ],
+      });
+
+
       setDreData({
         receita: receitaTotal,
         receitaDetalhes,
