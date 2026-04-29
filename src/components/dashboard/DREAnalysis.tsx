@@ -880,7 +880,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                           !linha.isNegative && linha.isTotal && total !== null && total < 0 && "text-destructive"
                         )}>
                           {linha.isPercent
-                            ? '—'
+                            ? `${(total ?? 0).toFixed(2)}%`
                             : (linha.isNegative && (total ?? 0) > 0 ? '-' : '') + formatCurrency(Math.abs(total ?? 0))}
                         </td>
                       </tr>
