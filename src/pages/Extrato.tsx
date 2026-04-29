@@ -757,6 +757,7 @@ export default function Extrato() {
           origem: 'pagar' as const,
           parcela_id: p.parcela_id,
           cliente_fornecedor: p.fornecedores?.nome_fantasia || p.fornecedores?.razao_social,
+          cnpj_cpf: p.fornecedores?.cnpj_cpf,
           numero_contrato: p.parcelas_contrato?.contratos?.numero_contrato,
           servicos_contrato: p.parcelas_contrato?.contratos?.servicos,
           importancia_contrato: p.parcelas_contrato?.contratos?.importancia_cliente_fornecedor,
