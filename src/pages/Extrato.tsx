@@ -53,6 +53,7 @@ interface LancamentoExtrato {
   origem: 'receber' | 'pagar';
   parcela_id?: string | null;
   cliente_fornecedor?: string;
+  cnpj_cpf?: string;
   numero_contrato?: string;
   servicos_contrato?: string[] | null;
   servicos_detalhes?: Array<{ codigo: string; nome: string }>;
