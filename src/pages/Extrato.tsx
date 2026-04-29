@@ -222,8 +222,7 @@ export default function Extrato() {
     { header: 'Vencimento', accessor: (row: LancamentoExtrato) => row.data_vencimento, type: 'date' as const },
     { header: 'Tipo', accessor: (row: LancamentoExtrato) => row.tipo === 'entrada' ? 'E' : 'S' },
     { header: 'Cliente/Fornecedor', accessor: (row: LancamentoExtrato) => row.cliente_fornecedor || '-' },
-    { header: 'Descrição', accessor: 'descricao' },
-    { header: 'C. Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
+    { header: 'CNPJ/CPF', accessor: (row: LancamentoExtrato) => row.cnpj_cpf || '-' },
     { header: 'Conta', accessor: (row: LancamentoExtrato) => {
       // Exibe apenas a descrição da conta, removendo o nome do banco
       const fullName = row.conta_bancaria_nome || '-';
