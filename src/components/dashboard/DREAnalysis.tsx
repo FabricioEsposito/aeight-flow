@@ -818,26 +818,37 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-primary text-primary-foreground">
-                  <th className="text-left py-3 px-4 font-bold sticky left-0 bg-primary z-10 min-w-[240px]">Linha</th>
+                  <th rowSpan={2} className="text-left py-3 px-4 font-bold sticky left-0 bg-primary z-10 min-w-[240px] align-middle">Linha</th>
                   {dreMensal.meses.map(mes => {
                     const [y, m] = mes.split('-');
                     const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
                     return (
-                      <th key={mes} className="text-right py-3 px-4 font-bold min-w-[130px] whitespace-nowrap">
+                      <th key={mes} colSpan={2} className="text-center py-2 px-4 font-bold min-w-[200px] whitespace-nowrap border-l border-primary-foreground/20">
                         {months[parseInt(m) - 1]}/{y}
                       </th>
                     );
                   })}
-                  <th className="text-right py-3 px-4 font-bold min-w-[140px] whitespace-nowrap bg-primary/80">Total</th>
+                  <th colSpan={2} className="text-center py-2 px-4 font-bold min-w-[220px] whitespace-nowrap bg-primary/80 border-l border-primary-foreground/20">Total</th>
+                </tr>
+                <tr className="bg-primary text-primary-foreground text-xs">
+                  {dreMensal.meses.map(mes => (
+                    <>
+                      <th key={`${mes}-v`} className="text-right py-2 px-4 font-medium whitespace-nowrap border-l border-primary-foreground/20">Valor</th>
+                      <th key={`${mes}-av`} className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80">AV%</th>
+                    </>
+                  ))}
+                  <th className="text-right py-2 px-4 font-medium whitespace-nowrap bg-primary/80 border-l border-primary-foreground/20">Valor</th>
+                  <th className="text-right py-2 px-2 font-medium whitespace-nowrap bg-primary/80 opacity-80">AV%</th>
                 </tr>
               </thead>
               <tbody>
-                {dreMensal.linhas
+                {(() => {
+                  const receitaLinha = dreMensal.linhas.find(l => l.label === 'Receita');
+                  const receitasMensais = receitaLinha?.valores || [];
+                  const receitaTotalConsolidada = dreData.receita;
+                  return dreMensal.linhas
                   .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
                   .map((linha, idx) => {
-                    // Use consolidated DRE values for the Total column to ensure consistency
-                    // with the main DRE table (which applies provision/result formulas on the
-                    // aggregated EBIT, not as a sum of monthly provisions).
                     let total: number | null;
                     if (linha.isPercent) {
                       total = dreData.margemContribuicao;
@@ -858,25 +869,37 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                         default: total = linha.valores.reduce((s, v) => s + v, 0);
                       }
                     }
+                    const formatAV = (valor: number, receitaBase: number): string => {
+                      if (!receitaBase || receitaBase === 0) return '-';
+                      return `${((Math.abs(valor) / Math.abs(receitaBase)) * 100).toFixed(1)}%`;
+                    };
                     return (
-                      <tr key={idx} className={cn("border-b border-border hover:bg-muted/50", linha.isTotal && "bg-muted/30")}>
-                        <td className={cn("py-2 px-4 sticky left-0 bg-background z-10", linha.isTotal && "font-bold bg-muted/30")}>
+                      <tr key={idx} className={cn("border-b border-border hover:bg-muted/50", linha.isTotal && "bg-muted/40 hover:bg-muted/60")}>
+                        <td className={cn("py-2 px-4 sticky left-0 z-10", linha.isTotal ? "font-bold bg-muted/40" : "bg-background")}>
                           {linha.label}
                         </td>
                         {linha.valores.map((v, i) => (
-                          <td key={i} className={cn(
-                            "text-right py-2 px-4 tabular-nums whitespace-nowrap",
-                            linha.isTotal && "font-bold",
-                            linha.isNegative && v !== 0 && "text-destructive",
-                            !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
-                          )}>
-                            {linha.isPercent
-                              ? `${v.toFixed(2)}%`
-                              : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
-                          </td>
+                          <>
+                            <td key={`v-${i}`} className={cn(
+                              "text-right py-2 px-4 tabular-nums whitespace-nowrap border-l border-border/40",
+                              linha.isTotal && "font-bold",
+                              linha.isNegative && v !== 0 && "text-destructive",
+                              !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
+                            )}>
+                              {linha.isPercent
+                                ? `${v.toFixed(2)}%`
+                                : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                            </td>
+                            <td key={`av-${i}`} className={cn(
+                              "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap",
+                              linha.isTotal && "font-semibold"
+                            )}>
+                              {linha.isPercent ? '-' : formatAV(v, receitasMensais[i] ?? 0)}
+                            </td>
+                          </>
                         ))}
                         <td className={cn(
-                          "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20",
+                          "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20 border-l border-border/40",
                           linha.isNegative && total !== null && total !== 0 && "text-destructive",
                           !linha.isNegative && linha.isTotal && total !== null && total < 0 && "text-destructive"
                         )}>
@@ -884,9 +907,15 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                             ? `${(total ?? 0).toFixed(2)}%`
                             : (linha.isNegative && (total ?? 0) > 0 ? '-' : '') + formatCurrency(Math.abs(total ?? 0))}
                         </td>
+                        <td className={cn(
+                          "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap font-semibold bg-muted/20"
+                        )}>
+                          {linha.isPercent ? '-' : formatAV(total ?? 0, receitaTotalConsolidada)}
+                        </td>
                       </tr>
                     );
-                  })}
+                  });
+                })()}
               </tbody>
             </table>
           </div>
