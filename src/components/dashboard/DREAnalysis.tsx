@@ -53,8 +53,20 @@ interface DREAnalysisProps {
   centroCusto?: string[];
 }
 
+interface DREMensal {
+  meses: string[]; // ex: ['2025-01', '2025-02']
+  linhas: Array<{
+    label: string;
+    isTotal?: boolean;
+    isNegative?: boolean;
+    isPercent?: boolean;
+    valores: number[]; // por mês
+  }>;
+}
+
 export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [dreData, setDreData] = useState<DREData | null>(null);
+  const [dreMensal, setDreMensal] = useState<DREMensal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
@@ -169,14 +181,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência) - com paginação
       const receitas = await fetchAllRows(
         'contas_receber',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), clientes(razao_social)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, plano_contas(codigo, descricao), clientes(razao_social)',
         dateRange
       );
 
       // Buscar despesas (regime de competência) - com paginação
       const despesas = await fetchAllRows(
         'contas_pagar',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, plano_contas(codigo, descricao), fornecedores(razao_social)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, plano_contas(codigo, descricao), fornecedores(razao_social)',
         dateRange
       );
 
@@ -418,6 +430,78 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const ebit = ebtida - impostosTotal - emprestimosTotal - despFinTotal;
       const provisaoCsllIrrf = ebit > 0 ? ebit * 0.34 : 0;
       const resultadoExercicio = ebit - provisaoCsllIrrf;
+
+      // ============= Cálculo mensal comparativo =============
+      const buildMesesList = (): string[] => {
+        if (!dateRange) {
+          const set = new Set<string>();
+          [...receitas, ...despesas].forEach((l: any) => {
+            if (l.data_competencia) set.add(l.data_competencia.slice(0, 7));
+          });
+          return Array.from(set).sort();
+        }
+        const result: string[] = [];
+        const [fy, fm] = dateRange.from.split('-').map(Number);
+        const [ty, tm] = dateRange.to.split('-').map(Number);
+        let y = fy, m = fm;
+        while (y < ty || (y === ty && m <= tm)) {
+          result.push(`${y}-${String(m).padStart(2, '0')}`);
+          m++;
+          if (m > 12) { m = 1; y++; }
+        }
+        return result;
+      };
+
+      const mesesList = buildMesesList();
+
+      const somarPorMes = (lancamentos: any[], accountIds: string[]): number[] => {
+        const totais = new Array(mesesList.length).fill(0);
+        lancamentos?.forEach((l: any) => {
+          if (!l.plano_conta_id || !accountIds.includes(l.plano_conta_id)) return;
+          if (!l.data_competencia) return;
+          const mes = l.data_competencia.slice(0, 7);
+          const idx = mesesList.indexOf(mes);
+          if (idx === -1) return;
+          const effective = getEffectiveValue(l);
+          if (!effective) return;
+          totais[idx] += effective.valor;
+        });
+        return totais;
+      };
+
+      const receitaMes = somarPorMes(receitas, receitaIds);
+      const cmvMes = somarPorMes(despesas, cmvIds);
+      const despAdmMes = somarPorMes(despesas, despAdmIds);
+      const impostosMes = somarPorMes(despesas, impostosIds);
+      const despFinMes = somarPorMes(despesas, despFinIds);
+      const emprestimosMes = somarPorMes(despesas, emprestimosIds);
+      const despExtraMes = somarPorMes(despesas, despExtraIds);
+
+      const margemMes = receitaMes.map((r, i) => r > 0 ? ((r - cmvMes[i]) / r) * 100 : 0);
+      const ebtidaMes = receitaMes.map((r, i) => r - cmvMes[i] - despAdmMes[i]);
+      const ebitMes = ebtidaMes.map((e, i) => e - impostosMes[i] - emprestimosMes[i] - despFinMes[i]);
+      const provisaoMes = ebitMes.map(e => e > 0 ? e * 0.34 : 0);
+      const resultadoMes = ebitMes.map((e, i) => e - provisaoMes[i]);
+
+      setDreMensal({
+        meses: mesesList,
+        linhas: [
+          { label: 'Receita', valores: receitaMes },
+          { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true },
+          { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
+          { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true },
+          { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
+          { label: 'Impostos', valores: impostosMes, isNegative: true },
+          { label: 'Empréstimo', valores: emprestimosMes, isNegative: true },
+          { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true },
+          { label: 'EBIT', valores: ebitMes, isTotal: true },
+          { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
+          { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
+          { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true },
+          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
+        ],
+      });
+
 
       setDreData({
         receita: receitaTotal,
@@ -719,6 +803,76 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         </div>
       </CardContent>
     </Card>
+
+    {dreMensal && dreMensal.meses.length > 0 && (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>DRE Mensal Comparativo</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Comparativo mês a mês dentro do período filtrado ({dreMensal.meses.length} mês{dreMensal.meses.length > 1 ? 'es' : ''})
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left py-3 px-4 font-bold sticky left-0 bg-primary z-10 min-w-[240px]">Linha</th>
+                  {dreMensal.meses.map(mes => {
+                    const [y, m] = mes.split('-');
+                    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+                    return (
+                      <th key={mes} className="text-right py-3 px-4 font-bold min-w-[130px] whitespace-nowrap">
+                        {months[parseInt(m) - 1]}/{y}
+                      </th>
+                    );
+                  })}
+                  <th className="text-right py-3 px-4 font-bold min-w-[140px] whitespace-nowrap bg-primary/80">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dreMensal.linhas
+                  .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
+                  .map((linha, idx) => {
+                    const total = linha.isPercent
+                      ? null
+                      : linha.valores.reduce((s, v) => s + v, 0);
+                    return (
+                      <tr key={idx} className={cn("border-b border-border hover:bg-muted/50", linha.isTotal && "bg-muted/30")}>
+                        <td className={cn("py-2 px-4 sticky left-0 bg-background z-10", linha.isTotal && "font-bold bg-muted/30")}>
+                          {linha.label}
+                        </td>
+                        {linha.valores.map((v, i) => (
+                          <td key={i} className={cn(
+                            "text-right py-2 px-4 tabular-nums whitespace-nowrap",
+                            linha.isTotal && "font-bold",
+                            linha.isNegative && v !== 0 && "text-destructive",
+                            !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
+                          )}>
+                            {linha.isPercent
+                              ? `${v.toFixed(2)}%`
+                              : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                          </td>
+                        ))}
+                        <td className={cn(
+                          "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20",
+                          linha.isNegative && total !== null && total !== 0 && "text-destructive",
+                          !linha.isNegative && linha.isTotal && total !== null && total < 0 && "text-destructive"
+                        )}>
+                          {linha.isPercent
+                            ? '—'
+                            : (linha.isNegative && (total ?? 0) > 0 ? '-' : '') + formatCurrency(Math.abs(total ?? 0))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
     <DREChatDialog open={chatOpen} onOpenChange={setChatOpen} dreData={chatDreData} />
     </>
   );
