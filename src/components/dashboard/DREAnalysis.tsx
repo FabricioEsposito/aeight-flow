@@ -894,6 +894,39 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       </Card>
     )}
 
+    {dreMensal && dreMensal.meses.length > 0 && (() => {
+      const margemLinha = dreMensal.linhas.find(l => l.label === 'Margem de Contribuição');
+      const ebtidaLinha = dreMensal.linhas.find(l => l.label === 'EBTIDA');
+      return (
+        <>
+          {margemLinha && (
+            <DRETrendChart
+              title="Tendência - Margem de Contribuição (%)"
+              description="Evolução mensal da margem de contribuição com linha de tendência ajustável"
+              meses={dreMensal.meses}
+              valores={margemLinha.valores}
+              format="percent"
+              valueColor="hsl(var(--primary))"
+              trendColor="hsl(var(--destructive))"
+              defaultGrowthPercent={2}
+            />
+          )}
+          {ebtidaLinha && (
+            <DRETrendChart
+              title="Tendência - EBTIDA"
+              description="Evolução mensal do EBTIDA com linha de tendência ajustável"
+              meses={dreMensal.meses}
+              valores={ebtidaLinha.valores}
+              format="currency"
+              valueColor="hsl(var(--primary))"
+              trendColor="hsl(var(--destructive))"
+              defaultGrowthPercent={5}
+            />
+          )}
+        </>
+      );
+    })()}
+
     <DREChatDialog open={chatOpen} onOpenChange={setChatOpen} dreData={chatDreData} />
     </>
   );
