@@ -834,9 +834,29 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 {dreMensal.linhas
                   .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
                   .map((linha, idx) => {
-                    const total = linha.isPercent
-                      ? null
-                      : linha.valores.reduce((s, v) => s + v, 0);
+                    // Use consolidated DRE values for the Total column to ensure consistency
+                    // with the main DRE table (which applies provision/result formulas on the
+                    // aggregated EBIT, not as a sum of monthly provisions).
+                    let total: number | null;
+                    if (linha.isPercent) {
+                      total = dreData.margemContribuicao;
+                    } else {
+                      switch (linha.label) {
+                        case 'Receita': total = dreData.receita; break;
+                        case 'CMV (Custo Variável)': total = dreData.cmv; break;
+                        case 'Desp. ADM (Custo Fixo)': total = dreData.despAdm; break;
+                        case 'EBTIDA': total = dreData.ebtida; break;
+                        case 'Impostos': total = dreData.impostos; break;
+                        case 'Empréstimo': total = dreData.emprestimos; break;
+                        case 'Desp. Financeiras': total = dreData.despFinanceiras; break;
+                        case 'EBIT': total = dreData.ebit; break;
+                        case 'Provisão CSLL e IRRF (34%)': total = dreData.provisaoCsllIrrf; break;
+                        case 'Resultado do Exercício': total = dreData.resultadoExercicio; break;
+                        case 'Despesa Extraordinária': total = dreData.despExtraordinaria; break;
+                        case 'Resultado Após Desp. Extraord.': total = dreData.resultadoExercicio - dreData.despExtraordinaria; break;
+                        default: total = linha.valores.reduce((s, v) => s + v, 0);
+                      }
+                    }
                     return (
                       <tr key={idx} className={cn("border-b border-border hover:bg-muted/50", linha.isTotal && "bg-muted/30")}>
                         <td className={cn("py-2 px-4 sticky left-0 bg-background z-10", linha.isTotal && "font-bold bg-muted/30")}>
@@ -860,7 +880,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                           !linha.isNegative && linha.isTotal && total !== null && total < 0 && "text-destructive"
                         )}>
                           {linha.isPercent
-                            ? '—'
+                            ? `${(total ?? 0).toFixed(2)}%`
                             : (linha.isNegative && (total ?? 0) > 0 ? '-' : '') + formatCurrency(Math.abs(total ?? 0))}
                         </td>
                       </tr>
