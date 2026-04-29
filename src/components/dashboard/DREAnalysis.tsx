@@ -582,8 +582,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     const av = showValue ? calcAV(value as number) : null;
 
     return (
-      <div className={cn("border-b border-border", indent && "ml-8")}>
-        <div className="flex items-center py-3 px-4 hover:bg-muted/50">
+      <div className={cn("border-b border-border", indent && "ml-8", isTotal && "bg-muted/40")}>
+        <div className={cn("flex items-center py-3 px-4 hover:bg-muted/50", isTotal && "hover:bg-muted/60")}>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {hasDetails && detailsKey && (
               <Button
