@@ -879,8 +879,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                           {linha.label}
                         </td>
                         {linha.valores.map((v, i) => (
-                          <>
-                            <td key={`v-${i}`} className={cn(
+                          <Fragment key={i}>
+                            <td className={cn(
                               "text-right py-2 px-4 tabular-nums whitespace-nowrap border-l border-border/40",
                               linha.isTotal && "font-bold",
                               linha.isNegative && v !== 0 && "text-destructive",
@@ -890,13 +890,13 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                                 ? `${v.toFixed(2)}%`
                                 : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
                             </td>
-                            <td key={`av-${i}`} className={cn(
+                            <td className={cn(
                               "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap",
                               linha.isTotal && "font-semibold"
                             )}>
                               {linha.isPercent ? '-' : formatAV(v, receitasMensais[i] ?? 0)}
                             </td>
-                          </>
+                          </Fragment>
                         ))}
                         <td className={cn(
                           "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20 border-l border-border/40",
