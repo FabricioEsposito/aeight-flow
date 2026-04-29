@@ -895,32 +895,36 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     )}
 
     {dreMensal && dreMensal.meses.length > 0 && (() => {
+      const receitaLinha = dreMensal.linhas.find(l => l.label === 'Receita');
       const margemLinha = dreMensal.linhas.find(l => l.label === 'Margem de Contribuição');
       const ebtidaLinha = dreMensal.linhas.find(l => l.label === 'EBTIDA');
       return (
         <>
           {margemLinha && (
             <DRETrendChart
-              title="Tendência - Margem de Contribuição (%)"
-              description="Evolução mensal da margem de contribuição com linha de tendência ajustável"
+              title="Margem de Contribuição vs Meta Ideal"
+              description="Comparativo mensal entre a margem realizada e a meta ideal para empresas de serviço (referência: 40%)."
               meses={dreMensal.meses}
               valores={margemLinha.valores}
               format="percent"
               valueColor="hsl(var(--primary))"
               trendColor="hsl(var(--destructive))"
-              defaultGrowthPercent={2}
+              defaultTargetPercent={40}
+              inputLabel="Meta ideal (%)"
             />
           )}
-          {ebtidaLinha && (
+          {ebtidaLinha && receitaLinha && (
             <DRETrendChart
-              title="Tendência - EBTIDA"
-              description="Evolução mensal do EBTIDA com linha de tendência ajustável"
+              title="EBITDA vs Meta Ideal"
+              description="Comparativo mensal do EBITDA realizado e a meta ideal calculada como % da Receita do mês."
               meses={dreMensal.meses}
               valores={ebtidaLinha.valores}
+              referenceValores={receitaLinha.valores}
               format="currency"
               valueColor="hsl(var(--primary))"
               trendColor="hsl(var(--destructive))"
-              defaultGrowthPercent={5}
+              defaultTargetPercent={20}
+              inputLabel="Meta ideal (% da Receita)"
             />
           )}
         </>
