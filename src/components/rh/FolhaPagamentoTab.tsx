@@ -639,7 +639,31 @@ export function FolhaPagamentoTab() {
                           );
                         })()}
                         {r.plano_contas_id && SALARIO_CLT_IDS.includes(r.plano_contas_id) && r.holerite_url && (
-                          <Button variant="ghost" size="icon" onClick={() => window.open(r.holerite_url!, '_blank')} title="Visualizar holerite">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                              try {
+                                const match = r.holerite_url!.match(/\/storage\/v1\/object\/(?:public|sign)\/holerites\/([^?]+)/);
+                                const path = match ? decodeURIComponent(match[1]) : null;
+                                if (!path) {
+                                  window.open(r.holerite_url!, '_blank');
+                                  return;
+                                }
+                                const { data, error } = await supabase.storage
+                                  .from('holerites')
+                                  .createSignedUrl(path, 60 * 5);
+                                if (error || !data?.signedUrl) {
+                                  toast({ title: 'Erro', description: error?.message || 'Não foi possível abrir o holerite.', variant: 'destructive' });
+                                  return;
+                                }
+                                window.open(data.signedUrl, '_blank');
+                              } catch (err: any) {
+                                toast({ title: 'Erro', description: err.message || 'Não foi possível abrir o holerite.', variant: 'destructive' });
+                              }
+                            }}
+                            title="Visualizar holerite"
+                          >
                             <FileText className="w-4 h-4" />
                           </Button>
                         )}
