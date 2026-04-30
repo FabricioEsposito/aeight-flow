@@ -204,18 +204,66 @@ serve(async (req: Request): Promise<Response> => {
 
     const subject = `Holerite ${competencia} | ${nome} | Aeight`;
 
-    // Download PDF for attachment
-    const pdfResponse = await fetch(holerite_url);
-    if (!pdfResponse.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Não foi possível baixar o PDF do holerite" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
-      );
+    // Extract storage path from URL (bucket is private, need signed URL)
+    // URL pattern: .../storage/v1/object/(public|sign)/holerites/<path>?...
+    let storagePath: string | null = null;
+    try {
+      const match = holerite_url.match(/\/storage\/v1\/object\/(?:public|sign)\/holerites\/([^?]+)/);
+      if (match) {
+        storagePath = decodeURIComponent(match[1]);
+      }
+    } catch (_) {
+      // ignore
     }
-    const pdfBuffer = await pdfResponse.arrayBuffer();
-    const pdfBase64 = btoa(
-      String.fromCharCode(...new Uint8Array(pdfBuffer)),
-    );
+
+    let pdfBuffer: ArrayBuffer | null = null;
+
+    if (storagePath) {
+      const { data: signed, error: signedErr } = await supabase
+        .storage
+        .from("holerites")
+        .createSignedUrl(storagePath, 60);
+
+      if (signedErr || !signed?.signedUrl) {
+        console.error("Error creating signed URL:", signedErr, "path:", storagePath);
+        return new Response(
+          JSON.stringify({ success: false, error: `Não foi possível gerar URL assinada: ${signedErr?.message || "erro desconhecido"}` }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+
+      const pdfResponse = await fetch(signed.signedUrl);
+      if (!pdfResponse.ok) {
+        const body = await pdfResponse.text().catch(() => "");
+        console.error("Error downloading PDF (signed):", pdfResponse.status, body);
+        return new Response(
+          JSON.stringify({ success: false, error: `Não foi possível baixar o PDF do holerite (status ${pdfResponse.status})` }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+      pdfBuffer = await pdfResponse.arrayBuffer();
+    } else {
+      // Fallback: try direct fetch (legacy URLs)
+      const pdfResponse = await fetch(holerite_url);
+      if (!pdfResponse.ok) {
+        const body = await pdfResponse.text().catch(() => "");
+        console.error("Error downloading PDF (direct):", pdfResponse.status, body);
+        return new Response(
+          JSON.stringify({ success: false, error: `Não foi possível baixar o PDF do holerite (status ${pdfResponse.status})` }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+      pdfBuffer = await pdfResponse.arrayBuffer();
+    }
+
+    // Convert to base64 in chunks to avoid stack overflow on large files
+    const bytes = new Uint8Array(pdfBuffer);
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    const pdfBase64 = btoa(binary);
 
     const emailResponse = await resend.emails.send({
       from: "RH Aeight <rh@financeiro.aeight.global>",
