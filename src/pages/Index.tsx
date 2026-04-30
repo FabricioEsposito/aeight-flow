@@ -9,7 +9,7 @@ const Index = () => {
   useContextualTutorial('dashboard');
   useClearFiltersOnAreaChange('dashboard');
   const navigate = useNavigate();
-  const { role, loading, isCommercialManager, isSalesperson, isContador } = useUserRole();
+  const { role, loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst } = useUserRole();
 
   useEffect(() => {
     if (!loading && (isCommercialManager || isSalesperson)) {
@@ -18,10 +18,13 @@ const Index = () => {
     if (!loading && isContador) {
       navigate("/area-contador", { replace: true });
     }
-  }, [loading, isCommercialManager, isSalesperson, isContador, navigate]);
+    if (!loading && (isRHManager || isRHAnalyst)) {
+      navigate("/rh", { replace: true });
+    }
+  }, [loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, navigate]);
 
   // Show loading while checking role
-  if (loading || isCommercialManager || isSalesperson || isContador) {
+  if (loading || isCommercialManager || isSalesperson || isContador || isRHManager || isRHAnalyst) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
