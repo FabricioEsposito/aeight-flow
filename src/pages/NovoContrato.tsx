@@ -1162,8 +1162,8 @@ export default function NovoContrato() {
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                        <SelectContent className="max-h-72">
+                          {Array.from({ length: 120 }, (_, i) => i + 1).map(num => (
                             <SelectItem key={num} value={num.toString()}>
                               {num}x de {new Intl.NumberFormat('pt-BR', { 
                                 style: 'currency', 
