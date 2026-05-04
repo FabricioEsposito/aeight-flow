@@ -769,6 +769,19 @@ export default function ControleFaturamento() {
               <SelectItem value="transferencia">Transferência</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nf-asc">Nº NF (crescente)</SelectItem>
+              <SelectItem value="data-asc">Data ↑ (menor para maior)</SelectItem>
+              <SelectItem value="data-desc">Data ↓ (maior para menor)</SelectItem>
+              <SelectItem value="valor-desc">Valor ↓ (maior para menor)</SelectItem>
+              <SelectItem value="valor-asc">Valor ↑ (menor para maior)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
