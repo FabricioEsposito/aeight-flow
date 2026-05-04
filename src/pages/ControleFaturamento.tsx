@@ -86,6 +86,7 @@ export default function ControleFaturamento() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('faturamento', 'centroCusto', []);
   const [tipoPagamentoFilter, setTipoPagamentoFilter] = useSessionState<string>('faturamento', 'tipoPagamento', 'todos');
+  const [sortBy, setSortBy] = useSessionState<string>('faturamento', 'sortBy', 'nf-asc');
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
