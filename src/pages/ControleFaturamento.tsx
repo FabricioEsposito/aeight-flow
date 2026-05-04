@@ -420,10 +420,22 @@ export default function ControleFaturamento() {
 
     return matchesSearch && matchesStatus && matchesCentroCusto && matchesTipoPagamento;
   }).sort((a, b) => {
-    // Ordenar por numero_nf - menor para maior
-    const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
-    const nfB = b.numero_nf ? parseInt(b.numero_nf.replace(/\D/g, '')) || 0 : 0;
-    return nfA - nfB;
+    switch (sortBy) {
+      case 'data-asc':
+        return a.data_vencimento.localeCompare(b.data_vencimento);
+      case 'data-desc':
+        return b.data_vencimento.localeCompare(a.data_vencimento);
+      case 'valor-desc':
+        return b.valor_bruto - a.valor_bruto;
+      case 'valor-asc':
+        return a.valor_bruto - b.valor_bruto;
+      case 'nf-asc':
+      default: {
+        const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
+        const nfB = b.numero_nf ? parseInt(b.numero_nf.replace(/\D/g, '')) || 0 : 0;
+        return nfA - nfB;
+      }
+    }
   });
 
   const totalItems = filteredFaturamentos.length;
