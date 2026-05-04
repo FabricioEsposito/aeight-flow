@@ -85,6 +85,7 @@ export default function ControleFaturamento() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('faturamento', 'centroCusto', []);
+  const [tipoPagamentoFilter, setTipoPagamentoFilter] = useSessionState<string>('faturamento', 'tipoPagamento', 'todos');
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -413,8 +414,10 @@ export default function ControleFaturamento() {
     })();
 
     const matchesCentroCusto = selectedCentroCusto.length === 0 || (!!f.centro_custo && selectedCentroCusto.includes(f.centro_custo));
-    
-    return matchesSearch && matchesStatus && matchesCentroCusto;
+
+    const matchesTipoPagamento = tipoPagamentoFilter === 'todos' || f.tipo_pagamento === tipoPagamentoFilter;
+
+    return matchesSearch && matchesStatus && matchesCentroCusto && matchesTipoPagamento;
   }).sort((a, b) => {
     // Ordenar por numero_nf - menor para maior
     const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
@@ -739,6 +742,18 @@ export default function ControleFaturamento() {
               <SelectItem value="em-dia">Em dia</SelectItem>
               <SelectItem value="vencido">Vencido</SelectItem>
               <SelectItem value="recebido">Recebido</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={tipoPagamentoFilter} onValueChange={setTipoPagamentoFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Meio de Pagamento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os meios</SelectItem>
+              <SelectItem value="pix">PIX</SelectItem>
+              <SelectItem value="boleto">Boleto</SelectItem>
+              <SelectItem value="transferencia">Transferência</SelectItem>
             </SelectContent>
           </Select>
         </div>
