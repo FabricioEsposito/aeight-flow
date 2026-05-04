@@ -414,8 +414,10 @@ export default function ControleFaturamento() {
     })();
 
     const matchesCentroCusto = selectedCentroCusto.length === 0 || (!!f.centro_custo && selectedCentroCusto.includes(f.centro_custo));
-    
-    return matchesSearch && matchesStatus && matchesCentroCusto;
+
+    const matchesTipoPagamento = tipoPagamentoFilter === 'todos' || f.tipo_pagamento === tipoPagamentoFilter;
+
+    return matchesSearch && matchesStatus && matchesCentroCusto && matchesTipoPagamento;
   }).sort((a, b) => {
     // Ordenar por numero_nf - menor para maior
     const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
