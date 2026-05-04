@@ -744,6 +744,18 @@ export default function ControleFaturamento() {
               <SelectItem value="recebido">Recebido</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={tipoPagamentoFilter} onValueChange={setTipoPagamentoFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Meio de Pagamento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os meios</SelectItem>
+              <SelectItem value="pix">PIX</SelectItem>
+              <SelectItem value="boleto">Boleto</SelectItem>
+              <SelectItem value="transferencia">Transferência</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
