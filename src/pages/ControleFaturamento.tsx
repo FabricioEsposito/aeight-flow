@@ -86,6 +86,7 @@ export default function ControleFaturamento() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCentroCusto, setSelectedCentroCusto] = useSessionState<string[]>('faturamento', 'centroCusto', []);
   const [tipoPagamentoFilter, setTipoPagamentoFilter] = useSessionState<string>('faturamento', 'tipoPagamento', 'todos');
+  const [sortBy, setSortBy] = useSessionState<string>('faturamento', 'sortBy', 'nf-asc');
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -419,10 +420,22 @@ export default function ControleFaturamento() {
 
     return matchesSearch && matchesStatus && matchesCentroCusto && matchesTipoPagamento;
   }).sort((a, b) => {
-    // Ordenar por numero_nf - menor para maior
-    const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
-    const nfB = b.numero_nf ? parseInt(b.numero_nf.replace(/\D/g, '')) || 0 : 0;
-    return nfA - nfB;
+    switch (sortBy) {
+      case 'data-asc':
+        return a.data_vencimento.localeCompare(b.data_vencimento);
+      case 'data-desc':
+        return b.data_vencimento.localeCompare(a.data_vencimento);
+      case 'valor-desc':
+        return b.valor_bruto - a.valor_bruto;
+      case 'valor-asc':
+        return a.valor_bruto - b.valor_bruto;
+      case 'nf-asc':
+      default: {
+        const nfA = a.numero_nf ? parseInt(a.numero_nf.replace(/\D/g, '')) || 0 : 0;
+        const nfB = b.numero_nf ? parseInt(b.numero_nf.replace(/\D/g, '')) || 0 : 0;
+        return nfA - nfB;
+      }
+    }
   });
 
   const totalItems = filteredFaturamentos.length;
@@ -754,6 +767,19 @@ export default function ControleFaturamento() {
               <SelectItem value="pix">PIX</SelectItem>
               <SelectItem value="boleto">Boleto</SelectItem>
               <SelectItem value="transferencia">Transferência</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nf-asc">Nº NF (crescente)</SelectItem>
+              <SelectItem value="data-asc">Data ↑ (menor para maior)</SelectItem>
+              <SelectItem value="data-desc">Data ↓ (maior para menor)</SelectItem>
+              <SelectItem value="valor-desc">Valor ↓ (maior para menor)</SelectItem>
+              <SelectItem value="valor-asc">Valor ↑ (menor para maior)</SelectItem>
             </SelectContent>
           </Select>
         </div>
