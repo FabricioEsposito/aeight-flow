@@ -713,6 +713,14 @@ export default function Comissionamento() {
 
   const handleAprovar = async () => {
     if (!selectedSolicitacao || !user) return;
+    if (!aprovacaoDataVencimento) {
+      toast({ title: "Atenção", description: "Informe a data de vencimento.", variant: "destructive" });
+      return;
+    }
+    if (!aprovacaoContaBancariaId) {
+      toast({ title: "Atenção", description: "Selecione a conta bancária para o pagamento.", variant: "destructive" });
+      return;
+    }
 
     try {
       // Update the commission request status
