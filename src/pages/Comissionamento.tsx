@@ -24,6 +24,7 @@ import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
+import { ContaBancariaSelect } from "@/components/financeiro/ContaBancariaSelect";
 
 const META_BATIDA_COMISSAO = 4; // Percentual de comissão para vendas com meta batida
 
@@ -121,6 +122,8 @@ export default function Comissionamento() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedSolicitacao, setSelectedSolicitacao] = useState<SolicitacaoComissao | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [aprovacaoDataVencimento, setAprovacaoDataVencimento] = useState<string>("");
+  const [aprovacaoContaBancariaId, setAprovacaoContaBancariaId] = useState<string>("");
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
@@ -710,6 +713,14 @@ export default function Comissionamento() {
 
   const handleAprovar = async () => {
     if (!selectedSolicitacao || !user) return;
+    if (!aprovacaoDataVencimento) {
+      toast({ title: "Atenção", description: "Informe a data de vencimento.", variant: "destructive" });
+      return;
+    }
+    if (!aprovacaoContaBancariaId) {
+      toast({ title: "Atenção", description: "Selecione a conta bancária para o pagamento.", variant: "destructive" });
+      return;
+    }
 
     try {
       // Update the commission request status
@@ -749,7 +760,7 @@ export default function Comissionamento() {
       const mesLabel = meses.find((m) => m.value === selectedSolicitacao.mes_referencia)?.label;
       const descricao = `Comissão ${vendedor?.nome} - ${mesLabel}/${selectedSolicitacao.ano_referencia}`;
       const dataCompetencia = format(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1), "yyyy-MM-dd");
-      const dataVencimento = format(lastDayOfMonth(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1)), "yyyy-MM-dd");
+      const dataVencimento = aprovacaoDataVencimento;
 
       const { error: contaPagarError } = await supabase
         .from("contas_pagar")
@@ -760,6 +771,7 @@ export default function Comissionamento() {
           data_vencimento: dataVencimento,
           fornecedor_id: fornecedorId,
           plano_conta_id: planoContas?.id || null,
+          conta_bancaria_id: aprovacaoContaBancariaId,
           centro_custo: vendedor?.centro_custo || null,
           status: "pendente",
           observacoes: `Comissão aprovada em ${format(new Date(), "dd/MM/yyyy")}. Solicitação ID: ${selectedSolicitacao.id}`,
@@ -1275,6 +1287,10 @@ export default function Comissionamento() {
                               size="icon"
                               onClick={() => {
                                 setSelectedSolicitacao(s);
+                                setAprovacaoDataVencimento(
+                                  format(lastDayOfMonth(new Date(s.ano_referencia, s.mes_referencia - 1, 1)), "yyyy-MM-dd")
+                                );
+                                setAprovacaoContaBancariaId("");
                                 setApprovalDialogOpen(true);
                               }}
                             >
@@ -1403,25 +1419,50 @@ export default function Comissionamento() {
         </AlertDialog>
 
         {/* Dialog de Aprovação */}
-        <AlertDialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Aprovar Comissão</AlertDialogTitle>
-              <AlertDialogDescription>
+        <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Aprovar Comissão</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
                 Confirma a aprovação da comissão de{" "}
                 <strong>{selectedSolicitacao && formatCurrency(selectedSolicitacao.valor_comissao)}</strong>{" "}
                 para o vendedor{" "}
                 <strong>{selectedSolicitacao?.vendedor?.nome}</strong>?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleAprovar} className="bg-green-600 hover:bg-green-700">
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="data-vencimento-comissao">Data de Vencimento *</Label>
+                <Input
+                  id="data-vencimento-comissao"
+                  type="date"
+                  value={aprovacaoDataVencimento}
+                  onChange={(e) => setAprovacaoDataVencimento(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Conta Bancária para Pagamento *</Label>
+                <ContaBancariaSelect
+                  value={aprovacaoContaBancariaId}
+                  onValueChange={setAprovacaoContaBancariaId}
+                  placeholder="Selecione a conta bancária"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAprovar}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                disabled={!aprovacaoDataVencimento || !aprovacaoContaBancariaId}
+              >
                 Aprovar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog de Rejeição */}
         <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
