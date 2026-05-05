@@ -1419,25 +1419,50 @@ export default function Comissionamento() {
         </AlertDialog>
 
         {/* Dialog de Aprovação */}
-        <AlertDialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Aprovar Comissão</AlertDialogTitle>
-              <AlertDialogDescription>
+        <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Aprovar Comissão</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
                 Confirma a aprovação da comissão de{" "}
                 <strong>{selectedSolicitacao && formatCurrency(selectedSolicitacao.valor_comissao)}</strong>{" "}
                 para o vendedor{" "}
                 <strong>{selectedSolicitacao?.vendedor?.nome}</strong>?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleAprovar} className="bg-green-600 hover:bg-green-700">
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="data-vencimento-comissao">Data de Vencimento *</Label>
+                <Input
+                  id="data-vencimento-comissao"
+                  type="date"
+                  value={aprovacaoDataVencimento}
+                  onChange={(e) => setAprovacaoDataVencimento(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Conta Bancária para Pagamento *</Label>
+                <ContaBancariaSelect
+                  value={aprovacaoContaBancariaId}
+                  onValueChange={setAprovacaoContaBancariaId}
+                  placeholder="Selecione a conta bancária"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAprovar}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                disabled={!aprovacaoDataVencimento || !aprovacaoContaBancariaId}
+              >
                 Aprovar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog de Rejeição */}
         <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
