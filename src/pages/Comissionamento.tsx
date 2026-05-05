@@ -1278,6 +1278,10 @@ export default function Comissionamento() {
                               size="icon"
                               onClick={() => {
                                 setSelectedSolicitacao(s);
+                                setAprovacaoDataVencimento(
+                                  format(lastDayOfMonth(new Date(s.ano_referencia, s.mes_referencia - 1, 1)), "yyyy-MM-dd")
+                                );
+                                setAprovacaoContaBancariaId("");
                                 setApprovalDialogOpen(true);
                               }}
                             >
