@@ -760,7 +760,7 @@ export default function Comissionamento() {
       const mesLabel = meses.find((m) => m.value === selectedSolicitacao.mes_referencia)?.label;
       const descricao = `Comissão ${vendedor?.nome} - ${mesLabel}/${selectedSolicitacao.ano_referencia}`;
       const dataCompetencia = format(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1), "yyyy-MM-dd");
-      const dataVencimento = format(lastDayOfMonth(new Date(selectedSolicitacao.ano_referencia, selectedSolicitacao.mes_referencia - 1, 1)), "yyyy-MM-dd");
+      const dataVencimento = aprovacaoDataVencimento;
 
       const { error: contaPagarError } = await supabase
         .from("contas_pagar")
@@ -771,6 +771,7 @@ export default function Comissionamento() {
           data_vencimento: dataVencimento,
           fornecedor_id: fornecedorId,
           plano_conta_id: planoContas?.id || null,
+          conta_bancaria_id: aprovacaoContaBancariaId,
           centro_custo: vendedor?.centro_custo || null,
           status: "pendente",
           observacoes: `Comissão aprovada em ${format(new Date(), "dd/MM/yyyy")}. Solicitação ID: ${selectedSolicitacao.id}`,
