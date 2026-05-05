@@ -24,6 +24,7 @@ import { ptBR } from "date-fns/locale";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { CentroCustoFilterSelect } from "@/components/financeiro/CentroCustoFilterSelect";
 import { CompanyTag } from "@/components/centro-custos/CompanyBadge";
+import { ContaBancariaSelect } from "@/components/financeiro/ContaBancariaSelect";
 
 const META_BATIDA_COMISSAO = 4; // Percentual de comissão para vendas com meta batida
 
