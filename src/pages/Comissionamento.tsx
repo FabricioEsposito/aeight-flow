@@ -122,6 +122,8 @@ export default function Comissionamento() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedSolicitacao, setSelectedSolicitacao] = useState<SolicitacaoComissao | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [aprovacaoDataVencimento, setAprovacaoDataVencimento] = useState<string>("");
+  const [aprovacaoContaBancariaId, setAprovacaoContaBancariaId] = useState<string>("");
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
