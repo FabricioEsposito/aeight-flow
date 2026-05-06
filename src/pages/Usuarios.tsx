@@ -169,6 +169,18 @@ export default function Usuarios() {
     },
   });
 
+  // Buscar fornecedores para exibir vínculos
+  const { data: fornecedores } = useQuery({
+    queryKey: ['fornecedores-vinculo-usuarios'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fornecedores')
+        .select('id, nome_fantasia, razao_social');
+      if (error) throw error;
+      return data as { id: string; nome_fantasia: string | null; razao_social: string | null }[];
+    },
+  });
+
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
     mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
