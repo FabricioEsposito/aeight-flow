@@ -52,9 +52,6 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
     return;
   }
 
-  const previewWindow = window.open('', '_blank');
-  previewWindow?.document.write('<!doctype html><title>Abrindo arquivo...</title><p style="font-family:sans-serif">Abrindo arquivo...</p>');
-
   const downloadFile = async (path: string) => supabase.storage.from(bucket).download(path);
   let { data, error } = await downloadFile(filePath);
 
@@ -65,20 +62,36 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
 
   if (error || !data) {
     console.error('Storage download error:', error);
-    previewWindow?.close();
     toast.error('Erro ao gerar link de acesso ao arquivo.');
     return;
   }
 
-  const blobUrl = URL.createObjectURL(data);
-  if (previewWindow) {
-    previewWindow.location.href = blobUrl;
-  } else {
+  // Infer file name and content type
+  const fileName = filePath.split('/').pop() || 'arquivo';
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  const contentType =
+    data.type ||
+    (ext === 'pdf' ? 'application/pdf'
+      : ext === 'png' ? 'image/png'
+      : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+      : 'application/octet-stream');
+
+  const typedBlob = new Blob([data], { type: contentType });
+  const blobUrl = URL.createObjectURL(typedBlob);
+
+  // Try opening in a new tab; in private/strict modes popups can be blocked,
+  // so always provide a download fallback via anchor click (preserves user gesture).
+  const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+
+  if (!opened || opened.closed || typeof opened.closed === 'undefined') {
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.target = '_blank';
+    link.download = fileName;
     link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   }
+
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10 * 60 * 1000);
 }
