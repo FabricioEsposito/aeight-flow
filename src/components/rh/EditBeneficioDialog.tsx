@@ -151,8 +151,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   if (!record) return null;
 
   const uploadBasePath = `beneficios/${record.contrato_id}/${record.parcela_id}`;
-  const nfUploadPath = useMemo(() => `${uploadBasePath}/nf-${Date.now()}.pdf`, [uploadBasePath, open]);
-  const boletoUploadPath = useMemo(() => `${uploadBasePath}/boleto-${Date.now()}.pdf`, [uploadBasePath, open]);
+  const nfUploadPath = `${uploadBasePath}/nf.pdf`;
+  const boletoUploadPath = `${uploadBasePath}/boleto.pdf`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
