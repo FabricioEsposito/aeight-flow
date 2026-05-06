@@ -267,16 +267,19 @@ export default function Usuarios() {
     setEditingUser(usuario);
     setEditRole(usuario.role || 'user');
     setEditVendedorId(usuario.vendedor_id || "");
+    setEditFornecedorId(usuario.fornecedor_id || "");
     setOpenEdit(true);
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingUser) {
+      const isPrestadorOrFunc = editRole === 'prestador_servico' || editRole === 'funcionario';
       updateUserMutation.mutate({
         userId: editingUser.id,
         role: editRole,
         vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
+        fornecedor_id: isPrestadorOrFunc ? (editFornecedorId || null) : null,
       });
     }
   };
