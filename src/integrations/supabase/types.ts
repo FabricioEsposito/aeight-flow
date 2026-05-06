@@ -1701,6 +1701,7 @@ export type Database = {
           contato: string | null
           created_at: string | null
           email: string | null
+          fornecedor_id: string | null
           id: string
           nome: string | null
           updated_at: string | null
@@ -1711,6 +1712,7 @@ export type Database = {
           contato?: string | null
           created_at?: string | null
           email?: string | null
+          fornecedor_id?: string | null
           id: string
           nome?: string | null
           updated_at?: string | null
@@ -1721,12 +1723,20 @@ export type Database = {
           contato?: string | null
           created_at?: string | null
           email?: string | null
+          fornecedor_id?: string | null
           id?: string
           nome?: string | null
           updated_at?: string | null
           vendedor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_vendedor_id_fkey"
             columns: ["vendedor_id"]
