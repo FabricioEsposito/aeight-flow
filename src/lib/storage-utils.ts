@@ -52,9 +52,6 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
     return;
   }
 
-  // Open the tab synchronously to preserve the user gesture (avoids popup blockers)
-  const previewWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
-
   const createSigned = async (path: string) =>
     supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
 
@@ -67,15 +64,10 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
 
   if (error || !data?.signedUrl) {
     console.error('Storage signed URL error:', error);
-    if (previewWindow) previewWindow.close();
     toast.error('Erro ao gerar link de acesso ao arquivo.');
     return;
   }
 
-  if (previewWindow && !previewWindow.closed) {
-    previewWindow.location.href = data.signedUrl;
-  } else {
-    // Popup was blocked — try once more with a direct open
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-  }
+  // Abrir diretamente a URL assinada em nova aba (visualização inline no navegador)
+  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
 }
