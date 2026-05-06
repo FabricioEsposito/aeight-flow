@@ -101,9 +101,9 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
   },
   contador: { canAccessContador: true },
   prestador_servico: {
-    canAccessPortal: true, canSendNFPrestador: true, canSendReembolso: true,
+    canAccessSolicitacoes: true, canSendNFPrestador: true, canSendReembolso: true,
   },
-  funcionario: { canAccessPortal: true, canSendReembolso: true },
+  funcionario: { canAccessSolicitacoes: true, canSendReembolso: true },
   user: {},
 };
 
