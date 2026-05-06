@@ -52,6 +52,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { AppRole, useUserRole } from "@/hooks/useUserRole";
 import { VendedorSelect } from "@/components/contratos/VendedorSelect";
+import { FornecedorSelect } from "@/components/contratos/FornecedorSelect";
 
 interface Vendedor {
   id: string;
