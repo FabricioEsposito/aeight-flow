@@ -101,9 +101,9 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
   },
   contador: { canAccessContador: true },
   prestador_servico: {
-    canAccessPortal: true, canSendNFPrestador: true, canSendReembolso: true,
+    canAccessSolicitacoes: true, canSendNFPrestador: true, canSendReembolso: true,
   },
-  funcionario: { canAccessPortal: true, canSendReembolso: true },
+  funcionario: { canAccessSolicitacoes: true, canSendReembolso: true },
   user: {},
 };
 
@@ -154,7 +154,7 @@ export function useUserRole() {
   const isContador = role === 'contador';
   const isPrestador = role === 'prestador_servico';
   const isFuncionario = role === 'funcionario';
-  const isPortalOnly = isPrestador || isFuncionario;
+  const isPortalOnly = false;
 
   const getRoleLabel = (r?: AppRole | null): string => {
     return roleLabels[r || 'user'] || 'Usuário Básico';
