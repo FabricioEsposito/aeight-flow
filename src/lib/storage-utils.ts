@@ -52,6 +52,13 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
     return;
   }
 
+  const previewWindow = window.open('', '_blank');
+  if (previewWindow) {
+    previewWindow.opener = null;
+    previewWindow.document.title = 'Abrindo arquivo...';
+    previewWindow.document.body.textContent = 'Abrindo arquivo...';
+  }
+
   const createSigned = async (path: string) =>
     supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
 
@@ -64,10 +71,23 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
 
   if (error || !data?.signedUrl) {
     console.error('Storage signed URL error:', error);
+    previewWindow?.close();
     toast.error('Erro ao gerar link de acesso ao arquivo.');
     return;
   }
 
-  // Abrir diretamente a URL assinada em nova aba (visualização inline no navegador)
-  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  // No preview do Lovable, popups após operações async podem ser bloqueados.
+  // Por isso a aba é reservada no clique e redirecionada quando o link assinado fica pronto.
+  if (previewWindow) {
+    previewWindow.location.href = data.signedUrl;
+    return;
+  }
+
+  const link = document.createElement('a');
+  link.href = data.signedUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
