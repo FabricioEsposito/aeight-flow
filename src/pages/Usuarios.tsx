@@ -52,6 +52,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { AppRole, useUserRole } from "@/hooks/useUserRole";
 import { VendedorSelect } from "@/components/contratos/VendedorSelect";
+import { FornecedorSelect } from "@/components/contratos/FornecedorSelect";
 
 interface Vendedor {
   id: string;
@@ -92,6 +93,7 @@ export default function Usuarios() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editVendedorId, setEditVendedorId] = useState<string>("");
+  const [editFornecedorId, setEditFornecedorId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -139,14 +141,15 @@ export default function Usuarios() {
       const userIds = data.users.map((u: any) => u.id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, vendedor_id')
+        .select('id, vendedor_id, fornecedor_id')
         .in('id', userIds);
 
-      const profileMap = new Map(profiles?.map((p: any) => [p.id, p.vendedor_id]) || []);
+      const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
       
       return data.users.map((u: any) => ({
         ...u,
-        vendedor_id: profileMap.get(u.id) || null,
+        vendedor_id: (profileMap.get(u.id) as any)?.vendedor_id || null,
+        fornecedor_id: (profileMap.get(u.id) as any)?.fornecedor_id || null,
       }));
     },
   });
@@ -168,7 +171,7 @@ export default function Usuarios() {
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -187,6 +190,7 @@ export default function Usuarios() {
       setOpenEdit(false);
       setEditingUser(null);
       setEditVendedorId("");
+      setEditFornecedorId("");
     },
     onError: (error: any) => {
       console.error('Update error:', error);
@@ -264,16 +268,19 @@ export default function Usuarios() {
     setEditingUser(usuario);
     setEditRole(usuario.role || 'user');
     setEditVendedorId(usuario.vendedor_id || "");
+    setEditFornecedorId(usuario.fornecedor_id || "");
     setOpenEdit(true);
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingUser) {
+      const isPrestadorOrFunc = editRole === 'prestador_servico' || editRole === 'funcionario';
       updateUserMutation.mutate({
         userId: editingUser.id,
         role: editRole,
         vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
+        fornecedor_id: isPrestadorOrFunc ? (editFornecedorId || null) : null,
       });
     }
   };
@@ -444,6 +451,16 @@ export default function Usuarios() {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Vincule este usuário a um vendedor cadastrado para que ele possa visualizar suas comissões e vendas.
+                </p>
+              </div>
+            )}
+
+            {(editRole === 'prestador_servico' || editRole === 'funcionario') && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
+                <FornecedorSelect value={editFornecedorId} onChange={setEditFornecedorId} />
+                <p className="text-xs text-muted-foreground">
+                  Vincule este usuário ao cadastro de fornecedor correspondente para que possa enviar NFs e/ou reembolsos.
                 </p>
               </div>
             )}
