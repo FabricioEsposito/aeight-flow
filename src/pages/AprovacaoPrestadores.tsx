@@ -89,6 +89,7 @@ function PainelStep({ step }: { step: Step }) {
         .from('parcelas_contrato')
         .select('id, numero_parcela, data_vencimento, valor, status, contrato:contratos(numero_contrato)')
         .in('contrato_id', ids)
+        .in('status', ['pendente', 'atrasado', 'parcial'])
         .order('data_vencimento');
       if (error) throw error;
       return data || [];
