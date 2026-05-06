@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -151,6 +151,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   if (!record) return null;
 
   const uploadBasePath = `beneficios/${record.contrato_id}/${record.parcela_id}`;
+  const nfUploadPath = useMemo(() => `${uploadBasePath}/nf-${Date.now()}.pdf`, [uploadBasePath, open]);
+  const boletoUploadPath = useMemo(() => `${uploadBasePath}/boleto-${Date.now()}.pdf`, [uploadBasePath, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -187,7 +189,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
           <div className="grid grid-cols-2 gap-4">
             <FileUpload
               bucket="faturamento-docs"
-              path={`${uploadBasePath}/nf-${Date.now()}.pdf`}
+              path={nfUploadPath}
               value={linkNf}
               onChange={setLinkNf}
               accept="application/pdf,image/*"
@@ -195,7 +197,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
             />
             <FileUpload
               bucket="faturamento-docs"
-              path={`${uploadBasePath}/boleto-${Date.now()}.pdf`}
+              path={boletoUploadPath}
               value={linkBoleto}
               onChange={setLinkBoleto}
               accept="application/pdf,image/*"
