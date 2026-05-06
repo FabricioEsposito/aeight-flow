@@ -42,8 +42,8 @@ async function findReplacementPath(filePath: string, bucket: string): Promise<st
 }
 
 /**
- * Opens a private storage file in a new tab using a local Blob URL.
- * This avoids browser/client blockers that can block direct navigation to Supabase signed URLs.
+ * Opens a private storage file directly in a new browser tab for inline viewing
+ * (PDF/image preview), instead of forcing a download.
  */
 export async function openStorageFile(publicUrl: string, bucket = 'faturamento-docs') {
   const filePath = extractPathFromUrl(publicUrl, bucket);
@@ -52,46 +52,30 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
     return;
   }
 
-  const downloadFile = async (path: string) => supabase.storage.from(bucket).download(path);
-  let { data, error } = await downloadFile(filePath);
+  // Open the tab synchronously to preserve the user gesture (avoids popup blockers)
+  const previewWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
 
-  if (error || !data) {
+  const createSigned = async (path: string) =>
+    supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
+
+  let { data, error } = await createSigned(filePath);
+
+  if (error || !data?.signedUrl) {
     const replacementPath = await findReplacementPath(filePath, bucket);
-    if (replacementPath) ({ data, error } = await downloadFile(replacementPath));
+    if (replacementPath) ({ data, error } = await createSigned(replacementPath));
   }
 
-  if (error || !data) {
-    console.error('Storage download error:', error);
+  if (error || !data?.signedUrl) {
+    console.error('Storage signed URL error:', error);
+    if (previewWindow) previewWindow.close();
     toast.error('Erro ao gerar link de acesso ao arquivo.');
     return;
   }
 
-  // Infer file name and content type
-  const fileName = filePath.split('/').pop() || 'arquivo';
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  const contentType =
-    data.type ||
-    (ext === 'pdf' ? 'application/pdf'
-      : ext === 'png' ? 'image/png'
-      : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-      : 'application/octet-stream');
-
-  const typedBlob = new Blob([data], { type: contentType });
-  const blobUrl = URL.createObjectURL(typedBlob);
-
-  // Try opening in a new tab; in private/strict modes popups can be blocked,
-  // so always provide a download fallback via anchor click (preserves user gesture).
-  const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-
-  if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = fileName;
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  if (previewWindow && !previewWindow.closed) {
+    previewWindow.location.href = data.signedUrl;
+  } else {
+    // Popup was blocked — try once more with a direct open
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
-
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10 * 60 * 1000);
 }
