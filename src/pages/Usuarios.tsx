@@ -93,6 +93,7 @@ export default function Usuarios() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editVendedorId, setEditVendedorId] = useState<string>("");
+  const [editFornecedorId, setEditFornecedorId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
