@@ -42,13 +42,22 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
     if (!open || !user) return;
     // Find vinculo aprovado for this user
     (async () => {
-      const { data } = await supabase
+      const { data: vinculo } = await supabase
         .from('vinculos_usuario_fornecedor' as any)
         .select('fornecedor_id')
         .eq('user_id', user.id)
         .eq('status', 'aprovado')
         .maybeSingle();
-      setFornecedorId((data as any)?.fornecedor_id || null);
+      let forn = (vinculo as any)?.fornecedor_id || null;
+      if (!forn) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('fornecedor_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        forn = (prof as any)?.fornecedor_id || null;
+      }
+      setFornecedorId(forn);
     })();
     setValor(0);
     setDescricao('');
