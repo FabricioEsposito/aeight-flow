@@ -102,6 +102,7 @@ const allStandaloneItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Solicitações", url: "/solicitacoes", icon: ClipboardList },
   { title: "Usuários", url: "/usuarios", icon: UserCog, adminOnly: true },
+  { title: "Vínculos Prestadores", url: "/vinculos-prestadores", icon: UserCheck, adminOnly: true },
   { title: "Tutoriais", url: "/tutoriais", icon: GraduationCap },
 ];
 
