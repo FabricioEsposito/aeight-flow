@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { userId, email, nome, role, vendedor_id } = await req.json();
+    const { userId, email, nome, role, vendedor_id, fornecedor_id } = await req.json();
 
     if (!userId) {
       return new Response(
