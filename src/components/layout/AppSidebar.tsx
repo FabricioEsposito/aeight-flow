@@ -74,6 +74,7 @@ const allNavigationGroups: NavGroup[] = [
       { title: "Benefícios", url: "/rh/beneficios", icon: Briefcase },
       { title: "Aprovações RH", url: "/rh/aprovacoes", icon: ClipboardList },
       { title: "Confirmação Financeiro", url: "/rh/confirmacao", icon: DollarSign },
+      { title: "Aprovações Prestadores", url: "/aprovacao-prestadores", icon: UserCheck },
     ]
   },
   {
@@ -101,6 +102,7 @@ const allStandaloneItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Solicitações", url: "/solicitacoes", icon: ClipboardList },
   { title: "Usuários", url: "/usuarios", icon: UserCog, adminOnly: true },
+  { title: "Vínculos Prestadores", url: "/vinculos-prestadores", icon: UserCheck, adminOnly: true },
   { title: "Tutoriais", url: "/tutoriais", icon: GraduationCap },
 ];
 
@@ -153,6 +155,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
             items: group.items.filter(item => {
               if (item.url === '/rh/aprovacoes') return permissions.canApproveRH;
               if (item.url === '/rh/confirmacao') return isAdminOrFinanceManager;
+              if (item.url === '/aprovacao-prestadores') return permissions.canApproveRH || permissions.canApproveReembolsoFinanceiro;
               return true;
             })
           };

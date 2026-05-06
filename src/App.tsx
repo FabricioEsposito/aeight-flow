@@ -45,6 +45,8 @@ import NotFound from "./pages/NotFound";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalReembolsos from "./pages/portal/PortalReembolsos";
 import PortalNotasFiscais from "./pages/portal/PortalNotasFiscais";
+import AprovacaoPrestadores from "./pages/AprovacaoPrestadores";
+import VinculosPrestadores from "./pages/VinculosPrestadores";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +96,8 @@ const App = () => (
                 <Route path="/portal" element={<ProtectedRoute portal><PortalDashboard /></ProtectedRoute>} />
                 <Route path="/portal/reembolsos" element={<ProtectedRoute portal><PortalReembolsos /></ProtectedRoute>} />
                 <Route path="/portal/notas-fiscais" element={<ProtectedRoute portal><PortalNotasFiscais /></ProtectedRoute>} />
+                <Route path="/aprovacao-prestadores" element={<ProtectedRoute><AprovacaoPrestadores /></ProtectedRoute>} />
+                <Route path="/vinculos-prestadores" element={<ProtectedRoute><VinculosPrestadores /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </SessionTimeoutProvider>
