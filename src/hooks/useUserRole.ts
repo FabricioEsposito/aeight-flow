@@ -154,7 +154,7 @@ export function useUserRole() {
   const isContador = role === 'contador';
   const isPrestador = role === 'prestador_servico';
   const isFuncionario = role === 'funcionario';
-  const isPortalOnly = isPrestador || isFuncionario;
+  const isPortalOnly = false;
 
   const getRoleLabel = (r?: AppRole | null): string => {
     return roleLabels[r || 'user'] || 'Usuário Básico';
