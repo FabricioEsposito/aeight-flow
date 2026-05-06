@@ -86,10 +86,37 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
 
       // 2. Update contas_pagar valor, link_nf, link_boleto if linked
       if (record.conta_pagar_id) {
-        await supabase
+        const { data: existingFiles } = await supabase.storage
+          .from('faturamento-docs')
+          .list(uploadBasePath, { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } });
+
+        const mostRecentPathFor = (prefix: 'nf' | 'boleto', current: string | null) => {
+          const file = existingFiles?.find((item) => {
+            const name = item.name.toLowerCase();
+            return name.startsWith(`${prefix}.`) || name.startsWith(`${prefix}-`);
+          });
+
+          if (file) {
+            const { data: urlData } = supabase.storage
+              .from('faturamento-docs')
+              .getPublicUrl(`${uploadBasePath}/${file.name}`);
+            const url = new URL(urlData.publicUrl);
+            url.searchParams.set('v', String(Date.now()));
+            return url.toString();
+          }
+
+          return current;
+        };
+
+        const { error: contaPagarError } = await supabase
           .from('contas_pagar')
-          .update({ valor, link_nf: linkNf, link_boleto: linkBoleto })
+          .update({
+            valor,
+            link_nf: mostRecentPathFor('nf', linkNf),
+            link_boleto: mostRecentPathFor('boleto', linkBoleto),
+          })
           .eq('id', record.conta_pagar_id);
+        if (contaPagarError) throw contaPagarError;
       }
 
       // 3. Upsert controle_beneficios
