@@ -171,7 +171,7 @@ export default function Usuarios() {
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
