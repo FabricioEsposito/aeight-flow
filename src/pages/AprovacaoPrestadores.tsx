@@ -23,10 +23,11 @@ import { Navigate } from 'react-router-dom';
 type Step = 'rh' | 'financeiro';
 
 export default function AprovacaoPrestadores() {
-  const { permissions, isAdmin, isFinanceManager } = useUserRole();
+  const { permissions, isAdmin, isFinanceManager, loading: roleLoading } = useUserRole();
   const canRH = permissions.canApproveRH || isAdmin;
   const canFin = permissions.canApproveReembolsoFinanceiro || isAdmin || isFinanceManager;
 
+  if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
   if (!canRH && !canFin) return <Navigate to="/" replace />;
 
   return (
