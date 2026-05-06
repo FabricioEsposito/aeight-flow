@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Wrench, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export default function Configuracoes() {
@@ -18,6 +18,29 @@ export default function Configuracoes() {
   const [requestedRole, setRequestedRole] = useState<'admin' | 'user'>('user');
   const [currentRole, setCurrentRole] = useState<'admin' | 'user'>('user');
   const [pendingRequest, setPendingRequest] = useState<any>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairResult, setRepairResult] = useState<any>(null);
+
+  const runRepair = async (dryRun: boolean) => {
+    setRepairing(true);
+    setRepairResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('repair-broken-attachments', {
+        body: { dryRun },
+      });
+      if (error) throw error;
+      setRepairResult(data);
+      toast({
+        title: dryRun ? 'Diagnóstico concluído' : 'Reparo concluído',
+        description: `Total: ${data.summary.total} | OK: ${data.summary.ok} | ${dryRun ? 'A reparar' : 'Reparados'}: ${data.summary.repaired} | Sem solução: ${data.summary.broken_unrepairable}`,
+      });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Erro', description: e.message || 'Falha ao executar rotina.', variant: 'destructive' });
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -170,6 +193,84 @@ export default function Configuracoes() {
           )}
         </CardContent>
       </Card>
+
+      {currentRole === 'admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Reparar Anexos Quebrados
+            </CardTitle>
+            <CardDescription>
+              Varre Contas a Pagar e Receber procurando NF/Boleto com URL inválida e tenta reapontar para o arquivo correto no Storage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => runRepair(true)} disabled={repairing}>
+                {repairing ? 'Verificando...' : 'Diagnosticar (sem alterar)'}
+              </Button>
+              <Button onClick={() => runRepair(false)} disabled={repairing}>
+                {repairing ? 'Reparando...' : 'Reparar Agora'}
+              </Button>
+            </div>
+
+            {repairResult && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3 border rounded-lg">
+                    <p className="text-xs text-muted-foreground">Total verificados</p>
+                    <p className="text-2xl font-bold">{repairResult.summary.total}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-600" /> OK</p>
+                    <p className="text-2xl font-bold text-green-600">{repairResult.summary.ok}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <p className="text-xs text-muted-foreground">{repairResult.summary.dryRun ? 'A reparar' : 'Reparados'}</p>
+                    <p className="text-2xl font-bold text-primary">{repairResult.summary.repaired}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-destructive" /> Sem solução</p>
+                    <p className="text-2xl font-bold text-destructive">{repairResult.summary.broken_unrepairable + repairResult.summary.invalid_url}</p>
+                  </div>
+                </div>
+
+                {repairResult.issues?.length > 0 && (
+                  <div className="border rounded-lg max-h-72 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2">Tabela</th>
+                          <th className="text-left p-2">Campo</th>
+                          <th className="text-left p-2">Status</th>
+                          <th className="text-left p-2">ID</th>
+                          <th className="text-left p-2">Detalhes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {repairResult.issues.map((it: any, i: number) => (
+                          <tr key={i} className="border-t">
+                            <td className="p-2">{it.table}</td>
+                            <td className="p-2">{it.field}</td>
+                            <td className="p-2">
+                              <Badge variant={it.status === 'repaired' ? 'default' : 'destructive'}>
+                                {it.status}
+                              </Badge>
+                            </td>
+                            <td className="p-2 font-mono">{it.id.slice(0, 8)}</td>
+                            <td className="p-2 text-muted-foreground truncate max-w-xs">{it.reason || it.newUrl || it.oldUrl}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
