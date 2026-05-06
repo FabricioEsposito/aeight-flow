@@ -430,35 +430,9 @@ export default function Auth() {
               
               <TabsContent value="cadastro">
                 <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-tipo">Tipo de cadastro</Label>
-                    <Select value={signupTipo} onValueChange={(v) => setSignupTipo(v as SignupTipo)}>
-                      <SelectTrigger id="signup-tipo" className="h-11"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="interno">Usuário interno (equipe A&EIGHT)</SelectItem>
-                        <SelectItem value="prestador">Prestador de Serviço</SelectItem>
-                        <SelectItem value="funcionario">Funcionário CLT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {signupTipo !== 'interno' && (
-                      <p className="text-xs text-muted-foreground">Seu acesso ficará pendente até a aprovação do administrador.</p>
-                    )}
-                  </div>
-                  {signupTipo !== 'interno' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-doc">CNPJ ou CPF</Label>
-                      <Input
-                        id="signup-doc"
-                        type="text"
-                        placeholder="Apenas números"
-                        value={cnpjCpf}
-                        onChange={(e) => setCnpjCpf(e.target.value)}
-                        disabled={isLoading}
-                        required
-                        className="h-11"
-                      />
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Sua conta será criada como usuário básico. O administrador irá ajustar seu nível de acesso após a criação.
+                  </p>
                   <div className="space-y-2">
                     <Label htmlFor="signup-nome">Nome</Label>
                     <Input
