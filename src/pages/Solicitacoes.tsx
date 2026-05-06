@@ -82,10 +82,12 @@ interface SolicitacaoAjuste {
   lancamento?: LancamentoDetalhes;
 }
 
+import MinhasSolicitacoes from './MinhasSolicitacoes';
+
 export default function Solicitacoes() {
   const { user } = useAuth();
   useClearFiltersOnAreaChange('solicitacoes');
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isPrestador, isFuncionario } = useUserRole();
   const { toast } = useToast();
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAjuste[]>([]);
   const [loading, setLoading] = useState(true);
