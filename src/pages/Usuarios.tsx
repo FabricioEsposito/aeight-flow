@@ -454,6 +454,16 @@ export default function Usuarios() {
                 </p>
               </div>
             )}
+
+            {(editRole === 'prestador_servico' || editRole === 'funcionario') && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
+                <FornecedorSelect value={editFornecedorId} onChange={setEditFornecedorId} />
+                <p className="text-xs text-muted-foreground">
+                  Vincule este usuário ao cadastro de fornecedor correspondente para que possa enviar NFs e/ou reembolsos.
+                </p>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
                 Cancelar
