@@ -42,6 +42,9 @@ import AreaContador from "./pages/AreaContador";
 import Tutoriais from "./pages/Tutoriais";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import PortalDashboard from "./pages/portal/PortalDashboard";
+import PortalReembolsos from "./pages/portal/PortalReembolsos";
+import PortalNotasFiscais from "./pages/portal/PortalNotasFiscais";
 
 const queryClient = new QueryClient();
 
