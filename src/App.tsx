@@ -42,6 +42,9 @@ import AreaContador from "./pages/AreaContador";
 import Tutoriais from "./pages/Tutoriais";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import PortalDashboard from "./pages/portal/PortalDashboard";
+import PortalReembolsos from "./pages/portal/PortalReembolsos";
+import PortalNotasFiscais from "./pages/portal/PortalNotasFiscais";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +91,9 @@ const App = () => (
                 <Route path="/ferramentas-software" element={<ProtectedRoute><FerramentasSoftware /></ProtectedRoute>} />
                 <Route path="/area-contador" element={<ProtectedRoute><AreaContador /></ProtectedRoute>} />
                 <Route path="/tutoriais" element={<ProtectedRoute><Tutoriais /></ProtectedRoute>} />
+                <Route path="/portal" element={<ProtectedRoute portal><PortalDashboard /></ProtectedRoute>} />
+                <Route path="/portal/reembolsos" element={<ProtectedRoute portal><PortalReembolsos /></ProtectedRoute>} />
+                <Route path="/portal/notas-fiscais" element={<ProtectedRoute portal><PortalNotasFiscais /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </SessionTimeoutProvider>

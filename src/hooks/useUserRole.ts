@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst' | 'contador';
+export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst' | 'contador' | 'prestador_servico' | 'funcionario';
 
 export interface RolePermissions {
-  // Navigation access
   canAccessDashboard: boolean;
   canAccessCadastro: boolean;
   canAccessComercial: boolean;
@@ -14,25 +13,20 @@ export interface RolePermissions {
   canAccessUsuarios: boolean;
   canAccessSolicitacoes: boolean;
   canAccessContador: boolean;
-  
-  // Edit permissions
+  canAccessPortal: boolean;
   canEditFinanceiro: boolean;
   canEditComercial: boolean;
   canEditCadastro: boolean;
-  
-  // Financial operations
   canPerformBaixas: boolean;
-  
-  // Approval permissions
   canApproveFinanceiroRequests: boolean;
   canApproveCommissions: boolean;
   canApproveRH: boolean;
-  
-  // RH specific
+  canApproveReembolsoFinanceiro: boolean;
+  canApproveVinculoUsuario: boolean;
   needsApprovalForRH: boolean;
   canSendHoleriteOnlyWhenPaid: boolean;
-  
-  // Needs approval for edits
+  canSendNFPrestador: boolean;
+  canSendReembolso: boolean;
   needsApprovalForFinanceiroEdits: boolean;
 }
 
@@ -46,6 +40,71 @@ const roleLabels: Record<AppRole, string> = {
   rh_manager: 'Gerente de RH',
   rh_analyst: 'Analista de RH',
   contador: 'Contador',
+  prestador_servico: 'Prestador de Serviço',
+  funcionario: 'Funcionário',
+};
+
+const defaultPermissions: RolePermissions = {
+  canAccessDashboard: false,
+  canAccessCadastro: false,
+  canAccessComercial: false,
+  canAccessFinanceiro: false,
+  canAccessRH: false,
+  canAccessUsuarios: false,
+  canAccessSolicitacoes: false,
+  canAccessContador: false,
+  canAccessPortal: false,
+  canEditFinanceiro: false,
+  canEditComercial: false,
+  canEditCadastro: false,
+  canPerformBaixas: false,
+  canApproveFinanceiroRequests: false,
+  canApproveCommissions: false,
+  canApproveRH: false,
+  canApproveReembolsoFinanceiro: false,
+  canApproveVinculoUsuario: false,
+  needsApprovalForRH: false,
+  canSendHoleriteOnlyWhenPaid: false,
+  canSendNFPrestador: false,
+  canSendReembolso: false,
+  needsApprovalForFinanceiroEdits: false,
+};
+
+const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
+  admin: {
+    canAccessDashboard: true, canAccessCadastro: true, canAccessComercial: true,
+    canAccessFinanceiro: true, canAccessRH: true, canAccessUsuarios: true,
+    canAccessSolicitacoes: true, canAccessContador: true, canAccessPortal: true,
+    canEditFinanceiro: true, canEditComercial: true, canEditCadastro: true,
+    canPerformBaixas: true, canApproveFinanceiroRequests: true,
+    canApproveCommissions: true, canApproveRH: true,
+    canApproveReembolsoFinanceiro: true, canApproveVinculoUsuario: true,
+  },
+  finance_manager: {
+    canAccessDashboard: true, canAccessCadastro: true, canAccessComercial: true,
+    canAccessFinanceiro: true, canAccessRH: true, canAccessSolicitacoes: true,
+    canAccessContador: true, canEditFinanceiro: true, canEditComercial: true,
+    canEditCadastro: true, canPerformBaixas: true,
+    canApproveFinanceiroRequests: true, canApproveCommissions: true,
+    canApproveReembolsoFinanceiro: true,
+  },
+  finance_analyst: {
+    canAccessDashboard: true, canAccessCadastro: true, canAccessFinanceiro: true,
+    canAccessRH: true, canAccessSolicitacoes: true, canPerformBaixas: true,
+    needsApprovalForFinanceiroEdits: true,
+  },
+  commercial_manager: { canAccessComercial: true, canEditComercial: true },
+  salesperson: { canAccessComercial: true },
+  rh_manager: { canAccessRH: true, canApproveRH: true },
+  rh_analyst: {
+    canAccessRH: true, needsApprovalForRH: true, canSendHoleriteOnlyWhenPaid: true,
+  },
+  contador: { canAccessContador: true },
+  prestador_servico: {
+    canAccessPortal: true, canSendNFPrestador: true, canSendReembolso: true,
+  },
+  funcionario: { canAccessPortal: true, canSendReembolso: true },
+  user: {},
 };
 
 export function useUserRole() {
@@ -81,210 +140,8 @@ export function useUserRole() {
   };
 
   const permissions = useMemo((): RolePermissions => {
-    const defaultPermissions: RolePermissions = {
-      canAccessDashboard: false,
-      canAccessCadastro: false,
-      canAccessComercial: false,
-      canAccessFinanceiro: false,
-      canAccessRH: false,
-      canAccessUsuarios: false,
-      canAccessSolicitacoes: false,
-      canAccessContador: false,
-      canEditFinanceiro: false,
-      canEditComercial: false,
-      canEditCadastro: false,
-      canPerformBaixas: false,
-      canApproveFinanceiroRequests: false,
-      canApproveCommissions: false,
-      canApproveRH: false,
-      needsApprovalForRH: false,
-      canSendHoleriteOnlyWhenPaid: false,
-      needsApprovalForFinanceiroEdits: false,
-    };
-
     if (!role) return defaultPermissions;
-
-    switch (role) {
-      case 'admin':
-        return {
-          canAccessDashboard: true,
-          canAccessCadastro: true,
-          canAccessComercial: true,
-          canAccessFinanceiro: true,
-          canAccessRH: true,
-          canAccessUsuarios: true,
-          canAccessSolicitacoes: true,
-          canAccessContador: true,
-          canEditFinanceiro: true,
-          canEditComercial: true,
-          canEditCadastro: true,
-          canPerformBaixas: true,
-          canApproveFinanceiroRequests: true,
-          canApproveCommissions: true,
-          canApproveRH: true,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'finance_manager':
-        return {
-          canAccessDashboard: true,
-          canAccessCadastro: true,
-          canAccessComercial: true,
-          canAccessFinanceiro: true,
-          canAccessRH: true,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: true,
-          canAccessContador: true,
-          canEditFinanceiro: true,
-          canEditComercial: true,
-          canEditCadastro: true,
-          canPerformBaixas: true,
-          canApproveFinanceiroRequests: true,
-          canApproveCommissions: true,
-          canApproveRH: false,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'finance_analyst':
-        return {
-          canAccessDashboard: true,
-          canAccessCadastro: true,
-          canAccessComercial: false,
-          canAccessFinanceiro: true,
-          canAccessRH: true,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: true,
-          canAccessContador: false,
-          canEditFinanceiro: false,
-          canEditComercial: false,
-          canEditCadastro: false,
-          canPerformBaixas: true,
-          canApproveFinanceiroRequests: false,
-          canApproveCommissions: false,
-          canApproveRH: false,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: true,
-        };
-      
-      case 'commercial_manager':
-        return {
-          canAccessDashboard: false,
-          canAccessCadastro: false,
-          canAccessComercial: true,
-          canAccessFinanceiro: false,
-          canAccessRH: false,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: false,
-          canAccessContador: false,
-          canEditFinanceiro: false,
-          canEditComercial: true,
-          canEditCadastro: false,
-          canPerformBaixas: false,
-          canApproveFinanceiroRequests: false,
-          canApproveCommissions: false,
-          canApproveRH: false,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'salesperson':
-        return {
-          canAccessDashboard: false,
-          canAccessCadastro: false,
-          canAccessComercial: true,
-          canAccessFinanceiro: false,
-          canAccessRH: false,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: false,
-          canAccessContador: false,
-          canEditFinanceiro: false,
-          canEditComercial: false,
-          canEditCadastro: false,
-          canPerformBaixas: false,
-          canApproveFinanceiroRequests: false,
-          canApproveCommissions: false,
-          canApproveRH: false,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'rh_manager':
-        return {
-          canAccessDashboard: false,
-          canAccessCadastro: false,
-          canAccessComercial: false,
-          canAccessFinanceiro: false,
-          canAccessRH: true,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: false,
-          canAccessContador: false,
-          canEditFinanceiro: false,
-          canEditComercial: false,
-          canEditCadastro: false,
-          canPerformBaixas: false,
-          canApproveFinanceiroRequests: false,
-          canApproveCommissions: false,
-          canApproveRH: true,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'rh_analyst':
-        return {
-          canAccessDashboard: false,
-          canAccessCadastro: false,
-          canAccessComercial: false,
-          canAccessFinanceiro: false,
-          canAccessRH: true,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: false,
-          canAccessContador: false,
-          canEditFinanceiro: false,
-          canEditComercial: false,
-          canEditCadastro: false,
-          canPerformBaixas: false,
-          canApproveFinanceiroRequests: false,
-          canApproveCommissions: false,
-          canApproveRH: false,
-          needsApprovalForRH: true,
-          canSendHoleriteOnlyWhenPaid: true,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'contador':
-        return {
-          canAccessDashboard: false,
-          canAccessCadastro: false,
-          canAccessComercial: false,
-          canAccessFinanceiro: false,
-          canAccessRH: false,
-          canAccessUsuarios: false,
-          canAccessSolicitacoes: false,
-          canAccessContador: true,
-          canEditFinanceiro: false,
-          canEditComercial: false,
-          canEditCadastro: false,
-          canPerformBaixas: false,
-          canApproveFinanceiroRequests: false,
-          canApproveCommissions: false,
-          canApproveRH: false,
-          needsApprovalForRH: false,
-          canSendHoleriteOnlyWhenPaid: false,
-          needsApprovalForFinanceiroEdits: false,
-        };
-      
-      case 'user':
-      default:
-        return defaultPermissions;
-    }
+    return { ...defaultPermissions, ...rolePermissionsMap[role] };
   }, [role]);
 
   const isAdmin = role === 'admin';
@@ -295,24 +152,20 @@ export function useUserRole() {
   const isRHManager = role === 'rh_manager';
   const isRHAnalyst = role === 'rh_analyst';
   const isContador = role === 'contador';
+  const isPrestador = role === 'prestador_servico';
+  const isFuncionario = role === 'funcionario';
+  const isPortalOnly = isPrestador || isFuncionario;
 
   const getRoleLabel = (r?: AppRole | null): string => {
     return roleLabels[r || 'user'] || 'Usuário Básico';
   };
 
-  return { 
-    role, 
-    loading, 
-    isAdmin,
-    isFinanceManager,
-    isFinanceAnalyst,
-    isCommercialManager,
-    isSalesperson,
-    isRHManager,
-    isRHAnalyst,
-    isContador,
-    permissions,
-    getRoleLabel,
-    roleLabels,
+  return {
+    role, loading,
+    isAdmin, isFinanceManager, isFinanceAnalyst,
+    isCommercialManager, isSalesperson,
+    isRHManager, isRHAnalyst, isContador,
+    isPrestador, isFuncionario, isPortalOnly,
+    permissions, getRoleLabel, roleLabels,
   };
 }

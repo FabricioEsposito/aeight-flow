@@ -1963,6 +1963,87 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_prestador: {
+        Row: {
+          ano_referencia: number | null
+          aprovador_financeiro_id: string | null
+          aprovador_rh_id: string | null
+          arquivo_path: string
+          conta_bancaria_id: string | null
+          conta_pagar_id: string | null
+          created_at: string
+          data_aprovacao_financeiro: string | null
+          data_aprovacao_rh: string | null
+          data_vencimento_pagamento: string | null
+          descricao: string | null
+          folha_pagamento_id: string | null
+          fornecedor_id: string
+          id: string
+          mes_referencia: number | null
+          motivo_rejeicao_financeiro: string | null
+          motivo_rejeicao_rh: string | null
+          numero_nf: string | null
+          parcela_id: string | null
+          solicitante_id: string
+          status: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ano_referencia?: number | null
+          aprovador_financeiro_id?: string | null
+          aprovador_rh_id?: string | null
+          arquivo_path: string
+          conta_bancaria_id?: string | null
+          conta_pagar_id?: string | null
+          created_at?: string
+          data_aprovacao_financeiro?: string | null
+          data_aprovacao_rh?: string | null
+          data_vencimento_pagamento?: string | null
+          descricao?: string | null
+          folha_pagamento_id?: string | null
+          fornecedor_id: string
+          id?: string
+          mes_referencia?: number | null
+          motivo_rejeicao_financeiro?: string | null
+          motivo_rejeicao_rh?: string | null
+          numero_nf?: string | null
+          parcela_id?: string | null
+          solicitante_id: string
+          status?: string
+          tipo: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          ano_referencia?: number | null
+          aprovador_financeiro_id?: string | null
+          aprovador_rh_id?: string | null
+          arquivo_path?: string
+          conta_bancaria_id?: string | null
+          conta_pagar_id?: string | null
+          created_at?: string
+          data_aprovacao_financeiro?: string | null
+          data_aprovacao_rh?: string | null
+          data_vencimento_pagamento?: string | null
+          descricao?: string | null
+          folha_pagamento_id?: string | null
+          fornecedor_id?: string
+          id?: string
+          mes_referencia?: number | null
+          motivo_rejeicao_financeiro?: string | null
+          motivo_rejeicao_rh?: string | null
+          numero_nf?: string | null
+          parcela_id?: string | null
+          solicitante_id?: string
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       user_favorites: {
         Row: {
           created_at: string
@@ -2107,6 +2188,51 @@ export type Database = {
           },
         ]
       }
+      vinculos_usuario_fornecedor: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          cnpj_cpf_solicitado: string | null
+          created_at: string
+          fornecedor_id: string | null
+          id: string
+          motivo_rejeicao: string | null
+          nome_solicitado: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          cnpj_cpf_solicitado?: string | null
+          created_at?: string
+          fornecedor_id?: string | null
+          id?: string
+          motivo_rejeicao?: string | null
+          nome_solicitado?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          cnpj_cpf_solicitado?: string | null
+          created_at?: string
+          fornecedor_id?: string | null
+          id?: string
+          motivo_rejeicao?: string | null
+          nome_solicitado?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2142,6 +2268,8 @@ export type Database = {
         | "rh_manager"
         | "rh_analyst"
         | "contador"
+        | "prestador_servico"
+        | "funcionario"
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica" | "internacional"
@@ -2286,6 +2414,8 @@ export const Constants = {
         "rh_manager",
         "rh_analyst",
         "contador",
+        "prestador_servico",
+        "funcionario",
       ],
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],
