@@ -17,17 +17,12 @@ const authSchema = z.object({
   nome: z.string().trim().max(100, { message: "Nome deve ter menos de 100 caracteres" }).optional(),
 });
 
-type SignupTipo = 'interno' | 'prestador' | 'funcionario';
-
-
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nome, setNome] = useState('');
-  const [signupTipo, setSignupTipo] = useState<SignupTipo>('interno');
-  const [cnpjCpf, setCnpjCpf] = useState('');
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   
