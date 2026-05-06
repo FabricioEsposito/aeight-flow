@@ -14,6 +14,7 @@ export interface RolePermissions {
   canAccessUsuarios: boolean;
   canAccessSolicitacoes: boolean;
   canAccessContador: boolean;
+  canAccessPortal: boolean;
   
   // Edit permissions
   canEditFinanceiro: boolean;
@@ -27,10 +28,16 @@ export interface RolePermissions {
   canApproveFinanceiroRequests: boolean;
   canApproveCommissions: boolean;
   canApproveRH: boolean;
+  canApproveReembolsoFinanceiro: boolean;
+  canApproveVinculoUsuario: boolean;
   
   // RH specific
   needsApprovalForRH: boolean;
   canSendHoleriteOnlyWhenPaid: boolean;
+  
+  // Portal
+  canSendNFPrestador: boolean;
+  canSendReembolso: boolean;
   
   // Needs approval for edits
   needsApprovalForFinanceiroEdits: boolean;
