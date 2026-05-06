@@ -18,13 +18,14 @@ import { ptBR } from 'date-fns/locale';
 
 export default function VinculosPrestadores() {
   const { user } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [rejeitarItem, setRejeitarItem] = useState<any>(null);
   const [motivo, setMotivo] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
   if (!isAdmin) return <Navigate to="/" replace />;
 
   const { data: vinculos = [] } = useQuery({
