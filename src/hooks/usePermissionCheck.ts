@@ -30,6 +30,11 @@ const permissionMessages: Record<PermissionKey, string> = {
   needsApprovalForRH: 'Esta ação requer aprovação do Gerente de RH.',
   canSendHoleriteOnlyWhenPaid: 'O envio de holerite só é permitido após o lançamento estar pago.',
   needsApprovalForFinanceiroEdits: 'Esta ação requer aprovação de um administrador ou gerente financeiro.',
+  canAccessPortal: 'Você não tem permissão para acessar o Portal.',
+  canApproveReembolsoFinanceiro: 'Você não tem permissão para aprovar reembolsos no financeiro.',
+  canApproveVinculoUsuario: 'Você não tem permissão para aprovar vínculos de usuários.',
+  canSendNFPrestador: 'Você não tem permissão para enviar Notas Fiscais.',
+  canSendReembolso: 'Você não tem permissão para enviar reembolsos.',
 };
 
 export function usePermissionCheck(): PermissionCheckResult {
