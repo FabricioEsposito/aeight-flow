@@ -25,11 +25,9 @@ export default function VinculosPrestadores() {
   const [motivo, setMotivo] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
-  if (!isAdmin) return <Navigate to="/" replace />;
-
   const { data: vinculos = [] } = useQuery({
     queryKey: ['vinculos-pendentes'],
+    enabled: !roleLoading && isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vinculos_usuario_fornecedor' as any)
@@ -44,11 +42,15 @@ export default function VinculosPrestadores() {
   // Fetch user emails via profiles
   const { data: profiles = [] } = useQuery({
     queryKey: ['profiles-list'],
+    enabled: !roleLoading && isAdmin,
     queryFn: async () => {
       const { data } = await supabase.from('profiles').select('id, nome, email');
       return data || [];
     },
   });
+
+  if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
+  if (!isAdmin) return <Navigate to="/" replace />;
   const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
 
   const aprovar = async (item: any) => {
