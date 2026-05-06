@@ -141,14 +141,15 @@ export default function Usuarios() {
       const userIds = data.users.map((u: any) => u.id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, vendedor_id')
+        .select('id, vendedor_id, fornecedor_id')
         .in('id', userIds);
 
-      const profileMap = new Map(profiles?.map((p: any) => [p.id, p.vendedor_id]) || []);
+      const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
       
       return data.users.map((u: any) => ({
         ...u,
-        vendedor_id: profileMap.get(u.id) || null,
+        vendedor_id: (profileMap.get(u.id) as any)?.vendedor_id || null,
+        fornecedor_id: (profileMap.get(u.id) as any)?.fornecedor_id || null,
       }));
     },
   });
