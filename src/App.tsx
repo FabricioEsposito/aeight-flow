@@ -97,7 +97,7 @@ const App = () => (
                 <Route path="/portal/reembolsos" element={<ProtectedRoute portal><PortalReembolsos /></ProtectedRoute>} />
                 <Route path="/portal/notas-fiscais" element={<ProtectedRoute portal><PortalNotasFiscais /></ProtectedRoute>} />
                 <Route path="/aprovacao-prestadores" element={<ProtectedRoute><AprovacaoPrestadores /></ProtectedRoute>} />
-                <Route path="/vinculos-prestadores" element={<ProtectedRoute><VinculosPrestadores /></ProtectedRoute>} />
+                
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </SessionTimeoutProvider>
