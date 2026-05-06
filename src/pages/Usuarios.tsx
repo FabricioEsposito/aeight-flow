@@ -458,7 +458,15 @@ export default function Usuarios() {
             {(editRole === 'prestador_servico' || editRole === 'funcionario') && (
               <div className="space-y-2">
                 <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
-                <FornecedorSelect value={editFornecedorId} onChange={setEditFornecedorId} />
+                <FornecedorSelect
+                  value={editFornecedorId}
+                  onChange={setEditFornecedorId}
+                  filterByPlanoContaCodigos={
+                    editRole === 'prestador_servico'
+                      ? ['3.1.2', '2.1.3']
+                      : ['2.1.2', '3.1.1']
+                  }
+                />
                 <p className="text-xs text-muted-foreground">
                   Vincule este usuário ao cadastro de fornecedor correspondente para que possa enviar NFs e/ou reembolsos.
                 </p>
