@@ -169,6 +169,18 @@ export default function Usuarios() {
     },
   });
 
+  // Buscar fornecedores para exibir vínculos
+  const { data: fornecedores } = useQuery({
+    queryKey: ['fornecedores-vinculo-usuarios'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fornecedores')
+        .select('id, nome_fantasia, razao_social');
+      if (error) throw error;
+      return data as { id: string; nome_fantasia: string | null; razao_social: string | null }[];
+    },
+  });
+
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
     mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
@@ -317,6 +329,7 @@ export default function Usuarios() {
                 <TableHead>Email</TableHead>
                 <TableHead>Nível Hierárquico</TableHead>
                 <TableHead>Vendedor Vinculado</TableHead>
+                <TableHead>Fornecedor Vinculado</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -325,6 +338,8 @@ export default function Usuarios() {
             <TableBody>
               {usuarios?.map((usuario: any) => {
                 const vendedorVinculado = vendedores?.find(v => v.id === usuario.vendedor_id);
+                const fornecedorVinculado = fornecedores?.find(f => f.id === usuario.fornecedor_id);
+                const isPrestadorOrFunc = usuario.role === 'prestador_servico' || usuario.role === 'funcionario';
                 return (
                   <TableRow key={usuario.id}>
                     <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
@@ -338,6 +353,19 @@ export default function Usuarios() {
                       {usuario.role === 'salesperson' ? (
                         vendedorVinculado ? (
                           <Badge variant="outline">{vendedorVinculado.nome}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Não vinculado</span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isPrestadorOrFunc ? (
+                        fornecedorVinculado ? (
+                          <Badge variant="outline">
+                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
+                          </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">Não vinculado</span>
                         )
