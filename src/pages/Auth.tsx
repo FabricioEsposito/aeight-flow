@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
@@ -18,17 +17,12 @@ const authSchema = z.object({
   nome: z.string().trim().max(100, { message: "Nome deve ter menos de 100 caracteres" }).optional(),
 });
 
-type SignupTipo = 'interno' | 'prestador' | 'funcionario';
-
-
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nome, setNome] = useState('');
-  const [signupTipo, setSignupTipo] = useState<SignupTipo>('interno');
-  const [cnpjCpf, setCnpjCpf] = useState('');
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   
@@ -215,31 +209,9 @@ export default function Auth() {
       const validated = authSchema.parse({ email, password, nome });
       setIsLoading(true);
 
-      // For prestador/funcionario: must validate CNPJ/CPF matches a fornecedor
-      let fornecedorId: string | null = null;
-      if (signupTipo !== 'interno') {
-        const cleaned = cnpjCpf.replace(/\D/g, '');
-        if (!cleaned || cleaned.length < 11) {
-          toast({ title: 'CNPJ/CPF inválido', description: 'Informe um documento válido.', variant: 'destructive' });
-          setIsLoading(false);
-          return;
-        }
-        const { data: forn } = await supabase
-          .from('fornecedores')
-          .select('id')
-          .or(`cnpj_cpf.eq.${cleaned},cnpj_cpf.eq.${cnpjCpf}`)
-          .maybeSingle();
-        if (!forn) {
-          toast({ title: 'Cadastro não encontrado', description: 'Seu CNPJ/CPF não está cadastrado como fornecedor. Procure o RH.', variant: 'destructive' });
-          setIsLoading(false);
-          return;
-        }
-        fornecedorId = forn.id;
-      }
-
       const redirectUrl = `${window.location.origin}/`;
 
-      const { data: signUpData, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
@@ -257,20 +229,9 @@ export default function Auth() {
         return;
       }
 
-      // Create vínculo pendente if portal user
-      if (signupTipo !== 'interno' && fornecedorId && signUpData.user) {
-        await supabase.from('vinculos_usuario_fornecedor' as any).insert({
-          user_id: signUpData.user.id,
-          fornecedor_id: fornecedorId,
-          tipo: signupTipo,
-          status: 'pendente',
-        });
-        toast({ title: 'Cadastro enviado!', description: 'Aguarde a aprovação do administrador para acessar o portal.' });
-      } else {
-        toast({ title: "Conta criada com sucesso!", description: "Você já pode fazer login." });
-      }
+      toast({ title: "Conta criada com sucesso!", description: "Aguarde o administrador ajustar seu nível de acesso." });
 
-      setEmail(''); setPassword(''); setConfirmPassword(''); setNome(''); setCnpjCpf('');
+      setEmail(''); setPassword(''); setConfirmPassword(''); setNome('');
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
@@ -431,35 +392,9 @@ export default function Auth() {
               
               <TabsContent value="cadastro">
                 <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-tipo">Tipo de cadastro</Label>
-                    <Select value={signupTipo} onValueChange={(v) => setSignupTipo(v as SignupTipo)}>
-                      <SelectTrigger id="signup-tipo" className="h-11"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="interno">Usuário interno (equipe A&EIGHT)</SelectItem>
-                        <SelectItem value="prestador">Prestador de Serviço</SelectItem>
-                        <SelectItem value="funcionario">Funcionário CLT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {signupTipo !== 'interno' && (
-                      <p className="text-xs text-muted-foreground">Seu acesso ficará pendente até a aprovação do administrador.</p>
-                    )}
-                  </div>
-                  {signupTipo !== 'interno' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-doc">CNPJ ou CPF</Label>
-                      <Input
-                        id="signup-doc"
-                        type="text"
-                        placeholder="Apenas números"
-                        value={cnpjCpf}
-                        onChange={(e) => setCnpjCpf(e.target.value)}
-                        disabled={isLoading}
-                        required
-                        className="h-11"
-                      />
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Sua conta será criada como usuário básico. O administrador irá ajustar seu nível de acesso após a criação.
+                  </p>
                   <div className="space-y-2">
                     <Label htmlFor="signup-nome">Nome</Label>
                     <Input
