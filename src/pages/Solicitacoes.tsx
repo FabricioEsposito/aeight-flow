@@ -938,6 +938,10 @@ export default function Solicitacoes() {
   };
 
 
+  if (isPrestador || isFuncionario) {
+    return <MinhasSolicitacoes />;
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
