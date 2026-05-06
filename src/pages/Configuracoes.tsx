@@ -18,6 +18,29 @@ export default function Configuracoes() {
   const [requestedRole, setRequestedRole] = useState<'admin' | 'user'>('user');
   const [currentRole, setCurrentRole] = useState<'admin' | 'user'>('user');
   const [pendingRequest, setPendingRequest] = useState<any>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairResult, setRepairResult] = useState<any>(null);
+
+  const runRepair = async (dryRun: boolean) => {
+    setRepairing(true);
+    setRepairResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('repair-broken-attachments', {
+        body: { dryRun },
+      });
+      if (error) throw error;
+      setRepairResult(data);
+      toast({
+        title: dryRun ? 'Diagnóstico concluído' : 'Reparo concluído',
+        description: `Total: ${data.summary.total} | OK: ${data.summary.ok} | ${dryRun ? 'A reparar' : 'Reparados'}: ${data.summary.repaired} | Sem solução: ${data.summary.broken_unrepairable}`,
+      });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Erro', description: e.message || 'Falha ao executar rotina.', variant: 'destructive' });
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
