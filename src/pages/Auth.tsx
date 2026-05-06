@@ -215,45 +215,62 @@ export default function Auth() {
       const validated = authSchema.parse({ email, password, nome });
       setIsLoading(true);
 
+      // For prestador/funcionario: must validate CNPJ/CPF matches a fornecedor
+      let fornecedorId: string | null = null;
+      if (signupTipo !== 'interno') {
+        const cleaned = cnpjCpf.replace(/\D/g, '');
+        if (!cleaned || cleaned.length < 11) {
+          toast({ title: 'CNPJ/CPF inválido', description: 'Informe um documento válido.', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        const { data: forn } = await supabase
+          .from('fornecedores')
+          .select('id')
+          .or(`cnpj_cpf.eq.${cleaned},cnpj_cpf.eq.${cnpjCpf}`)
+          .maybeSingle();
+        if (!forn) {
+          toast({ title: 'Cadastro não encontrado', description: 'Seu CNPJ/CPF não está cadastrado como fornecedor. Procure o RH.', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        fornecedorId = forn.id;
+      }
+
       const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
+
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
-            nome: validated.nome,
-          },
+          data: { nome: validated.nome },
         },
       });
 
       if (error) {
         if (error.message.includes('already registered')) {
-          toast({
-            title: "Erro ao criar conta",
-            description: "Não foi possível criar a conta. Verifique os dados e tente novamente.",
-            variant: "destructive",
-          });
+          toast({ title: "Erro ao criar conta", description: "Não foi possível criar a conta. Verifique os dados e tente novamente.", variant: "destructive" });
         } else {
-          toast({
-            title: "Erro ao criar conta",
-            description: error.message,
-            variant: "destructive",
-          });
+          toast({ title: "Erro ao criar conta", description: error.message, variant: "destructive" });
         }
         return;
       }
 
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Você já pode fazer login.",
-      });
-      
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setNome('');
+      // Create vínculo pendente if portal user
+      if (signupTipo !== 'interno' && fornecedorId && signUpData.user) {
+        await supabase.from('vinculos_usuario_fornecedor' as any).insert({
+          user_id: signUpData.user.id,
+          fornecedor_id: fornecedorId,
+          tipo: signupTipo,
+          status: 'pendente',
+        });
+        toast({ title: 'Cadastro enviado!', description: 'Aguarde a aprovação do administrador para acessar o portal.' });
+      } else {
+        toast({ title: "Conta criada com sucesso!", description: "Você já pode fazer login." });
+      }
+
+      setEmail(''); setPassword(''); setConfirmPassword(''); setNome(''); setCnpjCpf('');
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
