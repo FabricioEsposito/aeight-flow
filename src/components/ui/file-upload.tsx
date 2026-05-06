@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, File, X, ExternalLink, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { openStorageFile } from '@/lib/storage-utils';
 
 interface FileUploadProps {
   bucket: string;
@@ -29,30 +30,7 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Generate signed URL when value changes
-  useEffect(() => {
-    if (!value) {
-      setSignedUrl(null);
-      return;
-    }
-    const filePath = extractPathFromUrl(value);
-    if (!filePath) return;
-
-    supabase.storage
-      .from(bucket)
-      .createSignedUrl(filePath, 3600) // 1 hour
-      .then(({ data, error: err }) => {
-        if (err) {
-          console.error('Signed URL error:', err);
-          setSignedUrl(null);
-        } else {
-          setSignedUrl(data.signedUrl);
-        }
-      });
-  }, [value, bucket]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,18 +158,7 @@ export function FileUpload({
   };
 
   const handleView = async () => {
-    if (signedUrl) {
-      window.open(signedUrl, '_blank');
-    } else if (value) {
-      // Fallback: try generating on the fly
-      const filePath = extractPathFromUrl(value);
-      if (filePath) {
-        const { data } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600);
-        if (data?.signedUrl) {
-          window.open(data.signedUrl, '_blank');
-        }
-      }
-    }
+    if (value) await openStorageFile(value, bucket);
   };
 
   return (

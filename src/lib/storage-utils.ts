@@ -42,7 +42,8 @@ async function findReplacementPath(filePath: string, bucket: string): Promise<st
 }
 
 /**
- * Opens a private storage file in a new tab using a signed URL.
+ * Opens a private storage file in a new tab using a local Blob URL.
+ * This avoids browser/client blockers that can block direct navigation to Supabase signed URLs.
  */
 export async function openStorageFile(publicUrl: string, bucket = 'faturamento-docs') {
   const filePath = extractPathFromUrl(publicUrl, bucket);
@@ -51,27 +52,33 @@ export async function openStorageFile(publicUrl: string, bucket = 'faturamento-d
     return;
   }
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(filePath, 3600);
+  const previewWindow = window.open('', '_blank');
+  previewWindow?.document.write('<!doctype html><title>Abrindo arquivo...</title><p style="font-family:sans-serif">Abrindo arquivo...</p>');
 
-  if (error || !data?.signedUrl) {
+  const downloadFile = async (path: string) => supabase.storage.from(bucket).download(path);
+  let { data, error } = await downloadFile(filePath);
+
+  if (error || !data) {
     const replacementPath = await findReplacementPath(filePath, bucket);
-    if (replacementPath) {
-      const { data: replacementData, error: replacementError } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(replacementPath, 3600);
+    if (replacementPath) ({ data, error } = await downloadFile(replacementPath));
+  }
 
-      if (!replacementError && replacementData?.signedUrl) {
-        window.open(replacementData.signedUrl, '_blank');
-        return;
-      }
-    }
-
-    console.error('Signed URL error:', error);
+  if (error || !data) {
+    console.error('Storage download error:', error);
+    previewWindow?.close();
     toast.error('Erro ao gerar link de acesso ao arquivo.');
     return;
   }
 
-  window.open(data.signedUrl, '_blank');
+  const blobUrl = URL.createObjectURL(data);
+  if (previewWindow) {
+    previewWindow.location.href = blobUrl;
+  } else {
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
+  }
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10 * 60 * 1000);
 }
