@@ -190,6 +190,7 @@ export default function Usuarios() {
       setOpenEdit(false);
       setEditingUser(null);
       setEditVendedorId("");
+      setEditFornecedorId("");
     },
     onError: (error: any) => {
       console.error('Update error:', error);
