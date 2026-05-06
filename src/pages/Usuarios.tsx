@@ -403,7 +403,7 @@ export default function Usuarios() {
       </Card>
 
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar Nível Hierárquico</DialogTitle>
             <DialogDescription>
