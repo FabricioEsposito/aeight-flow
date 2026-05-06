@@ -18,25 +18,57 @@ interface FornecedorSelectProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   allowCreate?: boolean;
+  /** Filter to only fornecedores that have at least one contrato linked to a plano_contas with one of these códigos */
+  filterByPlanoContaCodigos?: string[];
 }
 
-export function FornecedorSelect({ value, onChange, disabled, allowCreate }: FornecedorSelectProps) {
+export function FornecedorSelect({ value, onChange, disabled, allowCreate, filterByPlanoContaCodigos }: FornecedorSelectProps) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     fetchFornecedores();
-  }, []);
+  }, [JSON.stringify(filterByPlanoContaCodigos)]);
 
   const fetchFornecedores = async () => {
     try {
-      const { data, error } = await supabase
+      let allowedIds: Set<string> | null = null;
+      if (filterByPlanoContaCodigos && filterByPlanoContaCodigos.length > 0) {
+        const { data: planos } = await supabase
+          .from('plano_contas')
+          .select('id')
+          .in('codigo', filterByPlanoContaCodigos);
+        const planoIds = (planos || []).map((p: any) => p.id);
+        if (planoIds.length === 0) {
+          setFornecedores([]);
+          setLoading(false);
+          return;
+        }
+        const { data: contratos } = await supabase
+          .from('contratos')
+          .select('fornecedor_id')
+          .in('plano_contas_id', planoIds)
+          .not('fornecedor_id', 'is', null);
+        allowedIds = new Set((contratos || []).map((c: any) => c.fornecedor_id));
+        if (allowedIds.size === 0) {
+          setFornecedores([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      let query = supabase
         .from('fornecedores')
         .select('id, razao_social, nome_fantasia, cnpj_cpf')
         .eq('status', 'ativo')
         .order('razao_social');
 
+      if (allowedIds) {
+        query = query.in('id', Array.from(allowedIds));
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setFornecedores(data || []);
     } catch (error) {
