@@ -135,6 +135,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Auto-approve vínculo when admin links a fornecedor to a prestador/funcionário
+    if (fornecedor_id && (role === 'prestador_servico' || role === 'funcionario')) {
+      const { data: existing } = await supabaseAdmin
+        .from('vinculos_usuario_fornecedor')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const vinculoPayload: any = {
+        user_id: userId,
+        fornecedor_id,
+        tipo: role,
+        status: 'aprovado',
+        aprovado_por: user.id,
+        aprovado_em: new Date().toISOString(),
+        motivo_rejeicao: null,
+      };
+
+      if (existing?.id) {
+        const { error: vErr } = await supabaseAdmin
+          .from('vinculos_usuario_fornecedor')
+          .update(vinculoPayload)
+          .eq('id', existing.id);
+        if (vErr) console.error('Error updating vinculo:', vErr);
+      } else {
+        const { error: vErr } = await supabaseAdmin
+          .from('vinculos_usuario_fornecedor')
+          .insert(vinculoPayload);
+        if (vErr) console.error('Error inserting vinculo:', vErr);
+      }
+    }
+
     console.log('User updated successfully');
 
     return new Response(
