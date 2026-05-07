@@ -120,7 +120,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
       });
       if (error) throw error;
 
-      toast({ title: 'Enviado!', description: initialStatus === 'pendente_lider' ? 'Sua solicitação foi enviada para aprovação do seu líder de área.' : 'Sua solicitação foi enviada para aprovação do RH.' });
+      toast({ title: 'Enviado!', description: initialStatus === 'pendente_lider' ? 'Sua solicitação foi enviada para aprovação do seu líder de área.' : 'Sua solicitação foi enviada para validação do analista de RH.' });
       queryClient.invalidateQueries({ queryKey: ['portal-solicitacoes'] });
       queryClient.invalidateQueries({ queryKey: ['portal-list'] });
       onOpenChange(false);
