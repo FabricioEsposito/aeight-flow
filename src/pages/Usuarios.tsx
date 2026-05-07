@@ -98,6 +98,8 @@ export default function Usuarios() {
   const [editVendedorId, setEditVendedorId] = useState<string>("");
   const [editFornecedorId, setEditFornecedorId] = useState<string>("");
   const [editGrupoId, setEditGrupoId] = useState<string>("");
+  const [editRegime, setEditRegime] = useState<'prestador_servico' | 'funcionario' | ''>("");
+  const [editIsLider, setEditIsLider] = useState<boolean>(false);
   const [editLideraGrupoId, setEditLideraGrupoId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
