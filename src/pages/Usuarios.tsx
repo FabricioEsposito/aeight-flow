@@ -358,10 +358,12 @@ export default function Usuarios() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Nível Hierárquico</TableHead>
-                <TableHead>Vendedor Vinculado</TableHead>
-                <TableHead>Fornecedor Vinculado</TableHead>
+                <TableHead>Grupo</TableHead>
+                <TableHead>Líder</TableHead>
+                <TableHead>Fornecedor</TableHead>
+                <TableHead>Vendedor</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Data de Cadastro</TableHead>
+                <TableHead>Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -369,7 +371,12 @@ export default function Usuarios() {
               {usuarios?.map((usuario: any) => {
                 const vendedorVinculado = vendedores?.find(v => v.id === usuario.vendedor_id);
                 const fornecedorVinculado = fornecedores?.find(f => f.id === usuario.fornecedor_id);
-                const isPrestadorOrFunc = usuario.role === 'prestador_servico' || usuario.role === 'funcionario';
+                const isPortalRole = usuario.role === 'prestador_servico' || usuario.role === 'funcionario' || usuario.role === 'lider_area';
+                const grupo: any = usuario.grupo_id ? grupoMap.get(usuario.grupo_id) : null;
+                const lider = grupo?.lider_user_id
+                  ? usuarios?.find((u: any) => u.id === grupo.lider_user_id)
+                  : null;
+                const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
                 return (
                   <TableRow key={usuario.id}>
                     <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
@@ -380,9 +387,30 @@ export default function Usuarios() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {usuario.role === 'salesperson' ? (
-                        vendedorVinculado ? (
-                          <Badge variant="outline">{vendedorVinculado.nome}</Badge>
+                      {grupo ? (
+                        <Badge variant="outline">{grupo.nome}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                      {lideraGrupo && (
+                        <Badge variant="secondary" className="ml-1">Lidera {lideraGrupo.nome}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {lider ? (
+                        <span className="text-sm">{lider.nome || lider.email}</span>
+                      ) : usuario.role === 'lider_area' ? (
+                        <span className="text-muted-foreground text-sm">— (líder)</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isPortalRole ? (
+                        fornecedorVinculado ? (
+                          <Badge variant="outline">
+                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
+                          </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">Não vinculado</span>
                         )
@@ -391,11 +419,9 @@ export default function Usuarios() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {isPrestadorOrFunc ? (
-                        fornecedorVinculado ? (
-                          <Badge variant="outline">
-                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
-                          </Badge>
+                      {usuario.role === 'salesperson' ? (
+                        vendedorVinculado ? (
+                          <Badge variant="outline">{vendedorVinculado.nome}</Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">Não vinculado</span>
                         )
