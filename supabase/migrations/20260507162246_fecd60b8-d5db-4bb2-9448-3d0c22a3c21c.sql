@@ -1,0 +1,1 @@
+INSERT INTO public.grupos_area (nome) VALUES ('Comercial');
