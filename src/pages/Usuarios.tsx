@@ -144,21 +144,27 @@ export default function Usuarios() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Fetch vendedor_id from profiles for each user
+      // Fetch profile fields for each user
       const userIds = data.users.map((u: any) => u.id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, vendedor_id, fornecedor_id, grupo_id' as any)
+        .select('id, vendedor_id, fornecedor_id, grupo_id, regime_contrato, is_lider_area, lidera_grupo_id' as any)
         .in('id', userIds);
 
       const profileMap = new Map((profiles as any[])?.map((p: any) => [p.id, p]) || []);
-      
-      return data.users.map((u: any) => ({
-        ...u,
-        vendedor_id: (profileMap.get(u.id) as any)?.vendedor_id || null,
-        fornecedor_id: (profileMap.get(u.id) as any)?.fornecedor_id || null,
-        grupo_id: (profileMap.get(u.id) as any)?.grupo_id || null,
-      }));
+
+      return data.users.map((u: any) => {
+        const p: any = profileMap.get(u.id) || {};
+        return {
+          ...u,
+          vendedor_id: p.vendedor_id || null,
+          fornecedor_id: p.fornecedor_id || null,
+          grupo_id: p.grupo_id || null,
+          regime_contrato: p.regime_contrato || null,
+          is_lider_area: !!p.is_lider_area,
+          lidera_grupo_id: p.lidera_grupo_id || null,
+        };
+      });
     },
   });
 
