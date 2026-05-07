@@ -133,7 +133,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         // Filter group visibility
         if (group.name === "Cadastro" && !permissions.canAccessCadastro) return null;
         if (group.name === "Comercial" && !permissions.canAccessComercial) return null;
-        if (group.name === "RH" && !permissions.canAccessRH) return null;
+        if (group.name === "RH" && !permissions.canAccessRH && !permissions.canApproveLider) return null;
         if (group.name === "Financeiro" && !permissions.canAccessFinanceiro) return null;
         if (group.name === "Contabilidade" && !permissions.canAccessContador) return null;
 
