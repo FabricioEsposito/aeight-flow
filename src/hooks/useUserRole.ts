@@ -82,6 +82,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
     canPerformBaixas: true, canApproveFinanceiroRequests: true,
     canApproveCommissions: true, canApproveRH: true,
     canApproveReembolsoFinanceiro: true, canApproveVinculoUsuario: true,
+    canApproveLider: true,
   },
   finance_manager: {
     canAccessDashboard: true, canAccessCadastro: true, canAccessComercial: true,
