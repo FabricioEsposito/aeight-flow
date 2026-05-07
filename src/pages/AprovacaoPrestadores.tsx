@@ -344,3 +344,86 @@ function PainelStep({ step }: { step: Step }) {
     </Card>
   );
 }
+
+function statusLabel(s: string) {
+  const map: Record<string, { label: string; variant: any }> = {
+    pendente_lider: { label: 'Pendente Líder', variant: 'outline' },
+    aprovado_lider: { label: 'Aprovado Líder', variant: 'secondary' },
+    rejeitado_lider: { label: 'Rejeitado Líder', variant: 'destructive' },
+    pendente_rh: { label: 'Pendente RH', variant: 'outline' },
+    aprovado_rh: { label: 'Aprovado RH', variant: 'secondary' },
+    rejeitado_rh: { label: 'Rejeitado RH', variant: 'destructive' },
+    aprovado_financeiro: { label: 'Aprovado Financeiro', variant: 'default' },
+    rejeitado_financeiro: { label: 'Rejeitado Financeiro', variant: 'destructive' },
+  };
+  return map[s] || { label: s, variant: 'outline' };
+}
+
+function HistoricoSolicitacoes({ step }: { step: Step }) {
+  const { user } = useAuth();
+  const aprovadorField =
+    step === 'lider' ? 'aprovador_lider_id'
+    : step === 'rh_analista' ? 'aprovador_rh_analista_id'
+    : step === 'rh_gerente' ? 'aprovador_rh_gerente_id'
+    : 'aprovador_financeiro_id';
+
+  const { data: items = [] } = useQuery({
+    queryKey: ['historico-prestador', step, user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('solicitacoes_prestador' as any)
+        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia)')
+        .eq(aprovadorField, user!.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+  });
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico de aprovações/rejeições</h3>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">Nenhum histórico ainda.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Fornecedor</TableHead>
+              <TableHead>Mês ref.</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Anexo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((s: any) => {
+              const st = statusLabel(s.status);
+              return (
+                <TableRow key={s.id}>
+                  <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                  <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
+                  <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                  <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
+                  <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
+                  <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
