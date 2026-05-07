@@ -184,6 +184,24 @@ export default function Usuarios() {
     },
   });
 
+  // Buscar grupos de área
+  const { data: grupos } = useQuery({
+    queryKey: ['grupos-area'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('grupos_area')
+        .select('id, nome, lider_user_id')
+        .order('nome');
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+  });
+
+  const grupoMap = new Map((grupos || []).map((g: any) => [g.id, g]));
+  const liderNomeMap = new Map<string, string>();
+  // Build lider name lookup from usuarios list once it's loaded
+
+
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
     mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
