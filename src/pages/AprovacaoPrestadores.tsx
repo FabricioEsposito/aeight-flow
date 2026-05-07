@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Check, X, Loader2 } from 'lucide-react';
+import { ExternalLink, Check, X, Loader2, Eye, Crown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { openStorageFile } from '@/lib/storage-utils';
@@ -62,6 +62,7 @@ function PainelStep({ step }: { step: Step }) {
   const queryClient = useQueryClient();
   const [aprovarItem, setAprovarItem] = useState<any>(null);
   const [rejeitarItem, setRejeitarItem] = useState<any>(null);
+  const [detalheItem, setDetalheItem] = useState<any>(null);
   const [motivo, setMotivo] = useState('');
   const [parcelaId, setParcelaId] = useState('');
   const [dataVenc, setDataVenc] = useState('');
@@ -271,6 +272,7 @@ function PainelStep({ step }: { step: Step }) {
                     </Button>
                   </TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="outline" onClick={() => setDetalheItem(s)}><Eye className="h-4 w-4" /></Button>
                     <Button size="sm" variant="default" onClick={() => setAprovarItem(s)}><Check className="h-4 w-4" /></Button>
                     <Button size="sm" variant="destructive" onClick={() => setRejeitarItem(s)}><X className="h-4 w-4" /></Button>
                   </TableCell>
@@ -280,7 +282,7 @@ function PainelStep({ step }: { step: Step }) {
           </Table>
         )}
 
-        <HistoricoSolicitacoes step={step} />
+        <HistoricoSolicitacoes step={step} onDetalhar={setDetalheItem} />
 
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
           <DialogContent>
@@ -340,6 +342,8 @@ function PainelStep({ step }: { step: Step }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <DetalheSolicitacaoDialog item={detalheItem} onClose={() => setDetalheItem(null)} />
       </CardContent>
     </Card>
   );
@@ -359,7 +363,7 @@ function statusLabel(s: string) {
   return map[s] || { label: s, variant: 'outline' };
 }
 
-function HistoricoSolicitacoes({ step }: { step: Step }) {
+function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (s: any) => void }) {
   const { user } = useAuth();
   const aprovadorField =
     step === 'lider' ? 'aprovador_lider_id'
@@ -399,6 +403,7 @@ function HistoricoSolicitacoes({ step }: { step: Step }) {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Anexo</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -418,6 +423,11 @@ function HistoricoSolicitacoes({ step }: { step: Step }) {
                       <ExternalLink className="h-4 w-4" />
                     </Button>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => onDetalhar(s)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -425,5 +435,127 @@ function HistoricoSolicitacoes({ step }: { step: Step }) {
         </Table>
       )}
     </div>
+  );
+}
+
+function DetalheSolicitacaoDialog({ item, onClose }: { item: any; onClose: () => void }) {
+  const { data: detalhes } = useQuery({
+    queryKey: ['detalhe-solicitacao', item?.id],
+    enabled: !!item,
+    queryFn: async () => {
+      const [{ data: solicitante }, { data: fornecedor }] = await Promise.all([
+        supabase.from('profiles').select('id, nome, email, grupo_id').eq('id', item.solicitante_id).maybeSingle(),
+        supabase.from('fornecedores').select('razao_social, nome_fantasia, cnpj_cpf, email, telefone').eq('id', item.fornecedor_id).maybeSingle(),
+      ]);
+      let grupo: any = null;
+      let lider: any = null;
+      let solicitanteEhLider = false;
+      if (solicitante?.grupo_id) {
+        const { data: g } = await supabase.from('grupos_area').select('id, nome, lider_user_id').eq('id', solicitante.grupo_id).maybeSingle();
+        grupo = g;
+        if (g?.lider_user_id) {
+          const { data: l } = await supabase.from('profiles').select('id, nome, email').eq('id', g.lider_user_id).maybeSingle();
+          lider = l;
+          if (g.lider_user_id === solicitante.id) solicitanteEhLider = true;
+        }
+      }
+      // Verificação adicional: o solicitante é líder de algum grupo?
+      const { data: lideraGrupos } = await supabase
+        .from('grupos_area')
+        .select('id, nome')
+        .eq('lider_user_id', item.solicitante_id);
+      if ((lideraGrupos || []).length > 0) solicitanteEhLider = true;
+
+      return { solicitante, fornecedor, grupo, lider, solicitanteEhLider, lideraGrupos: lideraGrupos || [] };
+    },
+  });
+
+  return (
+    <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            Detalhes da solicitação
+            {detalhes?.solicitanteEhLider && (
+              <Badge variant="default" className="gap-1"><Crown className="h-3 w-3" /> Líder</Badge>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+        {!item ? null : (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Tipo</p>
+                <p className="font-medium">{item.tipo === 'nf_mensal' ? 'Nota Fiscal' : 'Reembolso'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Mês referência</p>
+                <p className="font-medium">{String(item.mes_referencia).padStart(2,'0')}/{item.ano_referencia}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Valor</p>
+                <p className="font-medium">R$ {Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Data envio</p>
+                <p className="font-medium">{format(new Date(item.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+              </div>
+              {item.numero_nf && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Nº NF</p>
+                  <p className="font-medium">{item.numero_nf}</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Descrição</p>
+              <p className="bg-muted/50 rounded p-2 whitespace-pre-wrap">{item.descricao || '—'}</p>
+            </div>
+
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground uppercase mb-2">Solicitante</p>
+              <p className="font-medium flex items-center gap-2">
+                {detalhes?.solicitante?.nome || '—'}
+                {detalhes?.solicitanteEhLider && (
+                  <Badge variant="secondary" className="gap-1"><Crown className="h-3 w-3" /> É líder de área</Badge>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">{detalhes?.solicitante?.email}</p>
+              <p className="text-xs mt-1">Grupo: <span className="font-medium">{detalhes?.grupo?.nome || '—'}</span></p>
+              <p className="text-xs">
+                Líder do solicitante:{' '}
+                <span className="font-medium">
+                  {detalhes?.solicitanteEhLider && !detalhes?.lider
+                    ? 'O próprio solicitante'
+                    : detalhes?.lider?.nome || '—'}
+                </span>
+                {detalhes?.lider?.email && <span className="text-muted-foreground"> ({detalhes.lider.email})</span>}
+              </p>
+            </div>
+
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground uppercase mb-2">Fornecedor</p>
+              <p className="font-medium">{detalhes?.fornecedor?.nome_fantasia || detalhes?.fornecedor?.razao_social || '—'}</p>
+              <p className="text-xs text-muted-foreground">{detalhes?.fornecedor?.cnpj_cpf}</p>
+            </div>
+
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground uppercase mb-2">Anexo</p>
+              {item.arquivo_path ? (
+                <Button variant="outline" size="sm" onClick={() => openStorageFile(item.arquivo_path, 'prestador-docs')}>
+                  <ExternalLink className="h-4 w-4 mr-2" /> Abrir anexo
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum anexo.</p>
+              )}
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
