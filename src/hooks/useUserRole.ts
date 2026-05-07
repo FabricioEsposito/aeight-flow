@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst' | 'contador' | 'prestador_servico' | 'funcionario';
+export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst' | 'contador' | 'prestador_servico' | 'funcionario' | 'lider_area';
 
 export interface RolePermissions {
   canAccessDashboard: boolean;
@@ -42,6 +42,7 @@ const roleLabels: Record<AppRole, string> = {
   contador: 'Contador',
   prestador_servico: 'Prestador de Serviço',
   funcionario: 'Funcionário',
+  lider_area: 'Líder de Área',
 };
 
 const defaultPermissions: RolePermissions = {
@@ -104,6 +105,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
     canAccessSolicitacoes: true, canSendNFPrestador: true, canSendReembolso: true,
   },
   funcionario: { canAccessSolicitacoes: true, canSendReembolso: true },
+  lider_area: { canAccessSolicitacoes: true, canSendReembolso: true, canSendNFPrestador: true },
   user: {},
 };
 
