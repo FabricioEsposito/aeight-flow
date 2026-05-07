@@ -2020,6 +2020,8 @@ export type Database = {
           ano_referencia: number | null
           aprovador_financeiro_id: string | null
           aprovador_lider_id: string | null
+          aprovador_rh_analista_id: string | null
+          aprovador_rh_gerente_id: string | null
           aprovador_rh_id: string | null
           arquivo_path: string
           conta_bancaria_id: string | null
@@ -2028,6 +2030,8 @@ export type Database = {
           data_aprovacao_financeiro: string | null
           data_aprovacao_lider: string | null
           data_aprovacao_rh: string | null
+          data_aprovacao_rh_analista: string | null
+          data_aprovacao_rh_gerente: string | null
           data_vencimento_pagamento: string | null
           descricao: string | null
           folha_pagamento_id: string | null
@@ -2037,6 +2041,8 @@ export type Database = {
           motivo_rejeicao_financeiro: string | null
           motivo_rejeicao_lider: string | null
           motivo_rejeicao_rh: string | null
+          motivo_rejeicao_rh_analista: string | null
+          motivo_rejeicao_rh_gerente: string | null
           numero_nf: string | null
           parcela_id: string | null
           solicitante_id: string
@@ -2049,6 +2055,8 @@ export type Database = {
           ano_referencia?: number | null
           aprovador_financeiro_id?: string | null
           aprovador_lider_id?: string | null
+          aprovador_rh_analista_id?: string | null
+          aprovador_rh_gerente_id?: string | null
           aprovador_rh_id?: string | null
           arquivo_path: string
           conta_bancaria_id?: string | null
@@ -2057,6 +2065,8 @@ export type Database = {
           data_aprovacao_financeiro?: string | null
           data_aprovacao_lider?: string | null
           data_aprovacao_rh?: string | null
+          data_aprovacao_rh_analista?: string | null
+          data_aprovacao_rh_gerente?: string | null
           data_vencimento_pagamento?: string | null
           descricao?: string | null
           folha_pagamento_id?: string | null
@@ -2066,6 +2076,8 @@ export type Database = {
           motivo_rejeicao_financeiro?: string | null
           motivo_rejeicao_lider?: string | null
           motivo_rejeicao_rh?: string | null
+          motivo_rejeicao_rh_analista?: string | null
+          motivo_rejeicao_rh_gerente?: string | null
           numero_nf?: string | null
           parcela_id?: string | null
           solicitante_id: string
@@ -2078,6 +2090,8 @@ export type Database = {
           ano_referencia?: number | null
           aprovador_financeiro_id?: string | null
           aprovador_lider_id?: string | null
+          aprovador_rh_analista_id?: string | null
+          aprovador_rh_gerente_id?: string | null
           aprovador_rh_id?: string | null
           arquivo_path?: string
           conta_bancaria_id?: string | null
@@ -2086,6 +2100,8 @@ export type Database = {
           data_aprovacao_financeiro?: string | null
           data_aprovacao_lider?: string | null
           data_aprovacao_rh?: string | null
+          data_aprovacao_rh_analista?: string | null
+          data_aprovacao_rh_gerente?: string | null
           data_vencimento_pagamento?: string | null
           descricao?: string | null
           folha_pagamento_id?: string | null
@@ -2095,6 +2111,8 @@ export type Database = {
           motivo_rejeicao_financeiro?: string | null
           motivo_rejeicao_lider?: string | null
           motivo_rejeicao_rh?: string | null
+          motivo_rejeicao_rh_analista?: string | null
+          motivo_rejeicao_rh_gerente?: string | null
           numero_nf?: string | null
           parcela_id?: string | null
           solicitante_id?: string

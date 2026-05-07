@@ -20,18 +20,19 @@ import { openStorageFile } from '@/lib/storage-utils';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
 
-type Step = 'lider' | 'rh' | 'financeiro';
+type Step = 'lider' | 'rh_analista' | 'rh_gerente' | 'financeiro';
 
 export default function AprovacaoPrestadores() {
-  const { permissions, isAdmin, isFinanceManager, isLiderArea, loading: roleLoading } = useUserRole();
-  const canLider = permissions.canApproveLider || isAdmin || isLiderArea;
-  const canRH = permissions.canApproveRH || isAdmin;
-  const canFin = permissions.canApproveReembolsoFinanceiro || isAdmin || isFinanceManager;
+  const { permissions, isAdmin, isFinanceManager, isLiderArea, isRHAnalyst, isRHManager, loading: roleLoading } = useUserRole();
+  const canLider = isAdmin || isLiderArea;
+  const canRHAnalista = isAdmin || isRHAnalyst || isRHManager;
+  const canRHGerente = isAdmin || isRHManager;
+  const canFin = isAdmin || isFinanceManager || permissions.canApproveReembolsoFinanceiro;
 
   if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
-  if (!canLider && !canRH && !canFin) return <Navigate to="/" replace />;
+  if (!canLider && !canRHAnalista && !canRHGerente && !canFin) return <Navigate to="/" replace />;
 
-  const defaultTab: Step = canLider ? 'lider' : canRH ? 'rh' : 'financeiro';
+  const defaultTab: Step = canLider ? 'lider' : canRHAnalista ? 'rh_analista' : canRHGerente ? 'rh_gerente' : 'financeiro';
 
   return (
     <div className="space-y-6">
@@ -42,11 +43,13 @@ export default function AprovacaoPrestadores() {
       <Tabs defaultValue={defaultTab}>
         <TabsList>
           {canLider && <TabsTrigger value="lider">Aprovação Líder</TabsTrigger>}
-          {canRH && <TabsTrigger value="rh">Aprovação RH</TabsTrigger>}
+          {canRHAnalista && <TabsTrigger value="rh_analista">Validação Analista RH</TabsTrigger>}
+          {canRHGerente && <TabsTrigger value="rh_gerente">Aprovação Gerente RH</TabsTrigger>}
           {canFin && <TabsTrigger value="financeiro">Aprovação Financeiro</TabsTrigger>}
         </TabsList>
         {canLider && <TabsContent value="lider"><PainelStep step="lider" /></TabsContent>}
-        {canRH && <TabsContent value="rh"><PainelStep step="rh" /></TabsContent>}
+        {canRHAnalista && <TabsContent value="rh_analista"><PainelStep step="rh_analista" /></TabsContent>}
+        {canRHGerente && <TabsContent value="rh_gerente"><PainelStep step="rh_gerente" /></TabsContent>}
         {canFin && <TabsContent value="financeiro"><PainelStep step="financeiro" /></TabsContent>}
       </Tabs>
     </div>
@@ -65,16 +68,39 @@ function PainelStep({ step }: { step: Step }) {
   const [contaBanc, setContaBanc] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const statusFiltro = step === 'lider' ? 'pendente_lider' : step === 'rh' ? 'pendente_rh' : 'aprovado_rh';
+  const statusFiltro =
+    step === 'lider' ? 'pendente_lider'
+    : step === 'rh_analista' ? 'aprovado_lider'
+    : step === 'rh_gerente' ? 'pendente_rh'
+    : 'aprovado_rh';
 
   const { data: items = [] } = useQuery({
-    queryKey: ['aprov-prestador', step],
+    queryKey: ['aprov-prestador', step, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('solicitacoes_prestador' as any)
         .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf)')
         .eq('status', statusFiltro)
         .order('created_at');
+
+      // Líder: apenas solicitações de membros do(s) grupo(s) que ele lidera
+      if (step === 'lider') {
+        const { data: grupos } = await supabase
+          .from('grupos_area')
+          .select('id')
+          .eq('lider_user_id', user!.id);
+        const grupoIds = (grupos || []).map((g: any) => g.id);
+        if (!grupoIds.length) return [];
+        const { data: membros } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('grupo_id', grupoIds);
+        const memberIds = (membros || []).map((m: any) => m.id);
+        if (!memberIds.length) return [];
+        query = query.in('solicitante_id', memberIds);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data as any[]) || [];
     },
@@ -82,7 +108,7 @@ function PainelStep({ step }: { step: Step }) {
 
   const { data: parcelas = [] } = useQuery({
     queryKey: ['parcelas-prestador', aprovarItem?.fornecedor_id, aprovarItem?.mes_referencia, aprovarItem?.ano_referencia],
-    enabled: !!aprovarItem && aprovarItem?.tipo === 'nf_mensal' && step === 'rh',
+    enabled: !!aprovarItem && aprovarItem?.tipo === 'nf_mensal' && step === 'rh_gerente',
     queryFn: async () => {
       const { data: contratos } = await supabase
         .from('contratos')
@@ -116,21 +142,29 @@ function PainelStep({ step }: { step: Step }) {
     try {
       if (step === 'lider') {
         const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-          status: 'pendente_rh',
+          status: 'aprovado_lider',
           aprovador_lider_id: user!.id,
           data_aprovacao_lider: new Date().toISOString(),
         }).eq('id', aprovarItem.id);
         if (error) throw error;
-      } else if (step === 'rh') {
+      } else if (step === 'rh_analista') {
+        const { error } = await supabase.from('solicitacoes_prestador' as any).update({
+          status: 'pendente_rh',
+          aprovador_rh_analista_id: user!.id,
+          data_aprovacao_rh_analista: new Date().toISOString(),
+        }).eq('id', aprovarItem.id);
+        if (error) throw error;
+      } else if (step === 'rh_gerente') {
         const update: any = {
           status: 'aprovado_rh',
+          aprovador_rh_gerente_id: user!.id,
+          data_aprovacao_rh_gerente: new Date().toISOString(),
           aprovador_rh_id: user!.id,
           data_aprovacao_rh: new Date().toISOString(),
         };
         if (aprovarItem.tipo === 'nf_mensal') {
           if (!parcelaId) throw new Error('Selecione a parcela');
           update.parcela_id = parcelaId;
-          // Update conta_pagar with link_nf
           const { data: cp } = await supabase
             .from('contas_pagar').select('id').eq('parcela_id', parcelaId).maybeSingle();
           if (cp) {
@@ -142,7 +176,6 @@ function PainelStep({ step }: { step: Step }) {
       } else {
         if (aprovarItem.tipo === 'reembolso') {
           if (!dataVenc) throw new Error('Defina a data de vencimento');
-          // Get plano_conta 3.1.14
           const { data: plano } = await supabase.from('plano_contas').select('id').eq('codigo', '3.1.14').maybeSingle();
           const { data: cp, error: cpError } = await supabase.from('contas_pagar').insert({
             fornecedor_id: aprovarItem.fornecedor_id,
@@ -165,7 +198,6 @@ function PainelStep({ step }: { step: Step }) {
             conta_bancaria_id: contaBanc || null,
           }).eq('id', aprovarItem.id);
         } else {
-          // NF mensal já tem parcela vinculada
           await supabase.from('solicitacoes_prestador' as any).update({
             status: 'aprovado_financeiro',
             aprovador_financeiro_id: user!.id,
@@ -188,11 +220,12 @@ function PainelStep({ step }: { step: Step }) {
     if (!rejeitarItem || !motivo.trim()) return;
     setProcessing(true);
     try {
-      const update: any = step === 'lider'
-        ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: new Date().toISOString(), motivo_rejeicao_lider: motivo }
-        : step === 'rh'
-          ? { status: 'rejeitado_rh', aprovador_rh_id: user!.id, data_aprovacao_rh: new Date().toISOString(), motivo_rejeicao_rh: motivo }
-          : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: new Date().toISOString(), motivo_rejeicao_financeiro: motivo };
+      const now = new Date().toISOString();
+      const update: any =
+        step === 'lider' ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: now, motivo_rejeicao_lider: motivo }
+        : step === 'rh_analista' ? { status: 'rejeitado_rh', aprovador_rh_analista_id: user!.id, data_aprovacao_rh_analista: now, motivo_rejeicao_rh_analista: motivo, motivo_rejeicao_rh: motivo }
+        : step === 'rh_gerente' ? { status: 'rejeitado_rh', aprovador_rh_gerente_id: user!.id, data_aprovacao_rh_gerente: now, motivo_rejeicao_rh_gerente: motivo, motivo_rejeicao_rh: motivo }
+        : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivo };
       const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', rejeitarItem.id);
       if (error) throw error;
       toast({ title: 'Rejeitado' });
@@ -250,7 +283,7 @@ function PainelStep({ step }: { step: Step }) {
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle>Aprovar solicitação</DialogTitle></DialogHeader>
-            {aprovarItem && step === 'rh' && aprovarItem.tipo === 'nf_mensal' && (
+            {aprovarItem && step === 'rh_gerente' && aprovarItem.tipo === 'nf_mensal' && (
               <div>
                 <Label>Vincular à parcela</Label>
                 <Select value={parcelaId} onValueChange={setParcelaId}>

@@ -12,10 +12,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 
 const statusLabels: Record<string, { label: string; color: string; icon: any }> = {
   pendente_lider: { label: 'Aguardando Líder', color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300', icon: Clock },
+  aprovado_lider: { label: 'Aprovado pelo Líder', color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300', icon: CheckCircle2 },
   rejeitado_lider: { label: 'Rejeitado pelo Líder', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: XCircle },
-  pendente_rh: { label: 'Aguardando RH', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', icon: Clock },
+  pendente_rh: { label: 'Pendente RH', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', icon: Clock },
   rejeitado_rh: { label: 'Rejeitado pelo RH', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: XCircle },
-  aprovado_rh: { label: 'Aguardando Financeiro', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', icon: Clock },
+  aprovado_rh: { label: 'Aprovado RH', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', icon: CheckCircle2 },
   rejeitado_financeiro: { label: 'Rejeitado pelo Financeiro', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: XCircle },
   aprovado_financeiro: { label: 'Aprovado - aguardando pagamento', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300', icon: CheckCircle2 },
   pago: { label: 'Pago', color: 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-200', icon: CheckCircle2 },
