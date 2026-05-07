@@ -65,7 +65,7 @@ function PainelStep({ step }: { step: Step }) {
   const [contaBanc, setContaBanc] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const statusFiltro = step === 'rh' ? 'pendente_rh' : 'aprovado_rh';
+  const statusFiltro = step === 'lider' ? 'pendente_lider' : step === 'rh' ? 'pendente_rh' : 'aprovado_rh';
 
   const { data: items = [] } = useQuery({
     queryKey: ['aprov-prestador', step],
