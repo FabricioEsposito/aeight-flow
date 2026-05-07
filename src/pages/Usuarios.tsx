@@ -377,66 +377,66 @@ export default function Usuarios() {
                 const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
                 return (
                   <TableRow key={usuario.id}>
-                    <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
-                    <TableCell>{usuario.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(usuario.role || 'user')}>
+                    <TableCell className="font-medium px-2 break-words">{usuario.nome || 'N/A'}</TableCell>
+                    <TableCell className="px-2 break-all">{usuario.email}</TableCell>
+                    <TableCell className="px-2">
+                      <Badge variant={getRoleBadgeVariant(usuario.role || 'user')} className="whitespace-normal text-[11px]">
                         {getRoleLabel(usuario.role)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2">
                       {grupo ? (
-                        <Badge variant="outline">{grupo.nome}</Badge>
+                        <Badge variant="outline" className="whitespace-normal text-[11px]">{grupo.nome}</Badge>
                       ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                       {lideraGrupo && (
-                        <Badge variant="secondary" className="ml-1">Lidera {lideraGrupo.nome}</Badge>
+                        <Badge variant="secondary" className="ml-1 mt-1 whitespace-normal text-[11px]">Lidera {lideraGrupo.nome}</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 break-words">
                       {lider ? (
-                        <span className="text-sm">{lider.nome || lider.email}</span>
+                        <span>{lider.nome || lider.email}</span>
                       ) : usuario.role === 'lider_area' ? (
-                        <span className="text-muted-foreground text-sm">— (líder)</span>
+                        <span className="text-muted-foreground">— (líder)</span>
                       ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2">
                       {isPortalRole ? (
                         fornecedorVinculado ? (
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="whitespace-normal text-[11px] break-words">
                             {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
                           </Badge>
                         ) : (
-                          <span className="text-muted-foreground text-sm">Não vinculado</span>
+                          <span className="text-muted-foreground">Não vinculado</span>
                         )
                       ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2">
                       {usuario.role === 'salesperson' ? (
                         vendedorVinculado ? (
-                          <Badge variant="outline">{vendedorVinculado.nome}</Badge>
+                          <Badge variant="outline" className="whitespace-normal text-[11px]">{vendedorVinculado.nome}</Badge>
                         ) : (
-                          <span className="text-muted-foreground text-sm">Não vinculado</span>
+                          <span className="text-muted-foreground">Não vinculado</span>
                         )
                       ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2">
                       {usuario.banned ? (
-                        <Badge variant="destructive">Inativo</Badge>
+                        <Badge variant="destructive" className="text-[11px]">Inativo</Badge>
                       ) : usuario.status === 'pendente' ? (
-                        <Badge variant="outline">Pendente</Badge>
+                        <Badge variant="outline" className="text-[11px]">Pendente</Badge>
                       ) : (
-                        <Badge variant="default">Ativo</Badge>
+                        <Badge variant="default" className="text-[11px]">Ativo</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 whitespace-nowrap">
                       {usuario.created_at 
                         ? new Date(usuario.created_at).toLocaleDateString('pt-BR')
                         : 'N/A'}
