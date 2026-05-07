@@ -9,7 +9,7 @@ const Index = () => {
   useContextualTutorial('dashboard');
   useClearFiltersOnAreaChange('dashboard');
   const navigate = useNavigate();
-  const { role, loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, isLiderArea } = useUserRole();
+  const { role, loading, permissions, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, isLiderArea } = useUserRole();
 
   useEffect(() => {
     if (loading) return;
@@ -17,10 +17,14 @@ const Index = () => {
     else if (isContador) navigate("/area-contador", { replace: true });
     else if (isRHManager || isRHAnalyst) navigate("/rh", { replace: true });
     else if (isPrestador || isFuncionario || isLiderArea) navigate("/solicitacoes", { replace: true });
-  }, [loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, isLiderArea, navigate]);
+    else if (!permissions.canAccessDashboard) {
+      // Sem permissão de dashboard: mandar para a primeira área disponível
+      if (permissions.canAccessSolicitacoes) navigate("/solicitacoes", { replace: true });
+      else if (permissions.canAccessUsuarios) navigate("/usuarios", { replace: true });
+    }
+  }, [loading, permissions, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, isLiderArea, navigate]);
 
-  // Show loading while checking role
-  if (loading || isCommercialManager || isSalesperson || isContador || isRHManager || isRHAnalyst || isPrestador || isFuncionario || isLiderArea) {
+  if (loading || !permissions.canAccessDashboard || isCommercialManager || isSalesperson || isContador || isRHManager || isRHAnalyst || isPrestador || isFuncionario || isLiderArea) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
