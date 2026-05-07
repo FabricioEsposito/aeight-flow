@@ -94,6 +94,8 @@ export default function Usuarios() {
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editVendedorId, setEditVendedorId] = useState<string>("");
   const [editFornecedorId, setEditFornecedorId] = useState<string>("");
+  const [editGrupoId, setEditGrupoId] = useState<string>("");
+  const [editLideraGrupoId, setEditLideraGrupoId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -141,15 +143,16 @@ export default function Usuarios() {
       const userIds = data.users.map((u: any) => u.id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, vendedor_id, fornecedor_id')
+        .select('id, vendedor_id, fornecedor_id, grupo_id' as any)
         .in('id', userIds);
 
-      const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
+      const profileMap = new Map((profiles as any[])?.map((p: any) => [p.id, p]) || []);
       
       return data.users.map((u: any) => ({
         ...u,
         vendedor_id: (profileMap.get(u.id) as any)?.vendedor_id || null,
         fornecedor_id: (profileMap.get(u.id) as any)?.fornecedor_id || null,
+        grupo_id: (profileMap.get(u.id) as any)?.grupo_id || null,
       }));
     },
   });
