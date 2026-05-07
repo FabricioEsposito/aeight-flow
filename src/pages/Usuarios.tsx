@@ -70,6 +70,7 @@ const roleOptions: { value: AppRole; label: string; description: string }[] = [
   { value: 'contador', label: 'Contador', description: 'Acesso somente leitura ao Extrato/Conciliação e Relatório de Retenções' },
   { value: 'prestador_servico', label: 'Prestador de Serviço', description: 'Acesso ao portal para envio de NFs e reembolsos' },
   { value: 'funcionario', label: 'Funcionário', description: 'Acesso ao portal para solicitar reembolsos' },
+  { value: 'lider_area', label: 'Líder de Área', description: 'Aprova reembolsos do seu grupo antes do fluxo de RH/Financeiro' },
   { value: 'user', label: 'Usuário Básico', description: 'Acesso limitado, aguarda atribuição de nível' },
 ];
 
