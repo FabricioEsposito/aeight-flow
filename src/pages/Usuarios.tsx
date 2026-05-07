@@ -515,39 +515,46 @@ export default function Usuarios() {
       </Card>
 
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Editar Nível Hierárquico</DialogTitle>
             <DialogDescription>
               Atualize o nível de acesso do usuário: {editingUser?.nome || editingUser?.email}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdateUser} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-role">Nível de Acesso</Label>
-              <Select value={editRole} onValueChange={(value: AppRole) => setEditRole(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o nível" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex flex-col">
+          <form onSubmit={handleUpdateUser} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-role">Nível de Acesso</Label>
+                <Select value={editRole} onValueChange={(value: AppRole) => setEditRole(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o nível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
                         <span className="font-medium">{option.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {editRole && (
-                <p className="text-xs text-muted-foreground">
-                  {roleOptions.find(r => r.value === editRole)?.description}
-                </p>
-              )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Regime de Contrato <span className="text-destructive">*</span></Label>
+                <Select value={editRegime} onValueChange={(v) => setEditRegime(v as any)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o regime" /></SelectTrigger>
+                  <SelectContent>
+                    {regimeOptions.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {editRole === 'salesperson' && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="edit-vendedor">Vincular Vendedor</Label>
                 <Select value={editVendedorId} onValueChange={setEditVendedorId}>
                   <SelectTrigger><SelectValue placeholder="Selecione um vendedor" /></SelectTrigger>
@@ -560,22 +567,7 @@ export default function Usuarios() {
               </div>
             )}
 
-            <div className="space-y-2 border-t pt-4">
-              <Label>Regime de Contrato <span className="text-destructive">*</span></Label>
-              <Select value={editRegime} onValueChange={(v) => setEditRegime(v as any)}>
-                <SelectTrigger><SelectValue placeholder="Selecione o regime" /></SelectTrigger>
-                <SelectContent>
-                  {regimeOptions.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Obrigatório para todos os usuários. Define se o usuário é Prestador (envia NFs e reembolsos) ou Funcionário (apenas reembolsos).
-              </p>
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Vincular Fornecedor <span className="text-destructive">*</span></Label>
               <FornecedorSelect
                 value={editFornecedorId}
@@ -588,49 +580,44 @@ export default function Usuarios() {
                       : ['3.1.2', '2.1.3', '2.1.2', '3.1.1']
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                Obrigatório. Habilita o usuário a enviar solicitações conforme o regime.
-              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label>Grupo</Label>
-              <Select value={editGrupoId} onValueChange={setEditGrupoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
-                <SelectContent>
-                  {(grupos || []).map((g: any) => (
-                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Grupo</Label>
+                <Select value={editGrupoId} onValueChange={setEditGrupoId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+                  <SelectContent>
+                    {(grupos || []).map((g: any) => (
+                      <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2 border rounded-md p-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editIsLider}
-                  onChange={(e) => setEditIsLider(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <span className="font-medium text-sm">É líder de área</span>
-              </label>
-              {editIsLider && (
-                <div className="space-y-2 pl-6">
-                  <Label>Grupo que lidera</Label>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editIsLider}
+                    onChange={(e) => setEditIsLider(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span>É líder de área</span>
+                </Label>
+                {editIsLider ? (
                   <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Grupo que lidera" /></SelectTrigger>
                     <SelectContent>
                       {(grupos || []).map((g: any) => (
                         <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    O líder aprovará (1ª etapa) as solicitações dos membros do grupo selecionado.
-                  </p>
-                </div>
-              )}
+                ) : (
+                  <div className="h-10" />
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
