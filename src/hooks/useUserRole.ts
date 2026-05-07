@@ -64,6 +64,7 @@ const defaultPermissions: RolePermissions = {
   canApproveCommissions: false,
   canApproveRH: false,
   canApproveReembolsoFinanceiro: false,
+  canApproveLider: false,
   canApproveVinculoUsuario: false,
   needsApprovalForRH: false,
   canSendHoleriteOnlyWhenPaid: false,
