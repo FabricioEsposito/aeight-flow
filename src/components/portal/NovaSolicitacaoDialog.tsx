@@ -84,6 +84,28 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
       }
 
       setSubmitting(true);
+
+      // Determine initial status based on whether the solicitante has a Líder de Área
+      let initialStatus = 'pendente_rh';
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('grupo_id')
+        .eq('id', user!.id)
+        .maybeSingle();
+      const grupoId = (prof as any)?.grupo_id;
+      if (grupoId) {
+        const { data: grupo } = await supabase
+          .from('grupos_area')
+          .select('lider_user_id')
+          .eq('id', grupoId)
+          .maybeSingle();
+        const liderId = (grupo as any)?.lider_user_id;
+        // If user has a leader and is not themselves the leader, route to leader first
+        if (liderId && liderId !== user!.id) {
+          initialStatus = 'pendente_lider';
+        }
+      }
+
       const { error } = await supabase.from('solicitacoes_prestador' as any).insert({
         solicitante_id: user!.id,
         fornecedor_id: fornecedorId,
@@ -94,11 +116,11 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         ano_referencia: ano,
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
         arquivo_path: arquivoPath,
-        status: 'pendente_rh',
+        status: initialStatus,
       });
       if (error) throw error;
 
-      toast({ title: 'Enviado!', description: 'Sua solicitação foi enviada para aprovação do RH.' });
+      toast({ title: 'Enviado!', description: initialStatus === 'pendente_lider' ? 'Sua solicitação foi enviada para aprovação do seu líder de área.' : 'Sua solicitação foi enviada para aprovação do RH.' });
       queryClient.invalidateQueries({ queryKey: ['portal-solicitacoes'] });
       queryClient.invalidateQueries({ queryKey: ['portal-list'] });
       onOpenChange(false);

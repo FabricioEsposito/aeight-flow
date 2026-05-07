@@ -22,6 +22,7 @@ export interface RolePermissions {
   canApproveCommissions: boolean;
   canApproveRH: boolean;
   canApproveReembolsoFinanceiro: boolean;
+  canApproveLider: boolean;
   canApproveVinculoUsuario: boolean;
   needsApprovalForRH: boolean;
   canSendHoleriteOnlyWhenPaid: boolean;
@@ -63,6 +64,7 @@ const defaultPermissions: RolePermissions = {
   canApproveCommissions: false,
   canApproveRH: false,
   canApproveReembolsoFinanceiro: false,
+  canApproveLider: false,
   canApproveVinculoUsuario: false,
   needsApprovalForRH: false,
   canSendHoleriteOnlyWhenPaid: false,
@@ -80,6 +82,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
     canPerformBaixas: true, canApproveFinanceiroRequests: true,
     canApproveCommissions: true, canApproveRH: true,
     canApproveReembolsoFinanceiro: true, canApproveVinculoUsuario: true,
+    canApproveLider: true,
   },
   finance_manager: {
     canAccessDashboard: true, canAccessCadastro: true, canAccessComercial: true,
@@ -105,7 +108,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
     canAccessSolicitacoes: true, canSendNFPrestador: true, canSendReembolso: true,
   },
   funcionario: { canAccessSolicitacoes: true, canSendReembolso: true },
-  lider_area: { canAccessSolicitacoes: true, canSendReembolso: true, canSendNFPrestador: true },
+  lider_area: { canAccessSolicitacoes: true, canSendReembolso: true, canSendNFPrestador: true, canApproveLider: true },
   user: {},
 };
 

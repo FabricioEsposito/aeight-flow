@@ -87,7 +87,7 @@ import MinhasSolicitacoes from './MinhasSolicitacoes';
 export default function Solicitacoes() {
   const { user } = useAuth();
   useClearFiltersOnAreaChange('solicitacoes');
-  const { isAdmin, isPrestador, isFuncionario } = useUserRole();
+  const { isAdmin, isPrestador, isFuncionario, isLiderArea } = useUserRole();
   const { toast } = useToast();
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAjuste[]>([]);
   const [loading, setLoading] = useState(true);
@@ -938,7 +938,7 @@ export default function Solicitacoes() {
   };
 
 
-  if (isPrestador || isFuncionario) {
+  if (isPrestador || isFuncionario || isLiderArea) {
     return <MinhasSolicitacoes />;
   }
 
