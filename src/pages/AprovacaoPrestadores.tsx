@@ -272,6 +272,7 @@ function PainelStep({ step }: { step: Step }) {
                     </Button>
                   </TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="outline" onClick={() => setDetalheItem(s)}><Eye className="h-4 w-4" /></Button>
                     <Button size="sm" variant="default" onClick={() => setAprovarItem(s)}><Check className="h-4 w-4" /></Button>
                     <Button size="sm" variant="destructive" onClick={() => setRejeitarItem(s)}><X className="h-4 w-4" /></Button>
                   </TableCell>
