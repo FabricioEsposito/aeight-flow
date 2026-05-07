@@ -103,8 +103,57 @@ function PainelStep({ step }: { step: Step }) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data as any[]) || [];
+      const rows = (data as any[]) || [];
+
+      // Enriquecer com centro de custo e regime do fornecedor (via contratos)
+      const fornecedorIds = Array.from(new Set(rows.map((r) => r.fornecedor_id).filter(Boolean)));
+      if (fornecedorIds.length) {
+        const { data: contratos } = await supabase
+          .from('contratos')
+          .select('fornecedor_id, centro_custo, is_folha_funcionario, is_beneficio_funcionario, status')
+          .in('fornecedor_id', fornecedorIds)
+          .eq('status', 'ativo');
+        const map: Record<string, { centro_custo: string | null; regime: string }> = {};
+        (contratos || []).forEach((c: any) => {
+          if (!map[c.fornecedor_id]) {
+            map[c.fornecedor_id] = {
+              centro_custo: c.centro_custo || null,
+              regime: c.is_folha_funcionario || c.is_beneficio_funcionario ? 'funcionario' : 'prestador',
+            };
+          }
+        });
+        rows.forEach((r) => {
+          const info = map[r.fornecedor_id];
+          r._centro_custo = info?.centro_custo || null;
+          r._regime = info?.regime || 'prestador';
+        });
+      }
+      return rows;
     },
+  });
+
+  // Filtros
+  const [filtroDataIni, setFiltroDataIni] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [filtroCC, setFiltroCC] = useState<string>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [filtroRegime, setFiltroRegime] = useState<string>('todos');
+
+  const { data: centrosCusto = [] } = useQuery({
+    queryKey: ['centros-custo-filter'],
+    queryFn: async () => {
+      const { data } = await supabase.from('centros_custo').select('codigo, descricao').eq('status', 'ativo').order('codigo');
+      return data || [];
+    },
+  });
+
+  const itemsFiltrados = items.filter((s: any) => {
+    if (filtroDataIni && s.created_at < filtroDataIni) return false;
+    if (filtroDataFim && s.created_at > filtroDataFim + 'T23:59:59') return false;
+    if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
+    if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
+    if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
+    return true;
   });
 
   const { data: parcelas = [] } = useQuery({
@@ -241,7 +290,52 @@ function PainelStep({ step }: { step: Step }) {
     <Card>
       <CardHeader><CardTitle className="text-base">Pendentes</CardTitle></CardHeader>
       <CardContent>
-        {items.length === 0 ? (
+        <div className="flex flex-wrap gap-3 mb-4 items-end">
+          <div>
+            <Label className="text-xs">Data inicial</Label>
+            <Input type="date" value={filtroDataIni} onChange={(e) => setFiltroDataIni(e.target.value)} className="h-9 w-[160px]" />
+          </div>
+          <div>
+            <Label className="text-xs">Data final</Label>
+            <Input type="date" value={filtroDataFim} onChange={(e) => setFiltroDataFim(e.target.value)} className="h-9 w-[160px]" />
+          </div>
+          <div>
+            <Label className="text-xs">Centro de custo</Label>
+            <Select value={filtroCC} onValueChange={setFiltroCC}>
+              <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {centrosCusto.map((c: any) => (
+                  <SelectItem key={c.codigo} value={c.codigo}>{c.codigo} - {c.descricao}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo</Label>
+            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="nf_mensal">NF</SelectItem>
+                <SelectItem value="reembolso">Reembolso</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Regime</Label>
+            <Select value={filtroRegime} onValueChange={setFiltroRegime}>
+              <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="prestador">Prestador de serviço</SelectItem>
+                <SelectItem value="funcionario">Funcionário</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {itemsFiltrados.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma pendência.</p>
         ) : (
           <Table>
@@ -250,6 +344,8 @@ function PainelStep({ step }: { step: Step }) {
                 <TableHead>Data</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Fornecedor</TableHead>
+                <TableHead>CC</TableHead>
+                <TableHead>Regime</TableHead>
                 <TableHead>Mês ref.</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
@@ -258,11 +354,15 @@ function PainelStep({ step }: { step: Step }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((s: any) => (
+              {itemsFiltrados.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                   <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                  <TableCell className="text-xs">{s._centro_custo || '—'}</TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                  </TableCell>
                   <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
                   <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
                   <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
