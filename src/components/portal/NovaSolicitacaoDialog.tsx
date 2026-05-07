@@ -86,7 +86,8 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
       setSubmitting(true);
 
       // Determine initial status based on whether the solicitante has a Líder de Área
-      let initialStatus = 'pendente_rh';
+      // If has leader → pendente_lider; else skip to analyst RH (status aprovado_lider)
+      let initialStatus = 'aprovado_lider';
       const { data: prof } = await supabase
         .from('profiles')
         .select('grupo_id')
@@ -100,7 +101,6 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
           .eq('id', grupoId)
           .maybeSingle();
         const liderId = (grupo as any)?.lider_user_id;
-        // If user has a leader and is not themselves the leader, route to leader first
         if (liderId && liderId !== user!.id) {
           initialStatus = 'pendente_lider';
         }
