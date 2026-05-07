@@ -577,6 +577,8 @@ function HistoricoSolicitacoes({
               <TableHead>Data</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Fornecedor</TableHead>
+                <TableHead>CC</TableHead>
+                <TableHead>Regime</TableHead>
               <TableHead>Mês ref.</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -593,6 +595,10 @@ function HistoricoSolicitacoes({
                   <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                   <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                  </TableCell>
                   <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
                   <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
                   <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
