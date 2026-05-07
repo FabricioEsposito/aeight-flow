@@ -20,15 +20,18 @@ import { openStorageFile } from '@/lib/storage-utils';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
 
-type Step = 'rh' | 'financeiro';
+type Step = 'lider' | 'rh' | 'financeiro';
 
 export default function AprovacaoPrestadores() {
-  const { permissions, isAdmin, isFinanceManager, loading: roleLoading } = useUserRole();
+  const { permissions, isAdmin, isFinanceManager, isLiderArea, loading: roleLoading } = useUserRole();
+  const canLider = permissions.canApproveLider || isAdmin || isLiderArea;
   const canRH = permissions.canApproveRH || isAdmin;
   const canFin = permissions.canApproveReembolsoFinanceiro || isAdmin || isFinanceManager;
 
   if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
-  if (!canRH && !canFin) return <Navigate to="/" replace />;
+  if (!canLider && !canRH && !canFin) return <Navigate to="/" replace />;
+
+  const defaultTab: Step = canLider ? 'lider' : canRH ? 'rh' : 'financeiro';
 
   return (
     <div className="space-y-6">
@@ -36,11 +39,13 @@ export default function AprovacaoPrestadores() {
         <h1 className="text-2xl font-bold">Aprovações de Prestadores</h1>
         <p className="text-muted-foreground">Valide reembolsos e Notas Fiscais enviadas pelos prestadores e funcionários.</p>
       </div>
-      <Tabs defaultValue={canRH ? 'rh' : 'financeiro'}>
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
+          {canLider && <TabsTrigger value="lider">Aprovação Líder</TabsTrigger>}
           {canRH && <TabsTrigger value="rh">Aprovação RH</TabsTrigger>}
           {canFin && <TabsTrigger value="financeiro">Aprovação Financeiro</TabsTrigger>}
         </TabsList>
+        {canLider && <TabsContent value="lider"><PainelStep step="lider" /></TabsContent>}
         {canRH && <TabsContent value="rh"><PainelStep step="rh" /></TabsContent>}
         {canFin && <TabsContent value="financeiro"><PainelStep step="financeiro" /></TabsContent>}
       </Tabs>
