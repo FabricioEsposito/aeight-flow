@@ -103,7 +103,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
   salesperson: { canAccessComercial: true },
   rh_manager: { canAccessRH: true, canApproveRH: true },
   rh_analyst: {
-    canAccessRH: true, needsApprovalForRH: true, canSendHoleriteOnlyWhenPaid: true,
+    canAccessRH: true, canApproveRH: true, needsApprovalForRH: true, canSendHoleriteOnlyWhenPaid: true,
   },
   contador: { canAccessContador: true },
   // Roles legadas: tratadas como 'user' (mantidas no enum só por compat)
