@@ -68,10 +68,12 @@ const roleOptions: { value: AppRole; label: string; description: string }[] = [
   { value: 'rh_manager', label: 'Gerente de RH', description: 'Acesso à área de RH, aprova folha de pagamento e benefícios' },
   { value: 'rh_analyst', label: 'Analista de RH', description: 'Acesso à área de RH, importa dados que requerem aprovação do Gerente de RH' },
   { value: 'contador', label: 'Contador', description: 'Acesso somente leitura ao Extrato/Conciliação e Relatório de Retenções' },
-  { value: 'prestador_servico', label: 'Prestador de Serviço', description: 'Acesso ao portal para envio de NFs e reembolsos' },
-  { value: 'funcionario', label: 'Funcionário', description: 'Acesso ao portal para solicitar reembolsos' },
-  { value: 'lider_area', label: 'Líder de Área', description: 'Aprova reembolsos do seu grupo antes do fluxo de RH/Financeiro' },
   { value: 'user', label: 'Usuário Básico', description: 'Acesso limitado, aguarda atribuição de nível' },
+];
+
+const regimeOptions: { value: 'prestador_servico' | 'funcionario'; label: string }[] = [
+  { value: 'prestador_servico', label: 'Prestador de Serviço' },
+  { value: 'funcionario', label: 'Funcionário' },
 ];
 
 const getRoleBadgeVariant = (role: AppRole): "default" | "secondary" | "outline" | "destructive" => {
@@ -96,6 +98,8 @@ export default function Usuarios() {
   const [editVendedorId, setEditVendedorId] = useState<string>("");
   const [editFornecedorId, setEditFornecedorId] = useState<string>("");
   const [editGrupoId, setEditGrupoId] = useState<string>("");
+  const [editRegime, setEditRegime] = useState<'prestador_servico' | 'funcionario' | ''>("");
+  const [editIsLider, setEditIsLider] = useState<boolean>(false);
   const [editLideraGrupoId, setEditLideraGrupoId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -140,21 +144,27 @@ export default function Usuarios() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Fetch vendedor_id from profiles for each user
+      // Fetch profile fields for each user
       const userIds = data.users.map((u: any) => u.id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, vendedor_id, fornecedor_id, grupo_id' as any)
+        .select('id, vendedor_id, fornecedor_id, grupo_id, regime_contrato, is_lider_area, lidera_grupo_id' as any)
         .in('id', userIds);
 
       const profileMap = new Map((profiles as any[])?.map((p: any) => [p.id, p]) || []);
-      
-      return data.users.map((u: any) => ({
-        ...u,
-        vendedor_id: (profileMap.get(u.id) as any)?.vendedor_id || null,
-        fornecedor_id: (profileMap.get(u.id) as any)?.fornecedor_id || null,
-        grupo_id: (profileMap.get(u.id) as any)?.grupo_id || null,
-      }));
+
+      return data.users.map((u: any) => {
+        const p: any = profileMap.get(u.id) || {};
+        return {
+          ...u,
+          vendedor_id: p.vendedor_id || null,
+          fornecedor_id: p.fornecedor_id || null,
+          grupo_id: p.grupo_id || null,
+          regime_contrato: p.regime_contrato || null,
+          is_lider_area: !!p.is_lider_area,
+          lidera_grupo_id: p.lidera_grupo_id || null,
+        };
+      });
     },
   });
 
@@ -203,7 +213,7 @@ export default function Usuarios() {
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null; grupo_id?: string | null; lidera_grupo_id?: string | null }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null; grupo_id?: string | null; regime_contrato?: string | null; is_lider_area?: boolean; lidera_grupo_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -225,6 +235,8 @@ export default function Usuarios() {
       setEditVendedorId("");
       setEditFornecedorId("");
       setEditGrupoId("");
+      setEditRegime("");
+      setEditIsLider(false);
       setEditLideraGrupoId("");
     },
     onError: (error: any) => {
@@ -305,24 +317,37 @@ export default function Usuarios() {
     setEditVendedorId(usuario.vendedor_id || "");
     setEditFornecedorId(usuario.fornecedor_id || "");
     setEditGrupoId(usuario.grupo_id || "");
-    const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
-    setEditLideraGrupoId(lideraGrupo?.id || "");
+    setEditRegime(usuario.regime_contrato || "");
+    setEditIsLider(!!usuario.is_lider_area);
+    setEditLideraGrupoId(usuario.lidera_grupo_id || "");
     setOpenEdit(true);
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      const isPortalRole = editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area';
-      updateUserMutation.mutate({
-        userId: editingUser.id,
-        role: editRole,
-        vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
-        fornecedor_id: isPortalRole ? (editFornecedorId || null) : null,
-        grupo_id: isPortalRole ? (editGrupoId || null) : null,
-        lidera_grupo_id: editRole === 'lider_area' ? (editLideraGrupoId || null) : null,
-      });
+    if (!editingUser) return;
+    if (!editRegime) {
+      toast({ title: 'Regime obrigatório', description: 'Selecione o regime de contrato (Prestador ou Funcionário).', variant: 'destructive' });
+      return;
     }
+    if (!editFornecedorId) {
+      toast({ title: 'Fornecedor obrigatório', description: 'Vincule um fornecedor ao usuário.', variant: 'destructive' });
+      return;
+    }
+    if (editIsLider && !editLideraGrupoId) {
+      toast({ title: 'Grupo do líder obrigatório', description: 'Selecione o grupo que este usuário lidera.', variant: 'destructive' });
+      return;
+    }
+    updateUserMutation.mutate({
+      userId: editingUser.id,
+      role: editRole,
+      vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
+      fornecedor_id: editFornecedorId || null,
+      grupo_id: editGrupoId || null,
+      regime_contrato: editRegime || null,
+      is_lider_area: editIsLider,
+      lidera_grupo_id: editIsLider ? (editLideraGrupoId || null) : null,
+    });
   };
 
   if (checkingAdmin || isLoading) {
@@ -353,28 +378,28 @@ export default function Usuarios() {
           <Table className="w-full table-fixed text-xs">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[11%] px-2">Nome</TableHead>
-                <TableHead className="w-[16%] px-2">Email</TableHead>
-                <TableHead className="w-[10%] px-2">Nível</TableHead>
+                <TableHead className="w-[10%] px-2">Nome</TableHead>
+                <TableHead className="w-[14%] px-2">Email</TableHead>
+                <TableHead className="w-[9%] px-2">Nível</TableHead>
+                <TableHead className="w-[9%] px-2">Regime</TableHead>
                 <TableHead className="w-[10%] px-2">Grupo</TableHead>
                 <TableHead className="w-[9%] px-2">Líder</TableHead>
-                <TableHead className="w-[14%] px-2">Fornecedor</TableHead>
-                <TableHead className="w-[10%] px-2">Vendedor</TableHead>
-                <TableHead className="w-[7%] px-2">Status</TableHead>
-                <TableHead className="w-[8%] px-2">Cadastro</TableHead>
-                <TableHead className="w-[5%] px-2 text-right">Ações</TableHead>
+                <TableHead className="w-[13%] px-2">Fornecedor</TableHead>
+                <TableHead className="w-[9%] px-2">Vendedor</TableHead>
+                <TableHead className="w-[6%] px-2">Status</TableHead>
+                <TableHead className="w-[7%] px-2">Cadastro</TableHead>
+                <TableHead className="w-[4%] px-2 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {usuarios?.map((usuario: any) => {
                 const vendedorVinculado = vendedores?.find(v => v.id === usuario.vendedor_id);
                 const fornecedorVinculado = fornecedores?.find(f => f.id === usuario.fornecedor_id);
-                const isPortalRole = usuario.role === 'prestador_servico' || usuario.role === 'funcionario' || usuario.role === 'lider_area';
                 const grupo: any = usuario.grupo_id ? grupoMap.get(usuario.grupo_id) : null;
                 const lider = grupo?.lider_user_id
                   ? usuarios?.find((u: any) => u.id === grupo.lider_user_id)
                   : null;
-                const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
+                const lideraGrupo = usuario.lidera_grupo_id ? grupoMap.get(usuario.lidera_grupo_id) : null;
                 return (
                   <TableRow key={usuario.id}>
                     <TableCell className="font-medium px-2 break-words">{usuario.nome || 'N/A'}</TableCell>
@@ -385,35 +410,40 @@ export default function Usuarios() {
                       </Badge>
                     </TableCell>
                     <TableCell className="px-2">
+                      {usuario.regime_contrato === 'prestador_servico' ? (
+                        <Badge variant="outline" className="text-[11px]">Prestador</Badge>
+                      ) : usuario.regime_contrato === 'funcionario' ? (
+                        <Badge variant="outline" className="text-[11px]">Funcionário</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-2">
                       {grupo ? (
-                        <Badge variant="outline" className="whitespace-normal text-[11px]">{grupo.nome}</Badge>
+                        <Badge variant="outline" className="whitespace-normal text-[11px]">{(grupo as any).nome}</Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                       {lideraGrupo && (
-                        <Badge variant="secondary" className="ml-1 mt-1 whitespace-normal text-[11px]">Lidera {lideraGrupo.nome}</Badge>
+                        <Badge variant="secondary" className="ml-1 mt-1 whitespace-normal text-[11px]">Lidera {(lideraGrupo as any).nome}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="px-2 break-words">
                       {lider ? (
                         <span>{lider.nome || lider.email}</span>
-                      ) : usuario.role === 'lider_area' ? (
+                      ) : usuario.is_lider_area ? (
                         <span className="text-muted-foreground">— (líder)</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="px-2">
-                      {isPortalRole ? (
-                        fornecedorVinculado ? (
-                          <Badge variant="outline" className="whitespace-normal text-[11px] break-words">
-                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">Não vinculado</span>
-                        )
+                      {fornecedorVinculado ? (
+                        <Badge variant="outline" className="whitespace-normal text-[11px] break-words">
+                          {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
+                        </Badge>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground">Não vinculado</span>
                       )}
                     </TableCell>
                     <TableCell className="px-2">
@@ -520,73 +550,88 @@ export default function Usuarios() {
               <div className="space-y-2">
                 <Label htmlFor="edit-vendedor">Vincular Vendedor</Label>
                 <Select value={editVendedorId} onValueChange={setEditVendedorId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um vendedor" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um vendedor" /></SelectTrigger>
                   <SelectContent>
                     {vendedores?.map((vendedor) => (
-                      <SelectItem key={vendedor.id} value={vendedor.id}>
-                        {vendedor.nome}
-                      </SelectItem>
+                      <SelectItem key={vendedor.id} value={vendedor.id}>{vendedor.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Vincule este usuário a um vendedor cadastrado para que ele possa visualizar suas comissões e vendas.
-                </p>
               </div>
             )}
 
-            {(editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area') && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
-                  <FornecedorSelect
-                    value={editFornecedorId}
-                    onChange={setEditFornecedorId}
-                    filterByPlanoContaCodigos={
-                      editRole === 'prestador_servico'
-                        ? ['3.1.2', '2.1.3']
-                        : editRole === 'lider_area'
-                          ? ['3.1.2', '2.1.3', '2.1.2', '3.1.1']
-                          : ['2.1.2', '3.1.1']
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    A empresa do usuário é definida pelo centro de custo do fornecedor.
-                  </p>
-                </div>
+            <div className="space-y-2 border-t pt-4">
+              <Label>Regime de Contrato <span className="text-destructive">*</span></Label>
+              <Select value={editRegime} onValueChange={(v) => setEditRegime(v as any)}>
+                <SelectTrigger><SelectValue placeholder="Selecione o regime" /></SelectTrigger>
+                <SelectContent>
+                  {regimeOptions.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Obrigatório para todos os usuários. Define se o usuário é Prestador (envia NFs e reembolsos) ou Funcionário (apenas reembolsos).
+              </p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label>Grupo</Label>
-                  <Select value={editGrupoId} onValueChange={setEditGrupoId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+            <div className="space-y-2">
+              <Label>Vincular Fornecedor <span className="text-destructive">*</span></Label>
+              <FornecedorSelect
+                value={editFornecedorId}
+                onChange={setEditFornecedorId}
+                filterByPlanoContaCodigos={
+                  editRegime === 'prestador_servico'
+                    ? ['3.1.2', '2.1.3']
+                    : editRegime === 'funcionario'
+                      ? ['2.1.2', '3.1.1']
+                      : ['3.1.2', '2.1.3', '2.1.2', '3.1.1']
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Obrigatório. Habilita o usuário a enviar solicitações conforme o regime.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Grupo</Label>
+              <Select value={editGrupoId} onValueChange={setEditGrupoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+                <SelectContent>
+                  {(grupos || []).map((g: any) => (
+                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 border rounded-md p-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editIsLider}
+                  onChange={(e) => setEditIsLider(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span className="font-medium text-sm">É líder de área</span>
+              </label>
+              {editIsLider && (
+                <div className="space-y-2 pl-6">
+                  <Label>Grupo que lidera</Label>
+                  <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
                     <SelectContent>
                       {(grupos || []).map((g: any) => (
                         <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    O líder aprovará (1ª etapa) as solicitações dos membros do grupo selecionado.
+                  </p>
                 </div>
-
-                {editRole === 'lider_area' && (
-                  <div className="space-y-2">
-                    <Label>Grupo que lidera</Label>
-                    <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
-                      <SelectContent>
-                        {(grupos || []).map((g: any) => (
-                          <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      O líder aprovará as solicitações de reembolso do grupo selecionado.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
                 Cancelar

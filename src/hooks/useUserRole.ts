@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type AppRole = 'admin' | 'user' | 'finance_manager' | 'finance_analyst' | 'commercial_manager' | 'salesperson' | 'rh_manager' | 'rh_analyst' | 'contador' | 'prestador_servico' | 'funcionario' | 'lider_area';
 
+export type RegimeContrato = 'prestador_servico' | 'funcionario';
+
 export interface RolePermissions {
   canAccessDashboard: boolean;
   canAccessCadastro: boolean;
@@ -104,17 +106,21 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
     canAccessRH: true, needsApprovalForRH: true, canSendHoleriteOnlyWhenPaid: true,
   },
   contador: { canAccessContador: true },
-  prestador_servico: {
-    canAccessSolicitacoes: true, canSendNFPrestador: true, canSendReembolso: true,
-  },
-  funcionario: { canAccessSolicitacoes: true, canSendReembolso: true },
-  lider_area: { canAccessSolicitacoes: true, canSendReembolso: true, canSendNFPrestador: true, canApproveLider: true },
+  // Roles legadas: tratadas como 'user' (mantidas no enum só por compat)
+  prestador_servico: {},
+  funcionario: {},
+  lider_area: {},
   user: {},
 };
 
 export function useUserRole() {
   const { user } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
+  const [regimeContrato, setRegimeContrato] = useState<RegimeContrato | null>(null);
+  const [isLiderAreaFlag, setIsLiderAreaFlag] = useState(false);
+  const [fornecedorId, setFornecedorId] = useState<string | null>(null);
+  const [grupoId, setGrupoId] = useState<string | null>(null);
+  const [lideraGrupoId, setLideraGrupoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -122,20 +128,28 @@ export function useUserRole() {
       checkRole();
     } else {
       setRole(null);
+      setRegimeContrato(null);
+      setIsLiderAreaFlag(false);
+      setFornecedorId(null);
+      setGrupoId(null);
+      setLideraGrupoId(null);
       setLoading(false);
     }
   }, [user]);
 
   const checkRole = async () => {
     try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setRole((data?.role as AppRole) || 'user');
+      const [{ data: roleData }, { data: profile }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', user!.id).maybeSingle(),
+        supabase.from('profiles').select('regime_contrato, is_lider_area, lidera_grupo_id, fornecedor_id, grupo_id' as any).eq('id', user!.id).maybeSingle(),
+      ]);
+      setRole((roleData?.role as AppRole) || 'user');
+      const p: any = profile || {};
+      setRegimeContrato((p.regime_contrato as RegimeContrato) || null);
+      setIsLiderAreaFlag(!!p.is_lider_area);
+      setFornecedorId(p.fornecedor_id || null);
+      setGrupoId(p.grupo_id || null);
+      setLideraGrupoId(p.lidera_grupo_id || null);
     } catch (error) {
       console.error('Error checking user role:', error);
       setRole('user');
@@ -146,8 +160,19 @@ export function useUserRole() {
 
   const permissions = useMemo((): RolePermissions => {
     if (!role) return defaultPermissions;
-    return { ...defaultPermissions, ...rolePermissionsMap[role] };
-  }, [role]);
+    const base = { ...defaultPermissions, ...rolePermissionsMap[role] };
+    // Capacidades derivadas do perfil (regime + fornecedor + flag líder)
+    const hasVinculo = !!regimeContrato && !!fornecedorId;
+    if (hasVinculo) {
+      base.canAccessSolicitacoes = true;
+      base.canSendReembolso = true;
+      if (regimeContrato === 'prestador_servico') base.canSendNFPrestador = true;
+    }
+    if (isLiderAreaFlag) {
+      base.canApproveLider = true;
+    }
+    return base;
+  }, [role, regimeContrato, fornecedorId, isLiderAreaFlag]);
 
   const isAdmin = role === 'admin';
   const isFinanceManager = role === 'finance_manager';
@@ -157,9 +182,9 @@ export function useUserRole() {
   const isRHManager = role === 'rh_manager';
   const isRHAnalyst = role === 'rh_analyst';
   const isContador = role === 'contador';
-  const isPrestador = role === 'prestador_servico';
-  const isFuncionario = role === 'funcionario';
-  const isLiderArea = role === 'lider_area';
+  const isPrestador = regimeContrato === 'prestador_servico';
+  const isFuncionario = regimeContrato === 'funcionario';
+  const isLiderArea = isLiderAreaFlag;
   const isPortalOnly = false;
 
   const getRoleLabel = (r?: AppRole | null): string => {
@@ -168,6 +193,7 @@ export function useUserRole() {
 
   return {
     role, loading,
+    regimeContrato, isLiderAreaFlag, fornecedorId, grupoId, lideraGrupoId,
     isAdmin, isFinanceManager, isFinanceAnalyst,
     isCommercialManager, isSalesperson,
     isRHManager, isRHAnalyst, isContador,
