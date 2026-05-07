@@ -268,11 +268,6 @@ function PainelStep({ step }: { step: Step }) {
         if (aprovarItem.tipo === 'nf_mensal') {
           if (!parcelaId) throw new Error('Selecione a parcela');
           update.parcela_id = parcelaId;
-          const { data: cp } = await supabase
-            .from('contas_pagar').select('id').eq('parcela_id', parcelaId).maybeSingle();
-          if (cp) {
-            await supabase.from('contas_pagar').update({ link_nf: aprovarItem.arquivo_path } as any).eq('id', cp.id);
-          }
         }
         const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', aprovarItem.id);
         if (error) throw error;
