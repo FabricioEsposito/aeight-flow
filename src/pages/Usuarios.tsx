@@ -213,7 +213,7 @@ export default function Usuarios() {
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null; grupo_id?: string | null; lidera_grupo_id?: string | null }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null; grupo_id?: string | null; regime_contrato?: string | null; is_lider_area?: boolean; lidera_grupo_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -235,6 +235,8 @@ export default function Usuarios() {
       setEditVendedorId("");
       setEditFornecedorId("");
       setEditGrupoId("");
+      setEditRegime("");
+      setEditIsLider(false);
       setEditLideraGrupoId("");
     },
     onError: (error: any) => {
