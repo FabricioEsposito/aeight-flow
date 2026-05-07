@@ -539,22 +539,53 @@ export default function Usuarios() {
               </div>
             )}
 
-            {(editRole === 'prestador_servico' || editRole === 'funcionario') && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
-                <FornecedorSelect
-                  value={editFornecedorId}
-                  onChange={setEditFornecedorId}
-                  filterByPlanoContaCodigos={
-                    editRole === 'prestador_servico'
-                      ? ['3.1.2', '2.1.3']
-                      : ['2.1.2', '3.1.1']
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Vincule este usuário ao cadastro de fornecedor correspondente para que possa enviar NFs e/ou reembolsos.
-                </p>
-              </div>
+            {(editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area') && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
+                  <FornecedorSelect
+                    value={editFornecedorId}
+                    onChange={setEditFornecedorId}
+                    filterByPlanoContaCodigos={
+                      editRole === 'prestador_servico'
+                        ? ['3.1.2', '2.1.3']
+                        : ['2.1.2', '3.1.1']
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A empresa do usuário é definida pelo centro de custo do fornecedor.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Grupo</Label>
+                  <Select value={editGrupoId} onValueChange={setEditGrupoId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+                    <SelectContent>
+                      {(grupos || []).map((g: any) => (
+                        <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editRole === 'lider_area' && (
+                  <div className="space-y-2">
+                    <Label>Grupo que lidera</Label>
+                    <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
+                      <SelectContent>
+                        {(grupos || []).map((g: any) => (
+                          <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      O líder aprovará as solicitações de reembolso do grupo selecionado.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
