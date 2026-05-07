@@ -155,7 +155,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
             items: group.items.filter(item => {
               if (item.url === '/rh/aprovacoes') return permissions.canApproveRH;
               if (item.url === '/rh/confirmacao') return isAdminOrFinanceManager;
-              if (item.url === '/aprovacao-prestadores') return permissions.canApproveRH || permissions.canApproveReembolsoFinanceiro;
+              if (item.url === '/aprovacao-prestadores') return permissions.canApproveRH || permissions.canApproveReembolsoFinanceiro || permissions.canApproveLider;
               return true;
             })
           };
