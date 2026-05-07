@@ -524,7 +524,23 @@ function statusLabel(s: string) {
   return map[s] || { label: s, variant: 'outline' };
 }
 
-function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (s: any) => void }) {
+function HistoricoSolicitacoes({
+  step,
+  onDetalhar,
+  dateRange,
+  filtroCC,
+  filtroTipo,
+  filtroRegime,
+  centrosCusto,
+}: {
+  step: Step;
+  onDetalhar: (s: any) => void;
+  dateRange: { from?: Date; to?: Date };
+  filtroCC: string;
+  filtroTipo: string;
+  filtroRegime: string;
+  centrosCusto: any[];
+}) {
   const { user } = useAuth();
   const aprovadorField =
     step === 'lider' ? 'aprovador_lider_id'
@@ -543,14 +559,16 @@ function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data as any[]) || [];
+      return enrichSolicitacoes((data as any[]) || []);
     },
   });
+
+  const itemsFiltrados = filtrarSolicitacoes(items, dateRange, filtroCC, filtroTipo, filtroRegime);
 
   return (
     <div className="mt-8">
       <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico de aprovações/rejeições</h3>
-      {items.length === 0 ? (
+      {itemsFiltrados.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Nenhum histórico ainda.</p>
       ) : (
         <Table>
@@ -568,7 +586,7 @@ function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((s: any) => {
+            {itemsFiltrados.map((s: any) => {
               const st = statusLabel(s.status);
               return (
                 <TableRow key={s.id}>
