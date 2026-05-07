@@ -156,6 +156,7 @@ export function useUserRole() {
   const isContador = role === 'contador';
   const isPrestador = role === 'prestador_servico';
   const isFuncionario = role === 'funcionario';
+  const isLiderArea = role === 'lider_area';
   const isPortalOnly = false;
 
   const getRoleLabel = (r?: AppRole | null): string => {
@@ -167,7 +168,7 @@ export function useUserRole() {
     isAdmin, isFinanceManager, isFinanceAnalyst,
     isCommercialManager, isSalesperson,
     isRHManager, isRHAnalyst, isContador,
-    isPrestador, isFuncionario, isPortalOnly,
+    isPrestador, isFuncionario, isLiderArea, isPortalOnly,
     permissions, getRoleLabel, roleLabels,
   };
 }
