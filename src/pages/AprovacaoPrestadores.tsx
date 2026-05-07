@@ -162,7 +162,7 @@ function PainelStep({ step }: { step: Step }) {
   const { data: centrosCusto = [] } = useQuery({
     queryKey: ['centros-custo-filter'],
     queryFn: async () => {
-      const { data } = await supabase.from('centros_custo').select('codigo, descricao').eq('status', 'ativo').order('codigo');
+      const { data } = await supabase.from('centros_custo').select('id, codigo, descricao').eq('status', 'ativo').order('codigo');
       return data || [];
     },
   });
@@ -329,7 +329,7 @@ function PainelStep({ step }: { step: Step }) {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 {centrosCusto.map((c: any) => (
-                  <SelectItem key={c.codigo} value={c.codigo}>{c.codigo} - {c.descricao}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.codigo} - {c.descricao}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -382,7 +382,7 @@ function PainelStep({ step }: { step: Step }) {
                   <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                   <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
-                  <TableCell className="text-xs">{s._centro_custo || '—'}</TableCell>
+                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
                   <TableCell className="text-xs">
                     <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
                   </TableCell>
