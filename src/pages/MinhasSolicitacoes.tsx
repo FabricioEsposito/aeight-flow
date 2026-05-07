@@ -49,13 +49,13 @@ export default function MinhasSolicitacoes() {
         </p>
       </div>
 
-      <Tabs defaultValue={isPrestador ? 'nf' : 'reemb'}>
+      <Tabs defaultValue={canSendNF ? "nf" : "reemb"}>
         <TabsList>
-          {isPrestador && <TabsTrigger value="nf">Notas Fiscais</TabsTrigger>}
+          {canSendNF && <TabsTrigger value="nf">Notas Fiscais</TabsTrigger>}
           <TabsTrigger value="reemb">Reembolsos</TabsTrigger>
         </TabsList>
 
-        {isPrestador && (
+        {canSendNF && (
           <TabsContent value="nf" className="space-y-4">
             <div className="flex justify-end">
               <Button onClick={() => setOpenNF(true)}><Plus className="h-4 w-4 mr-1" /> Enviar NF</Button>
@@ -144,7 +144,7 @@ export default function MinhasSolicitacoes() {
         </TabsContent>
       </Tabs>
 
-      {isPrestador && <NovaSolicitacaoDialog open={openNF} onOpenChange={setOpenNF} tipo="nf_mensal" />}
+      {canSendNF && <NovaSolicitacaoDialog open={openNF} onOpenChange={setOpenNF} tipo="nf_mensal" />}
       <NovaSolicitacaoDialog open={openReemb} onOpenChange={setOpenReemb} tipo="reembolso" />
     </div>
   );
