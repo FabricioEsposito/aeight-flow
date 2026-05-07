@@ -349,20 +349,20 @@ export default function Usuarios() {
             Lista de todos os usuários do sistema
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="px-2 sm:px-4">
+          <Table className="w-full table-fixed text-xs">
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Nível Hierárquico</TableHead>
-                <TableHead>Grupo</TableHead>
-                <TableHead>Líder</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Vendedor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Cadastro</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[11%] px-2">Nome</TableHead>
+                <TableHead className="w-[16%] px-2">Email</TableHead>
+                <TableHead className="w-[10%] px-2">Nível</TableHead>
+                <TableHead className="w-[10%] px-2">Grupo</TableHead>
+                <TableHead className="w-[9%] px-2">Líder</TableHead>
+                <TableHead className="w-[14%] px-2">Fornecedor</TableHead>
+                <TableHead className="w-[10%] px-2">Vendedor</TableHead>
+                <TableHead className="w-[7%] px-2">Status</TableHead>
+                <TableHead className="w-[8%] px-2">Cadastro</TableHead>
+                <TableHead className="w-[5%] px-2 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
