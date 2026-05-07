@@ -1736,7 +1736,12 @@ export type Database = {
           fornecedor_id: string | null
           grupo_id: string | null
           id: string
+          is_lider_area: boolean
+          lidera_grupo_id: string | null
           nome: string | null
+          regime_contrato:
+            | Database["public"]["Enums"]["regime_contrato_enum"]
+            | null
           updated_at: string | null
           vendedor_id: string | null
         }
@@ -1748,7 +1753,12 @@ export type Database = {
           fornecedor_id?: string | null
           grupo_id?: string | null
           id: string
+          is_lider_area?: boolean
+          lidera_grupo_id?: string | null
           nome?: string | null
+          regime_contrato?:
+            | Database["public"]["Enums"]["regime_contrato_enum"]
+            | null
           updated_at?: string | null
           vendedor_id?: string | null
         }
@@ -1760,7 +1770,12 @@ export type Database = {
           fornecedor_id?: string | null
           grupo_id?: string | null
           id?: string
+          is_lider_area?: boolean
+          lidera_grupo_id?: string | null
           nome?: string | null
+          regime_contrato?:
+            | Database["public"]["Enums"]["regime_contrato_enum"]
+            | null
           updated_at?: string | null
           vendedor_id?: string | null
         }
@@ -2365,6 +2380,7 @@ export type Database = {
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica" | "internacional"
+      regime_contrato_enum: "prestador_servico" | "funcionario"
       status_contrato: "ativo" | "encerrado" | "suspenso"
       status_geral: "ativo" | "inativo"
       status_pagamento: "pendente" | "pago" | "vencido" | "cancelado"
@@ -2513,6 +2529,7 @@ export const Constants = {
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],
       pessoa_tipo: ["fisica", "juridica", "internacional"],
+      regime_contrato_enum: ["prestador_servico", "funcionario"],
       status_contrato: ["ativo", "encerrado", "suspenso"],
       status_geral: ["ativo", "inativo"],
       status_pagamento: ["pendente", "pago", "vencido", "cancelado"],
