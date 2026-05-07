@@ -27,6 +27,7 @@ const permissionMessages: Record<PermissionKey, string> = {
   canApproveFinanceiroRequests: 'Você não tem permissão para aprovar solicitações financeiras.',
   canApproveCommissions: 'Você não tem permissão para aprovar comissões.',
   canApproveRH: 'Você não tem permissão para aprovar solicitações de RH.',
+  canApproveLider: 'Você não tem permissão para aprovar solicitações como líder de área.',
   needsApprovalForRH: 'Esta ação requer aprovação do Gerente de RH.',
   canSendHoleriteOnlyWhenPaid: 'O envio de holerite só é permitido após o lançamento estar pago.',
   needsApprovalForFinanceiroEdits: 'Esta ação requer aprovação de um administrador ou gerente financeiro.',
