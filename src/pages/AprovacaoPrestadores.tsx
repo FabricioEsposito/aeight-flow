@@ -103,8 +103,57 @@ function PainelStep({ step }: { step: Step }) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data as any[]) || [];
+      const rows = (data as any[]) || [];
+
+      // Enriquecer com centro de custo e regime do fornecedor (via contratos)
+      const fornecedorIds = Array.from(new Set(rows.map((r) => r.fornecedor_id).filter(Boolean)));
+      if (fornecedorIds.length) {
+        const { data: contratos } = await supabase
+          .from('contratos')
+          .select('fornecedor_id, centro_custo, is_folha_funcionario, is_beneficio_funcionario, status')
+          .in('fornecedor_id', fornecedorIds)
+          .eq('status', 'ativo');
+        const map: Record<string, { centro_custo: string | null; regime: string }> = {};
+        (contratos || []).forEach((c: any) => {
+          if (!map[c.fornecedor_id]) {
+            map[c.fornecedor_id] = {
+              centro_custo: c.centro_custo || null,
+              regime: c.is_folha_funcionario || c.is_beneficio_funcionario ? 'funcionario' : 'prestador',
+            };
+          }
+        });
+        rows.forEach((r) => {
+          const info = map[r.fornecedor_id];
+          r._centro_custo = info?.centro_custo || null;
+          r._regime = info?.regime || 'prestador';
+        });
+      }
+      return rows;
     },
+  });
+
+  // Filtros
+  const [filtroDataIni, setFiltroDataIni] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [filtroCC, setFiltroCC] = useState<string>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [filtroRegime, setFiltroRegime] = useState<string>('todos');
+
+  const { data: centrosCusto = [] } = useQuery({
+    queryKey: ['centros-custo-filter'],
+    queryFn: async () => {
+      const { data } = await supabase.from('centros_custo').select('codigo, descricao').eq('status', 'ativo').order('codigo');
+      return data || [];
+    },
+  });
+
+  const itemsFiltrados = items.filter((s: any) => {
+    if (filtroDataIni && s.created_at < filtroDataIni) return false;
+    if (filtroDataFim && s.created_at > filtroDataFim + 'T23:59:59') return false;
+    if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
+    if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
+    if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
+    return true;
   });
 
   const { data: parcelas = [] } = useQuery({
