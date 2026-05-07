@@ -938,7 +938,7 @@ export default function Solicitacoes() {
   };
 
 
-  if (isPrestador || isFuncionario) {
+  if (isPrestador || isFuncionario || isLiderArea) {
     return <MinhasSolicitacoes />;
   }
 
