@@ -22,6 +22,7 @@ export interface RolePermissions {
   canApproveCommissions: boolean;
   canApproveRH: boolean;
   canApproveReembolsoFinanceiro: boolean;
+  canApproveLider: boolean;
   canApproveVinculoUsuario: boolean;
   needsApprovalForRH: boolean;
   canSendHoleriteOnlyWhenPaid: boolean;
