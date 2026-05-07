@@ -23,6 +23,70 @@ import { Navigate } from 'react-router-dom';
 
 type Step = 'lider' | 'rh_analista' | 'rh_gerente' | 'financeiro';
 
+const getRegimeFromProfile = (regime?: string | null) => {
+  if (regime === 'funcionario') return 'funcionario';
+  if (regime === 'prestador_servico') return 'prestador';
+  return null;
+};
+
+const enrichSolicitacoes = async (rows: any[]) => {
+  const solicitanteIds = Array.from(new Set(rows.map((r) => r.solicitante_id).filter(Boolean)));
+  const { data: perfis } = solicitanteIds.length
+    ? await supabase.from('profiles').select('id, fornecedor_id, regime_contrato' as any).in('id', solicitanteIds)
+    : { data: [] as any[] };
+
+  const perfilMap = new Map((perfis || []).map((p: any) => [p.id, p]));
+  const fornecedorIds = Array.from(new Set(rows.map((r) => perfilMap.get(r.solicitante_id)?.fornecedor_id || r.fornecedor_id).filter(Boolean)));
+
+  const { data: contratos } = fornecedorIds.length
+    ? await supabase
+        .from('contratos')
+        .select('fornecedor_id, centro_custo, is_folha_funcionario, is_beneficio_funcionario, status')
+        .in('fornecedor_id', fornecedorIds)
+        .eq('status', 'ativo')
+    : { data: [] as any[] };
+
+  const contratoMap: Record<string, { centro_custo: string | null; regime: string }> = {};
+  (contratos || []).forEach((c: any) => {
+    if (!contratoMap[c.fornecedor_id]) {
+      contratoMap[c.fornecedor_id] = {
+        centro_custo: c.centro_custo || null,
+        regime: c.is_folha_funcionario || c.is_beneficio_funcionario ? 'funcionario' : 'prestador',
+      };
+    }
+  });
+
+  return rows.map((r) => {
+    const perfil = perfilMap.get(r.solicitante_id);
+    const fornecedorVinculadoId = perfil?.fornecedor_id || r.fornecedor_id;
+    const contrato = contratoMap[fornecedorVinculadoId];
+    return {
+      ...r,
+      _fornecedor_vinculado_id: fornecedorVinculadoId,
+      _centro_custo: contrato?.centro_custo || null,
+      _regime: getRegimeFromProfile(perfil?.regime_contrato) || contrato?.regime || 'prestador',
+    };
+  });
+};
+
+const filtrarSolicitacoes = (
+  rows: any[],
+  dateRange: { from?: Date; to?: Date },
+  filtroCC: string,
+  filtroTipo: string,
+  filtroRegime: string,
+) => rows.filter((s: any) => {
+  if (dateRange.from && new Date(s.created_at) < dateRange.from) return false;
+  if (dateRange.to) {
+    const end = new Date(dateRange.to); end.setHours(23,59,59,999);
+    if (new Date(s.created_at) > end) return false;
+  }
+  if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
+  if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
+  if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
+  return true;
+});
+
 export default function AprovacaoPrestadores() {
   const { permissions, isAdmin, isFinanceManager, isLiderArea, isRHAnalyst, isRHManager, loading: roleLoading } = useUserRole();
   const canLider = isAdmin || isLiderArea;
@@ -105,31 +169,7 @@ function PainelStep({ step }: { step: Step }) {
       const { data, error } = await query;
       if (error) throw error;
       const rows = (data as any[]) || [];
-
-      // Enriquecer com centro de custo e regime do fornecedor (via contratos)
-      const fornecedorIds = Array.from(new Set(rows.map((r) => r.fornecedor_id).filter(Boolean)));
-      if (fornecedorIds.length) {
-        const { data: contratos } = await supabase
-          .from('contratos')
-          .select('fornecedor_id, centro_custo, is_folha_funcionario, is_beneficio_funcionario, status')
-          .in('fornecedor_id', fornecedorIds)
-          .eq('status', 'ativo');
-        const map: Record<string, { centro_custo: string | null; regime: string }> = {};
-        (contratos || []).forEach((c: any) => {
-          if (!map[c.fornecedor_id]) {
-            map[c.fornecedor_id] = {
-              centro_custo: c.centro_custo || null,
-              regime: c.is_folha_funcionario || c.is_beneficio_funcionario ? 'funcionario' : 'prestador',
-            };
-          }
-        });
-        rows.forEach((r) => {
-          const info = map[r.fornecedor_id];
-          r._centro_custo = info?.centro_custo || null;
-          r._regime = info?.regime || 'prestador';
-        });
-      }
-      return rows;
+      return enrichSolicitacoes(rows);
     },
   });
 
@@ -167,17 +207,7 @@ function PainelStep({ step }: { step: Step }) {
     },
   });
 
-  const itemsFiltrados = items.filter((s: any) => {
-    if (dateRange.from && new Date(s.created_at) < dateRange.from) return false;
-    if (dateRange.to) {
-      const end = new Date(dateRange.to); end.setHours(23,59,59,999);
-      if (new Date(s.created_at) > end) return false;
-    }
-    if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
-    if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
-    if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
-    return true;
-  });
+  const itemsFiltrados = filtrarSolicitacoes(items, dateRange, filtroCC, filtroTipo, filtroRegime);
 
   const { data: parcelas = [] } = useQuery({
     queryKey: ['parcelas-prestador', aprovarItem?.fornecedor_id, aprovarItem?.mes_referencia, aprovarItem?.ano_referencia],
@@ -405,7 +435,15 @@ function PainelStep({ step }: { step: Step }) {
           </Table>
         )}
 
-        <HistoricoSolicitacoes step={step} onDetalhar={setDetalheItem} />
+        <HistoricoSolicitacoes
+          step={step}
+          onDetalhar={setDetalheItem}
+          dateRange={dateRange}
+          filtroCC={filtroCC}
+          filtroTipo={filtroTipo}
+          filtroRegime={filtroRegime}
+          centrosCusto={centrosCusto}
+        />
 
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
           <DialogContent>
@@ -486,7 +524,23 @@ function statusLabel(s: string) {
   return map[s] || { label: s, variant: 'outline' };
 }
 
-function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (s: any) => void }) {
+function HistoricoSolicitacoes({
+  step,
+  onDetalhar,
+  dateRange,
+  filtroCC,
+  filtroTipo,
+  filtroRegime,
+  centrosCusto,
+}: {
+  step: Step;
+  onDetalhar: (s: any) => void;
+  dateRange: { from?: Date; to?: Date };
+  filtroCC: string;
+  filtroTipo: string;
+  filtroRegime: string;
+  centrosCusto: any[];
+}) {
   const { user } = useAuth();
   const aprovadorField =
     step === 'lider' ? 'aprovador_lider_id'
@@ -505,14 +559,16 @@ function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data as any[]) || [];
+      return enrichSolicitacoes((data as any[]) || []);
     },
   });
+
+  const itemsFiltrados = filtrarSolicitacoes(items, dateRange, filtroCC, filtroTipo, filtroRegime);
 
   return (
     <div className="mt-8">
       <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico de aprovações/rejeições</h3>
-      {items.length === 0 ? (
+      {itemsFiltrados.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Nenhum histórico ainda.</p>
       ) : (
         <Table>
@@ -521,6 +577,8 @@ function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (
               <TableHead>Data</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Fornecedor</TableHead>
+                <TableHead>CC</TableHead>
+                <TableHead>Regime</TableHead>
               <TableHead>Mês ref.</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -530,13 +588,17 @@ function HistoricoSolicitacoes({ step, onDetalhar }: { step: Step; onDetalhar: (
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((s: any) => {
+            {itemsFiltrados.map((s: any) => {
               const st = statusLabel(s.status);
               return (
                 <TableRow key={s.id}>
                   <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                   <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                  </TableCell>
                   <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
                   <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
                   <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
