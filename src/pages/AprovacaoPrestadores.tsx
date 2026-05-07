@@ -342,6 +342,8 @@ function PainelStep({ step }: { step: Step }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <DetalheSolicitacaoDialog item={detalheItem} onClose={() => setDetalheItem(null)} />
       </CardContent>
     </Card>
   );
