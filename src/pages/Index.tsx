@@ -9,18 +9,18 @@ const Index = () => {
   useContextualTutorial('dashboard');
   useClearFiltersOnAreaChange('dashboard');
   const navigate = useNavigate();
-  const { role, loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario } = useUserRole();
+  const { role, loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, isLiderArea } = useUserRole();
 
   useEffect(() => {
     if (loading) return;
     if (isCommercialManager || isSalesperson) navigate("/dashboard-comercial", { replace: true });
     else if (isContador) navigate("/area-contador", { replace: true });
     else if (isRHManager || isRHAnalyst) navigate("/rh", { replace: true });
-    else if (isPrestador || isFuncionario) navigate("/solicitacoes", { replace: true });
-  }, [loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, navigate]);
+    else if (isPrestador || isFuncionario || isLiderArea) navigate("/solicitacoes", { replace: true });
+  }, [loading, isCommercialManager, isSalesperson, isContador, isRHManager, isRHAnalyst, isPrestador, isFuncionario, isLiderArea, navigate]);
 
   // Show loading while checking role
-  if (loading || isCommercialManager || isSalesperson || isContador || isRHManager || isRHAnalyst || isPrestador || isFuncionario) {
+  if (loading || isCommercialManager || isSalesperson || isContador || isRHManager || isRHAnalyst || isPrestador || isFuncionario || isLiderArea) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
