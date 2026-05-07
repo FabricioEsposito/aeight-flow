@@ -296,6 +296,17 @@ function PainelStep({ step }: { step: Step }) {
             conta_bancaria_id: contaBanc || null,
           }).eq('id', aprovarItem.id);
         } else {
+          // nf_mensal: vincular NF (link_nf + numero_nf) à parcela do contrato no momento da aprovação financeira
+          if (aprovarItem.tipo === 'nf_mensal' && aprovarItem.parcela_id) {
+            const { data: cp } = await supabase
+              .from('contas_pagar').select('id').eq('parcela_id', aprovarItem.parcela_id).maybeSingle();
+            if (cp) {
+              await supabase.from('contas_pagar').update({
+                link_nf: aprovarItem.arquivo_path,
+                ...(aprovarItem.numero_nf ? { numero_nf: aprovarItem.numero_nf } : {}),
+              } as any).eq('id', cp.id);
+            }
+          }
           await supabase.from('solicitacoes_prestador' as any).update({
             status: 'aprovado_financeiro',
             aprovador_financeiro_id: user!.id,
