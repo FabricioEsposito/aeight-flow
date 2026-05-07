@@ -133,11 +133,30 @@ function PainelStep({ step }: { step: Step }) {
   });
 
   // Filtros
-  const [filtroDataIni, setFiltroDataIni] = useState('');
-  const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [filtroCC, setFiltroCC] = useState<string>('todos');
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
   const [filtroRegime, setFiltroRegime] = useState<string>('todos');
+
+  const handleDateChange = (preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    if (preset === 'todo-periodo') { setDateRange({}); return; }
+    if (range?.from && range?.to) { setDateRange({ from: range.from, to: range.to }); return; }
+    const today = new Date();
+    const r = (() => {
+      switch (preset) {
+        case 'hoje': return { from: today, to: today };
+        case 'esta-semana': return { from: startOfWeek(today, { weekStartsOn: 1 }), to: endOfWeek(today, { weekStartsOn: 1 }) };
+        case 'este-mes': return { from: startOfMonth(today), to: endOfMonth(today) };
+        case 'este-ano': return { from: startOfYear(today), to: endOfYear(today) };
+        case 'ultimos-30-dias': return { from: subDays(today, 30), to: today };
+        case 'ultimos-12-meses': return { from: subMonths(today, 12), to: today };
+        default: return { from: undefined, to: undefined };
+      }
+    })();
+    setDateRange(r);
+  };
 
   const { data: centrosCusto = [] } = useQuery({
     queryKey: ['centros-custo-filter'],
@@ -148,8 +167,11 @@ function PainelStep({ step }: { step: Step }) {
   });
 
   const itemsFiltrados = items.filter((s: any) => {
-    if (filtroDataIni && s.created_at < filtroDataIni) return false;
-    if (filtroDataFim && s.created_at > filtroDataFim + 'T23:59:59') return false;
+    if (dateRange.from && new Date(s.created_at) < dateRange.from) return false;
+    if (dateRange.to) {
+      const end = new Date(dateRange.to); end.setHours(23,59,59,999);
+      if (new Date(s.created_at) > end) return false;
+    }
     if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
     if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
     if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
