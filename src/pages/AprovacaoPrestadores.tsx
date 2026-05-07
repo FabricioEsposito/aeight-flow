@@ -315,12 +315,12 @@ function PainelStep({ step }: { step: Step }) {
       <CardContent>
         <div className="flex flex-wrap gap-3 mb-4 items-end">
           <div>
-            <Label className="text-xs">Data inicial</Label>
-            <Input type="date" value={filtroDataIni} onChange={(e) => setFiltroDataIni(e.target.value)} className="h-9 w-[160px]" />
-          </div>
-          <div>
-            <Label className="text-xs">Data final</Label>
-            <Input type="date" value={filtroDataFim} onChange={(e) => setFiltroDataFim(e.target.value)} className="h-9 w-[160px]" />
+            <Label className="text-xs block mb-1">Período</Label>
+            <DateRangeFilter
+              value={datePreset}
+              onChange={handleDateChange}
+              customRange={{ from: dateRange.from, to: dateRange.to }}
+            />
           </div>
           <div>
             <Label className="text-xs">Centro de custo</Label>
