@@ -23,6 +23,70 @@ import { Navigate } from 'react-router-dom';
 
 type Step = 'lider' | 'rh_analista' | 'rh_gerente' | 'financeiro';
 
+const getRegimeFromProfile = (regime?: string | null) => {
+  if (regime === 'funcionario') return 'funcionario';
+  if (regime === 'prestador_servico') return 'prestador';
+  return null;
+};
+
+const enrichSolicitacoes = async (rows: any[]) => {
+  const solicitanteIds = Array.from(new Set(rows.map((r) => r.solicitante_id).filter(Boolean)));
+  const { data: perfis } = solicitanteIds.length
+    ? await supabase.from('profiles').select('id, fornecedor_id, regime_contrato' as any).in('id', solicitanteIds)
+    : { data: [] as any[] };
+
+  const perfilMap = new Map((perfis || []).map((p: any) => [p.id, p]));
+  const fornecedorIds = Array.from(new Set(rows.map((r) => perfilMap.get(r.solicitante_id)?.fornecedor_id || r.fornecedor_id).filter(Boolean)));
+
+  const { data: contratos } = fornecedorIds.length
+    ? await supabase
+        .from('contratos')
+        .select('fornecedor_id, centro_custo, is_folha_funcionario, is_beneficio_funcionario, status')
+        .in('fornecedor_id', fornecedorIds)
+        .eq('status', 'ativo')
+    : { data: [] as any[] };
+
+  const contratoMap: Record<string, { centro_custo: string | null; regime: string }> = {};
+  (contratos || []).forEach((c: any) => {
+    if (!contratoMap[c.fornecedor_id]) {
+      contratoMap[c.fornecedor_id] = {
+        centro_custo: c.centro_custo || null,
+        regime: c.is_folha_funcionario || c.is_beneficio_funcionario ? 'funcionario' : 'prestador',
+      };
+    }
+  });
+
+  return rows.map((r) => {
+    const perfil = perfilMap.get(r.solicitante_id);
+    const fornecedorVinculadoId = perfil?.fornecedor_id || r.fornecedor_id;
+    const contrato = contratoMap[fornecedorVinculadoId];
+    return {
+      ...r,
+      _fornecedor_vinculado_id: fornecedorVinculadoId,
+      _centro_custo: contrato?.centro_custo || null,
+      _regime: getRegimeFromProfile(perfil?.regime_contrato) || contrato?.regime || 'prestador',
+    };
+  });
+};
+
+const filtrarSolicitacoes = (
+  rows: any[],
+  dateRange: { from?: Date; to?: Date },
+  filtroCC: string,
+  filtroTipo: string,
+  filtroRegime: string,
+) => rows.filter((s: any) => {
+  if (dateRange.from && new Date(s.created_at) < dateRange.from) return false;
+  if (dateRange.to) {
+    const end = new Date(dateRange.to); end.setHours(23,59,59,999);
+    if (new Date(s.created_at) > end) return false;
+  }
+  if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
+  if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
+  if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
+  return true;
+});
+
 export default function AprovacaoPrestadores() {
   const { permissions, isAdmin, isFinanceManager, isLiderArea, isRHAnalyst, isRHManager, loading: roleLoading } = useUserRole();
   const canLider = isAdmin || isLiderArea;
