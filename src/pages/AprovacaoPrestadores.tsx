@@ -303,7 +303,6 @@ function PainelStep({ step }: { step: Step }) {
             if (cp) {
               await supabase.from('contas_pagar').update({
                 link_nf: aprovarItem.arquivo_path,
-                ...(aprovarItem.numero_nf ? { numero_nf: aprovarItem.numero_nf } : {}),
               } as any).eq('id', cp.id);
             }
           }
