@@ -435,7 +435,15 @@ function PainelStep({ step }: { step: Step }) {
           </Table>
         )}
 
-        <HistoricoSolicitacoes step={step} onDetalhar={setDetalheItem} />
+        <HistoricoSolicitacoes
+          step={step}
+          onDetalhar={setDetalheItem}
+          dateRange={dateRange}
+          filtroCC={filtroCC}
+          filtroTipo={filtroTipo}
+          filtroRegime={filtroRegime}
+          centrosCusto={centrosCusto}
+        />
 
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
           <DialogContent>
