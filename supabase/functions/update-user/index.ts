@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { userId, email, nome, role, vendedor_id, fornecedor_id } = await req.json();
+    const { userId, email, nome, role, vendedor_id, fornecedor_id, grupo_id, lidera_grupo_id } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
     if (email !== undefined) profileUpdates.email = email;
     if (vendedor_id !== undefined) profileUpdates.vendedor_id = vendedor_id || null;
     if (fornecedor_id !== undefined) profileUpdates.fornecedor_id = fornecedor_id || null;
+    if (grupo_id !== undefined) profileUpdates.grupo_id = grupo_id || null;
 
     if (Object.keys(profileUpdates).length > 0) {
       const { error: profileError } = await supabaseAdmin
