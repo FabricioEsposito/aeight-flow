@@ -169,31 +169,7 @@ function PainelStep({ step }: { step: Step }) {
       const { data, error } = await query;
       if (error) throw error;
       const rows = (data as any[]) || [];
-
-      // Enriquecer com centro de custo e regime do fornecedor (via contratos)
-      const fornecedorIds = Array.from(new Set(rows.map((r) => r.fornecedor_id).filter(Boolean)));
-      if (fornecedorIds.length) {
-        const { data: contratos } = await supabase
-          .from('contratos')
-          .select('fornecedor_id, centro_custo, is_folha_funcionario, is_beneficio_funcionario, status')
-          .in('fornecedor_id', fornecedorIds)
-          .eq('status', 'ativo');
-        const map: Record<string, { centro_custo: string | null; regime: string }> = {};
-        (contratos || []).forEach((c: any) => {
-          if (!map[c.fornecedor_id]) {
-            map[c.fornecedor_id] = {
-              centro_custo: c.centro_custo || null,
-              regime: c.is_folha_funcionario || c.is_beneficio_funcionario ? 'funcionario' : 'prestador',
-            };
-          }
-        });
-        rows.forEach((r) => {
-          const info = map[r.fornecedor_id];
-          r._centro_custo = info?.centro_custo || null;
-          r._regime = info?.regime || 'prestador';
-        });
-      }
-      return rows;
+      return enrichSolicitacoes(rows);
     },
   });
 
@@ -231,17 +207,7 @@ function PainelStep({ step }: { step: Step }) {
     },
   });
 
-  const itemsFiltrados = items.filter((s: any) => {
-    if (dateRange.from && new Date(s.created_at) < dateRange.from) return false;
-    if (dateRange.to) {
-      const end = new Date(dateRange.to); end.setHours(23,59,59,999);
-      if (new Date(s.created_at) > end) return false;
-    }
-    if (filtroCC !== 'todos' && s._centro_custo !== filtroCC) return false;
-    if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
-    if (filtroRegime !== 'todos' && s._regime !== filtroRegime) return false;
-    return true;
-  });
+  const itemsFiltrados = filtrarSolicitacoes(items, dateRange, filtroCC, filtroTipo, filtroRegime);
 
   const { data: parcelas = [] } = useQuery({
     queryKey: ['parcelas-prestador', aprovarItem?.fornecedor_id, aprovarItem?.mes_referencia, aprovarItem?.ano_referencia],
