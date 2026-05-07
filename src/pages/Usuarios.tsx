@@ -317,24 +317,37 @@ export default function Usuarios() {
     setEditVendedorId(usuario.vendedor_id || "");
     setEditFornecedorId(usuario.fornecedor_id || "");
     setEditGrupoId(usuario.grupo_id || "");
-    const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
-    setEditLideraGrupoId(lideraGrupo?.id || "");
+    setEditRegime(usuario.regime_contrato || "");
+    setEditIsLider(!!usuario.is_lider_area);
+    setEditLideraGrupoId(usuario.lidera_grupo_id || "");
     setOpenEdit(true);
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      const isPortalRole = editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area';
-      updateUserMutation.mutate({
-        userId: editingUser.id,
-        role: editRole,
-        vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
-        fornecedor_id: isPortalRole ? (editFornecedorId || null) : null,
-        grupo_id: isPortalRole ? (editGrupoId || null) : null,
-        lidera_grupo_id: editRole === 'lider_area' ? (editLideraGrupoId || null) : null,
-      });
+    if (!editingUser) return;
+    if (!editRegime) {
+      toast({ title: 'Regime obrigatório', description: 'Selecione o regime de contrato (Prestador ou Funcionário).', variant: 'destructive' });
+      return;
     }
+    if (!editFornecedorId) {
+      toast({ title: 'Fornecedor obrigatório', description: 'Vincule um fornecedor ao usuário.', variant: 'destructive' });
+      return;
+    }
+    if (editIsLider && !editLideraGrupoId) {
+      toast({ title: 'Grupo do líder obrigatório', description: 'Selecione o grupo que este usuário lidera.', variant: 'destructive' });
+      return;
+    }
+    updateUserMutation.mutate({
+      userId: editingUser.id,
+      role: editRole,
+      vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
+      fornecedor_id: editFornecedorId || null,
+      grupo_id: editGrupoId || null,
+      regime_contrato: editRegime || null,
+      is_lider_area: editIsLider,
+      lidera_grupo_id: editIsLider ? (editLideraGrupoId || null) : null,
+    });
   };
 
   if (checkingAdmin || isLoading) {
