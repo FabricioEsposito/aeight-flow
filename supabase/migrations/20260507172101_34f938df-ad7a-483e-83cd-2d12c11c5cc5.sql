@@ -1,0 +1,1 @@
+UPDATE public.contas_pagar SET link_nf='https://epgifclglrrgzpguqbde.supabase.co/storage/v1/object/public/prestador-docs/4a134d0f-24e9-4d69-9459-a4bb5102e274/nf_mensal-1778101219191.pdf?v=1778101223943' WHERE id='cd44c302-3c05-4f26-9bfc-4bf27069f19b';
