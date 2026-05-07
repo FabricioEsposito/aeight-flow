@@ -204,7 +204,7 @@ export default function Usuarios() {
 
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null; grupo_id?: string | null; lidera_grupo_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -216,6 +216,7 @@ export default function Usuarios() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['grupos-area'] });
       toast({
         title: "Nível hierárquico atualizado!",
         description: "As alterações foram salvas com sucesso.",
@@ -224,6 +225,8 @@ export default function Usuarios() {
       setEditingUser(null);
       setEditVendedorId("");
       setEditFornecedorId("");
+      setEditGrupoId("");
+      setEditLideraGrupoId("");
     },
     onError: (error: any) => {
       console.error('Update error:', error);
@@ -302,18 +305,23 @@ export default function Usuarios() {
     setEditRole(usuario.role || 'user');
     setEditVendedorId(usuario.vendedor_id || "");
     setEditFornecedorId(usuario.fornecedor_id || "");
+    setEditGrupoId(usuario.grupo_id || "");
+    const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
+    setEditLideraGrupoId(lideraGrupo?.id || "");
     setOpenEdit(true);
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingUser) {
-      const isPrestadorOrFunc = editRole === 'prestador_servico' || editRole === 'funcionario';
+      const isPortalRole = editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area';
       updateUserMutation.mutate({
         userId: editingUser.id,
         role: editRole,
         vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
-        fornecedor_id: isPrestadorOrFunc ? (editFornecedorId || null) : null,
+        fornecedor_id: isPortalRole ? (editFornecedorId || null) : null,
+        grupo_id: isPortalRole ? (editGrupoId || null) : null,
+        lidera_grupo_id: editRole === 'lider_area' ? (editLideraGrupoId || null) : null,
       });
     }
   };
