@@ -88,7 +88,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
   },
   finance_manager: {
     canAccessDashboard: true, canAccessCadastro: true, canAccessComercial: true,
-    canAccessFinanceiro: true, canAccessRH: true, canAccessSolicitacoes: true,
+    canAccessFinanceiro: true, canAccessSolicitacoes: true,
     canAccessContador: true, canEditFinanceiro: true, canEditComercial: true,
     canEditCadastro: true, canPerformBaixas: true,
     canApproveFinanceiroRequests: true, canApproveCommissions: true,
@@ -96,7 +96,7 @@ const rolePermissionsMap: Record<AppRole, Partial<RolePermissions>> = {
   },
   finance_analyst: {
     canAccessDashboard: true, canAccessCadastro: true, canAccessFinanceiro: true,
-    canAccessRH: true, canAccessSolicitacoes: true, canPerformBaixas: true,
+    canAccessSolicitacoes: true, canPerformBaixas: true,
     needsApprovalForFinanceiroEdits: true,
   },
   commercial_manager: { canAccessComercial: true, canEditComercial: true },
