@@ -114,7 +114,14 @@ function PainelStep({ step }: { step: Step }) {
     if (!aprovarItem) return;
     setProcessing(true);
     try {
-      if (step === 'rh') {
+      if (step === 'lider') {
+        const { error } = await supabase.from('solicitacoes_prestador' as any).update({
+          status: 'pendente_rh',
+          aprovador_lider_id: user!.id,
+          data_aprovacao_lider: new Date().toISOString(),
+        }).eq('id', aprovarItem.id);
+        if (error) throw error;
+      } else if (step === 'rh') {
         const update: any = {
           status: 'aprovado_rh',
           aprovador_rh_id: user!.id,
@@ -181,9 +188,11 @@ function PainelStep({ step }: { step: Step }) {
     if (!rejeitarItem || !motivo.trim()) return;
     setProcessing(true);
     try {
-      const update: any = step === 'rh'
-        ? { status: 'rejeitado_rh', aprovador_rh_id: user!.id, data_aprovacao_rh: new Date().toISOString(), motivo_rejeicao_rh: motivo }
-        : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: new Date().toISOString(), motivo_rejeicao_financeiro: motivo };
+      const update: any = step === 'lider'
+        ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: new Date().toISOString(), motivo_rejeicao_lider: motivo }
+        : step === 'rh'
+          ? { status: 'rejeitado_rh', aprovador_rh_id: user!.id, data_aprovacao_rh: new Date().toISOString(), motivo_rejeicao_rh: motivo }
+          : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: new Date().toISOString(), motivo_rejeicao_financeiro: motivo };
       const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', rejeitarItem.id);
       if (error) throw error;
       toast({ title: 'Rejeitado' });
