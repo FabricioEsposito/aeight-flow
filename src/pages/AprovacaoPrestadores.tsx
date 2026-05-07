@@ -382,7 +382,7 @@ function PainelStep({ step }: { step: Step }) {
                   <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                   <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
-                  <TableCell className="text-xs">{s._centro_custo || '—'}</TableCell>
+                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
                   <TableCell className="text-xs">
                     <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
                   </TableCell>
