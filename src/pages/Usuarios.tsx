@@ -550,73 +550,88 @@ export default function Usuarios() {
               <div className="space-y-2">
                 <Label htmlFor="edit-vendedor">Vincular Vendedor</Label>
                 <Select value={editVendedorId} onValueChange={setEditVendedorId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um vendedor" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um vendedor" /></SelectTrigger>
                   <SelectContent>
                     {vendedores?.map((vendedor) => (
-                      <SelectItem key={vendedor.id} value={vendedor.id}>
-                        {vendedor.nome}
-                      </SelectItem>
+                      <SelectItem key={vendedor.id} value={vendedor.id}>{vendedor.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Vincule este usuário a um vendedor cadastrado para que ele possa visualizar suas comissões e vendas.
-                </p>
               </div>
             )}
 
-            {(editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area') && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
-                  <FornecedorSelect
-                    value={editFornecedorId}
-                    onChange={setEditFornecedorId}
-                    filterByPlanoContaCodigos={
-                      editRole === 'prestador_servico'
-                        ? ['3.1.2', '2.1.3']
-                        : editRole === 'lider_area'
-                          ? ['3.1.2', '2.1.3', '2.1.2', '3.1.1']
-                          : ['2.1.2', '3.1.1']
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    A empresa do usuário é definida pelo centro de custo do fornecedor.
-                  </p>
-                </div>
+            <div className="space-y-2 border-t pt-4">
+              <Label>Regime de Contrato <span className="text-destructive">*</span></Label>
+              <Select value={editRegime} onValueChange={(v) => setEditRegime(v as any)}>
+                <SelectTrigger><SelectValue placeholder="Selecione o regime" /></SelectTrigger>
+                <SelectContent>
+                  {regimeOptions.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Obrigatório para todos os usuários. Define se o usuário é Prestador (envia NFs e reembolsos) ou Funcionário (apenas reembolsos).
+              </p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label>Grupo</Label>
-                  <Select value={editGrupoId} onValueChange={setEditGrupoId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+            <div className="space-y-2">
+              <Label>Vincular Fornecedor <span className="text-destructive">*</span></Label>
+              <FornecedorSelect
+                value={editFornecedorId}
+                onChange={setEditFornecedorId}
+                filterByPlanoContaCodigos={
+                  editRegime === 'prestador_servico'
+                    ? ['3.1.2', '2.1.3']
+                    : editRegime === 'funcionario'
+                      ? ['2.1.2', '3.1.1']
+                      : ['3.1.2', '2.1.3', '2.1.2', '3.1.1']
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Obrigatório. Habilita o usuário a enviar solicitações conforme o regime.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Grupo</Label>
+              <Select value={editGrupoId} onValueChange={setEditGrupoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+                <SelectContent>
+                  {(grupos || []).map((g: any) => (
+                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 border rounded-md p-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editIsLider}
+                  onChange={(e) => setEditIsLider(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span className="font-medium text-sm">É líder de área</span>
+              </label>
+              {editIsLider && (
+                <div className="space-y-2 pl-6">
+                  <Label>Grupo que lidera</Label>
+                  <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
                     <SelectContent>
                       {(grupos || []).map((g: any) => (
                         <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    O líder aprovará (1ª etapa) as solicitações dos membros do grupo selecionado.
+                  </p>
                 </div>
-
-                {editRole === 'lider_area' && (
-                  <div className="space-y-2">
-                    <Label>Grupo que lidera</Label>
-                    <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
-                      <SelectContent>
-                        {(grupos || []).map((g: any) => (
-                          <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      O líder aprovará as solicitações de reembolso do grupo selecionado.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
                 Cancelar
