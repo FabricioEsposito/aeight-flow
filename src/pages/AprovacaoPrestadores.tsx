@@ -290,7 +290,52 @@ function PainelStep({ step }: { step: Step }) {
     <Card>
       <CardHeader><CardTitle className="text-base">Pendentes</CardTitle></CardHeader>
       <CardContent>
-        {items.length === 0 ? (
+        <div className="flex flex-wrap gap-3 mb-4 items-end">
+          <div>
+            <Label className="text-xs">Data inicial</Label>
+            <Input type="date" value={filtroDataIni} onChange={(e) => setFiltroDataIni(e.target.value)} className="h-9 w-[160px]" />
+          </div>
+          <div>
+            <Label className="text-xs">Data final</Label>
+            <Input type="date" value={filtroDataFim} onChange={(e) => setFiltroDataFim(e.target.value)} className="h-9 w-[160px]" />
+          </div>
+          <div>
+            <Label className="text-xs">Centro de custo</Label>
+            <Select value={filtroCC} onValueChange={setFiltroCC}>
+              <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {centrosCusto.map((c: any) => (
+                  <SelectItem key={c.codigo} value={c.codigo}>{c.codigo} - {c.descricao}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo</Label>
+            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="nf_mensal">NF</SelectItem>
+                <SelectItem value="reembolso">Reembolso</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Regime</Label>
+            <Select value={filtroRegime} onValueChange={setFiltroRegime}>
+              <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="prestador">Prestador de serviço</SelectItem>
+                <SelectItem value="funcionario">Funcionário</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {itemsFiltrados.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma pendência.</p>
         ) : (
           <Table>
@@ -299,6 +344,8 @@ function PainelStep({ step }: { step: Step }) {
                 <TableHead>Data</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Fornecedor</TableHead>
+                <TableHead>CC</TableHead>
+                <TableHead>Regime</TableHead>
                 <TableHead>Mês ref.</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
@@ -307,11 +354,15 @@ function PainelStep({ step }: { step: Step }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((s: any) => (
+              {itemsFiltrados.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                   <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                  <TableCell className="text-xs">{s._centro_custo || '—'}</TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                  </TableCell>
                   <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
                   <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
                   <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
