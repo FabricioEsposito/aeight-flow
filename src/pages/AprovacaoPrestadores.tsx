@@ -62,6 +62,7 @@ function PainelStep({ step }: { step: Step }) {
   const queryClient = useQueryClient();
   const [aprovarItem, setAprovarItem] = useState<any>(null);
   const [rejeitarItem, setRejeitarItem] = useState<any>(null);
+  const [detalheItem, setDetalheItem] = useState<any>(null);
   const [motivo, setMotivo] = useState('');
   const [parcelaId, setParcelaId] = useState('');
   const [dataVenc, setDataVenc] = useState('');
