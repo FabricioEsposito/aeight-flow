@@ -547,7 +547,9 @@ export default function Usuarios() {
                     filterByPlanoContaCodigos={
                       editRole === 'prestador_servico'
                         ? ['3.1.2', '2.1.3']
-                        : ['2.1.2', '3.1.1']
+                        : editRole === 'lider_area'
+                          ? ['3.1.2', '2.1.3', '2.1.2', '3.1.1']
+                          : ['2.1.2', '3.1.1']
                     }
                   />
                   <p className="text-xs text-muted-foreground">
