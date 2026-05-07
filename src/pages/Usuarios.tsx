@@ -68,10 +68,12 @@ const roleOptions: { value: AppRole; label: string; description: string }[] = [
   { value: 'rh_manager', label: 'Gerente de RH', description: 'Acesso à área de RH, aprova folha de pagamento e benefícios' },
   { value: 'rh_analyst', label: 'Analista de RH', description: 'Acesso à área de RH, importa dados que requerem aprovação do Gerente de RH' },
   { value: 'contador', label: 'Contador', description: 'Acesso somente leitura ao Extrato/Conciliação e Relatório de Retenções' },
-  { value: 'prestador_servico', label: 'Prestador de Serviço', description: 'Acesso ao portal para envio de NFs e reembolsos' },
-  { value: 'funcionario', label: 'Funcionário', description: 'Acesso ao portal para solicitar reembolsos' },
-  { value: 'lider_area', label: 'Líder de Área', description: 'Aprova reembolsos do seu grupo antes do fluxo de RH/Financeiro' },
   { value: 'user', label: 'Usuário Básico', description: 'Acesso limitado, aguarda atribuição de nível' },
+];
+
+const regimeOptions: { value: 'prestador_servico' | 'funcionario'; label: string }[] = [
+  { value: 'prestador_servico', label: 'Prestador de Serviço' },
+  { value: 'funcionario', label: 'Funcionário' },
 ];
 
 const getRoleBadgeVariant = (role: AppRole): "default" | "secondary" | "outline" | "destructive" => {
