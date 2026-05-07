@@ -70,6 +70,7 @@ const roleOptions: { value: AppRole; label: string; description: string }[] = [
   { value: 'contador', label: 'Contador', description: 'Acesso somente leitura ao Extrato/Conciliação e Relatório de Retenções' },
   { value: 'prestador_servico', label: 'Prestador de Serviço', description: 'Acesso ao portal para envio de NFs e reembolsos' },
   { value: 'funcionario', label: 'Funcionário', description: 'Acesso ao portal para solicitar reembolsos' },
+  { value: 'lider_area', label: 'Líder de Área', description: 'Aprova reembolsos do seu grupo antes do fluxo de RH/Financeiro' },
   { value: 'user', label: 'Usuário Básico', description: 'Acesso limitado, aguarda atribuição de nível' },
 ];
 
@@ -94,6 +95,8 @@ export default function Usuarios() {
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editVendedorId, setEditVendedorId] = useState<string>("");
   const [editFornecedorId, setEditFornecedorId] = useState<string>("");
+  const [editGrupoId, setEditGrupoId] = useState<string>("");
+  const [editLideraGrupoId, setEditLideraGrupoId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -141,15 +144,16 @@ export default function Usuarios() {
       const userIds = data.users.map((u: any) => u.id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, vendedor_id, fornecedor_id')
+        .select('id, vendedor_id, fornecedor_id, grupo_id' as any)
         .in('id', userIds);
 
-      const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
+      const profileMap = new Map((profiles as any[])?.map((p: any) => [p.id, p]) || []);
       
       return data.users.map((u: any) => ({
         ...u,
         vendedor_id: (profileMap.get(u.id) as any)?.vendedor_id || null,
         fornecedor_id: (profileMap.get(u.id) as any)?.fornecedor_id || null,
+        grupo_id: (profileMap.get(u.id) as any)?.grupo_id || null,
       }));
     },
   });
@@ -181,9 +185,25 @@ export default function Usuarios() {
     },
   });
 
+  // Buscar grupos de área
+  const { data: grupos } = useQuery({
+    queryKey: ['grupos-area'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('grupos_area')
+        .select('id, nome, lider_user_id')
+        .order('nome');
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+  });
+
+  const grupoMap = new Map((grupos || []).map((g: any) => [g.id, g]));
+
+
   // Atualizar role do usuário
   const updateUserMutation = useMutation({
-    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null }) => {
+    mutationFn: async (formData: { userId: string; role: AppRole; vendedor_id?: string | null; fornecedor_id?: string | null; grupo_id?: string | null; lidera_grupo_id?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('update-user', {
         body: formData,
       });
@@ -195,6 +215,7 @@ export default function Usuarios() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['grupos-area'] });
       toast({
         title: "Nível hierárquico atualizado!",
         description: "As alterações foram salvas com sucesso.",
@@ -203,6 +224,8 @@ export default function Usuarios() {
       setEditingUser(null);
       setEditVendedorId("");
       setEditFornecedorId("");
+      setEditGrupoId("");
+      setEditLideraGrupoId("");
     },
     onError: (error: any) => {
       console.error('Update error:', error);
@@ -281,18 +304,23 @@ export default function Usuarios() {
     setEditRole(usuario.role || 'user');
     setEditVendedorId(usuario.vendedor_id || "");
     setEditFornecedorId(usuario.fornecedor_id || "");
+    setEditGrupoId(usuario.grupo_id || "");
+    const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
+    setEditLideraGrupoId(lideraGrupo?.id || "");
     setOpenEdit(true);
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingUser) {
-      const isPrestadorOrFunc = editRole === 'prestador_servico' || editRole === 'funcionario';
+      const isPortalRole = editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area';
       updateUserMutation.mutate({
         userId: editingUser.id,
         role: editRole,
         vendedor_id: editRole === 'salesperson' ? (editVendedorId || null) : null,
-        fornecedor_id: isPrestadorOrFunc ? (editFornecedorId || null) : null,
+        fornecedor_id: isPortalRole ? (editFornecedorId || null) : null,
+        grupo_id: isPortalRole ? (editGrupoId || null) : null,
+        lidera_grupo_id: editRole === 'lider_area' ? (editLideraGrupoId || null) : null,
       });
     }
   };
@@ -328,10 +356,12 @@ export default function Usuarios() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Nível Hierárquico</TableHead>
-                <TableHead>Vendedor Vinculado</TableHead>
-                <TableHead>Fornecedor Vinculado</TableHead>
+                <TableHead>Grupo</TableHead>
+                <TableHead>Líder</TableHead>
+                <TableHead>Fornecedor</TableHead>
+                <TableHead>Vendedor</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Data de Cadastro</TableHead>
+                <TableHead>Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -339,7 +369,12 @@ export default function Usuarios() {
               {usuarios?.map((usuario: any) => {
                 const vendedorVinculado = vendedores?.find(v => v.id === usuario.vendedor_id);
                 const fornecedorVinculado = fornecedores?.find(f => f.id === usuario.fornecedor_id);
-                const isPrestadorOrFunc = usuario.role === 'prestador_servico' || usuario.role === 'funcionario';
+                const isPortalRole = usuario.role === 'prestador_servico' || usuario.role === 'funcionario' || usuario.role === 'lider_area';
+                const grupo: any = usuario.grupo_id ? grupoMap.get(usuario.grupo_id) : null;
+                const lider = grupo?.lider_user_id
+                  ? usuarios?.find((u: any) => u.id === grupo.lider_user_id)
+                  : null;
+                const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
                 return (
                   <TableRow key={usuario.id}>
                     <TableCell className="font-medium">{usuario.nome || 'N/A'}</TableCell>
@@ -350,9 +385,30 @@ export default function Usuarios() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {usuario.role === 'salesperson' ? (
-                        vendedorVinculado ? (
-                          <Badge variant="outline">{vendedorVinculado.nome}</Badge>
+                      {grupo ? (
+                        <Badge variant="outline">{grupo.nome}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                      {lideraGrupo && (
+                        <Badge variant="secondary" className="ml-1">Lidera {lideraGrupo.nome}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {lider ? (
+                        <span className="text-sm">{lider.nome || lider.email}</span>
+                      ) : usuario.role === 'lider_area' ? (
+                        <span className="text-muted-foreground text-sm">— (líder)</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isPortalRole ? (
+                        fornecedorVinculado ? (
+                          <Badge variant="outline">
+                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
+                          </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">Não vinculado</span>
                         )
@@ -361,11 +417,9 @@ export default function Usuarios() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {isPrestadorOrFunc ? (
-                        fornecedorVinculado ? (
-                          <Badge variant="outline">
-                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
-                          </Badge>
+                      {usuario.role === 'salesperson' ? (
+                        vendedorVinculado ? (
+                          <Badge variant="outline">{vendedorVinculado.nome}</Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">Não vinculado</span>
                         )
@@ -483,22 +537,53 @@ export default function Usuarios() {
               </div>
             )}
 
-            {(editRole === 'prestador_servico' || editRole === 'funcionario') && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
-                <FornecedorSelect
-                  value={editFornecedorId}
-                  onChange={setEditFornecedorId}
-                  filterByPlanoContaCodigos={
-                    editRole === 'prestador_servico'
-                      ? ['3.1.2', '2.1.3']
-                      : ['2.1.2', '3.1.1']
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Vincule este usuário ao cadastro de fornecedor correspondente para que possa enviar NFs e/ou reembolsos.
-                </p>
-              </div>
+            {(editRole === 'prestador_servico' || editRole === 'funcionario' || editRole === 'lider_area') && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-fornecedor">Vincular Fornecedor</Label>
+                  <FornecedorSelect
+                    value={editFornecedorId}
+                    onChange={setEditFornecedorId}
+                    filterByPlanoContaCodigos={
+                      editRole === 'prestador_servico'
+                        ? ['3.1.2', '2.1.3']
+                        : ['2.1.2', '3.1.1']
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A empresa do usuário é definida pelo centro de custo do fornecedor.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Grupo</Label>
+                  <Select value={editGrupoId} onValueChange={setEditGrupoId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+                    <SelectContent>
+                      {(grupos || []).map((g: any) => (
+                        <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editRole === 'lider_area' && (
+                  <div className="space-y-2">
+                    <Label>Grupo que lidera</Label>
+                    <Select value={editLideraGrupoId} onValueChange={setEditLideraGrupoId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o grupo que ele lidera" /></SelectTrigger>
+                      <SelectContent>
+                        {(grupos || []).map((g: any) => (
+                          <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      O líder aprovará as solicitações de reembolso do grupo selecionado.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>

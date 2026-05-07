@@ -1359,6 +1359,38 @@ export type Database = {
         }
         Relationships: []
       }
+      grupos_area: {
+        Row: {
+          created_at: string
+          id: string
+          lider_user_id: string | null
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lider_user_id?: string | null
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lider_user_id?: string | null
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_area_lider_user_id_fkey"
+            columns: ["lider_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hierarchy_requests: {
         Row: {
           approved_at: string | null
@@ -1702,6 +1734,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           fornecedor_id: string | null
+          grupo_id: string | null
           id: string
           nome: string | null
           updated_at: string | null
@@ -1713,6 +1746,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           fornecedor_id?: string | null
+          grupo_id?: string | null
           id: string
           nome?: string | null
           updated_at?: string | null
@@ -1724,6 +1758,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           fornecedor_id?: string | null
+          grupo_id?: string | null
           id?: string
           nome?: string | null
           updated_at?: string | null
@@ -1735,6 +1770,13 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_area"
             referencedColumns: ["id"]
           },
           {
@@ -1977,12 +2019,14 @@ export type Database = {
         Row: {
           ano_referencia: number | null
           aprovador_financeiro_id: string | null
+          aprovador_lider_id: string | null
           aprovador_rh_id: string | null
           arquivo_path: string
           conta_bancaria_id: string | null
           conta_pagar_id: string | null
           created_at: string
           data_aprovacao_financeiro: string | null
+          data_aprovacao_lider: string | null
           data_aprovacao_rh: string | null
           data_vencimento_pagamento: string | null
           descricao: string | null
@@ -1991,6 +2035,7 @@ export type Database = {
           id: string
           mes_referencia: number | null
           motivo_rejeicao_financeiro: string | null
+          motivo_rejeicao_lider: string | null
           motivo_rejeicao_rh: string | null
           numero_nf: string | null
           parcela_id: string | null
@@ -2003,12 +2048,14 @@ export type Database = {
         Insert: {
           ano_referencia?: number | null
           aprovador_financeiro_id?: string | null
+          aprovador_lider_id?: string | null
           aprovador_rh_id?: string | null
           arquivo_path: string
           conta_bancaria_id?: string | null
           conta_pagar_id?: string | null
           created_at?: string
           data_aprovacao_financeiro?: string | null
+          data_aprovacao_lider?: string | null
           data_aprovacao_rh?: string | null
           data_vencimento_pagamento?: string | null
           descricao?: string | null
@@ -2017,6 +2064,7 @@ export type Database = {
           id?: string
           mes_referencia?: number | null
           motivo_rejeicao_financeiro?: string | null
+          motivo_rejeicao_lider?: string | null
           motivo_rejeicao_rh?: string | null
           numero_nf?: string | null
           parcela_id?: string | null
@@ -2029,12 +2077,14 @@ export type Database = {
         Update: {
           ano_referencia?: number | null
           aprovador_financeiro_id?: string | null
+          aprovador_lider_id?: string | null
           aprovador_rh_id?: string | null
           arquivo_path?: string
           conta_bancaria_id?: string | null
           conta_pagar_id?: string | null
           created_at?: string
           data_aprovacao_financeiro?: string | null
+          data_aprovacao_lider?: string | null
           data_aprovacao_rh?: string | null
           data_vencimento_pagamento?: string | null
           descricao?: string | null
@@ -2043,6 +2093,7 @@ export type Database = {
           id?: string
           mes_referencia?: number | null
           motivo_rejeicao_financeiro?: string | null
+          motivo_rejeicao_lider?: string | null
           motivo_rejeicao_rh?: string | null
           numero_nf?: string | null
           parcela_id?: string | null
@@ -2274,6 +2325,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_lider_do_solicitante: {
+        Args: { _solicitante_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
@@ -2288,6 +2343,7 @@ export type Database = {
         | "contador"
         | "prestador_servico"
         | "funcionario"
+        | "lider_area"
       conta_tipo: "corrente" | "poupanca" | "investimento"
       importancia_nivel: "importante" | "mediano" | "nao_importante"
       pessoa_tipo: "fisica" | "juridica" | "internacional"
@@ -2434,6 +2490,7 @@ export const Constants = {
         "contador",
         "prestador_servico",
         "funcionario",
+        "lider_area",
       ],
       conta_tipo: ["corrente", "poupanca", "investimento"],
       importancia_nivel: ["importante", "mediano", "nao_importante"],

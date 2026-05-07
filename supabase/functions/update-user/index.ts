@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { userId, email, nome, role, vendedor_id, fornecedor_id } = await req.json();
+    const { userId, email, nome, role, vendedor_id, fornecedor_id, grupo_id, lidera_grupo_id } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
     if (email !== undefined) profileUpdates.email = email;
     if (vendedor_id !== undefined) profileUpdates.vendedor_id = vendedor_id || null;
     if (fornecedor_id !== undefined) profileUpdates.fornecedor_id = fornecedor_id || null;
+    if (grupo_id !== undefined) profileUpdates.grupo_id = grupo_id || null;
 
     if (Object.keys(profileUpdates).length > 0) {
       const { error: profileError } = await supabaseAdmin
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
     }
 
     // Auto-approve vínculo when admin links a fornecedor to a prestador/funcionário
-    if (fornecedor_id && (role === 'prestador_servico' || role === 'funcionario')) {
+    if (fornecedor_id && (role === 'prestador_servico' || role === 'funcionario' || role === 'lider_area')) {
       const { data: existing } = await supabaseAdmin
         .from('vinculos_usuario_fornecedor')
         .select('id')
@@ -146,7 +147,7 @@ Deno.serve(async (req) => {
       const vinculoPayload: any = {
         user_id: userId,
         fornecedor_id,
-        tipo: role,
+        tipo: role === 'lider_area' ? 'funcionario' : role,
         status: 'aprovado',
         aprovado_por: user.id,
         aprovado_em: new Date().toISOString(),
@@ -164,6 +165,23 @@ Deno.serve(async (req) => {
           .from('vinculos_usuario_fornecedor')
           .insert(vinculoPayload);
         if (vErr) console.error('Error inserting vinculo:', vErr);
+      }
+    }
+
+    // Manage lider_area group leadership: clear any previous group led by this user, then set new one
+    if (role !== undefined) {
+      // Always clear leadership held by this user
+      await supabaseAdmin
+        .from('grupos_area')
+        .update({ lider_user_id: null })
+        .eq('lider_user_id', userId);
+
+      if (role === 'lider_area' && lidera_grupo_id) {
+        const { error: gErr } = await supabaseAdmin
+          .from('grupos_area')
+          .update({ lider_user_id: userId })
+          .eq('id', lidera_grupo_id);
+        if (gErr) console.error('Error setting grupo leader:', gErr);
       }
     }
 
