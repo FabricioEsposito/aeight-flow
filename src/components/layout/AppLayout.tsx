@@ -56,7 +56,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
-      <OnboardingOverlay />
+      {/* <OnboardingOverlay /> */}
     </div>
   );
 }
