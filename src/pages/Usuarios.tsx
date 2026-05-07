@@ -378,28 +378,28 @@ export default function Usuarios() {
           <Table className="w-full table-fixed text-xs">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[11%] px-2">Nome</TableHead>
-                <TableHead className="w-[16%] px-2">Email</TableHead>
-                <TableHead className="w-[10%] px-2">Nível</TableHead>
+                <TableHead className="w-[10%] px-2">Nome</TableHead>
+                <TableHead className="w-[14%] px-2">Email</TableHead>
+                <TableHead className="w-[9%] px-2">Nível</TableHead>
+                <TableHead className="w-[9%] px-2">Regime</TableHead>
                 <TableHead className="w-[10%] px-2">Grupo</TableHead>
                 <TableHead className="w-[9%] px-2">Líder</TableHead>
-                <TableHead className="w-[14%] px-2">Fornecedor</TableHead>
-                <TableHead className="w-[10%] px-2">Vendedor</TableHead>
-                <TableHead className="w-[7%] px-2">Status</TableHead>
-                <TableHead className="w-[8%] px-2">Cadastro</TableHead>
-                <TableHead className="w-[5%] px-2 text-right">Ações</TableHead>
+                <TableHead className="w-[13%] px-2">Fornecedor</TableHead>
+                <TableHead className="w-[9%] px-2">Vendedor</TableHead>
+                <TableHead className="w-[6%] px-2">Status</TableHead>
+                <TableHead className="w-[7%] px-2">Cadastro</TableHead>
+                <TableHead className="w-[4%] px-2 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {usuarios?.map((usuario: any) => {
                 const vendedorVinculado = vendedores?.find(v => v.id === usuario.vendedor_id);
                 const fornecedorVinculado = fornecedores?.find(f => f.id === usuario.fornecedor_id);
-                const isPortalRole = usuario.role === 'prestador_servico' || usuario.role === 'funcionario' || usuario.role === 'lider_area';
                 const grupo: any = usuario.grupo_id ? grupoMap.get(usuario.grupo_id) : null;
                 const lider = grupo?.lider_user_id
                   ? usuarios?.find((u: any) => u.id === grupo.lider_user_id)
                   : null;
-                const lideraGrupo = (grupos || []).find((g: any) => g.lider_user_id === usuario.id);
+                const lideraGrupo = usuario.lidera_grupo_id ? grupoMap.get(usuario.lidera_grupo_id) : null;
                 return (
                   <TableRow key={usuario.id}>
                     <TableCell className="font-medium px-2 break-words">{usuario.nome || 'N/A'}</TableCell>
@@ -410,35 +410,40 @@ export default function Usuarios() {
                       </Badge>
                     </TableCell>
                     <TableCell className="px-2">
+                      {usuario.regime_contrato === 'prestador_servico' ? (
+                        <Badge variant="outline" className="text-[11px]">Prestador</Badge>
+                      ) : usuario.regime_contrato === 'funcionario' ? (
+                        <Badge variant="outline" className="text-[11px]">Funcionário</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-2">
                       {grupo ? (
-                        <Badge variant="outline" className="whitespace-normal text-[11px]">{grupo.nome}</Badge>
+                        <Badge variant="outline" className="whitespace-normal text-[11px]">{(grupo as any).nome}</Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                       {lideraGrupo && (
-                        <Badge variant="secondary" className="ml-1 mt-1 whitespace-normal text-[11px]">Lidera {lideraGrupo.nome}</Badge>
+                        <Badge variant="secondary" className="ml-1 mt-1 whitespace-normal text-[11px]">Lidera {(lideraGrupo as any).nome}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="px-2 break-words">
                       {lider ? (
                         <span>{lider.nome || lider.email}</span>
-                      ) : usuario.role === 'lider_area' ? (
+                      ) : usuario.is_lider_area ? (
                         <span className="text-muted-foreground">— (líder)</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="px-2">
-                      {isPortalRole ? (
-                        fornecedorVinculado ? (
-                          <Badge variant="outline" className="whitespace-normal text-[11px] break-words">
-                            {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">Não vinculado</span>
-                        )
+                      {fornecedorVinculado ? (
+                        <Badge variant="outline" className="whitespace-normal text-[11px] break-words">
+                          {fornecedorVinculado.nome_fantasia || fornecedorVinculado.razao_social}
+                        </Badge>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground">Não vinculado</span>
                       )}
                     </TableCell>
                     <TableCell className="px-2">
