@@ -441,7 +441,7 @@ export default function Usuarios() {
                         ? new Date(usuario.created_at).toLocaleDateString('pt-BR')
                         : 'N/A'}
                     </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right px-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
