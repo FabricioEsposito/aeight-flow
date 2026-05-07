@@ -16,7 +16,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 
 export default function MinhasSolicitacoes() {
   const { user } = useAuth();
-  const { isPrestador, isFuncionario } = useUserRole();
+  const { isPrestador, isFuncionario, isLiderArea } = useUserRole();
+  const canSendNF = isPrestador || isLiderArea;
   const [openNF, setOpenNF] = useState(false);
   const [openReemb, setOpenReemb] = useState(false);
 
