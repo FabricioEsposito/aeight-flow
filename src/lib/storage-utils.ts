@@ -42,23 +42,38 @@ async function findReplacementPath(filePath: string, bucket: string): Promise<st
 }
 
 /**
+ * Detects the bucket from a Supabase storage URL (public or signed).
+ */
+function detectBucketFromUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const m = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\//);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Opens a private storage file directly in a new browser tab for inline viewing
  * (PDF/image preview), instead of forcing a download.
  */
 export async function openStorageFile(publicUrl: string, bucket = 'faturamento-docs') {
-  const filePath = extractPathFromUrl(publicUrl, bucket);
+  // Auto-detect bucket from the URL when present (handles cross-bucket files like prestador-docs)
+  const detectedBucket = detectBucketFromUrl(publicUrl) || bucket;
+  const filePath = extractPathFromUrl(publicUrl, detectedBucket);
   if (!filePath) {
     toast.error('Não foi possível localizar o arquivo.');
     return;
   }
 
   const createSigned = async (path: string) =>
-    supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
+    supabase.storage.from(detectedBucket).createSignedUrl(path, 60 * 60);
 
   let { data, error } = await createSigned(filePath);
 
   if (error || !data?.signedUrl) {
-    const replacementPath = await findReplacementPath(filePath, bucket);
+    const replacementPath = await findReplacementPath(filePath, detectedBucket);
     if (replacementPath) ({ data, error } = await createSigned(replacementPath));
   }
 
