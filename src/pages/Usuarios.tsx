@@ -199,8 +199,6 @@ export default function Usuarios() {
   });
 
   const grupoMap = new Map((grupos || []).map((g: any) => [g.id, g]));
-  const liderNomeMap = new Map<string, string>();
-  // Build lider name lookup from usuarios list once it's loaded
 
 
   // Atualizar role do usuário
