@@ -43,7 +43,7 @@ export default function MinhasSolicitacoes() {
       <div>
         <h1 className="text-2xl font-bold">Minhas Solicitações</h1>
         <p className="text-muted-foreground">
-          {isPrestador
+          {canSendNF
             ? 'Envie suas notas fiscais mensais e solicitações de reembolso.'
             : 'Solicite reembolsos de despesas com upload do comprovante.'}
         </p>
