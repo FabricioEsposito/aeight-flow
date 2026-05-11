@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Sparkles, Eye, EyeOff } from "lucide-react";
 import { DREChatDialog } from "./DREChatDialog";
 import { DRETrendChart } from "./DRETrendChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -797,6 +798,25 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
   };
 
+  // Tooltip da AH: detalha quais categorias mais subiram/caíram entre o 1º e o último mês
+  const getAHBreakdown = (label: string): { ganhos: Array<{ label: string; variacao: number }>; perdas: Array<{ label: string; variacao: number }> } | null => {
+    if (!dreMensal || dreMensal.meses.length < 2) return null;
+    const linha = dreMensal.linhas.find(l => l.label === label);
+    if (!linha?.detalhes?.length) return null;
+    const lastIdx = dreMensal.meses.length - 1;
+    const items = linha.detalhes
+      .map(d => {
+        const first = d.valores[0] || 0;
+        const last = d.valores[lastIdx] || 0;
+        return { label: d.label, variacao: last - first };
+      })
+      .filter(d => Math.abs(d.variacao) > 0.005);
+    const ganhos = items.filter(i => i.variacao > 0).sort((a, b) => b.variacao - a.variacao).slice(0, 5);
+    const perdas = items.filter(i => i.variacao < 0).sort((a, b) => a.variacao - b.variacao).slice(0, 5);
+    if (ganhos.length === 0 && perdas.length === 0) return null;
+    return { ganhos, perdas };
+  };
+
   const renderLine = (
     label: string,
     value: number | string,
@@ -839,18 +859,72 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 {av}
               </span>
             )}
-            <span
-              className={cn(
-                "text-xs w-20 text-right shrink-0",
-                !ah && "text-muted-foreground",
-                ah?.positive === null && "text-muted-foreground",
-                ah?.positive === true && (isNegative ? "text-destructive" : "text-emerald-600"),
-                ah?.positive === false && (isNegative ? "text-emerald-600" : "text-destructive"),
-              )}
-              title="Análise Horizontal: variação % entre o primeiro e o último mês do período"
-            >
-              {ah ? ah.text : ''}
-            </span>
+            {(() => {
+              const ahSpan = (
+                <span
+                  className={cn(
+                    "text-xs w-20 text-right shrink-0 cursor-help",
+                    !ah && "text-muted-foreground",
+                    ah?.positive === null && "text-muted-foreground",
+                    ah?.positive === true && (isNegative ? "text-destructive" : "text-emerald-600"),
+                    ah?.positive === false && (isNegative ? "text-emerald-600" : "text-destructive"),
+                  )}
+                >
+                  {ah ? ah.text : ''}
+                </span>
+              );
+              const breakdown = isTotal && hasDetails && ah ? getAHBreakdown(label) : null;
+              if (!breakdown) {
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{ahSpan}</TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs">Análise Horizontal: variação % entre o 1º e o último mês do período</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>{ahSpan}</TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-sm">
+                    <div className="space-y-2 text-xs">
+                      <p className="font-semibold">Variação por categoria (1º x último mês)</p>
+                      {breakdown.ganhos.length > 0 && (
+                        <div>
+                          <p className={cn("font-medium mb-1", isNegative ? "text-destructive" : "text-emerald-600")}>
+                            {isNegative ? 'Aumentos (impacto negativo)' : 'Ganhos (impacto positivo)'}
+                          </p>
+                          <ul className="space-y-0.5">
+                            {breakdown.ganhos.map((g, i) => (
+                              <li key={i} className="flex justify-between gap-3">
+                                <span className="truncate">{g.label}</span>
+                                <span className="shrink-0">+{formatCurrency(g.variacao)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {breakdown.perdas.length > 0 && (
+                        <div>
+                          <p className={cn("font-medium mb-1", isNegative ? "text-emerald-600" : "text-destructive")}>
+                            {isNegative ? 'Reduções (impacto positivo)' : 'Perdas (impacto negativo)'}
+                          </p>
+                          <ul className="space-y-0.5">
+                            {breakdown.perdas.map((p, i) => (
+                              <li key={i} className="flex justify-between gap-3">
+                                <span className="truncate">{p.label}</span>
+                                <span className="shrink-0">-{formatCurrency(Math.abs(p.variacao))}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })()}
             <div className="flex items-center gap-1 w-36 justify-end shrink-0">
               {showValue && isNegative && <span className="text-destructive">-</span>}
               <span className={cn(
