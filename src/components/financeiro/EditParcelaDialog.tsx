@@ -20,6 +20,8 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 
+const MARKETING_AFILIADOS_SERVICE_ID = '1cee9599-206e-47bc-b19e-d2cd8177d9d8';
+
 interface EditParcelaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
