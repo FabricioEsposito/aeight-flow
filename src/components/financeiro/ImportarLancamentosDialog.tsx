@@ -1181,9 +1181,11 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             plano_conta_id: row.plano_conta_id || null,
             centro_custo: row.centro_custo || null,
             conta_bancaria_id: row.conta_bancaria_id || null,
+            servico_id: row.servico_id || null,
+            split_afiliado: row.split_afiliado ?? null,
             observacoes,
             status: 'pendente',
-          });
+          } as any);
           if (error) throw error;
         } else {
           // Verificar se temos fornecedor_id válido antes de inserir
