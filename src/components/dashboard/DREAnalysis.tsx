@@ -26,6 +26,7 @@ interface DetalheItem {
 interface DREData {
   receita: number;
   receitaDetalhes: DetalheItem[];
+  receitaPorServicoDetalhes: DetalheItem[];
   cmv: number;
   cmvDetalhes: DetalheItem[];
   margemContribuicao: number;
@@ -182,7 +183,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência) - com paginação
       const receitas = await fetchAllRows(
         'contas_receber',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, plano_contas(codigo, descricao), clientes(razao_social)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, servico_id, plano_contas(codigo, descricao), clientes(razao_social), servicos(nome)',
         dateRange
       );
 
@@ -371,6 +372,50 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         'receita'
       );
 
+      // Agrupar receitas por SERVIÇO (com clientes dentro)
+      const agruparReceitaPorServico = (
+        lancamentos: any[],
+        accountIds: string[]
+      ): DetalheItem[] => {
+        const grouped = new Map<string, { descricao: string; items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>; total: number }>();
+
+        lancamentos?.forEach(l => {
+          if (!l.plano_conta_id || !accountIds.includes(l.plano_conta_id)) return;
+          const effective = getEffectiveValue(l);
+          if (!effective) return;
+
+          const servicoNome = l.servicos?.nome || 'Sem serviço informado';
+          const cliente = l.clientes?.razao_social || 'Cliente não informado';
+          const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
+
+          if (!grouped.has(servicoNome)) {
+            grouped.set(servicoNome, { descricao: servicoNome, items: new Map(), total: 0 });
+          }
+          const g = grouped.get(servicoNome)!;
+          g.total += effective.valor;
+          const itemKey = ccNome ? `${cliente}|||${ccNome}` : cliente;
+          const cur = g.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
+          cur.valor += effective.valor;
+          g.items.set(itemKey, cur);
+        });
+
+        return Array.from(grouped.values()).map(g => ({
+          codigo: '',
+          descricao: g.descricao,
+          valor: g.total,
+          items: Array.from(g.items.entries())
+            .map(([key, item]) => ({
+              nome: key.includes('|||') ? key.split('|||')[0] : key,
+              valor: item.valor,
+              centroCusto: item.centroCusto,
+              rateio: item.rateio,
+            }))
+            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
+        })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
+      };
+
+      const receitaPorServicoDetalhes = agruparReceitaPorServico(receitas, receitaIds);
+
       // Processar CMV - Custos Variáveis (2.1)
       const cmvIds = getAccountIds('2.1');
       const { detalhes: cmvDetalhes, total: cmvTotal } = agruparDetalhes(
@@ -507,6 +552,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       setDreData({
         receita: receitaTotal,
         receitaDetalhes,
+        receitaPorServicoDetalhes,
         cmv: cmvTotal,
         cmvDetalhes,
         margemContribuicao,
@@ -757,6 +803,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Receita */}
           {renderLine('Receita', dreData.receita, false, false, true, 'receita')}
           {renderDetails('receita', dreData.receitaDetalhes)}
+
+          {/* Receita por Serviço (subagrupamento) */}
+          {renderLine('↳ Receita por Serviço', dreData.receita, false, false, true, 'receitaPorServico', true)}
+          {renderDetails('receitaPorServico', dreData.receitaPorServicoDetalhes)}
 
           {/* CMV */}
           {renderLine('CMV (Custo Variável)', dreData.cmv, false, true, true, 'cmv')}
