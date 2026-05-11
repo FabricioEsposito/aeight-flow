@@ -703,7 +703,17 @@ export default function Extrato() {
           servico_id: (r as any).servico_id || null,
         };
 
-        if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
+        // Prioridade: serviço individual do lançamento (se houver) sobrepõe os do contrato
+        if ((r as any).servico_id) {
+          const { data: servicoData } = await supabase
+            .from('servicos')
+            .select('id, codigo, nome')
+            .eq('id', (r as any).servico_id)
+            .maybeSingle();
+          if (servicoData) {
+            lancamento.servicos_detalhes = [servicoData];
+          }
+        } else if (r.parcelas_contrato?.contratos?.servicos && Array.isArray(r.parcelas_contrato.contratos.servicos) && r.parcelas_contrato.contratos.servicos.length > 0) {
           const { data: servicosData } = await supabase
             .from('servicos')
             .select('id, codigo, nome')
