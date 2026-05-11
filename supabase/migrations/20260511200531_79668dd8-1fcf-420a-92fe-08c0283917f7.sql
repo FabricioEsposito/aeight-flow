@@ -1,0 +1,1 @@
+UPDATE public.contas_pagar SET plano_conta_id = '7000e395-fbcd-471b-85fb-4cce9b613845' WHERE id IN ('6065f167-4b9c-4d4e-8eb3-0ad495d8eff0','708e6892-8a7c-478e-9e15-c4f97cdd8644');
