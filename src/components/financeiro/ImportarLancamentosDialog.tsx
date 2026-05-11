@@ -75,6 +75,7 @@ interface PreviewRow {
   centro_custo?: string;
   conta_bancaria_id?: string;
   servico_id?: string;
+  split_afiliado?: number;
 }
 
 interface ValidationError {
