@@ -113,6 +113,7 @@ export function EditParcelaDialog({
       setFornecedorId(initialData.fornecedor_id || '');
       setClienteId(initialData.cliente_id || '');
       setServicoId(initialData.servico_id || '');
+      setSplitAfiliado(Number(initialData.split_afiliado) || 0);
       setOriginalFornecedorId(initialData.fornecedor_id || '');
       setOriginalClienteId(initialData.cliente_id || '');
 
