@@ -572,6 +572,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       const receitaMes = somarPorMes(receitas, receitaIds);
       const cmvMes = somarPorMes(despesas, cmvIds);
+      const cmvEspecialMes = somarPorMes(despesas, cmvEspecialIds);
       const despAdmMes = somarPorMes(despesas, despAdmIds);
       const impostosMes = somarPorMes(despesas, impostosIds);
       const despFinMes = somarPorMes(despesas, despFinIds);
