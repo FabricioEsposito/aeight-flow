@@ -1089,6 +1089,20 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                     if (!receitaBase || receitaBase === 0) return '-';
                     return `${((Math.abs(valor) / Math.abs(receitaBase)) * 100).toFixed(1)}%`;
                   };
+                  // AH = variação % vs mês anterior
+                  const formatAH = (valores: number[], i: number): { text: string; positive: boolean | null } => {
+                    if (i === 0) return { text: '—', positive: null };
+                    const prev = valores[i - 1];
+                    const curr = valores[i];
+                    if (!prev || prev === 0) {
+                      if (!curr || curr === 0) return { text: '—', positive: null };
+                      return { text: '—', positive: null };
+                    }
+                    const variacao = ((curr - prev) / Math.abs(prev)) * 100;
+                    if (!isFinite(variacao)) return { text: '—', positive: null };
+                    const sign = variacao > 0 ? '+' : '';
+                    return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
+                  };
 
                   const renderDetalheRow = (
                     d: MensalDetalhe,
