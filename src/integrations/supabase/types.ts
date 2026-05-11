@@ -437,6 +437,7 @@ export type Database = {
           parcela_id: string | null
           plano_conta_id: string | null
           servico_id: string | null
+          split_afiliado: number | null
           status: string | null
           updated_at: string | null
           valor: number
@@ -463,6 +464,7 @@ export type Database = {
           parcela_id?: string | null
           plano_conta_id?: string | null
           servico_id?: string | null
+          split_afiliado?: number | null
           status?: string | null
           updated_at?: string | null
           valor: number
@@ -489,6 +491,7 @@ export type Database = {
           parcela_id?: string | null
           plano_conta_id?: string | null
           servico_id?: string | null
+          split_afiliado?: number | null
           status?: string | null
           updated_at?: string | null
           valor?: number

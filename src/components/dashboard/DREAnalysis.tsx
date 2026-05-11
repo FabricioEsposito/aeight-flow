@@ -55,7 +55,11 @@ interface DREData {
   resultadoExercicio: number;
   despExtraordinaria: number;
   despExtraordinariaDetalhes: DetalheItem[];
+  splitAfiliado: number;
+  splitAfiliadoMes: number[];
 }
+
+const SPLIT_HIDDEN_COST_CODES = ['2.1.11', '2.1.12', '2.1.13'];
 
 interface DREAnalysisProps {
   dateRange: { from: string; to: string } | null;
@@ -87,6 +91,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
+  const [showSplitAfiliado, setShowSplitAfiliado] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // Helper to format "YYYY-MM-DD" string to display format
@@ -101,7 +106,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
   useEffect(() => {
     fetchDREData();
-  }, [dateRange, centroCusto]);
+  }, [dateRange, centroCusto, showSplitAfiliado]);
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
@@ -198,7 +203,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência) - com paginação
       const receitas = await fetchAllRows(
         'contas_receber',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, servico_id, observacoes, plano_contas(codigo, descricao), clientes(razao_social), servicos(nome)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, servico_id, observacoes, split_afiliado, plano_contas(codigo, descricao), clientes(razao_social), servicos(nome)',
         dateRange
       );
 
@@ -490,15 +495,26 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       // Processar receitas (1.1)
       const receitaIds = getAccountIds('1.1');
-      const { detalhes: receitaDetalhes, total: receitaTotal } = agruparDetalhes(
+      const { detalhes: receitaDetalhesRaw, total: receitaTotalRaw } = agruparDetalhes(
         receitas,
         receitaIds,
         planosContas,
         'receita'
       );
 
-      // Processar CMV - Custos Variáveis (2.1)
-      const cmvIds = getAccountIds('2.1');
+      // Calcular Split Afiliado (consolidado)
+      const splitTotal = (receitas || []).reduce((s, l: any) => s + (Number(l.split_afiliado) || 0), 0);
+      const receitaTotal = showSplitAfiliado ? receitaTotalRaw - splitTotal : receitaTotalRaw;
+      const receitaDetalhes = receitaDetalhesRaw;
+
+      // Processar CMV - Custos Variáveis (2.1) — quando "com Split" oculta 2.1.11/2.1.12/2.1.13
+      const cmvIdsAll = getAccountIds('2.1');
+      const cmvIds = showSplitAfiliado
+        ? cmvIdsAll.filter(id => {
+            const p = planosContas.find(pc => pc.id === id);
+            return p && !SPLIT_HIDDEN_COST_CODES.some(c => p.codigo === c || p.codigo.startsWith(c + '.'));
+          })
+        : cmvIdsAll;
       const { detalhes: cmvDetalhes, total: cmvTotal } = agruparDetalhes(
         despesas,
         cmvIds,
@@ -596,7 +612,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         return totais;
       };
 
-      const receitaMes = somarPorMes(receitas, receitaIds);
+      const receitaMesRaw = somarPorMes(receitas, receitaIds);
+      // Split por mês (somar split_afiliado por data_competencia)
+      const splitAfiliadoMes = new Array(mesesList.length).fill(0);
+      (receitas || []).forEach((l: any) => {
+        const v = Number(l.split_afiliado) || 0;
+        if (!v || !l.data_competencia) return;
+        const idx = mesesList.indexOf(l.data_competencia.slice(0, 7));
+        if (idx !== -1) splitAfiliadoMes[idx] += v;
+      });
+      const receitaMes = showSplitAfiliado
+        ? receitaMesRaw.map((r, i) => r - splitAfiliadoMes[i])
+        : receitaMesRaw;
       const cmvMes = somarPorMes(despesas, cmvIds);
       
       const despAdmMes = somarPorMes(despesas, despAdmIds);
@@ -700,24 +727,27 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const provisaoMes = ebitMes.map(e => e > 0 ? e * 0.34 : 0);
       const resultadoMes = ebitMes.map((e, i) => e - provisaoMes[i]);
 
-      setDreMensal({
-        meses: mesesList,
-        linhas: [
-          { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
-          { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
-          { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
-          { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true, detalhes: despAdmDetalheMes },
-          { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
-          { label: 'Impostos', valores: impostosMes, isNegative: true, detalhes: impostosDetalheMes },
-          { label: 'Empréstimo', valores: emprestimosMes, isNegative: true, detalhes: emprestimosDetalheMes },
-          { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true, detalhes: despFinDetalheMes },
-          { label: 'EBIT', valores: ebitMes, isTotal: true },
-          { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
-          { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
-          { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
-          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
-        ],
-      });
+      const linhasMensal: DREMensal['linhas'] = [
+        { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
+      ];
+      if (showSplitAfiliado) {
+        linhasMensal.push({ label: '(-) Split Afiliado', valores: splitAfiliadoMes, isNegative: true });
+      }
+      linhasMensal.push(
+        { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
+        { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
+        { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true, detalhes: despAdmDetalheMes },
+        { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
+        { label: 'Impostos', valores: impostosMes, isNegative: true, detalhes: impostosDetalheMes },
+        { label: 'Empréstimo', valores: emprestimosMes, isNegative: true, detalhes: emprestimosDetalheMes },
+        { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true, detalhes: despFinDetalheMes },
+        { label: 'EBIT', valores: ebitMes, isTotal: true },
+        { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
+        { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
+        { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
+        { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
+      );
+      setDreMensal({ meses: mesesList, linhas: linhasMensal });
 
 
       setDreData({
@@ -745,6 +775,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         resultadoExercicio,
         despExtraordinaria: despExtraTotal,
         despExtraordinariaDetalhes: despExtraDetalhes,
+        splitAfiliado: splitTotal,
+        splitAfiliadoMes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
@@ -1105,6 +1137,16 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSplitAfiliado(!showSplitAfiliado)}
+            className="gap-2 text-muted-foreground"
+            title="Visualiza o DRE deduzindo o Split Afiliado da Receita e ocultando custos 2.1.11/2.1.12/2.1.13"
+          >
+            {showSplitAfiliado ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            <span className="text-xs">Split Afiliado</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
