@@ -702,6 +702,7 @@ export default function Extrato() {
           link_boleto: r.link_boleto,
           observacoes: r.observacoes,
           servico_id: (r as any).servico_id || null,
+          split_afiliado: (r as any).split_afiliado ?? null,
         };
 
         // Prioridade: serviço individual do lançamento (se houver) sobrepõe os do contrato
