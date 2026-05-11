@@ -214,8 +214,19 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         dateRange
       );
 
+      // Excluir categoria 5.1.4 (Aplicações) do DRE
+      const isExcludedFromDRE = (planoCodigo?: string | null) => {
+        if (!planoCodigo) return false;
+        return planoCodigo === '5.1.4' || planoCodigo.startsWith('5.1.4.');
+      };
+      const filterExcluded = (rows: any[]) =>
+        (rows || []).filter(r => !isExcludedFromDRE(r?.plano_contas?.codigo));
+
+      const receitasFiltradas = filterExcluded(receitas);
+      const despesasFiltradas = filterExcluded(despesas);
+
       // Build rateio map: parcela_id -> RateioInfo[]
-      const allLancamentos = [...(receitas || []), ...(despesas || [])];
+      const allLancamentos = [...receitasFiltradas, ...despesasFiltradas];
       const parcelaIds = [...new Set(allLancamentos.map(l => l.parcela_id).filter(Boolean))] as string[];
       
       let rateioMap = new Map<string, RateioInfo[]>();
