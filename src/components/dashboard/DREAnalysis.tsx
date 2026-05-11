@@ -740,6 +740,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       ];
       if (showSplitAfiliado) {
         linhasMensal.push({ label: '(-) Split Afiliado', valores: splitAfiliadoMes, isNegative: true });
+        linhasMensal.push({ label: 'Receita Líquida', valores: receitaMes, isTotal: true });
       }
       linhasMensal.push(
         { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
@@ -1187,7 +1188,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
           {/* Split Afiliado (apenas quando o toggle está ativo) */}
           {showSplitAfiliado && dreData.splitAfiliado > 0 && (
-            renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true)
+            <>
+              {renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true)}
+              {renderLine('Receita Líquida', dreData.receita, true, dreData.receita < 0)}
+            </>
           )}
 
           {/* CMV */}
