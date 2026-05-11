@@ -1016,7 +1016,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             className="gap-2 text-muted-foreground"
             title={showCmvEspecial ? 'Ocultar CMV Especial (2.1.11/2.1.12)' : 'Exibir CMV Especial (2.1.11/2.1.12)'}
           >
-            {showCmvEspecial ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showCmvEspecial ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             <span className="text-xs">CMV 2.1.11/2.1.12</span>
           </Button>
           <Button
