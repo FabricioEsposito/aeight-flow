@@ -740,6 +740,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       ];
       if (showSplitAfiliado) {
         linhasMensal.push({ label: '(-) Split Afiliado', valores: splitAfiliadoMes, isNegative: true });
+        linhasMensal.push({ label: 'Receita Líquida', valores: receitaMes, isTotal: true });
       }
       linhasMensal.push(
         { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
