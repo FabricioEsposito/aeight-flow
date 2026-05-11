@@ -352,7 +352,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         planosContas: any[],
         tipo: 'receita' | 'despesa'
       ): { detalhes: DetalheItem[]; total: number } => {
-        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>; total: number }>();
+        const grouped = new Map<string, {
+          codigo: string;
+          descricao: string;
+          items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
+          // Para receitas: serviço -> cliente -> valor
+          servicos: Map<string, { total: number; clientes: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }> }>;
+          total: number;
+        }>();
         let total = 0;
 
         lancamentos?.forEach(l => {
@@ -374,6 +381,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 codigo,
                 descricao,
                 items: new Map(),
+                servicos: new Map(),
                 total: 0
               });
             }
@@ -384,6 +392,22 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
             current.valor += effective.valor;
             group.items.set(itemKey, current);
+
+            // Para receitas: agrupar também por serviço
+            if (tipo === 'receita') {
+              const servicoNome =
+                l.servicos?.nome
+                || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || 'Sem serviço informado';
+              if (!group.servicos.has(servicoNome)) {
+                group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
+              }
+              const sg = group.servicos.get(servicoNome)!;
+              sg.total += effective.valor;
+              const cliCur = sg.clientes.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
+              cliCur.valor += effective.valor;
+              sg.clientes.set(itemKey, cliCur);
+            }
           }
         });
 
@@ -398,7 +422,23 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               centroCusto: item.centroCusto,
               rateio: item.rateio,
             }))
-            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
+          subGrupos: tipo === 'receita' && g.servicos.size > 0
+            ? Array.from(g.servicos.entries())
+                .map(([servNome, sg]) => ({
+                  nome: servNome,
+                  valor: sg.total,
+                  items: Array.from(sg.clientes.entries())
+                    .map(([key, item]) => ({
+                      nome: key.includes('|||') ? key.split('|||')[0] : key,
+                      valor: item.valor,
+                      centroCusto: item.centroCusto,
+                      rateio: item.rateio,
+                    }))
+                    .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
+                }))
+                .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+            : undefined,
         })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
 
         return { detalhes, total };
@@ -412,53 +452,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         planosContas,
         'receita'
       );
-
-      // Agrupar receitas por SERVIÇO (com clientes dentro)
-      const agruparReceitaPorServico = (
-        lancamentos: any[],
-        accountIds: string[]
-      ): DetalheItem[] => {
-        const grouped = new Map<string, { descricao: string; items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>; total: number }>();
-
-        lancamentos?.forEach(l => {
-          if (!l.plano_conta_id || !accountIds.includes(l.plano_conta_id)) return;
-          const effective = getEffectiveValue(l);
-          if (!effective) return;
-
-          const servicoNome =
-            l.servicos?.nome
-            || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
-            || 'Sem serviço informado';
-          const cliente = l.clientes?.razao_social || 'Cliente não informado';
-          const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
-
-          if (!grouped.has(servicoNome)) {
-            grouped.set(servicoNome, { descricao: servicoNome, items: new Map(), total: 0 });
-          }
-          const g = grouped.get(servicoNome)!;
-          g.total += effective.valor;
-          const itemKey = ccNome ? `${cliente}|||${ccNome}` : cliente;
-          const cur = g.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
-          cur.valor += effective.valor;
-          g.items.set(itemKey, cur);
-        });
-
-        return Array.from(grouped.values()).map(g => ({
-          codigo: '',
-          descricao: g.descricao,
-          valor: g.total,
-          items: Array.from(g.items.entries())
-            .map(([key, item]) => ({
-              nome: key.includes('|||') ? key.split('|||')[0] : key,
-              valor: item.valor,
-              centroCusto: item.centroCusto,
-              rateio: item.rateio,
-            }))
-            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
-        })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
-      };
-
-      const receitaPorServicoDetalhes = agruparReceitaPorServico(receitas, receitaIds);
 
       // Processar CMV - Custos Variáveis (2.1)
       const cmvIds = getAccountIds('2.1');
