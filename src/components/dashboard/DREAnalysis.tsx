@@ -419,7 +419,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           const effective = getEffectiveValue(l);
           if (!effective) return;
 
-          const servicoNome = l.servicos?.nome || 'Sem serviço informado';
+          const servicoNome =
+            l.servicos?.nome
+            || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+            || 'Sem serviço informado';
           const cliente = l.clientes?.razao_social || 'Cliente não informado';
           const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
 
