@@ -70,6 +70,7 @@ export interface EditParcelaData {
   fornecedor_changed?: boolean;
   cliente_changed?: boolean;
   servico_id?: string | null;
+  split_afiliado?: number | null;
 }
 
 export function EditParcelaDialog({
