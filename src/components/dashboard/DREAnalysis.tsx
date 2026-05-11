@@ -33,6 +33,7 @@ interface DetalheItem {
 
 interface DREData {
   receita: number;
+  receitaBruta: number;
   receitaDetalhes: DetalheItem[];
   cmv: number;
   cmvDetalhes: DetalheItem[];
