@@ -1247,7 +1247,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
                   return dreMensal.linhas
                   .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
-                  .filter(linha => showCmvEspecial || (!linha.label.includes('CMV Especial') && linha.label !== 'Resultado Após CMV Especial'))
                   .flatMap((linha, idx) => {
                     let total: number | null;
                     if (linha.isPercent) {
@@ -1264,10 +1263,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                         case 'EBIT': total = dreData.ebit; break;
                         case 'Provisão CSLL e IRRF (34%)': total = dreData.provisaoCsllIrrf; break;
                         case 'Resultado do Exercício': total = dreData.resultadoExercicio; break;
-                        case 'CMV Especial (2.1.11/2.1.12)': total = dreData.cmvEspecial; break;
-                        case 'Resultado Após CMV Especial': total = dreData.resultadoExercicio - dreData.cmvEspecial; break;
                         case 'Despesa Extraordinária': total = dreData.despExtraordinaria; break;
-                        case 'Resultado Após Desp. Extraord.': total = dreData.resultadoExercicio - dreData.despExtraordinaria - (showCmvEspecial ? dreData.cmvEspecial : 0); break;
+                        case 'Resultado Após Desp. Extraord.': total = dreData.resultadoExercicio - dreData.despExtraordinaria; break;
                         default: total = linha.valores.reduce((s, v) => s + v, 0);
                       }
                     }
