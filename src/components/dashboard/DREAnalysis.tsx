@@ -762,6 +762,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       setDreData({
         receita: receitaTotal,
+        receitaBruta: receitaTotalRaw,
         receitaDetalhes,
         
         cmv: cmvTotal,
