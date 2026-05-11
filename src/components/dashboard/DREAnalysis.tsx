@@ -1014,7 +1014,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Header */}
           <div className="bg-primary text-primary-foreground flex items-center py-3 px-4 font-bold">
             <span className="flex-1">DRE Gerencial (Competência)</span>
-            <span className="text-xs w-16 text-right shrink-0 opacity-80">AV%</span>
+            <span className="text-xs w-16 text-right shrink-0 opacity-80" title="Análise Vertical (% sobre receita)">AV%</span>
+            <span className="text-xs w-20 text-right shrink-0 opacity-80" title="Análise Horizontal (1º mês x último mês do período)">AH%</span>
             <span className="w-36 text-right shrink-0">{dateRange ? formatDateStr(dateRange.from, true) : 'Todo período'}</span>
           </div>
 
