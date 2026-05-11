@@ -196,6 +196,7 @@ export function EditParcelaDialog({
       fornecedor_changed: fornecedorChanged,
       cliente_changed: clienteChanged,
       servico_id: servicoId || null,
+      split_afiliado: tipo === 'entrada' && servicoId === MARKETING_AFILIADOS_SERVICE_ID ? splitAfiliado : null,
     };
 
     // Save rateio
