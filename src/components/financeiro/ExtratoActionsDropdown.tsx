@@ -36,7 +36,7 @@ export function ExtratoActionsDropdown({
 }: ExtratoActionsDropdownProps) {
   const isPaid = status === 'pago' || status === 'recebido';
   const isCancelled = status === 'cancelado';
-  const canEdit = !isPaid && !isCancelled;
+  const canEdit = !isCancelled;
   const canMarkPaid = !isPaid && !isCancelled;
   const canReopen = isPaid || isCancelled;
   const canCancel = !!onCancel && !isAvulso && !isPaid && !isCancelled;
@@ -52,7 +52,7 @@ export function ExtratoActionsDropdown({
         {canEdit && (
           <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
             <Edit className="mr-2 h-4 w-4" />
-            Editar lançamento
+            {isPaid ? 'Editar lançamento (baixado)' : 'Editar lançamento'}
           </DropdownMenuItem>
         )}
 
