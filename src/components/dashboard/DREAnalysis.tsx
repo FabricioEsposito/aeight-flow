@@ -1057,11 +1057,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               <thead>
                 <tr className="bg-primary text-primary-foreground">
                   <th rowSpan={2} className="text-left py-3 px-4 font-bold sticky left-0 bg-primary z-10 min-w-[240px] align-middle">Linha</th>
-                  {dreMensal.meses.map(mes => {
+                  {dreMensal.meses.map((mes, mi) => {
                     const [y, m] = mes.split('-');
                     const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
                     return (
-                      <th key={mes} colSpan={2} className="text-center py-2 px-4 font-bold min-w-[200px] whitespace-nowrap border-l border-primary-foreground/20">
+                      <th key={mes} colSpan={3} className="text-center py-2 px-4 font-bold min-w-[260px] whitespace-nowrap border-l border-primary-foreground/20">
                         {months[parseInt(m) - 1]}/{y}
                       </th>
                     );
@@ -1072,7 +1072,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                   {dreMensal.meses.map(mes => (
                     <Fragment key={mes}>
                       <th className="text-right py-2 px-4 font-medium whitespace-nowrap border-l border-primary-foreground/20">Valor</th>
-                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80">AV%</th>
+                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80" title="Análise Vertical (% sobre receita)">AV%</th>
+                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80" title="Análise Horizontal (variação vs mês anterior)">AH%</th>
                     </Fragment>
                   ))}
                   <th className="text-right py-2 px-4 font-medium whitespace-nowrap bg-primary/80 border-l border-primary-foreground/20">Valor</th>
