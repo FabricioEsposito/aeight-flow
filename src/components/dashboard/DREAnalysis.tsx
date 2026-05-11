@@ -816,6 +816,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     if (ganhos.length === 0 && perdas.length === 0) return null;
     return { ganhos, perdas };
   };
+
+  const renderLine = (
     label: string,
     value: number | string,
     isTotal?: boolean,
