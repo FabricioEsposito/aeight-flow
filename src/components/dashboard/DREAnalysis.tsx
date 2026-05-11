@@ -742,8 +742,67 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 </div>
               </div>
 
-              {/* Detalhes por fornecedor/cliente */}
-              {isSubExpanded && item.items.length > 0 && (
+              {/* Detalhes: se houver subGrupos (ex: serviços nas receitas), agrupa por serviço -> clientes; senão lista direto */}
+              {isSubExpanded && item.subGrupos && item.subGrupos.length > 0 && (
+                <div className="bg-muted/20">
+                  {item.subGrupos.map((sg, sgIdx) => {
+                    const sgKey = `${subKey}_sg_${sgIdx}`;
+                    const isSgExpanded = expandedSections.has(sgKey);
+                    return (
+                      <div key={sgIdx}>
+                        <div className="flex items-center py-2 px-4 ml-20 text-sm border-b border-border/50">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {sg.items.length > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => toggleSection(sgKey)}
+                              >
+                                {isSgExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              </Button>
+                            )}
+                            <span className="text-muted-foreground font-medium truncate">{sg.nome}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                              {calcAV(sg.valor) || ''}
+                            </span>
+                            <span className="font-medium w-36 text-right shrink-0">{formatCurrency(sg.valor)}</span>
+                          </div>
+                        </div>
+                        {isSgExpanded && sg.items.length > 0 && (
+                          <div className="bg-muted/10">
+                            {sg.items.map((subItem, subIndex) => (
+                              <div key={subIndex} className="flex items-center py-2 px-4 ml-32 text-sm gap-2">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="text-muted-foreground truncate">{subItem.nome}</span>
+                                  {subItem.rateio && subItem.rateio.length > 1 && (
+                                    <div className="flex flex-wrap gap-1 shrink-0">
+                                      {subItem.rateio.map((r, rIdx) => (
+                                        <CompanyTagWithPercent key={rIdx} codigo={r.codigo} percentual={r.percentual} />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                                    {calcAV(subItem.valor) || ''}
+                                  </span>
+                                  <span className="shrink-0 w-36 text-right">{formatCurrency(subItem.valor)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Detalhes por fornecedor/cliente (sem subGrupos) */}
+              {isSubExpanded && !item.subGrupos && item.items.length > 0 && (
                 <div className="bg-muted/20">
                   {item.items.map((subItem, subIndex) => (
                     <div key={subIndex} className="flex items-center py-2 px-4 ml-24 text-sm gap-2">
