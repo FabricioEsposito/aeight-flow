@@ -464,11 +464,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         'receita'
       );
 
-      // Processar CMV - Custos Variáveis (2.1)
-      const cmvIds = getAccountIds('2.1');
+      // Processar CMV - Custos Variáveis (2.1) — separa 2.1.11 e 2.1.12 como "CMV Especial"
+      const cmvEspecialIds = [...getAccountIds('2.1.11'), ...getAccountIds('2.1.12')];
+      const cmvIds = getAccountIds('2.1').filter(id => !cmvEspecialIds.includes(id));
       const { detalhes: cmvDetalhes, total: cmvTotal } = agruparDetalhes(
         despesas,
         cmvIds,
+        planosContas,
+        'despesa'
+      );
+      const { detalhes: cmvEspecialDetalhes, total: cmvEspecialTotal } = agruparDetalhes(
+        despesas,
+        cmvEspecialIds,
         planosContas,
         'despesa'
       );
