@@ -745,6 +745,20 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     return `${((value / dreData.receita) * 100).toFixed(1)}%`;
   };
 
+  // AH no gerencial: variação entre o primeiro e o último mês do período
+  const calcAH = (label: string): { text: string; positive: boolean | null } | null => {
+    if (!dreMensal || dreMensal.meses.length < 2) return null;
+    const linha = dreMensal.linhas.find(l => l.label === label);
+    if (!linha) return null;
+    const first = linha.valores[0];
+    const last = linha.valores[linha.valores.length - 1];
+    if (!first || first === 0) return { text: '—', positive: null };
+    const variacao = ((last - first) / Math.abs(first)) * 100;
+    if (!isFinite(variacao)) return { text: '—', positive: null };
+    const sign = variacao > 0 ? '+' : '';
+    return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
+  };
+
   const renderLine = (
     label: string,
     value: number | string,
@@ -758,6 +772,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     const showValue = typeof value === 'number';
     const displayValue = showValue ? formatCurrency(Math.abs(value)) : value;
     const av = showValue ? calcAV(value as number) : null;
+    const ah = showValue ? calcAH(label) : null;
 
     return (
       <div className={cn("border-b border-border", indent && "ml-8", isTotal && "bg-muted/40")}>
@@ -786,6 +801,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 {av}
               </span>
             )}
+            <span
+              className={cn(
+                "text-xs w-20 text-right shrink-0",
+                !ah && "text-muted-foreground",
+                ah?.positive === null && "text-muted-foreground",
+                ah?.positive === true && (isNegative ? "text-destructive" : "text-emerald-600"),
+                ah?.positive === false && (isNegative ? "text-emerald-600" : "text-destructive"),
+              )}
+              title="Análise Horizontal: variação % entre o primeiro e o último mês do período"
+            >
+              {ah ? ah.text : ''}
+            </span>
             <div className="flex items-center gap-1 w-36 justify-end shrink-0">
               {showValue && isNegative && <span className="text-destructive">-</span>}
               <span className={cn(
@@ -987,7 +1014,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Header */}
           <div className="bg-primary text-primary-foreground flex items-center py-3 px-4 font-bold">
             <span className="flex-1">DRE Gerencial (Competência)</span>
-            <span className="text-xs w-16 text-right shrink-0 opacity-80">AV%</span>
+            <span className="text-xs w-16 text-right shrink-0 opacity-80" title="Análise Vertical (% sobre receita)">AV%</span>
+            <span className="text-xs w-20 text-right shrink-0 opacity-80" title="Análise Horizontal (1º mês x último mês do período)">AH%</span>
             <span className="w-36 text-right shrink-0">{dateRange ? formatDateStr(dateRange.from, true) : 'Todo período'}</span>
           </div>
 
@@ -1057,11 +1085,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               <thead>
                 <tr className="bg-primary text-primary-foreground">
                   <th rowSpan={2} className="text-left py-3 px-4 font-bold sticky left-0 bg-primary z-10 min-w-[240px] align-middle">Linha</th>
-                  {dreMensal.meses.map(mes => {
+                  {dreMensal.meses.map((mes, mi) => {
                     const [y, m] = mes.split('-');
                     const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
                     return (
-                      <th key={mes} colSpan={2} className="text-center py-2 px-4 font-bold min-w-[200px] whitespace-nowrap border-l border-primary-foreground/20">
+                      <th key={mes} colSpan={3} className="text-center py-2 px-4 font-bold min-w-[260px] whitespace-nowrap border-l border-primary-foreground/20">
                         {months[parseInt(m) - 1]}/{y}
                       </th>
                     );
@@ -1072,7 +1100,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                   {dreMensal.meses.map(mes => (
                     <Fragment key={mes}>
                       <th className="text-right py-2 px-4 font-medium whitespace-nowrap border-l border-primary-foreground/20">Valor</th>
-                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80">AV%</th>
+                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80" title="Análise Vertical (% sobre receita)">AV%</th>
+                      <th className="text-right py-2 px-2 font-medium whitespace-nowrap opacity-80" title="Análise Horizontal (variação vs mês anterior)">AH%</th>
                     </Fragment>
                   ))}
                   <th className="text-right py-2 px-4 font-medium whitespace-nowrap bg-primary/80 border-l border-primary-foreground/20">Valor</th>
@@ -1087,6 +1116,20 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                   const formatAV = (valor: number, receitaBase: number): string => {
                     if (!receitaBase || receitaBase === 0) return '-';
                     return `${((Math.abs(valor) / Math.abs(receitaBase)) * 100).toFixed(1)}%`;
+                  };
+                  // AH = variação % vs mês anterior
+                  const formatAH = (valores: number[], i: number): { text: string; positive: boolean | null } => {
+                    if (i === 0) return { text: '—', positive: null };
+                    const prev = valores[i - 1];
+                    const curr = valores[i];
+                    if (!prev || prev === 0) {
+                      if (!curr || curr === 0) return { text: '—', positive: null };
+                      return { text: '—', positive: null };
+                    }
+                    const variacao = ((curr - prev) / Math.abs(prev)) * 100;
+                    if (!isFinite(variacao)) return { text: '—', positive: null };
+                    const sign = variacao > 0 ? '+' : '';
+                    return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
                   };
 
                   const renderDetalheRow = (
@@ -1121,19 +1164,30 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                             <span className="text-xs text-muted-foreground truncate" title={d.label}>{d.label}</span>
                           </div>
                         </td>
-                        {d.valores.map((v, i) => (
-                          <Fragment key={i}>
-                            <td className={cn(
-                              "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap border-l border-border/40",
-                              isNegative && v !== 0 && "text-destructive"
-                            )}>
-                              {(isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
-                            </td>
-                            <td className="text-right py-1.5 px-2 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-                              {formatAV(v, receitasMensais[i] ?? 0)}
-                            </td>
-                          </Fragment>
-                        ))}
+                        {d.valores.map((v, i) => {
+                          const ah = formatAH(d.valores, i);
+                          return (
+                            <Fragment key={i}>
+                              <td className={cn(
+                                "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap border-l border-border/40",
+                                isNegative && v !== 0 && "text-destructive"
+                              )}>
+                                {(isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                              </td>
+                              <td className="text-right py-1.5 px-2 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                {formatAV(v, receitasMensais[i] ?? 0)}
+                              </td>
+                              <td className={cn(
+                                "text-right py-1.5 px-2 text-[10px] tabular-nums whitespace-nowrap",
+                                ah.positive === null && "text-muted-foreground",
+                                ah.positive === true && (isNegative ? "text-destructive" : "text-emerald-600"),
+                                ah.positive === false && (isNegative ? "text-emerald-600" : "text-destructive"),
+                              )}>
+                                {ah.text}
+                              </td>
+                            </Fragment>
+                          );
+                        })}
                         <td className={cn(
                           "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap bg-muted/20 border-l border-border/40 font-medium",
                           isNegative && d.total !== 0 && "text-destructive"
@@ -1199,26 +1253,38 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                             <span>{linha.label}</span>
                           </div>
                         </td>
-                        {linha.valores.map((v, i) => (
-                          <Fragment key={i}>
-                            <td className={cn(
-                              "text-right py-2 px-4 tabular-nums whitespace-nowrap border-l border-border/40",
-                              linha.isTotal && "font-bold",
-                              linha.isNegative && v !== 0 && "text-destructive",
-                              !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
-                            )}>
-                              {linha.isPercent
-                                ? `${v.toFixed(2)}%`
-                                : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
-                            </td>
-                            <td className={cn(
-                              "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap",
-                              linha.isTotal && "font-semibold"
-                            )}>
-                              {linha.isPercent ? '-' : formatAV(v, receitasMensais[i] ?? 0)}
-                            </td>
-                          </Fragment>
-                        ))}
+                        {linha.valores.map((v, i) => {
+                          const ah = formatAH(linha.valores, i);
+                          return (
+                            <Fragment key={i}>
+                              <td className={cn(
+                                "text-right py-2 px-4 tabular-nums whitespace-nowrap border-l border-border/40",
+                                linha.isTotal && "font-bold",
+                                linha.isNegative && v !== 0 && "text-destructive",
+                                !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
+                              )}>
+                                {linha.isPercent
+                                  ? `${v.toFixed(2)}%`
+                                  : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                              </td>
+                              <td className={cn(
+                                "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap",
+                                linha.isTotal && "font-semibold"
+                              )}>
+                                {linha.isPercent ? '-' : formatAV(v, receitasMensais[i] ?? 0)}
+                              </td>
+                              <td className={cn(
+                                "text-right py-2 px-2 text-xs tabular-nums whitespace-nowrap",
+                                linha.isTotal && "font-semibold",
+                                ah.positive === null && "text-muted-foreground",
+                                ah.positive === true && (linha.isNegative ? "text-destructive" : "text-emerald-600"),
+                                ah.positive === false && (linha.isNegative ? "text-emerald-600" : "text-destructive"),
+                              )}>
+                                {ah.text}
+                              </td>
+                            </Fragment>
+                          );
+                        })}
                         <td className={cn(
                           "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20 border-l border-border/40",
                           linha.isNegative && total !== null && total !== 0 && "text-destructive",
