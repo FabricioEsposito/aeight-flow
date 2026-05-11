@@ -119,6 +119,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Centro de Custo (Código)': 'CC001',
         'Conta Bancária (Descrição)': 'Conta Principal',
         'Serviço (Código)': 'SRV001',
+        'Split Afiliado (R$)': 0,
       },
       {
         'Tipo (entrada/saida)': 'saida',
