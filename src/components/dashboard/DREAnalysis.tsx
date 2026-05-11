@@ -93,6 +93,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
   const [showSplitAfiliado, setShowSplitAfiliado] = useState(false);
+  const [isLomadeeFiltered, setIsLomadeeFiltered] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // Helper to format "YYYY-MM-DD" string to display format
