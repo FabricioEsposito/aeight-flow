@@ -133,6 +133,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Centro de Custo (Código)': '',
         'Conta Bancária (Descrição)': '',
         'Serviço (Código)': '',
+        'Split Afiliado (R$)': '',
       }
     ];
 
