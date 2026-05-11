@@ -1424,6 +1424,11 @@ export default function Extrato() {
         servico_id: data.servico_id || null,
         [dateField]: data.data_movimentacao || null,
       };
+
+      // Split afiliado apenas em contas a receber
+      if (selectedLancamento.cliente_id) {
+        updateData.split_afiliado = data.split_afiliado ?? null;
+      }
       
       // Adicionar fornecedor_id para contas a pagar
       if (data.fornecedor_id) {
