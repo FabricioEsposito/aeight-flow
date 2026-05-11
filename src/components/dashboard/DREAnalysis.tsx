@@ -619,6 +619,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           const grupoKey = tipo === 'receita'
             ? (l.servicos?.nome
                 || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || (typeof l.observacoes === 'string' && l.observacoes.startsWith('Serviço: ') ? l.observacoes.replace('Serviço: ', '').trim() : undefined)
                 || 'Sem serviço informado')
             : (l.fornecedores?.razao_social || 'Fornecedor não informado');
 
