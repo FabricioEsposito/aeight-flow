@@ -1244,6 +1244,71 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                     return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
                   };
 
+                  // Breakdown da AH mensal: contribuição de cada categoria filha na variação vs mês anterior
+                  const getMonthlyBreakdown = (
+                    detalhes: MensalDetalhe[] | undefined,
+                    i: number
+                  ): { ganhos: Array<{ label: string; variacao: number }>; perdas: Array<{ label: string; variacao: number }> } | null => {
+                    if (!detalhes?.length || i === 0) return null;
+                    const items = detalhes
+                      .map(d => ({ label: d.label, variacao: (d.valores[i] || 0) - (d.valores[i - 1] || 0) }))
+                      .filter(d => Math.abs(d.variacao) > 0.005);
+                    const ganhos = items.filter(x => x.variacao > 0).sort((a, b) => b.variacao - a.variacao).slice(0, 5);
+                    const perdas = items.filter(x => x.variacao < 0).sort((a, b) => a.variacao - b.variacao).slice(0, 5);
+                    if (ganhos.length === 0 && perdas.length === 0) return null;
+                    return { ganhos, perdas };
+                  };
+
+                  const renderAHTooltip = (
+                    children: JSX.Element,
+                    isNegative: boolean | undefined,
+                    detalhes: MensalDetalhe[] | undefined,
+                    i: number
+                  ) => {
+                    const breakdown = getMonthlyBreakdown(detalhes, i);
+                    if (!breakdown) return children;
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>{children}</TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-sm">
+                          <div className="space-y-2 text-xs">
+                            <p className="font-semibold">Variação por categoria (vs mês anterior)</p>
+                            {breakdown.ganhos.length > 0 && (
+                              <div>
+                                <p className={cn("font-medium mb-1", isNegative ? "text-destructive" : "text-emerald-600")}>
+                                  {isNegative ? 'Aumentos (impacto negativo)' : 'Ganhos (impacto positivo)'}
+                                </p>
+                                <ul className="space-y-0.5">
+                                  {breakdown.ganhos.map((g, k) => (
+                                    <li key={k} className="flex justify-between gap-3">
+                                      <span className="truncate">{g.label}</span>
+                                      <span className="shrink-0">+{formatCurrency(g.variacao)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {breakdown.perdas.length > 0 && (
+                              <div>
+                                <p className={cn("font-medium mb-1", isNegative ? "text-emerald-600" : "text-destructive")}>
+                                  {isNegative ? 'Reduções (impacto positivo)' : 'Perdas (impacto negativo)'}
+                                </p>
+                                <ul className="space-y-0.5">
+                                  {breakdown.perdas.map((p, k) => (
+                                    <li key={k} className="flex justify-between gap-3">
+                                      <span className="truncate">{p.label}</span>
+                                      <span className="shrink-0">-{formatCurrency(Math.abs(p.variacao))}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  };
+
                   const renderDetalheRow = (
                     d: MensalDetalhe,
                     parentKey: string,
@@ -1391,8 +1456,9 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                                 ah.positive === null && "text-muted-foreground",
                                 ah.positive === true && (linha.isNegative ? "text-destructive" : "text-emerald-600"),
                                 ah.positive === false && (linha.isNegative ? "text-emerald-600" : "text-destructive"),
+                                linha.detalhes && linha.detalhes.length > 0 && i > 0 && "cursor-help underline decoration-dotted underline-offset-2",
                               )}>
-                                {ah.text}
+                                {renderAHTooltip(<span>{ah.text}</span>, linha.isNegative, linha.detalhes, i)}
                               </td>
                             </Fragment>
                           );
