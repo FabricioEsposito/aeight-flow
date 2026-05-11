@@ -1157,16 +1157,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSplitAfiliado(!showSplitAfiliado)}
-            className="gap-2 text-muted-foreground"
-            title="Visualiza o DRE deduzindo o Split Afiliado da Receita e ocultando custos 2.1.11/2.1.12/2.1.13"
-          >
-            {showSplitAfiliado ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            <span className="text-xs">Split Afiliado</span>
-          </Button>
+          {isLomadeeFiltered && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSplitAfiliado(!showSplitAfiliado)}
+              className="gap-2 text-muted-foreground"
+              title="Visualiza o DRE deduzindo o Split Afiliado da Receita e ocultando custos 2.1.11/2.1.12/2.1.13"
+            >
+              {showSplitAfiliado ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              <span className="text-xs">Split Afiliado</span>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
