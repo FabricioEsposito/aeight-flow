@@ -61,6 +61,13 @@ interface DREAnalysisProps {
   centroCusto?: string[];
 }
 
+interface MensalDetalhe {
+  label: string;
+  valores: number[];
+  total: number;
+  children?: MensalDetalhe[];
+}
+
 interface DREMensal {
   meses: string[]; // ex: ['2025-01', '2025-02']
   linhas: Array<{
@@ -69,6 +76,7 @@ interface DREMensal {
     isNegative?: boolean;
     isPercent?: boolean;
     valores: number[]; // por mês
+    detalhes?: MensalDetalhe[];
   }>;
 }
 
