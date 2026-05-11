@@ -727,24 +727,27 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const provisaoMes = ebitMes.map(e => e > 0 ? e * 0.34 : 0);
       const resultadoMes = ebitMes.map((e, i) => e - provisaoMes[i]);
 
-      setDreMensal({
-        meses: mesesList,
-        linhas: [
-          { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
-          { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
-          { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
-          { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true, detalhes: despAdmDetalheMes },
-          { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
-          { label: 'Impostos', valores: impostosMes, isNegative: true, detalhes: impostosDetalheMes },
-          { label: 'Empréstimo', valores: emprestimosMes, isNegative: true, detalhes: emprestimosDetalheMes },
-          { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true, detalhes: despFinDetalheMes },
-          { label: 'EBIT', valores: ebitMes, isTotal: true },
-          { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
-          { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
-          { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
-          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
-        ],
-      });
+      const linhasMensal: DREMensal['linhas'] = [
+        { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
+      ];
+      if (showSplitAfiliado) {
+        linhasMensal.push({ label: '(-) Split Afiliado', valores: splitAfiliadoMes, isNegative: true });
+      }
+      linhasMensal.push(
+        { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
+        { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
+        { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true, detalhes: despAdmDetalheMes },
+        { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
+        { label: 'Impostos', valores: impostosMes, isNegative: true, detalhes: impostosDetalheMes },
+        { label: 'Empréstimo', valores: emprestimosMes, isNegative: true, detalhes: emprestimosDetalheMes },
+        { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true, detalhes: despFinDetalheMes },
+        { label: 'EBIT', valores: ebitMes, isTotal: true },
+        { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
+        { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
+        { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
+        { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
+      );
+      setDreMensal({ meses: mesesList, linhas: linhasMensal });
 
 
       setDreData({
