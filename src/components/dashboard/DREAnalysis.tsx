@@ -687,8 +687,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           { label: 'EBIT', valores: ebitMes, isTotal: true },
           { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
           { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
+          { label: 'CMV Especial (2.1.11/2.1.12)', valores: cmvEspecialMes, isNegative: true, detalhes: cmvEspecialDetalheMes },
+          { label: 'Resultado Após CMV Especial', valores: resultadoMes.map((r, i) => r - cmvEspecialMes[i]), isTotal: true },
           { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
-          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
+          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i] - (cmvEspecialMes[i] || 0)), isTotal: true },
         ],
       });
 
