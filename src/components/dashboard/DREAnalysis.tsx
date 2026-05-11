@@ -720,6 +720,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         resultadoExercicio,
         despExtraordinaria: despExtraTotal,
         despExtraordinariaDetalhes: despExtraDetalhes,
+        cmvEspecial: cmvEspecialTotal,
+        cmvEspecialDetalhes: cmvEspecialDetalhes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
