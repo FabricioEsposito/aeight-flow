@@ -628,6 +628,25 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           }
         }
 
+        // Split Afiliado (opcional, somente quando tipo=entrada e serviço = Marketing de Afiliados)
+        const MARKETING_AFILIADOS_SERVICE_ID = '1cee9599-206e-47bc-b19e-d2cd8177d9d8';
+        let split_afiliado: number | undefined;
+        const splitRaw = (row as any)['Split Afiliado (R$)'] ?? (row as any)['Split Afiliado'] ?? (row as any)['Split'];
+        if (splitRaw !== undefined && splitRaw !== null && splitRaw !== '') {
+          if (tipo !== 'entrada') {
+            warnings.push('Split Afiliado ignorado: aplicável somente em receitas');
+          } else if (servico_id !== MARKETING_AFILIADOS_SERVICE_ID) {
+            warnings.push('Split Afiliado ignorado: serviço informado não é "Marketing de Afiliados"');
+          } else {
+            const validSplit = validarValor(splitRaw);
+            if (validSplit.valido) {
+              split_afiliado = validSplit.valorNumerico;
+            } else {
+              warnings.push(`Split Afiliado inválido: ${validSplit.mensagem}`);
+            }
+          }
+        }
+
         // Se vai criar cliente/fornecedor mas auto-criar está desabilitado, é erro
         const finalErrors = [...errors];
         if (willCreateClienteFornecedor && !autoCriarClienteFornecedor) {
