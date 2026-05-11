@@ -157,6 +157,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
           numero_nf: informarNsu ? nsu : null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
+          split_afiliado: servicoId === MARKETING_AFILIADOS_SERVICE_ID ? splitAfiliado : null,
         } as any).select('id').single();
 
         if (error) throw error;
