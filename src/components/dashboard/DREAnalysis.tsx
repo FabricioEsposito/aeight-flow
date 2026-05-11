@@ -1026,7 +1026,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             className="gap-2 text-muted-foreground"
             title={showDespExtraordinaria ? 'Ocultar Despesa Extraordinária' : 'Exibir Despesa Extraordinária'}
           >
-            {showDespExtraordinaria ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showDespExtraordinaria ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             <span className="text-xs">Extraordinária</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setChatOpen(true)} className="gap-2">
