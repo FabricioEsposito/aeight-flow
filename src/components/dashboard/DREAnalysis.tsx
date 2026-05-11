@@ -495,12 +495,17 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       // Processar receitas (1.1)
       const receitaIds = getAccountIds('1.1');
-      const { detalhes: receitaDetalhes, total: receitaTotal } = agruparDetalhes(
+      const { detalhes: receitaDetalhesRaw, total: receitaTotalRaw } = agruparDetalhes(
         receitas,
         receitaIds,
         planosContas,
         'receita'
       );
+
+      // Calcular Split Afiliado (consolidado)
+      const splitTotal = (receitas || []).reduce((s, l: any) => s + (Number(l.split_afiliado) || 0), 0);
+      const receitaTotal = showSplitAfiliado ? receitaTotalRaw - splitTotal : receitaTotalRaw;
+      const receitaDetalhes = receitaDetalhesRaw;
 
       // Processar CMV - Custos Variáveis (2.1) — quando "com Split" oculta 2.1.11/2.1.12/2.1.13
       const cmvIdsAll = getAccountIds('2.1');
