@@ -2647,6 +2647,11 @@ export default function Extrato() {
                              lanc.importancia_contrato === 'mediano' ? 'Med.' : 'N/Imp.'}
                           </Badge>
                         )}
+                        {lanc.split_afiliado != null && Number(lanc.split_afiliado) > 0 && (
+                          <Badge variant="outline" className="w-fit text-[10px] px-1 py-0 mt-0.5 bg-purple-500/10 text-purple-600 border-purple-500/30">
+                            Split: {formatCurrency(Number(lanc.split_afiliado))}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
