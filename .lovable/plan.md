@@ -69,3 +69,10 @@ contas_receber
 - Não cria tabela de "afiliados" nem cadastro do beneficiário do split (apenas o valor).
 - Não gera lançamento automático de despesa a pagar para o afiliado.
 - Sem alteração em comissionamento, faturamento ou cobrança.
+## Status — implementação concluída
+- ✅ Migration `split_afiliado` em `contas_receber`
+- ✅ DRE: toggle, recálculo da Receita, ocultação 2.1.11/2.1.12/2.1.13, linha sintética "(-) Split Afiliado" no consolidado e mensal
+- ✅ EditParcelaDialog: campo Split Afiliado condicional, liberado para qualquer status
+- ✅ NovoLancamentoDialog: campo Split Afiliado condicional
+- ✅ ImportarLancamentosDialog: coluna "Split Afiliado (R$)" no template + parsing + insert
+- ✅ Extrato: badge "Split: R$ X" na linha

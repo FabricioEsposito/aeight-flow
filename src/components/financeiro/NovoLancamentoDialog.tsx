@@ -22,6 +22,8 @@ import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect
 import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
+
+const MARKETING_AFILIADOS_SERVICE_ID = '1cee9599-206e-47bc-b19e-d2cd8177d9d8';
 export interface PrefilledLancamentoData {
   tipo?: 'receita' | 'despesa';
   data?: string; // YYYY-MM-DD — usado para competência, vencimento e movimento
@@ -58,6 +60,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
   const [informarNsu, setInformarNsu] = useState(false);
   const [nsu, setNsu] = useState('');
   const [servicoId, setServicoId] = useState('');
+  const [splitAfiliado, setSplitAfiliado] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
@@ -113,6 +116,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
     setInformarNsu(false);
     setNsu('');
     setServicoId('');
+    setSplitAfiliado(0);
     setObservacoes('');
     setLinkNf(null);
     setLinkBoleto(null);
@@ -153,6 +157,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
           numero_nf: informarNsu ? nsu : null,
           link_nf: linkNf,
           link_boleto: linkBoleto,
+          split_afiliado: servicoId === MARKETING_AFILIADOS_SERVICE_ID ? splitAfiliado : null,
         } as any).select('id').single();
 
         if (error) throw error;
@@ -284,6 +289,20 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
                   />
                 </div>
               </div>
+
+              {tipoLancamento === 'receita' && servicoId === MARKETING_AFILIADOS_SERVICE_ID && (
+                <div className="space-y-2">
+                  <Label>Split Afiliado (R$)</Label>
+                  <CurrencyInput
+                    value={splitAfiliado}
+                    onChange={setSplitAfiliado}
+                    placeholder="0,00"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valor repassado ao afiliado. Não altera o valor da receita.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

@@ -20,6 +20,8 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 
+const MARKETING_AFILIADOS_SERVICE_ID = '1cee9599-206e-47bc-b19e-d2cd8177d9d8';
+
 interface EditParcelaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +46,7 @@ interface EditParcelaDialogProps {
     cliente_id?: string;
     parcela_id?: string | null;
     servico_id?: string | null;
+    split_afiliado?: number | null;
   };
 }
 
@@ -67,6 +70,7 @@ export interface EditParcelaData {
   fornecedor_changed?: boolean;
   cliente_changed?: boolean;
   servico_id?: string | null;
+  split_afiliado?: number | null;
 }
 
 export function EditParcelaDialog({
@@ -90,6 +94,7 @@ export function EditParcelaDialog({
   const [fornecedorId, setFornecedorId] = useState<string>('');
   const [clienteId, setClienteId] = useState<string>('');
   const [servicoId, setServicoId] = useState<string>('');
+  const [splitAfiliado, setSplitAfiliado] = useState<number>(0);
   const [originalFornecedorId, setOriginalFornecedorId] = useState<string>('');
   const [originalClienteId, setOriginalClienteId] = useState<string>('');
 
@@ -108,6 +113,7 @@ export function EditParcelaDialog({
       setFornecedorId(initialData.fornecedor_id || '');
       setClienteId(initialData.cliente_id || '');
       setServicoId(initialData.servico_id || '');
+      setSplitAfiliado(Number(initialData.split_afiliado) || 0);
       setOriginalFornecedorId(initialData.fornecedor_id || '');
       setOriginalClienteId(initialData.cliente_id || '');
 
@@ -190,6 +196,7 @@ export function EditParcelaDialog({
       fornecedor_changed: fornecedorChanged,
       cliente_changed: clienteChanged,
       servico_id: servicoId || null,
+      split_afiliado: tipo === 'entrada' && servicoId === MARKETING_AFILIADOS_SERVICE_ID ? splitAfiliado : null,
     };
 
     // Save rateio
@@ -367,6 +374,20 @@ export function EditParcelaDialog({
                 showNoneOption
               />
           </div>
+
+          {tipo === 'entrada' && servicoId === MARKETING_AFILIADOS_SERVICE_ID && (
+            <div className="space-y-2">
+              <Label>Split Afiliado (R$)</Label>
+              <CurrencyInput
+                value={splitAfiliado}
+                onChange={setSplitAfiliado}
+                placeholder="0,00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor repassado ao afiliado. Não altera o valor do lançamento. Usado apenas para a visão "DRE com Split Afiliado".
+              </p>
+            </div>
+          )}
 
           <CentroCustoRateio
             value={rateioItems}

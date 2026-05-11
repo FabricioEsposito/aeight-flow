@@ -75,6 +75,7 @@ interface PreviewRow {
   centro_custo?: string;
   conta_bancaria_id?: string;
   servico_id?: string;
+  split_afiliado?: number;
 }
 
 interface ValidationError {
@@ -118,6 +119,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Centro de Custo (Código)': 'CC001',
         'Conta Bancária (Descrição)': 'Conta Principal',
         'Serviço (Código)': 'SRV001',
+        'Split Afiliado (R$)': 0,
       },
       {
         'Tipo (entrada/saida)': 'saida',
@@ -131,6 +133,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
         'Centro de Custo (Código)': '',
         'Conta Bancária (Descrição)': '',
         'Serviço (Código)': '',
+        'Split Afiliado (R$)': '',
       }
     ];
 
@@ -151,6 +154,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       { wch: 25 }, // Centro de Custo
       { wch: 30 }, // Conta Bancária
       { wch: 20 }, // Serviço
+      { wch: 20 }, // Split Afiliado
     ];
 
     XLSX.writeFile(wb, 'modelo_importacao_lancamentos.xlsx');
@@ -624,6 +628,25 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           }
         }
 
+        // Split Afiliado (opcional, somente quando tipo=entrada e serviço = Marketing de Afiliados)
+        const MARKETING_AFILIADOS_SERVICE_ID = '1cee9599-206e-47bc-b19e-d2cd8177d9d8';
+        let split_afiliado: number | undefined;
+        const splitRaw = (row as any)['Split Afiliado (R$)'] ?? (row as any)['Split Afiliado'] ?? (row as any)['Split'];
+        if (splitRaw !== undefined && splitRaw !== null && splitRaw !== '') {
+          if (tipo !== 'entrada') {
+            warnings.push('Split Afiliado ignorado: aplicável somente em receitas');
+          } else if (servico_id !== MARKETING_AFILIADOS_SERVICE_ID) {
+            warnings.push('Split Afiliado ignorado: serviço informado não é "Marketing de Afiliados"');
+          } else {
+            const validSplit = validarValor(splitRaw);
+            if (validSplit.valido) {
+              split_afiliado = validSplit.valorNumerico;
+            } else {
+              warnings.push(`Split Afiliado inválido: ${validSplit.mensagem}`);
+            }
+          }
+        }
+
         // Se vai criar cliente/fornecedor mas auto-criar está desabilitado, é erro
         const finalErrors = [...errors];
         if (willCreateClienteFornecedor && !autoCriarClienteFornecedor) {
@@ -660,6 +683,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           centro_custo,
           conta_bancaria_id,
           servico_id,
+          split_afiliado,
         };
       });
 
@@ -1157,9 +1181,11 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
             plano_conta_id: row.plano_conta_id || null,
             centro_custo: row.centro_custo || null,
             conta_bancaria_id: row.conta_bancaria_id || null,
+            servico_id: row.servico_id || null,
+            split_afiliado: row.split_afiliado ?? null,
             observacoes,
             status: 'pendente',
-          });
+          } as any);
           if (error) throw error;
         } else {
           // Verificar se temos fornecedor_id válido antes de inserir

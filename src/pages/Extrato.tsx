@@ -78,6 +78,7 @@ interface LancamentoExtrato {
   folha_status?: string | null;
   is_folha_funcionario?: boolean;
   servico_id?: string | null;
+  split_afiliado?: number | null;
   fornecedor_id?: string | null;
 }
 
@@ -701,6 +702,7 @@ export default function Extrato() {
           link_boleto: r.link_boleto,
           observacoes: r.observacoes,
           servico_id: (r as any).servico_id || null,
+          split_afiliado: (r as any).split_afiliado ?? null,
         };
 
         // Prioridade: serviço individual do lançamento (se houver) sobrepõe os do contrato
@@ -1422,6 +1424,11 @@ export default function Extrato() {
         servico_id: data.servico_id || null,
         [dateField]: data.data_movimentacao || null,
       };
+
+      // Split afiliado apenas em contas a receber
+      if (selectedLancamento.cliente_id) {
+        updateData.split_afiliado = data.split_afiliado ?? null;
+      }
       
       // Adicionar fornecedor_id para contas a pagar
       if (data.fornecedor_id) {
@@ -2638,6 +2645,11 @@ export default function Extrato() {
                           <Badge variant="secondary" className="w-fit text-[10px] px-1 py-0 mt-0.5">
                             {lanc.importancia_contrato === 'importante' ? 'Imp.' : 
                              lanc.importancia_contrato === 'mediano' ? 'Med.' : 'N/Imp.'}
+                          </Badge>
+                        )}
+                        {lanc.split_afiliado != null && Number(lanc.split_afiliado) > 0 && (
+                          <Badge variant="outline" className="w-fit text-[10px] px-1 py-0 mt-0.5 bg-purple-500/10 text-purple-600 border-purple-500/30">
+                            Split: {formatCurrency(Number(lanc.split_afiliado))}
                           </Badge>
                         )}
                       </div>
