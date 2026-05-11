@@ -154,6 +154,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
       { wch: 25 }, // Centro de Custo
       { wch: 30 }, // Conta Bancária
       { wch: 20 }, // Serviço
+      { wch: 20 }, // Split Afiliado
     ];
 
     XLSX.writeFile(wb, 'modelo_importacao_lancamentos.xlsx');
