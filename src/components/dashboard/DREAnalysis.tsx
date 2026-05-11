@@ -1456,8 +1456,9 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                                 ah.positive === null && "text-muted-foreground",
                                 ah.positive === true && (linha.isNegative ? "text-destructive" : "text-emerald-600"),
                                 ah.positive === false && (linha.isNegative ? "text-emerald-600" : "text-destructive"),
+                                linha.detalhes && linha.detalhes.length > 0 && i > 0 && "cursor-help underline decoration-dotted underline-offset-2",
                               )}>
-                                {ah.text}
+                                {renderAHTooltip(<span>{ah.text}</span>, linha.isNegative, linha.detalhes, i)}
                               </td>
                             </Fragment>
                           );
