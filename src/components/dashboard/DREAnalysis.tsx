@@ -33,6 +33,7 @@ interface DetalheItem {
 
 interface DREData {
   receita: number;
+  receitaBruta: number;
   receitaDetalhes: DetalheItem[];
   cmv: number;
   cmvDetalhes: DetalheItem[];
@@ -736,7 +737,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const resultadoMes = ebitMes.map((e, i) => e - provisaoMes[i]);
 
       const linhasMensal: DREMensal['linhas'] = [
-        { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
+        { label: 'Receita', valores: showSplitAfiliado ? receitaMesRaw : receitaMes, detalhes: receitaDetalheMes },
       ];
       if (showSplitAfiliado) {
         linhasMensal.push({ label: '(-) Split Afiliado', valores: splitAfiliadoMes, isNegative: true });
@@ -761,6 +762,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       setDreData({
         receita: receitaTotal,
+        receitaBruta: receitaTotalRaw,
         receitaDetalhes,
         
         cmv: cmvTotal,
@@ -1183,7 +1185,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           </div>
 
           {/* Receita */}
-          {renderLine('Receita', dreData.receita, false, false, true, 'receita')}
+          {renderLine('Receita', showSplitAfiliado && dreData.splitAfiliado > 0 ? dreData.receitaBruta : dreData.receita, false, false, true, 'receita')}
           {renderDetails('receita', dreData.receitaDetalhes)}
 
           {/* Split Afiliado (apenas quando o toggle está ativo) */}
