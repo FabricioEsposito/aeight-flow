@@ -78,6 +78,7 @@ interface LancamentoExtrato {
   folha_status?: string | null;
   is_folha_funcionario?: boolean;
   servico_id?: string | null;
+  split_afiliado?: number | null;
   fornecedor_id?: string | null;
 }
 
