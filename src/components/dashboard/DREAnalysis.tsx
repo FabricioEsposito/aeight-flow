@@ -568,6 +568,93 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const emprestimosMes = somarPorMes(despesas, emprestimosIds);
       const despExtraMes = somarPorMes(despesas, despExtraIds);
 
+      // Construir detalhamento mensal hierárquico (plano de contas -> serviço/fornecedor -> cliente)
+      const buildMensalDetalhe = (
+        lancamentos: any[],
+        accountIds: string[],
+        tipo: 'receita' | 'despesa'
+      ): MensalDetalhe[] => {
+        const planos = new Map<string, {
+          codigo: string; descricao: string; valores: number[]; total: number;
+          grupos: Map<string, { label: string; valores: number[]; total: number; items: Map<string, { label: string; valores: number[]; total: number }> }>;
+        }>();
+
+        lancamentos?.forEach((l: any) => {
+          if (!l.plano_conta_id || !accountIds.includes(l.plano_conta_id)) return;
+          if (!l.data_competencia) return;
+          const mes = l.data_competencia.slice(0, 7);
+          const idx = mesesList.indexOf(mes);
+          if (idx === -1) return;
+          const effective = getEffectiveValue(l);
+          if (!effective) return;
+
+          const plano = planosContas.find(p => p.id === l.plano_conta_id);
+          const codigo = plano?.codigo || '';
+          const descricao = plano?.descricao || '';
+
+          if (!planos.has(l.plano_conta_id)) {
+            planos.set(l.plano_conta_id, {
+              codigo, descricao,
+              valores: new Array(mesesList.length).fill(0),
+              total: 0,
+              grupos: new Map(),
+            });
+          }
+          const p = planos.get(l.plano_conta_id)!;
+          p.valores[idx] += effective.valor;
+          p.total += effective.valor;
+
+          const grupoKey = tipo === 'receita'
+            ? (l.servicos?.nome
+                || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || 'Sem serviço informado')
+            : (l.fornecedores?.razao_social || 'Fornecedor não informado');
+
+          if (!p.grupos.has(grupoKey)) {
+            p.grupos.set(grupoKey, { label: grupoKey, valores: new Array(mesesList.length).fill(0), total: 0, items: new Map() });
+          }
+          const g = p.grupos.get(grupoKey)!;
+          g.valores[idx] += effective.valor;
+          g.total += effective.valor;
+
+          if (tipo === 'receita') {
+            const cliente = l.clientes?.razao_social || 'Cliente não informado';
+            if (!g.items.has(cliente)) {
+              g.items.set(cliente, { label: cliente, valores: new Array(mesesList.length).fill(0), total: 0 });
+            }
+            const c = g.items.get(cliente)!;
+            c.valores[idx] += effective.valor;
+            c.total += effective.valor;
+          }
+        });
+
+        return Array.from(planos.values())
+          .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+          .map(p => ({
+            label: `${p.codigo} ${p.descricao}`.trim(),
+            valores: p.valores,
+            total: p.total,
+            children: Array.from(p.grupos.values())
+              .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+              .map(g => ({
+                label: g.label,
+                valores: g.valores,
+                total: g.total,
+                children: tipo === 'receita'
+                  ? Array.from(g.items.values()).sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+                  : undefined,
+              })),
+          }));
+      };
+
+      const receitaDetalheMes = buildMensalDetalhe(receitas, receitaIds, 'receita');
+      const cmvDetalheMes = buildMensalDetalhe(despesas, cmvIds, 'despesa');
+      const despAdmDetalheMes = buildMensalDetalhe(despesas, despAdmIds, 'despesa');
+      const impostosDetalheMes = buildMensalDetalhe(despesas, impostosIds, 'despesa');
+      const despFinDetalheMes = buildMensalDetalhe(despesas, despFinIds, 'despesa');
+      const emprestimosDetalheMes = buildMensalDetalhe(despesas, emprestimosIds, 'despesa');
+      const despExtraDetalheMes = buildMensalDetalhe(despesas, despExtraIds, 'despesa');
+
       const margemMes = receitaMes.map((r, i) => r > 0 ? ((r - cmvMes[i]) / r) * 100 : 0);
       const ebtidaMes = receitaMes.map((r, i) => r - cmvMes[i] - despAdmMes[i]);
       const ebitMes = ebtidaMes.map((e, i) => e - impostosMes[i] - emprestimosMes[i] - despFinMes[i]);
@@ -577,18 +664,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       setDreMensal({
         meses: mesesList,
         linhas: [
-          { label: 'Receita', valores: receitaMes },
-          { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true },
+          { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
+          { label: 'CMV (Custo Variável)', valores: cmvMes, isNegative: true, detalhes: cmvDetalheMes },
           { label: 'Margem de Contribuição', valores: margemMes, isTotal: true, isPercent: true },
-          { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true },
+          { label: 'Desp. ADM (Custo Fixo)', valores: despAdmMes, isNegative: true, detalhes: despAdmDetalheMes },
           { label: 'EBTIDA', valores: ebtidaMes, isTotal: true },
-          { label: 'Impostos', valores: impostosMes, isNegative: true },
-          { label: 'Empréstimo', valores: emprestimosMes, isNegative: true },
-          { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true },
+          { label: 'Impostos', valores: impostosMes, isNegative: true, detalhes: impostosDetalheMes },
+          { label: 'Empréstimo', valores: emprestimosMes, isNegative: true, detalhes: emprestimosDetalheMes },
+          { label: 'Desp. Financeiras', valores: despFinMes, isNegative: true, detalhes: despFinDetalheMes },
           { label: 'EBIT', valores: ebitMes, isTotal: true },
           { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
           { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
-          { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true },
+          { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
           { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
         ],
       });
