@@ -665,6 +665,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const despFinDetalheMes = buildMensalDetalhe(despesas, despFinIds, 'despesa');
       const emprestimosDetalheMes = buildMensalDetalhe(despesas, emprestimosIds, 'despesa');
       const despExtraDetalheMes = buildMensalDetalhe(despesas, despExtraIds, 'despesa');
+      const cmvEspecialDetalheMes = buildMensalDetalhe(despesas, cmvEspecialIds, 'despesa');
 
       const margemMes = receitaMes.map((r, i) => r > 0 ? ((r - cmvMes[i]) / r) * 100 : 0);
       const ebtidaMes = receitaMes.map((r, i) => r - cmvMes[i] - despAdmMes[i]);
