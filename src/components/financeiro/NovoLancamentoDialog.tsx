@@ -116,6 +116,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
     setInformarNsu(false);
     setNsu('');
     setServicoId('');
+    setSplitAfiliado(0);
     setObservacoes('');
     setLinkNf(null);
     setLinkBoleto(null);
