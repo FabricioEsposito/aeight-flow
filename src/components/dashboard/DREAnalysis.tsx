@@ -612,7 +612,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         return totais;
       };
 
-      const receitaMes = somarPorMes(receitas, receitaIds);
+      const receitaMesRaw = somarPorMes(receitas, receitaIds);
+      // Split por mês (somar split_afiliado por data_competencia)
+      const splitAfiliadoMes = new Array(mesesList.length).fill(0);
+      (receitas || []).forEach((l: any) => {
+        const v = Number(l.split_afiliado) || 0;
+        if (!v || !l.data_competencia) return;
+        const idx = mesesList.indexOf(l.data_competencia.slice(0, 7));
+        if (idx !== -1) splitAfiliadoMes[idx] += v;
+      });
+      const receitaMes = showSplitAfiliado
+        ? receitaMesRaw.map((r, i) => r - splitAfiliadoMes[i])
+        : receitaMesRaw;
       const cmvMes = somarPorMes(despesas, cmvIds);
       
       const despAdmMes = somarPorMes(despesas, despAdmIds);
