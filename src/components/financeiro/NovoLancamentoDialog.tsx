@@ -290,6 +290,20 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
                 </div>
               </div>
 
+              {tipoLancamento === 'receita' && servicoId === MARKETING_AFILIADOS_SERVICE_ID && (
+                <div className="space-y-2">
+                  <Label>Split Afiliado (R$)</Label>
+                  <CurrencyInput
+                    value={splitAfiliado}
+                    onChange={setSplitAfiliado}
+                    placeholder="0,00"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valor repassado ao afiliado. Não altera o valor da receita.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código de referência</Label>
