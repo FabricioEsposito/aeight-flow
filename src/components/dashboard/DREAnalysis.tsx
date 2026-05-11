@@ -218,6 +218,40 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       let rateioMap = new Map<string, RateioInfo[]>();
       // Map: parcela_id -> nome(s) de serviço(s) do contrato
       const parcelaServicoMap = new Map<string, string>();
+
+      // Map para normalizar nomes de serviço vindos de `observacoes` (ex: "ASSM005 - Assinatura Monitfy")
+      // ao nome canônico do serviço, evitando duplicação no agrupamento do DRE.
+      const servicoCanonicoMap = new Map<string, string>(); // chave normalizada -> nome canônico
+      {
+        const { data: todosServicos } = await supabase
+          .from('servicos')
+          .select('codigo, nome');
+        (todosServicos || []).forEach((s: any) => {
+          if (!s?.nome) return;
+          const nome = String(s.nome).trim();
+          servicoCanonicoMap.set(nome.toLowerCase(), nome);
+          if (s.codigo) {
+            const cod = String(s.codigo).trim();
+            servicoCanonicoMap.set(cod.toLowerCase(), nome);
+            servicoCanonicoMap.set(`${cod} - ${nome}`.toLowerCase(), nome);
+          }
+        });
+      }
+
+      const resolveServicoFromObservacoes = (obs: unknown): string | undefined => {
+        if (typeof obs !== 'string' || !obs.startsWith('Serviço: ')) return undefined;
+        const raw = obs.replace('Serviço: ', '').trim();
+        if (!raw) return undefined;
+        const lower = raw.toLowerCase();
+        if (servicoCanonicoMap.has(lower)) return servicoCanonicoMap.get(lower);
+        // tenta tirar prefixo "CODIGO - "
+        const semCodigo = raw.replace(/^[^\s-]+\s*-\s*/, '').trim();
+        if (semCodigo && servicoCanonicoMap.has(semCodigo.toLowerCase())) {
+          return servicoCanonicoMap.get(semCodigo.toLowerCase());
+        }
+        return semCodigo || raw;
+      };
+
       
       if (parcelaIds.length > 0) {
         // Get contrato_id for each parcela
@@ -409,7 +443,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               const servicoNome =
                 l.servicos?.nome
                 || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
-                || (typeof l.observacoes === 'string' && l.observacoes.startsWith('Serviço: ') ? l.observacoes.replace('Serviço: ', '').trim() : undefined)
+                || resolveServicoFromObservacoes(l.observacoes)
                 || 'Sem serviço informado';
               if (!group.servicos.has(servicoNome)) {
                 group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
@@ -619,7 +653,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           const grupoKey = tipo === 'receita'
             ? (l.servicos?.nome
                 || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
-                || (typeof l.observacoes === 'string' && l.observacoes.startsWith('Serviço: ') ? l.observacoes.replace('Serviço: ', '').trim() : undefined)
+                || resolveServicoFromObservacoes(l.observacoes)
                 || 'Sem serviço informado')
             : (l.fornecedores?.razao_social || 'Fornecedor não informado');
 
