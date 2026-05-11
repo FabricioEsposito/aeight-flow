@@ -26,15 +26,17 @@ import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 interface Cliente {
   id: string;
   tipo_pessoa: 'fisica' | 'juridica' | 'internacional';
-  razao_social: string;
+  razao_social: string | null;
   nome_fantasia?: string | null;
-  cnpj_cpf: string;
-  email?: string[] | null;
+  cnpj_cpf: string | null;
+  email?: string[] | string | null;
   telefone?: string;
   endereco?: string;
   status: 'ativo' | 'inativo';
   created_at: string;
 }
+
+const normalizeSearchValue = (value: unknown) => String(value ?? '').toLowerCase();
 
 export default function Clientes() {
   useContextualTutorial('clientes');
@@ -167,12 +169,18 @@ export default function Clientes() {
   };
 
   const filteredClientes = clientes.filter(cliente => {
-    const term = (searchTerm || '').toLowerCase();
+    const term = normalizeSearchValue(searchTerm);
+    const emailValues = Array.isArray(cliente.email)
+      ? cliente.email
+      : cliente.email
+        ? [cliente.email]
+        : [];
+
     const matchesSearch =
-      (cliente.razao_social || '').toLowerCase().includes(term) ||
-      (cliente.nome_fantasia || '').toLowerCase().includes(term) ||
-      (cliente.cnpj_cpf || '').toLowerCase().includes(term) ||
-      (Array.isArray(cliente.email) && cliente.email.some(e => (e || '').toLowerCase().includes(term)));
+      normalizeSearchValue(cliente.razao_social).includes(term) ||
+      normalizeSearchValue(cliente.nome_fantasia).includes(term) ||
+      normalizeSearchValue(cliente.cnpj_cpf).includes(term) ||
+      emailValues.some(e => normalizeSearchValue(e).includes(term));
     
     const matchesStatus = statusFilter === "todos" || cliente.status === statusFilter;
     const matchesTipo = tipoFilter === "todos" || cliente.tipo_pessoa === tipoFilter;
