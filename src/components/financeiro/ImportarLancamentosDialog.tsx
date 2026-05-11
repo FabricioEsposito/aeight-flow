@@ -683,6 +683,7 @@ export function ImportarLancamentosDialog({ open, onOpenChange, onSuccess }: Imp
           centro_custo,
           conta_bancaria_id,
           servico_id,
+          split_afiliado,
         };
       });
 
