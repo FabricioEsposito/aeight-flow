@@ -375,6 +375,20 @@ export function EditParcelaDialog({
               />
           </div>
 
+          {tipo === 'entrada' && servicoId === MARKETING_AFILIADOS_SERVICE_ID && (
+            <div className="space-y-2">
+              <Label>Split Afiliado (R$)</Label>
+              <CurrencyInput
+                value={splitAfiliado}
+                onChange={setSplitAfiliado}
+                placeholder="0,00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor repassado ao afiliado. Não altera o valor do lançamento. Usado apenas para a visão "DRE com Split Afiliado".
+              </p>
+            </div>
+          )}
+
           <CentroCustoRateio
             value={rateioItems}
             onChange={setRateioItems}
