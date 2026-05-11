@@ -54,6 +54,8 @@ interface DREData {
   resultadoExercicio: number;
   despExtraordinaria: number;
   despExtraordinariaDetalhes: DetalheItem[];
+  cmvEspecial: number;
+  cmvEspecialDetalhes: DetalheItem[];
 }
 
 interface DREAnalysisProps {
@@ -86,6 +88,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
+  const [showCmvEspecial, setShowCmvEspecial] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // Helper to format "YYYY-MM-DD" string to display format
@@ -461,11 +464,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         'receita'
       );
 
-      // Processar CMV - Custos Variáveis (2.1)
-      const cmvIds = getAccountIds('2.1');
+      // Processar CMV - Custos Variáveis (2.1) — separa 2.1.11 e 2.1.12 como "CMV Especial"
+      const cmvEspecialIds = [...getAccountIds('2.1.11'), ...getAccountIds('2.1.12')];
+      const cmvIds = getAccountIds('2.1').filter(id => !cmvEspecialIds.includes(id));
       const { detalhes: cmvDetalhes, total: cmvTotal } = agruparDetalhes(
         despesas,
         cmvIds,
+        planosContas,
+        'despesa'
+      );
+      const { detalhes: cmvEspecialDetalhes, total: cmvEspecialTotal } = agruparDetalhes(
+        despesas,
+        cmvEspecialIds,
         planosContas,
         'despesa'
       );
@@ -562,6 +572,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
       const receitaMes = somarPorMes(receitas, receitaIds);
       const cmvMes = somarPorMes(despesas, cmvIds);
+      const cmvEspecialMes = somarPorMes(despesas, cmvEspecialIds);
       const despAdmMes = somarPorMes(despesas, despAdmIds);
       const impostosMes = somarPorMes(despesas, impostosIds);
       const despFinMes = somarPorMes(despesas, despFinIds);
@@ -654,6 +665,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const despFinDetalheMes = buildMensalDetalhe(despesas, despFinIds, 'despesa');
       const emprestimosDetalheMes = buildMensalDetalhe(despesas, emprestimosIds, 'despesa');
       const despExtraDetalheMes = buildMensalDetalhe(despesas, despExtraIds, 'despesa');
+      const cmvEspecialDetalheMes = buildMensalDetalhe(despesas, cmvEspecialIds, 'despesa');
 
       const margemMes = receitaMes.map((r, i) => r > 0 ? ((r - cmvMes[i]) / r) * 100 : 0);
       const ebtidaMes = receitaMes.map((r, i) => r - cmvMes[i] - despAdmMes[i]);
@@ -675,8 +687,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           { label: 'EBIT', valores: ebitMes, isTotal: true },
           { label: 'Provisão CSLL e IRRF (34%)', valores: provisaoMes, isNegative: true },
           { label: 'Resultado do Exercício', valores: resultadoMes, isTotal: true },
+          { label: 'CMV Especial (2.1.11/2.1.12)', valores: cmvEspecialMes, isNegative: true, detalhes: cmvEspecialDetalheMes },
+          { label: 'Resultado Após CMV Especial', valores: resultadoMes.map((r, i) => r - cmvEspecialMes[i]), isTotal: true },
           { label: 'Despesa Extraordinária', valores: despExtraMes, isNegative: true, detalhes: despExtraDetalheMes },
-          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i]), isTotal: true },
+          { label: 'Resultado Após Desp. Extraord.', valores: resultadoMes.map((r, i) => r - despExtraMes[i] - (cmvEspecialMes[i] || 0)), isTotal: true },
         ],
       });
 
@@ -706,6 +720,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         resultadoExercicio,
         despExtraordinaria: despExtraTotal,
         despExtraordinariaDetalhes: despExtraDetalhes,
+        cmvEspecial: cmvEspecialTotal,
+        cmvEspecialDetalhes: cmvEspecialDetalhes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
@@ -996,6 +1012,16 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => setShowCmvEspecial(!showCmvEspecial)}
+            className="gap-2 text-muted-foreground"
+            title={showCmvEspecial ? 'Ocultar CMV Especial (2.1.11/2.1.12)' : 'Exibir CMV Especial (2.1.11/2.1.12)'}
+          >
+            {showCmvEspecial ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <span className="text-xs">CMV 2.1.11/2.1.12</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowDespExtraordinaria(!showDespExtraordinaria)}
             className="gap-2 text-muted-foreground"
             title={showDespExtraordinaria ? 'Ocultar Despesa Extraordinária' : 'Exibir Despesa Extraordinária'}
@@ -1059,12 +1085,21 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Resultado do Exercício */}
           {renderLine('Resultado do Exercício', dreData.resultadoExercicio, true, dreData.resultadoExercicio < 0)}
 
+          {/* CMV Especial (2.1.11/2.1.12) */}
+          {showCmvEspecial && (
+            <>
+              {renderLine('CMV Especial (2.1.11/2.1.12)', dreData.cmvEspecial, false, true, true, 'cmvEspecial')}
+              {renderDetails('cmvEspecial', dreData.cmvEspecialDetalhes)}
+              {renderLine('Resultado Após CMV Especial', dreData.resultadoExercicio - dreData.cmvEspecial, true, (dreData.resultadoExercicio - dreData.cmvEspecial) < 0)}
+            </>
+          )}
+
           {/* Despesa Extraordinária */}
           {showDespExtraordinaria && (
             <>
               {renderLine('Despesa Extraordinária', dreData.despExtraordinaria, false, true, true, 'despExtraordinaria')}
               {renderDetails('despExtraordinaria', dreData.despExtraordinariaDetalhes)}
-              {renderLine('Resultado Após Desp. Extraordinárias', dreData.resultadoExercicio - dreData.despExtraordinaria, true, (dreData.resultadoExercicio - dreData.despExtraordinaria) < 0)}
+              {renderLine('Resultado Após Desp. Extraordinárias', dreData.resultadoExercicio - dreData.despExtraordinaria - (showCmvEspecial ? dreData.cmvEspecial : 0), true, (dreData.resultadoExercicio - dreData.despExtraordinaria - (showCmvEspecial ? dreData.cmvEspecial : 0)) < 0)}
             </>
           )}
         </div>
@@ -1209,6 +1244,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
                   return dreMensal.linhas
                   .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
+                  .filter(linha => showCmvEspecial || (!linha.label.includes('CMV Especial') && linha.label !== 'Resultado Após CMV Especial'))
                   .flatMap((linha, idx) => {
                     let total: number | null;
                     if (linha.isPercent) {
@@ -1225,8 +1261,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                         case 'EBIT': total = dreData.ebit; break;
                         case 'Provisão CSLL e IRRF (34%)': total = dreData.provisaoCsllIrrf; break;
                         case 'Resultado do Exercício': total = dreData.resultadoExercicio; break;
+                        case 'CMV Especial (2.1.11/2.1.12)': total = dreData.cmvEspecial; break;
+                        case 'Resultado Após CMV Especial': total = dreData.resultadoExercicio - dreData.cmvEspecial; break;
                         case 'Despesa Extraordinária': total = dreData.despExtraordinaria; break;
-                        case 'Resultado Após Desp. Extraord.': total = dreData.resultadoExercicio - dreData.despExtraordinaria; break;
+                        case 'Resultado Após Desp. Extraord.': total = dreData.resultadoExercicio - dreData.despExtraordinaria - (showCmvEspecial ? dreData.cmvEspecial : 0); break;
                         default: total = linha.valores.reduce((s, v) => s + v, 0);
                       }
                     }
