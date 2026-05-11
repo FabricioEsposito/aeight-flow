@@ -745,6 +745,20 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     return `${((value / dreData.receita) * 100).toFixed(1)}%`;
   };
 
+  // AH no gerencial: variação entre o primeiro e o último mês do período
+  const calcAH = (label: string): { text: string; positive: boolean | null } | null => {
+    if (!dreMensal || dreMensal.meses.length < 2) return null;
+    const linha = dreMensal.linhas.find(l => l.label === label);
+    if (!linha) return null;
+    const first = linha.valores[0];
+    const last = linha.valores[linha.valores.length - 1];
+    if (!first || first === 0) return { text: '—', positive: null };
+    const variacao = ((last - first) / Math.abs(first)) * 100;
+    if (!isFinite(variacao)) return { text: '—', positive: null };
+    const sign = variacao > 0 ? '+' : '';
+    return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
+  };
+
   const renderLine = (
     label: string,
     value: number | string,
@@ -758,6 +772,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     const showValue = typeof value === 'number';
     const displayValue = showValue ? formatCurrency(Math.abs(value)) : value;
     const av = showValue ? calcAV(value as number) : null;
+    const ah = showValue ? calcAH(label) : null;
 
     return (
       <div className={cn("border-b border-border", indent && "ml-8", isTotal && "bg-muted/40")}>
@@ -786,6 +801,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 {av}
               </span>
             )}
+            <span
+              className={cn(
+                "text-xs w-20 text-right shrink-0",
+                !ah && "text-muted-foreground",
+                ah?.positive === null && "text-muted-foreground",
+                ah?.positive === true && (isNegative ? "text-destructive" : "text-emerald-600"),
+                ah?.positive === false && (isNegative ? "text-emerald-600" : "text-destructive"),
+              )}
+              title="Análise Horizontal: variação % entre o primeiro e o último mês do período"
+            >
+              {ah ? ah.text : ''}
+            </span>
             <div className="flex items-center gap-1 w-36 justify-end shrink-0">
               {showValue && isNegative && <span className="text-destructive">-</span>}
               <span className={cn(
