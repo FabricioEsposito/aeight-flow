@@ -200,7 +200,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // Buscar receitas (regime de competência) - com paginação
       const receitas = await fetchAllRows(
         'contas_receber',
-        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, servico_id, plano_contas(codigo, descricao), clientes(razao_social), servicos(nome)',
+        'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, servico_id, observacoes, plano_contas(codigo, descricao), clientes(razao_social), servicos(nome)',
         dateRange
       );
 
@@ -409,6 +409,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               const servicoNome =
                 l.servicos?.nome
                 || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || (typeof l.observacoes === 'string' && l.observacoes.startsWith('Serviço: ') ? l.observacoes.replace('Serviço: ', '').trim() : undefined)
                 || 'Sem serviço informado';
               if (!group.servicos.has(servicoNome)) {
                 group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
@@ -618,6 +619,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           const grupoKey = tipo === 'receita'
             ? (l.servicos?.nome
                 || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || (typeof l.observacoes === 'string' && l.observacoes.startsWith('Serviço: ') ? l.observacoes.replace('Serviço: ', '').trim() : undefined)
                 || 'Sem serviço informado')
             : (l.fornecedores?.razao_social || 'Fornecedor não informado');
 
