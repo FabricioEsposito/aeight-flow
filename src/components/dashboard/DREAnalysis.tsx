@@ -409,6 +409,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               const servicoNome =
                 l.servicos?.nome
                 || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || (typeof l.observacoes === 'string' && l.observacoes.startsWith('Serviço: ') ? l.observacoes.replace('Serviço: ', '').trim() : undefined)
                 || 'Sem serviço informado';
               if (!group.servicos.has(servicoNome)) {
                 group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
