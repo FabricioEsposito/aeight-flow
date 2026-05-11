@@ -94,6 +94,7 @@ export function EditParcelaDialog({
   const [fornecedorId, setFornecedorId] = useState<string>('');
   const [clienteId, setClienteId] = useState<string>('');
   const [servicoId, setServicoId] = useState<string>('');
+  const [splitAfiliado, setSplitAfiliado] = useState<number>(0);
   const [originalFornecedorId, setOriginalFornecedorId] = useState<string>('');
   const [originalClienteId, setOriginalClienteId] = useState<string>('');
 
