@@ -841,9 +841,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {renderLine('Receita', dreData.receita, false, false, true, 'receita')}
           {renderDetails('receita', dreData.receitaDetalhes)}
 
-          {/* Receita por Serviço (subagrupamento) */}
-          {renderLine('↳ Receita por Serviço', dreData.receita, false, false, true, 'receitaPorServico', true)}
-          {renderDetails('receitaPorServico', dreData.receitaPorServicoDetalhes)}
 
           {/* CMV */}
           {renderLine('CMV (Custo Variável)', dreData.cmv, false, true, true, 'cmv')}
