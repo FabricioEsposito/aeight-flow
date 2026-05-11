@@ -22,6 +22,8 @@ import { ContaBancariaSelect } from '@/components/financeiro/ContaBancariaSelect
 import { ServicoSelect } from '@/components/contratos/ServicoSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyInput, parseBrazilianCurrency } from '@/components/ui/currency-input';
+
+const MARKETING_AFILIADOS_SERVICE_ID = '1cee9599-206e-47bc-b19e-d2cd8177d9d8';
 export interface PrefilledLancamentoData {
   tipo?: 'receita' | 'despesa';
   data?: string; // YYYY-MM-DD — usado para competência, vencimento e movimento
