@@ -55,7 +55,11 @@ interface DREData {
   resultadoExercicio: number;
   despExtraordinaria: number;
   despExtraordinariaDetalhes: DetalheItem[];
+  splitAfiliado: number;
+  splitAfiliadoMes: number[];
 }
+
+const SPLIT_HIDDEN_COST_CODES = ['2.1.11', '2.1.12', '2.1.13'];
 
 interface DREAnalysisProps {
   dateRange: { from: string; to: string } | null;
