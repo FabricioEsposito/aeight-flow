@@ -1084,9 +1084,78 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                   const receitaLinha = dreMensal.linhas.find(l => l.label === 'Receita');
                   const receitasMensais = receitaLinha?.valores || [];
                   const receitaTotalConsolidada = dreData.receita;
+                  const formatAV = (valor: number, receitaBase: number): string => {
+                    if (!receitaBase || receitaBase === 0) return '-';
+                    return `${((Math.abs(valor) / Math.abs(receitaBase)) * 100).toFixed(1)}%`;
+                  };
+
+                  const renderDetalheRow = (
+                    d: MensalDetalhe,
+                    parentKey: string,
+                    depth: number,
+                    isNegative: boolean | undefined
+                  ): JSX.Element[] => {
+                    const key = `${parentKey}__${d.label}`;
+                    const isExp = expandedSections.has(key);
+                    const hasChildren = !!(d.children && d.children.length > 0);
+                    const rows: JSX.Element[] = [];
+                    rows.push(
+                      <tr key={key} className="border-b border-border/40 hover:bg-muted/30 bg-muted/10">
+                        <td
+                          className="py-1.5 px-4 sticky left-0 z-10 bg-background"
+                          style={{ paddingLeft: `${16 + depth * 20}px` }}
+                        >
+                          <div className="flex items-center gap-1">
+                            {hasChildren ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0"
+                                onClick={() => toggleSection(key)}
+                              >
+                                {isExp ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              </Button>
+                            ) : (
+                              <span className="inline-block w-5" />
+                            )}
+                            <span className="text-xs text-muted-foreground truncate" title={d.label}>{d.label}</span>
+                          </div>
+                        </td>
+                        {d.valores.map((v, i) => (
+                          <Fragment key={i}>
+                            <td className={cn(
+                              "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap border-l border-border/40",
+                              isNegative && v !== 0 && "text-destructive"
+                            )}>
+                              {(isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                            </td>
+                            <td className="text-right py-1.5 px-2 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                              {formatAV(v, receitasMensais[i] ?? 0)}
+                            </td>
+                          </Fragment>
+                        ))}
+                        <td className={cn(
+                          "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap bg-muted/20 border-l border-border/40 font-medium",
+                          isNegative && d.total !== 0 && "text-destructive"
+                        )}>
+                          {(isNegative && d.total > 0 ? '-' : '') + formatCurrency(Math.abs(d.total))}
+                        </td>
+                        <td className="text-right py-1.5 px-2 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap bg-muted/20">
+                          {formatAV(d.total, receitaTotalConsolidada)}
+                        </td>
+                      </tr>
+                    );
+                    if (isExp && hasChildren) {
+                      d.children!.forEach(c => {
+                        rows.push(...renderDetalheRow(c, key, depth + 1, isNegative));
+                      });
+                    }
+                    return rows;
+                  };
+
                   return dreMensal.linhas
                   .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
-                  .map((linha, idx) => {
+                  .flatMap((linha, idx) => {
                     let total: number | null;
                     if (linha.isPercent) {
                       total = dreData.margemContribuicao;
@@ -1107,14 +1176,28 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                         default: total = linha.valores.reduce((s, v) => s + v, 0);
                       }
                     }
-                    const formatAV = (valor: number, receitaBase: number): string => {
-                      if (!receitaBase || receitaBase === 0) return '-';
-                      return `${((Math.abs(valor) / Math.abs(receitaBase)) * 100).toFixed(1)}%`;
-                    };
-                    return (
+                    const linhaKey = `mensal_${linha.label}`;
+                    const isLinhaExp = expandedSections.has(linhaKey);
+                    const hasDetalhes = !!(linha.detalhes && linha.detalhes.length > 0);
+                    const rows: JSX.Element[] = [];
+                    rows.push(
                       <tr key={idx} className={cn("border-b border-border hover:bg-muted/50", linha.isTotal && "bg-muted/40 hover:bg-muted/60")}>
                         <td className={cn("py-2 px-4 sticky left-0 z-10", linha.isTotal ? "font-bold bg-muted/40" : "bg-background")}>
-                          {linha.label}
+                          <div className="flex items-center gap-1">
+                            {hasDetalhes ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0"
+                                onClick={() => toggleSection(linhaKey)}
+                              >
+                                {isLinhaExp ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              </Button>
+                            ) : (
+                              <span className="inline-block w-5" />
+                            )}
+                            <span>{linha.label}</span>
+                          </div>
                         </td>
                         {linha.valores.map((v, i) => (
                           <Fragment key={i}>
@@ -1152,6 +1235,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                         </td>
                       </tr>
                     );
+                    if (isLinhaExp && hasDetalhes) {
+                      linha.detalhes!.forEach(d => {
+                        rows.push(...renderDetalheRow(d, linhaKey, 1, linha.isNegative));
+                      });
+                    }
+                    return rows;
                   });
                 })()}
               </tbody>
