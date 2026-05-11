@@ -1136,19 +1136,30 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                             <span className="text-xs text-muted-foreground truncate" title={d.label}>{d.label}</span>
                           </div>
                         </td>
-                        {d.valores.map((v, i) => (
-                          <Fragment key={i}>
-                            <td className={cn(
-                              "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap border-l border-border/40",
-                              isNegative && v !== 0 && "text-destructive"
-                            )}>
-                              {(isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
-                            </td>
-                            <td className="text-right py-1.5 px-2 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-                              {formatAV(v, receitasMensais[i] ?? 0)}
-                            </td>
-                          </Fragment>
-                        ))}
+                        {d.valores.map((v, i) => {
+                          const ah = formatAH(d.valores, i);
+                          return (
+                            <Fragment key={i}>
+                              <td className={cn(
+                                "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap border-l border-border/40",
+                                isNegative && v !== 0 && "text-destructive"
+                              )}>
+                                {(isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                              </td>
+                              <td className="text-right py-1.5 px-2 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                {formatAV(v, receitasMensais[i] ?? 0)}
+                              </td>
+                              <td className={cn(
+                                "text-right py-1.5 px-2 text-[10px] tabular-nums whitespace-nowrap",
+                                ah.positive === null && "text-muted-foreground",
+                                ah.positive === true && (isNegative ? "text-destructive" : "text-emerald-600"),
+                                ah.positive === false && (isNegative ? "text-emerald-600" : "text-destructive"),
+                              )}>
+                                {ah.text}
+                              </td>
+                            </Fragment>
+                          );
+                        })}
                         <td className={cn(
                           "text-right py-1.5 px-4 text-xs tabular-nums whitespace-nowrap bg-muted/20 border-l border-border/40 font-medium",
                           isNegative && d.total !== 0 && "text-destructive"
@@ -1214,26 +1225,38 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                             <span>{linha.label}</span>
                           </div>
                         </td>
-                        {linha.valores.map((v, i) => (
-                          <Fragment key={i}>
-                            <td className={cn(
-                              "text-right py-2 px-4 tabular-nums whitespace-nowrap border-l border-border/40",
-                              linha.isTotal && "font-bold",
-                              linha.isNegative && v !== 0 && "text-destructive",
-                              !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
-                            )}>
-                              {linha.isPercent
-                                ? `${v.toFixed(2)}%`
-                                : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
-                            </td>
-                            <td className={cn(
-                              "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap",
-                              linha.isTotal && "font-semibold"
-                            )}>
-                              {linha.isPercent ? '-' : formatAV(v, receitasMensais[i] ?? 0)}
-                            </td>
-                          </Fragment>
-                        ))}
+                        {linha.valores.map((v, i) => {
+                          const ah = formatAH(linha.valores, i);
+                          return (
+                            <Fragment key={i}>
+                              <td className={cn(
+                                "text-right py-2 px-4 tabular-nums whitespace-nowrap border-l border-border/40",
+                                linha.isTotal && "font-bold",
+                                linha.isNegative && v !== 0 && "text-destructive",
+                                !linha.isNegative && linha.isTotal && v < 0 && "text-destructive"
+                              )}>
+                                {linha.isPercent
+                                  ? `${v.toFixed(2)}%`
+                                  : (linha.isNegative && v > 0 ? '-' : '') + formatCurrency(Math.abs(v))}
+                              </td>
+                              <td className={cn(
+                                "text-right py-2 px-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap",
+                                linha.isTotal && "font-semibold"
+                              )}>
+                                {linha.isPercent ? '-' : formatAV(v, receitasMensais[i] ?? 0)}
+                              </td>
+                              <td className={cn(
+                                "text-right py-2 px-2 text-xs tabular-nums whitespace-nowrap",
+                                linha.isTotal && "font-semibold",
+                                ah.positive === null && "text-muted-foreground",
+                                ah.positive === true && (linha.isNegative ? "text-destructive" : "text-emerald-600"),
+                                ah.positive === false && (linha.isNegative ? "text-emerald-600" : "text-destructive"),
+                              )}>
+                                {ah.text}
+                              </td>
+                            </Fragment>
+                          );
+                        })}
                         <td className={cn(
                           "text-right py-2 px-4 tabular-nums whitespace-nowrap font-bold bg-muted/20 border-l border-border/40",
                           linha.isNegative && total !== null && total !== 0 && "text-destructive",
