@@ -737,7 +737,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const resultadoMes = ebitMes.map((e, i) => e - provisaoMes[i]);
 
       const linhasMensal: DREMensal['linhas'] = [
-        { label: 'Receita', valores: receitaMes, detalhes: receitaDetalheMes },
+        { label: 'Receita', valores: showSplitAfiliado ? receitaMesRaw : receitaMes, detalhes: receitaDetalheMes },
       ];
       if (showSplitAfiliado) {
         linhasMensal.push({ label: '(-) Split Afiliado', valores: splitAfiliadoMes, isNegative: true });
