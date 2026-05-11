@@ -199,6 +199,8 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const parcelaIds = [...new Set(allLancamentos.map(l => l.parcela_id).filter(Boolean))] as string[];
       
       let rateioMap = new Map<string, RateioInfo[]>();
+      // Map: parcela_id -> nome(s) de serviço(s) do contrato
+      const parcelaServicoMap = new Map<string, string>();
       
       if (parcelaIds.length > 0) {
         // Get contrato_id for each parcela
@@ -211,10 +213,37 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           const contratoIds = [...new Set(parcelas.map(p => p.contrato_id).filter(Boolean))] as string[];
           
           if (contratoIds.length > 0) {
-            const { data: rateios } = await supabase
-              .from('contratos_centros_custo')
-              .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-              .in('contrato_id', contratoIds);
+            const [{ data: rateios }, { data: contratosData }] = await Promise.all([
+              supabase
+                .from('contratos_centros_custo')
+                .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+                .in('contrato_id', contratoIds),
+              supabase
+                .from('contratos')
+                .select('id, servicos')
+                .in('id', contratoIds),
+            ]);
+
+            // Resolver nomes de serviços
+            const allServicoIds = new Set<string>();
+            (contratosData || []).forEach((c: any) => {
+              if (Array.isArray(c.servicos)) c.servicos.forEach((sid: string) => sid && allServicoIds.add(sid));
+            });
+            const servicoNomeMap = new Map<string, string>();
+            if (allServicoIds.size > 0) {
+              const { data: servicosData } = await supabase
+                .from('servicos')
+                .select('id, nome')
+                .in('id', Array.from(allServicoIds));
+              (servicosData || []).forEach((s: any) => servicoNomeMap.set(s.id, s.nome));
+            }
+            const contratoServicoMap = new Map<string, string>();
+            (contratosData || []).forEach((c: any) => {
+              if (Array.isArray(c.servicos) && c.servicos.length > 0) {
+                const nomes = c.servicos.map((sid: string) => servicoNomeMap.get(sid)).filter(Boolean);
+                if (nomes.length > 0) contratoServicoMap.set(c.id, nomes.join(' + '));
+              }
+            });
 
             if (rateios && rateios.length > 0) {
               const contratoRateioMap = new Map<string, RateioInfo[]>();
@@ -236,6 +265,12 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 if (parcela.contrato_id && contratoRateioMap.has(parcela.contrato_id)) {
                   rateioMap.set(parcela.id, contratoRateioMap.get(parcela.contrato_id)!);
                 }
+              }
+            }
+
+            for (const parcela of parcelas) {
+              if (parcela.contrato_id && contratoServicoMap.has(parcela.contrato_id)) {
+                parcelaServicoMap.set(parcela.id, contratoServicoMap.get(parcela.contrato_id)!);
               }
             }
           }
@@ -384,7 +419,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           const effective = getEffectiveValue(l);
           if (!effective) return;
 
-          const servicoNome = l.servicos?.nome || 'Sem serviço informado';
+          const servicoNome =
+            l.servicos?.nome
+            || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+            || 'Sem serviço informado';
           const cliente = l.clientes?.razao_social || 'Cliente não informado';
           const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
 
