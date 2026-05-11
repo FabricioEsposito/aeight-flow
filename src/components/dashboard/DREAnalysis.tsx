@@ -54,6 +54,8 @@ interface DREData {
   resultadoExercicio: number;
   despExtraordinaria: number;
   despExtraordinariaDetalhes: DetalheItem[];
+  cmvEspecial: number;
+  cmvEspecialDetalhes: DetalheItem[];
 }
 
 interface DREAnalysisProps {
