@@ -16,17 +16,23 @@ interface RateioInfo {
   centro_custo_id: string;
 }
 
+interface SubGrupoItem {
+  nome: string;
+  valor: number;
+  items: Array<{ nome: string; valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
+}
+
 interface DetalheItem {
   codigo: string;
   descricao: string;
   valor: number;
   items: Array<{ nome: string; valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
+  subGrupos?: SubGrupoItem[];
 }
 
 interface DREData {
   receita: number;
   receitaDetalhes: DetalheItem[];
-  receitaPorServicoDetalhes: DetalheItem[];
   cmv: number;
   cmvDetalhes: DetalheItem[];
   margemContribuicao: number;
