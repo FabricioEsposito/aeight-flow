@@ -1185,7 +1185,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           </div>
 
           {/* Receita */}
-          {renderLine('Receita', dreData.receita, false, false, true, 'receita')}
+          {renderLine('Receita', showSplitAfiliado && dreData.splitAfiliado > 0 ? dreData.receitaBruta : dreData.receita, false, false, true, 'receita')}
           {renderDetails('receita', dreData.receitaDetalhes)}
 
           {/* Split Afiliado (apenas quando o toggle está ativo) */}
