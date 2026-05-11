@@ -1244,7 +1244,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
                   return dreMensal.linhas
                   .filter(linha => showDespExtraordinaria || !linha.label.includes('Extraord'))
-                  .filter(linha => showCmvEspecial || !linha.label.includes('CMV Especial') && linha.label !== 'Resultado Após CMV Especial')
+                  .filter(linha => showCmvEspecial || (!linha.label.includes('CMV Especial') && linha.label !== 'Resultado Após CMV Especial'))
                   .flatMap((linha, idx) => {
                     let total: number | null;
                     if (linha.isPercent) {
