@@ -502,8 +502,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         'receita'
       );
 
-      // Processar CMV - Custos Variáveis (2.1)
-      const cmvIds = getAccountIds('2.1');
+      // Processar CMV - Custos Variáveis (2.1) — quando "com Split" oculta 2.1.11/2.1.12/2.1.13
+      const cmvIdsAll = getAccountIds('2.1');
+      const cmvIds = showSplitAfiliado
+        ? cmvIdsAll.filter(id => {
+            const p = planosContas.find(pc => pc.id === id);
+            return p && !SPLIT_HIDDEN_COST_CODES.some(c => p.codigo === c || p.codigo.startsWith(c + '.'));
+          })
+        : cmvIdsAll;
       const { detalhes: cmvDetalhes, total: cmvTotal } = agruparDetalhes(
         despesas,
         cmvIds,
