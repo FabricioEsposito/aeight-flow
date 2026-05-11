@@ -93,6 +93,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDespExtraordinaria, setShowDespExtraordinaria] = useState(false);
   const [showSplitAfiliado, setShowSplitAfiliado] = useState(false);
+  const [isLomadeeFiltered, setIsLomadeeFiltered] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   // Helper to format "YYYY-MM-DD" string to display format
@@ -182,6 +183,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         .select('id, codigo, descricao');
       const ccMap = new Map((allCentrosCusto || []).map(c => [c.id, c.descricao]));
       const ccFullMap = new Map((allCentrosCusto || []).map(c => [c.id, c]));
+
+      // Split Afiliado só faz sentido quando o filtro inclui exclusivamente o CC 002 - Lomadee
+      const lomadeeId = (allCentrosCusto || []).find(c => c.codigo === '002')?.id;
+      const isLomadee = !!(lomadeeId && centroCusto && centroCusto.length > 0 && centroCusto.every(id => id === lomadeeId));
+      setIsLomadeeFiltered(isLomadee);
+      if (!isLomadee && showSplitAfiliado) {
+        setShowSplitAfiliado(false);
+      }
 
       // Buscar planos de contas para mapear IDs
       const { data: planosContas } = await supabase
@@ -1148,16 +1157,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSplitAfiliado(!showSplitAfiliado)}
-            className="gap-2 text-muted-foreground"
-            title="Visualiza o DRE deduzindo o Split Afiliado da Receita e ocultando custos 2.1.11/2.1.12/2.1.13"
-          >
-            {showSplitAfiliado ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            <span className="text-xs">Split Afiliado</span>
-          </Button>
+          {isLomadeeFiltered && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSplitAfiliado(!showSplitAfiliado)}
+              className="gap-2 text-muted-foreground"
+              title="Visualiza o DRE deduzindo o Split Afiliado da Receita e ocultando custos 2.1.11/2.1.12/2.1.13"
+            >
+              {showSplitAfiliado ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              <span className="text-xs">Split Afiliado</span>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
