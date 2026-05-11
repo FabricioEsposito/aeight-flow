@@ -167,11 +167,12 @@ export default function Clientes() {
   };
 
   const filteredClientes = clientes.filter(cliente => {
-    const matchesSearch = 
-      cliente.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (cliente.nome_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (cliente.email && Array.isArray(cliente.email) && cliente.email.some(e => e.toLowerCase().includes(searchTerm.toLowerCase())));
+    const term = (searchTerm || '').toLowerCase();
+    const matchesSearch =
+      (cliente.razao_social || '').toLowerCase().includes(term) ||
+      (cliente.nome_fantasia || '').toLowerCase().includes(term) ||
+      (cliente.cnpj_cpf || '').toLowerCase().includes(term) ||
+      (Array.isArray(cliente.email) && cliente.email.some(e => (e || '').toLowerCase().includes(term)));
     
     const matchesStatus = statusFilter === "todos" || cliente.status === statusFilter;
     const matchesTipo = tipoFilter === "todos" || cliente.tipo_pessoa === tipoFilter;
