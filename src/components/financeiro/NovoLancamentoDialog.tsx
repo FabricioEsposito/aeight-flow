@@ -60,6 +60,7 @@ export function NovoLancamentoDialog({ open, onOpenChange, onSave, prefilled }: 
   const [informarNsu, setInformarNsu] = useState(false);
   const [nsu, setNsu] = useState('');
   const [servicoId, setServicoId] = useState('');
+  const [splitAfiliado, setSplitAfiliado] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
