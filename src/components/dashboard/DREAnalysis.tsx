@@ -201,14 +201,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       };
 
       // Buscar receitas (regime de competência) - com paginação
-      const receitas = await fetchAllRows(
+      const receitasRaw = await fetchAllRows(
         'contas_receber',
         'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, servico_id, observacoes, split_afiliado, plano_contas(codigo, descricao), clientes(razao_social), servicos(nome)',
         dateRange
       );
 
       // Buscar despesas (regime de competência) - com paginação
-      const despesas = await fetchAllRows(
+      const despesasRaw = await fetchAllRows(
         'contas_pagar',
         'id, valor, plano_conta_id, descricao, centro_custo, parcela_id, data_competencia, plano_contas(codigo, descricao), fornecedores(razao_social)',
         dateRange
@@ -219,14 +219,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         if (!planoCodigo) return false;
         return planoCodigo === '5.1.4' || planoCodigo.startsWith('5.1.4.');
       };
-      const filterExcluded = (rows: any[]) =>
-        (rows || []).filter(r => !isExcludedFromDRE(r?.plano_contas?.codigo));
-
-      const receitasFiltradas = filterExcluded(receitas);
-      const despesasFiltradas = filterExcluded(despesas);
+      const receitas = (receitasRaw || []).filter((r: any) => !isExcludedFromDRE(r?.plano_contas?.codigo));
+      const despesas = (despesasRaw || []).filter((r: any) => !isExcludedFromDRE(r?.plano_contas?.codigo));
 
       // Build rateio map: parcela_id -> RateioInfo[]
-      const allLancamentos = [...receitasFiltradas, ...despesasFiltradas];
+      const allLancamentos = [...receitas, ...despesas];
       const parcelaIds = [...new Set(allLancamentos.map(l => l.parcela_id).filter(Boolean))] as string[];
       
       let rateioMap = new Map<string, RateioInfo[]>();
