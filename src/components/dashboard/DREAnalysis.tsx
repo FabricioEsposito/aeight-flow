@@ -1177,6 +1177,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {renderLine('Receita', dreData.receita, false, false, true, 'receita')}
           {renderDetails('receita', dreData.receitaDetalhes)}
 
+          {/* Split Afiliado (apenas quando o toggle está ativo) */}
+          {showSplitAfiliado && dreData.splitAfiliado > 0 && (
+            renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true)
+          )}
 
           {/* CMV */}
           {renderLine('CMV (Custo Variável)', dreData.cmv, false, true, true, 'cmv')}
