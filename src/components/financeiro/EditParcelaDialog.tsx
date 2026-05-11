@@ -46,6 +46,7 @@ interface EditParcelaDialogProps {
     cliente_id?: string;
     parcela_id?: string | null;
     servico_id?: string | null;
+    split_afiliado?: number | null;
   };
 }
 
