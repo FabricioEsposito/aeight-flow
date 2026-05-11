@@ -1085,12 +1085,21 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Resultado do Exercício */}
           {renderLine('Resultado do Exercício', dreData.resultadoExercicio, true, dreData.resultadoExercicio < 0)}
 
+          {/* CMV Especial (2.1.11/2.1.12) */}
+          {showCmvEspecial && (
+            <>
+              {renderLine('CMV Especial (2.1.11/2.1.12)', dreData.cmvEspecial, false, true, true, 'cmvEspecial')}
+              {renderDetails('cmvEspecial', dreData.cmvEspecialDetalhes)}
+              {renderLine('Resultado Após CMV Especial', dreData.resultadoExercicio - dreData.cmvEspecial, true, (dreData.resultadoExercicio - dreData.cmvEspecial) < 0)}
+            </>
+          )}
+
           {/* Despesa Extraordinária */}
           {showDespExtraordinaria && (
             <>
               {renderLine('Despesa Extraordinária', dreData.despExtraordinaria, false, true, true, 'despExtraordinaria')}
               {renderDetails('despExtraordinaria', dreData.despExtraordinariaDetalhes)}
-              {renderLine('Resultado Após Desp. Extraordinárias', dreData.resultadoExercicio - dreData.despExtraordinaria, true, (dreData.resultadoExercicio - dreData.despExtraordinaria) < 0)}
+              {renderLine('Resultado Após Desp. Extraordinárias', dreData.resultadoExercicio - dreData.despExtraordinaria - (showCmvEspecial ? dreData.cmvEspecial : 0), true, (dreData.resultadoExercicio - dreData.despExtraordinaria - (showCmvEspecial ? dreData.cmvEspecial : 0)) < 0)}
             </>
           )}
         </div>
