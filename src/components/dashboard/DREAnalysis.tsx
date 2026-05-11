@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Sparkles, Eye, EyeOff } from "lucide-react";
 import { DREChatDialog } from "./DREChatDialog";
 import { DRETrendChart } from "./DRETrendChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -797,7 +798,24 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
     return { text: `${sign}${variacao.toFixed(1)}%`, positive: variacao >= 0 };
   };
 
-  const renderLine = (
+  // Tooltip da AH: detalha quais categorias mais subiram/caíram entre o 1º e o último mês
+  const getAHBreakdown = (label: string): { ganhos: Array<{ label: string; variacao: number }>; perdas: Array<{ label: string; variacao: number }> } | null => {
+    if (!dreMensal || dreMensal.meses.length < 2) return null;
+    const linha = dreMensal.linhas.find(l => l.label === label);
+    if (!linha?.detalhes?.length) return null;
+    const lastIdx = dreMensal.meses.length - 1;
+    const items = linha.detalhes
+      .map(d => {
+        const first = d.valores[0] || 0;
+        const last = d.valores[lastIdx] || 0;
+        return { label: d.label, variacao: last - first };
+      })
+      .filter(d => Math.abs(d.variacao) > 0.005);
+    const ganhos = items.filter(i => i.variacao > 0).sort((a, b) => b.variacao - a.variacao).slice(0, 5);
+    const perdas = items.filter(i => i.variacao < 0).sort((a, b) => a.variacao - b.variacao).slice(0, 5);
+    if (ganhos.length === 0 && perdas.length === 0) return null;
+    return { ganhos, perdas };
+  };
     label: string,
     value: number | string,
     isTotal?: boolean,
