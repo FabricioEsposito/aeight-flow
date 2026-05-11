@@ -106,7 +106,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
   useEffect(() => {
     fetchDREData();
-  }, [dateRange, centroCusto]);
+  }, [dateRange, centroCusto, showSplitAfiliado]);
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
