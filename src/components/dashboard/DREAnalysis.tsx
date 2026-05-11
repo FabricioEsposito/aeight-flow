@@ -16,17 +16,23 @@ interface RateioInfo {
   centro_custo_id: string;
 }
 
+interface SubGrupoItem {
+  nome: string;
+  valor: number;
+  items: Array<{ nome: string; valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
+}
+
 interface DetalheItem {
   codigo: string;
   descricao: string;
   valor: number;
   items: Array<{ nome: string; valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
+  subGrupos?: SubGrupoItem[];
 }
 
 interface DREData {
   receita: number;
   receitaDetalhes: DetalheItem[];
-  receitaPorServicoDetalhes: DetalheItem[];
   cmv: number;
   cmvDetalhes: DetalheItem[];
   margemContribuicao: number;
@@ -346,7 +352,14 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         planosContas: any[],
         tipo: 'receita' | 'despesa'
       ): { detalhes: DetalheItem[]; total: number } => {
-        const grouped = new Map<string, { codigo: string; descricao: string; items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>; total: number }>();
+        const grouped = new Map<string, {
+          codigo: string;
+          descricao: string;
+          items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>;
+          // Para receitas: serviço -> cliente -> valor
+          servicos: Map<string, { total: number; clientes: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }> }>;
+          total: number;
+        }>();
         let total = 0;
 
         lancamentos?.forEach(l => {
@@ -368,6 +381,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 codigo,
                 descricao,
                 items: new Map(),
+                servicos: new Map(),
                 total: 0
               });
             }
@@ -378,6 +392,22 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
             const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
             current.valor += effective.valor;
             group.items.set(itemKey, current);
+
+            // Para receitas: agrupar também por serviço
+            if (tipo === 'receita') {
+              const servicoNome =
+                l.servicos?.nome
+                || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                || 'Sem serviço informado';
+              if (!group.servicos.has(servicoNome)) {
+                group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
+              }
+              const sg = group.servicos.get(servicoNome)!;
+              sg.total += effective.valor;
+              const cliCur = sg.clientes.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
+              cliCur.valor += effective.valor;
+              sg.clientes.set(itemKey, cliCur);
+            }
           }
         });
 
@@ -392,7 +422,23 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
               centroCusto: item.centroCusto,
               rateio: item.rateio,
             }))
-            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
+          subGrupos: tipo === 'receita' && g.servicos.size > 0
+            ? Array.from(g.servicos.entries())
+                .map(([servNome, sg]) => ({
+                  nome: servNome,
+                  valor: sg.total,
+                  items: Array.from(sg.clientes.entries())
+                    .map(([key, item]) => ({
+                      nome: key.includes('|||') ? key.split('|||')[0] : key,
+                      valor: item.valor,
+                      centroCusto: item.centroCusto,
+                      rateio: item.rateio,
+                    }))
+                    .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
+                }))
+                .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+            : undefined,
         })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
 
         return { detalhes, total };
@@ -406,53 +452,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         planosContas,
         'receita'
       );
-
-      // Agrupar receitas por SERVIÇO (com clientes dentro)
-      const agruparReceitaPorServico = (
-        lancamentos: any[],
-        accountIds: string[]
-      ): DetalheItem[] => {
-        const grouped = new Map<string, { descricao: string; items: Map<string, { valor: number; centroCusto?: string; rateio?: RateioInfo[] }>; total: number }>();
-
-        lancamentos?.forEach(l => {
-          if (!l.plano_conta_id || !accountIds.includes(l.plano_conta_id)) return;
-          const effective = getEffectiveValue(l);
-          if (!effective) return;
-
-          const servicoNome =
-            l.servicos?.nome
-            || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
-            || 'Sem serviço informado';
-          const cliente = l.clientes?.razao_social || 'Cliente não informado';
-          const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
-
-          if (!grouped.has(servicoNome)) {
-            grouped.set(servicoNome, { descricao: servicoNome, items: new Map(), total: 0 });
-          }
-          const g = grouped.get(servicoNome)!;
-          g.total += effective.valor;
-          const itemKey = ccNome ? `${cliente}|||${ccNome}` : cliente;
-          const cur = g.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
-          cur.valor += effective.valor;
-          g.items.set(itemKey, cur);
-        });
-
-        return Array.from(grouped.values()).map(g => ({
-          codigo: '',
-          descricao: g.descricao,
-          valor: g.total,
-          items: Array.from(g.items.entries())
-            .map(([key, item]) => ({
-              nome: key.includes('|||') ? key.split('|||')[0] : key,
-              valor: item.valor,
-              centroCusto: item.centroCusto,
-              rateio: item.rateio,
-            }))
-            .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
-        })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
-      };
-
-      const receitaPorServicoDetalhes = agruparReceitaPorServico(receitas, receitaIds);
 
       // Processar CMV - Custos Variáveis (2.1)
       const cmvIds = getAccountIds('2.1');
@@ -590,7 +589,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       setDreData({
         receita: receitaTotal,
         receitaDetalhes,
-        receitaPorServicoDetalhes,
+        
         cmv: cmvTotal,
         cmvDetalhes,
         margemContribuicao,
@@ -743,8 +742,67 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 </div>
               </div>
 
-              {/* Detalhes por fornecedor/cliente */}
-              {isSubExpanded && item.items.length > 0 && (
+              {/* Detalhes: se houver subGrupos (ex: serviços nas receitas), agrupa por serviço -> clientes; senão lista direto */}
+              {isSubExpanded && item.subGrupos && item.subGrupos.length > 0 && (
+                <div className="bg-muted/20">
+                  {item.subGrupos.map((sg, sgIdx) => {
+                    const sgKey = `${subKey}_sg_${sgIdx}`;
+                    const isSgExpanded = expandedSections.has(sgKey);
+                    return (
+                      <div key={sgIdx}>
+                        <div className="flex items-center py-2 px-4 ml-20 text-sm border-b border-border/50">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {sg.items.length > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => toggleSection(sgKey)}
+                              >
+                                {isSgExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              </Button>
+                            )}
+                            <span className="text-muted-foreground font-medium truncate">{sg.nome}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                              {calcAV(sg.valor) || ''}
+                            </span>
+                            <span className="font-medium w-36 text-right shrink-0">{formatCurrency(sg.valor)}</span>
+                          </div>
+                        </div>
+                        {isSgExpanded && sg.items.length > 0 && (
+                          <div className="bg-muted/10">
+                            {sg.items.map((subItem, subIndex) => (
+                              <div key={subIndex} className="flex items-center py-2 px-4 ml-32 text-sm gap-2">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="text-muted-foreground truncate">{subItem.nome}</span>
+                                  {subItem.rateio && subItem.rateio.length > 1 && (
+                                    <div className="flex flex-wrap gap-1 shrink-0">
+                                      {subItem.rateio.map((r, rIdx) => (
+                                        <CompanyTagWithPercent key={rIdx} codigo={r.codigo} percentual={r.percentual} />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                                    {calcAV(subItem.valor) || ''}
+                                  </span>
+                                  <span className="shrink-0 w-36 text-right">{formatCurrency(subItem.valor)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Detalhes por fornecedor/cliente (sem subGrupos) */}
+              {isSubExpanded && !item.subGrupos && item.items.length > 0 && (
                 <div className="bg-muted/20">
                   {item.items.map((subItem, subIndex) => (
                     <div key={subIndex} className="flex items-center py-2 px-4 ml-24 text-sm gap-2">
@@ -842,9 +900,6 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {renderLine('Receita', dreData.receita, false, false, true, 'receita')}
           {renderDetails('receita', dreData.receitaDetalhes)}
 
-          {/* Receita por Serviço (subagrupamento) */}
-          {renderLine('↳ Receita por Serviço', dreData.receita, false, false, true, 'receitaPorServico', true)}
-          {renderDetails('receitaPorServico', dreData.receitaPorServicoDetalhes)}
 
           {/* CMV */}
           {renderLine('CMV (Custo Variável)', dreData.cmv, false, true, true, 'cmv')}
