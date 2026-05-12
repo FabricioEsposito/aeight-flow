@@ -58,6 +58,7 @@ interface DREData {
   despExtraordinariaDetalhes: DetalheItem[];
   splitAfiliado: number;
   splitAfiliadoMes: number[];
+  splitAfiliadoDetalhes: { cliente: string; valor: number }[];
 }
 
 const SPLIT_HIDDEN_COST_CODES = ['2.1.11', '2.1.12', '2.1.13'];
@@ -569,6 +570,18 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const receitaTotal = showSplitAfiliado ? receitaTotalRaw - splitTotal : receitaTotalRaw;
       const receitaDetalhes = receitaDetalhesRaw;
 
+      // Detalhamento do Split por cliente
+      const splitPorClienteMap = new Map<string, number>();
+      (receitas || []).forEach((l: any) => {
+        const v = Number(l.split_afiliado) || 0;
+        if (!v) return;
+        const nome = l?.clientes?.razao_social || l?.descricao || 'Sem cliente';
+        splitPorClienteMap.set(nome, (splitPorClienteMap.get(nome) || 0) + v);
+      });
+      const splitAfiliadoDetalhes = Array.from(splitPorClienteMap.entries())
+        .map(([cliente, valor]) => ({ cliente, valor }))
+        .sort((a, b) => b.valor - a.valor);
+
       // Processar CMV - Custos Variáveis (2.1) — quando "com Split" oculta 2.1.11/2.1.12/2.1.13
       const cmvIdsAll = getAccountIds('2.1');
       const cmvIds = showSplitAfiliado
@@ -841,6 +854,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         despExtraordinariaDetalhes: despExtraDetalhes,
         splitAfiliado: splitTotal,
         splitAfiliadoMes,
+        splitAfiliadoDetalhes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
@@ -1246,10 +1260,30 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Split Afiliado (apenas quando o toggle está ativo) */}
           {showSplitAfiliado && dreData.splitAfiliado > 0 && (
             <>
-              {renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true)}
+              {renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true, dreData.splitAfiliadoDetalhes.length > 0, 'splitAfiliado')}
+              {expandedSections.has('splitAfiliado') && dreData.splitAfiliadoDetalhes.length > 0 && (
+                <div className="bg-muted/30">
+                  {dreData.splitAfiliadoDetalhes.map((item, idx) => (
+                    <div key={idx} className="flex items-center py-2 px-4 ml-12 text-sm border-b border-border/50">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-muted-foreground font-medium truncate">{item.cliente}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                          {dreData.splitAfiliado > 0 ? `${((item.valor / dreData.splitAfiliado) * 100).toFixed(2)}%` : ''}
+                        </span>
+                        <span className="font-medium w-36 text-right shrink-0 text-destructive">
+                          -{formatCurrency(item.valor)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {renderLine('Receita Líquida', dreData.receita, true, dreData.receita < 0)}
             </>
           )}
+
 
           {/* CMV */}
           {renderLine('CMV (Custo Variável)', dreData.cmv, false, true, true, 'cmv')}
