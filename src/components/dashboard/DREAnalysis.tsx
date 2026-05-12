@@ -357,37 +357,57 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const individualPagarIds = (despesas || []).map((l: any) => l.id);
       const lancamentoRateioMap = new Map<string, RateioInfo[]>();
 
-      if (individualReceberIds.length > 0) {
-        const { data: lccReceber } = await supabase
-          .from('lancamentos_centros_custo')
-          .select('conta_receber_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-          .in('conta_receber_id', individualReceberIds);
-        if (lccReceber) {
-          for (const r of lccReceber) {
-            const cc = r.centros_custo as any;
-            if (!cc) continue;
-            const item: RateioInfo = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
-            const existing = lancamentoRateioMap.get(r.conta_receber_id!) || [];
-            existing.push(item);
-            lancamentoRateioMap.set(r.conta_receber_id!, existing);
+      // Batch .in() to avoid very long URLs (PostgREST URL length limits) when there
+      // are many entries in the period. Without batching, large date ranges can
+      // silently drop the rateio fetch and the DRE falls back to the legacy
+      // `centro_custo` field — making split entries appear 100% under one CC.
+      const CHUNK_SIZE = 200;
+      const fetchLccChunked = async (
+        column: 'conta_receber_id' | 'conta_pagar_id',
+        ids: string[],
+      ) => {
+        const all: any[] = [];
+        for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+          const slice = ids.slice(i, i + CHUNK_SIZE);
+          // paginate within the chunk too, in case it ever exceeds 1000 rows
+          let from = 0;
+          while (true) {
+            const { data, error } = await supabase
+              .from('lancamentos_centros_custo')
+              .select(`${column}, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)`)
+              .in(column, slice)
+              .range(from, from + 999);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            all.push(...data);
+            if (data.length < 1000) break;
+            from += 1000;
           }
+        }
+        return all;
+      };
+
+      if (individualReceberIds.length > 0) {
+        const lccReceber = await fetchLccChunked('conta_receber_id', individualReceberIds);
+        for (const r of lccReceber) {
+          const cc = r.centros_custo as any;
+          if (!cc) continue;
+          const item: RateioInfo = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+          const existing = lancamentoRateioMap.get(r.conta_receber_id!) || [];
+          existing.push(item);
+          lancamentoRateioMap.set(r.conta_receber_id!, existing);
         }
       }
 
       if (individualPagarIds.length > 0) {
-        const { data: lccPagar } = await supabase
-          .from('lancamentos_centros_custo')
-          .select('conta_pagar_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-          .in('conta_pagar_id', individualPagarIds);
-        if (lccPagar) {
-          for (const r of lccPagar) {
-            const cc = r.centros_custo as any;
-            if (!cc) continue;
-            const item: RateioInfo = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
-            const existing = lancamentoRateioMap.get(r.conta_pagar_id!) || [];
-            existing.push(item);
-            lancamentoRateioMap.set(r.conta_pagar_id!, existing);
-          }
+        const lccPagar = await fetchLccChunked('conta_pagar_id', individualPagarIds);
+        for (const r of lccPagar) {
+          const cc = r.centros_custo as any;
+          if (!cc) continue;
+          const item: RateioInfo = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+          const existing = lancamentoRateioMap.get(r.conta_pagar_id!) || [];
+          existing.push(item);
+          lancamentoRateioMap.set(r.conta_pagar_id!, existing);
         }
       }
 
