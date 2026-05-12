@@ -129,19 +129,19 @@ export default function Extrato() {
   const parcelaIds = useMemo(() => lancamentos.map(l => l.parcela_id), [lancamentos]);
   const { rateioMap } = useCentroCustoRateio(parcelaIds);
 
-  // Fetch rateio de centros de custo para lançamentos individuais (sem parcela_id)
+  // Fetch rateio de centros de custo salvo diretamente no lançamento.
+  // Quando existir, ele tem prioridade sobre o rateio do contrato.
   const [lancamentoRateioMap, setLancamentoRateioMap] = useState<Map<string, CentroCustoRateioItem[]>>(new Map());
 
   useEffect(() => {
-    const individuais = lancamentos.filter(l => !l.parcela_id);
-    if (individuais.length === 0) {
+    if (lancamentos.length === 0) {
       setLancamentoRateioMap(new Map());
       return;
     }
 
     const fetchLancamentoRateio = async () => {
-      const receberIds = individuais.filter(l => l.origem === 'receber').map(l => l.id);
-      const pagarIds = individuais.filter(l => l.origem === 'pagar').map(l => l.id);
+      const receberIds = lancamentos.filter(l => l.origem === 'receber').map(l => l.id);
+      const pagarIds = lancamentos.filter(l => l.origem === 'pagar').map(l => l.id);
 
       const result = new Map<string, CentroCustoRateioItem[]>();
 
@@ -188,13 +188,13 @@ export default function Extrato() {
   // Enrich lancamentos with rateio data (contratos via parcela_id + individuais via lancamentos_centros_custo)
   const lancamentosEnriquecidos = useMemo(() => {
     return lancamentos.map(l => {
+      // Direct launch rateio overrides the legacy/contract cost center allocation.
+      if (lancamentoRateioMap.has(l.id)) {
+        return { ...l, centros_custo_rateio: lancamentoRateioMap.get(l.id) };
+      }
       // Contract-based rateio
       if (l.parcela_id && rateioMap.has(l.parcela_id)) {
         return { ...l, centros_custo_rateio: rateioMap.get(l.parcela_id) };
-      }
-      // Individual entry rateio
-      if (!l.parcela_id && lancamentoRateioMap.has(l.id)) {
-        return { ...l, centros_custo_rateio: lancamentoRateioMap.get(l.id) };
       }
       return l;
     });

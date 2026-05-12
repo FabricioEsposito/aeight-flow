@@ -351,9 +351,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         }
       }
 
-      // Fetch lancamentos_centros_custo for individual entries (no parcela_id)
-      const individualReceberIds = (receitas || []).filter((l: any) => !l.parcela_id).map((l: any) => l.id);
-      const individualPagarIds = (despesas || []).filter((l: any) => !l.parcela_id).map((l: any) => l.id);
+      // Fetch lancamentos_centros_custo for every entry. When present, this direct
+      // allocation overrides the legacy centro_custo and any contract allocation.
+      const individualReceberIds = (receitas || []).map((l: any) => l.id);
+      const individualPagarIds = (despesas || []).map((l: any) => l.id);
       const lancamentoRateioMap = new Map<string, RateioInfo[]>();
 
       if (individualReceberIds.length > 0) {
@@ -394,7 +395,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       // across its rateio so the DRE attribution per CC is proportional, not 100% on
       // the direct `centro_custo` field).
       const getContributions = (l: any): Array<{ valor: number; ccNome?: string; rateio?: RateioInfo[] }> => {
-        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : lancamentoRateioMap.get(l.id) || null;
+        const rateio = lancamentoRateioMap.get(l.id) || (l.parcela_id ? rateioMap.get(l.parcela_id) : null);
         const totalValor = Number(l.valor);
 
         if (centroCusto && centroCusto.length > 0) {
@@ -430,7 +431,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         const contribs = getContributions(l);
         if (contribs.length === 0) return null;
         const valor = contribs.reduce((s, c) => s + c.valor, 0);
-        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : lancamentoRateioMap.get(l.id) || undefined;
+        const rateio = lancamentoRateioMap.get(l.id) || (l.parcela_id ? rateioMap.get(l.parcela_id) : undefined);
         return { valor, rateio: rateio || undefined };
       };
 
