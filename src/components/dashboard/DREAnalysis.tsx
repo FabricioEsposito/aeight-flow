@@ -432,13 +432,10 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           return [{ valor: totalValor, ccNome: ccMap.get(l.centro_custo) as string | undefined }];
         }
 
-        // No filter
+        // No filter: keep the entry consolidated as a single row (full value),
+        // exposing the rateio metadata so the UI can show the split badges.
         if (rateio && rateio.length > 0) {
-          return rateio.map(r => ({
-            valor: totalValor * (r.percentual / 100),
-            ccNome: ccMap.get(r.centro_custo_id) as string | undefined,
-            rateio,
-          }));
+          return [{ valor: totalValor, ccNome: undefined, rateio }];
         }
         return [{
           valor: totalValor,
