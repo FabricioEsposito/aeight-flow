@@ -1260,10 +1260,30 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {/* Split Afiliado (apenas quando o toggle está ativo) */}
           {showSplitAfiliado && dreData.splitAfiliado > 0 && (
             <>
-              {renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true)}
+              {renderLine('(-) Split Afiliado', dreData.splitAfiliado, false, true, dreData.splitAfiliadoDetalhes.length > 0, 'splitAfiliado')}
+              {expandedSections.has('splitAfiliado') && dreData.splitAfiliadoDetalhes.length > 0 && (
+                <div className="bg-muted/30">
+                  {dreData.splitAfiliadoDetalhes.map((item, idx) => (
+                    <div key={idx} className="flex items-center py-2 px-4 ml-12 text-sm border-b border-border/50">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-muted-foreground font-medium truncate">{item.cliente}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                          {dreData.splitAfiliado > 0 ? `${((item.valor / dreData.splitAfiliado) * 100).toFixed(2)}%` : ''}
+                        </span>
+                        <span className="font-medium w-36 text-right shrink-0 text-destructive">
+                          -{formatCurrency(item.valor)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {renderLine('Receita Líquida', dreData.receita, true, dreData.receita < 0)}
             </>
           )}
+
 
           {/* CMV */}
           {renderLine('CMV (Custo Variável)', dreData.cmv, false, true, true, 'cmv')}
