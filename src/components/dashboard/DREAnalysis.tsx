@@ -58,6 +58,7 @@ interface DREData {
   despExtraordinariaDetalhes: DetalheItem[];
   splitAfiliado: number;
   splitAfiliadoMes: number[];
+  splitAfiliadoDetalhes: { cliente: string; valor: number }[];
 }
 
 const SPLIT_HIDDEN_COST_CODES = ['2.1.11', '2.1.12', '2.1.13'];
