@@ -854,6 +854,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         despExtraordinariaDetalhes: despExtraDetalhes,
         splitAfiliado: splitTotal,
         splitAfiliadoMes,
+        splitAfiliadoDetalhes,
       });
     } catch (error) {
       console.error('Erro ao buscar dados do DRE:', error);
