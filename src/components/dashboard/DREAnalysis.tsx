@@ -390,27 +390,48 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         }
       }
 
-      // Helper: get the effective value for a lancamento considering rateio and cost center filter
-      const getEffectiveValue = (l: any): { valor: number; rateio?: RateioInfo[] } | null => {
-        // Contract-based rateio (via parcela_id) or individual entry rateio (via lancamento id)
+      // Helper: returns one contribution per cost center (splits the lancamento value
+      // across its rateio so the DRE attribution per CC is proportional, not 100% on
+      // the direct `centro_custo` field).
+      const getContributions = (l: any): Array<{ valor: number; ccNome?: string; rateio?: RateioInfo[] }> => {
         const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : lancamentoRateioMap.get(l.id) || null;
-        
+        const totalValor = Number(l.valor);
+
         if (centroCusto && centroCusto.length > 0) {
           if (rateio && rateio.length > 0) {
-            // Has rateio - apply proportional value for matching cost centers
-            const matchingRateios = rateio.filter(r => centroCusto.includes(r.centro_custo_id));
-            if (matchingRateios.length === 0) return null; // Not in selected cost centers
-            const totalPercent = matchingRateios.reduce((sum, r) => sum + r.percentual, 0);
-            return { valor: Number(l.valor) * (totalPercent / 100), rateio };
-          } else {
-            // No rateio - use direct centro_custo field
-            if (!l.centro_custo || !centroCusto.includes(l.centro_custo)) return null;
-            return { valor: Number(l.valor) };
+            const matching = rateio.filter(r => centroCusto.includes(r.centro_custo_id));
+            if (matching.length === 0) return [];
+            return matching.map(r => ({
+              valor: totalValor * (r.percentual / 100),
+              ccNome: ccMap.get(r.centro_custo_id) as string | undefined,
+              rateio,
+            }));
           }
+          if (!l.centro_custo || !centroCusto.includes(l.centro_custo)) return [];
+          return [{ valor: totalValor, ccNome: ccMap.get(l.centro_custo) as string | undefined }];
         }
-        
-        // No filter - full value
-        return { valor: Number(l.valor), rateio: rateio || undefined };
+
+        // No filter
+        if (rateio && rateio.length > 0) {
+          return rateio.map(r => ({
+            valor: totalValor * (r.percentual / 100),
+            ccNome: ccMap.get(r.centro_custo_id) as string | undefined,
+            rateio,
+          }));
+        }
+        return [{
+          valor: totalValor,
+          ccNome: l.centro_custo ? (ccMap.get(l.centro_custo) as string | undefined) : undefined,
+        }];
+      };
+
+      // Backwards-compatible aggregate helper (used by other DRE sections that just need a total)
+      const getEffectiveValue = (l: any): { valor: number; rateio?: RateioInfo[] } | null => {
+        const contribs = getContributions(l);
+        if (contribs.length === 0) return null;
+        const valor = contribs.reduce((s, c) => s + c.valor, 0);
+        const rateio = l.parcela_id ? rateioMap.get(l.parcela_id) : lancamentoRateioMap.get(l.id) || undefined;
+        return { valor, rateio: rateio || undefined };
       };
 
       // Função auxiliar para agrupar detalhes com suporte a rateio
@@ -432,17 +453,15 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
 
         lancamentos?.forEach(l => {
           if (l.plano_conta_id && accountIds.includes(l.plano_conta_id)) {
-            const effective = getEffectiveValue(l);
-            if (!effective) return; // Filtered out
-            
-            total += effective.valor;
+            const contribs = getContributions(l);
+            if (contribs.length === 0) return;
+
             const plano = planosContas.find(p => p.id === l.plano_conta_id);
             const codigo = plano?.codigo || '';
             const descricao = plano?.descricao || l.descricao;
-            const nome = tipo === 'receita' 
+            const nome = tipo === 'receita'
               ? (l.clientes?.razao_social || 'Cliente não informado')
               : (l.fornecedores?.razao_social || 'Fornecedor não informado');
-            const ccNome = l.centro_custo ? ccMap.get(l.centro_custo) : undefined;
 
             if (!grouped.has(l.plano_conta_id)) {
               grouped.set(l.plano_conta_id, {
@@ -453,29 +472,34 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
                 total: 0
               });
             }
-
             const group = grouped.get(l.plano_conta_id)!;
-            group.total += effective.valor;
-            const itemKey = ccNome ? `${nome}|||${ccNome}` : nome;
-            const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
-            current.valor += effective.valor;
-            group.items.set(itemKey, current);
 
-            // Para receitas: agrupar também por serviço
-            if (tipo === 'receita') {
-              const servicoNome =
-                l.servicos?.nome
-                || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
-                || resolveServicoFromObservacoes(l.observacoes)
-                || 'Sem serviço informado';
-              if (!group.servicos.has(servicoNome)) {
-                group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
+            const servicoNome = tipo === 'receita'
+              ? (l.servicos?.nome
+                  || (l.parcela_id ? parcelaServicoMap.get(l.parcela_id) : undefined)
+                  || resolveServicoFromObservacoes(l.observacoes)
+                  || 'Sem serviço informado')
+              : null;
+
+            for (const contrib of contribs) {
+              total += contrib.valor;
+              group.total += contrib.valor;
+              const ccNome = contrib.ccNome;
+              const itemKey = ccNome ? `${nome}|||${ccNome}` : nome;
+              const current = group.items.get(itemKey) || { valor: 0, centroCusto: ccNome, rateio: contrib.rateio };
+              current.valor += contrib.valor;
+              group.items.set(itemKey, current);
+
+              if (tipo === 'receita' && servicoNome) {
+                if (!group.servicos.has(servicoNome)) {
+                  group.servicos.set(servicoNome, { total: 0, clientes: new Map() });
+                }
+                const sg = group.servicos.get(servicoNome)!;
+                sg.total += contrib.valor;
+                const cliCur = sg.clientes.get(itemKey) || { valor: 0, centroCusto: ccNome, rateio: contrib.rateio };
+                cliCur.valor += contrib.valor;
+                sg.clientes.set(itemKey, cliCur);
               }
-              const sg = group.servicos.get(servicoNome)!;
-              sg.total += effective.valor;
-              const cliCur = sg.clientes.get(itemKey) || { valor: 0, centroCusto: ccNome as string | undefined, rateio: effective.rateio };
-              cliCur.valor += effective.valor;
-              sg.clientes.set(itemKey, cliCur);
             }
           }
         });
