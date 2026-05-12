@@ -1576,13 +1576,13 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           {margemLinha && (
             <DRETrendChart
               title="Margem de Contribuição vs Meta Ideal"
-              description="Comparativo mensal entre a margem realizada e a meta ideal para empresas de serviço (referência: 40%)."
+              description="Comparativo mensal entre a margem realizada e a meta ideal para empresas de serviço (referência: 30%)."
               meses={dreMensal.meses}
               valores={margemLinha.valores}
               format="percent"
               valueColor="hsl(var(--primary))"
               trendColor="hsl(var(--destructive))"
-              defaultTargetPercent={40}
+              defaultTargetPercent={30}
               inputLabel="Meta ideal (%)"
             />
           )}
