@@ -184,11 +184,13 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       const ccMap = new Map((allCentrosCusto || []).map(c => [c.id, c.descricao]));
       const ccFullMap = new Map((allCentrosCusto || []).map(c => [c.id, c]));
 
-      // Split Afiliado só faz sentido quando o filtro inclui exclusivamente o CC 002 - Lomadee
+      // Split Afiliado: visível quando filtra apenas o CC 002 - Lomadee OU quando vê todos os CCs
       const lomadeeId = (allCentrosCusto || []).find(c => c.codigo === '002')?.id;
-      const isLomadee = !!(lomadeeId && centroCusto && centroCusto.length > 0 && centroCusto.every(id => id === lomadeeId));
-      setIsLomadeeFiltered(isLomadee);
-      if (!isLomadee && showSplitAfiliado) {
+      const isLomadeeOnly = !!(lomadeeId && centroCusto && centroCusto.length > 0 && centroCusto.every(id => id === lomadeeId));
+      const isAllCentros = !centroCusto || centroCusto.length === 0;
+      const splitVisible = isLomadeeOnly || isAllCentros;
+      setIsLomadeeFiltered(splitVisible);
+      if (!splitVisible && showSplitAfiliado) {
         setShowSplitAfiliado(false);
       }
 
