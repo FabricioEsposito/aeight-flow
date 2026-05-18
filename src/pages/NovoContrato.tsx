@@ -324,9 +324,14 @@ export default function NovoContrato() {
 
     if (tipoVenda === 'recorrente') {
       // Venda recorrente - gera parcelas baseadas na recorrência
-      let dataAtual = dataPrimeiraVenda || dataInicio;
+      const dataBaseRecorrencia = dataPrimeiraVenda || dataInicio;
+      let dataAtual = dataBaseRecorrencia;
       let numeroParcela = 1;
-      const dataLimite = tipoTermino === 'periodo' && dataTermino ? dataTermino : addMonths(dataInicio, 12);
+      // Quando não há término definido, considerar 12 meses a partir da PRIMEIRA VENDA
+      // (e nunca antes), evitando que contratos com primeira venda posterior a data_inicio+12m gerem 0 parcelas
+      const dataLimite = tipoTermino === 'periodo' && dataTermino
+        ? dataTermino
+        : addMonths(dataBaseRecorrencia, 12);
 
       while (dataAtual <= dataLimite) {
         const dataVenc = calcularDataVencimento(dataAtual);
