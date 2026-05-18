@@ -557,6 +557,27 @@ export default function Extrato() {
       let receberCombinado: any[] = [];
       let pagarCombinado: any[] = [];
 
+      const fetchAllPages = async (
+        buildQuery: (from: number, to: number) => any
+      ): Promise<any[]> => {
+        const pageSize = 1000;
+        let from = 0;
+        const results: any[] = [];
+
+        while (true) {
+          const { data, error } = await buildQuery(from, from + pageSize - 1);
+          if (error) throw error;
+
+          const chunk = data || [];
+          results.push(...chunk);
+
+          if (chunk.length < pageSize) break;
+          from += pageSize;
+        }
+
+        return results;
+      };
+
       // ===== LÓGICA UNIFICADA DE FILTRO =====
       // Pagos: filtrar por data de movimentação (data_recebimento / data_pagamento)
       // Pendentes/Vencidos: filtrar por data de vencimento
@@ -578,8 +599,7 @@ export default function Extrato() {
         queryReceberPagos = queryReceberPagos.gte('data_recebimento', dateRange.start).lte('data_recebimento', dateRange.end);
       }
 
-      const { data: receberPagos, error: errReceberPagos } = await queryReceberPagos;
-      if (errReceberPagos) throw errReceberPagos;
+      const receberPagos = await fetchAllPages((from, to) => queryReceberPagos.range(from, to));
 
       // Pendentes/vencidos filtrados por data_vencimento
       let queryReceberPendentes = supabase
@@ -597,8 +617,7 @@ export default function Extrato() {
         queryReceberPendentes = queryReceberPendentes.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
       }
 
-      const { data: receberPendentes, error: errReceberPend } = await queryReceberPendentes;
-      if (errReceberPend) throw errReceberPend;
+      const receberPendentes = await fetchAllPages((from, to) => queryReceberPendentes.range(from, to));
 
       receberCombinado = [...(receberPagos || []), ...(receberPendentes || [])];
 
@@ -619,8 +638,7 @@ export default function Extrato() {
         queryPagarPagos = queryPagarPagos.gte('data_pagamento', dateRange.start).lte('data_pagamento', dateRange.end);
       }
 
-      const { data: pagarPagos, error: errPagarPagos } = await queryPagarPagos;
-      if (errPagarPagos) throw errPagarPagos;
+      const pagarPagos = await fetchAllPages((from, to) => queryPagarPagos.range(from, to));
 
       // Pendentes/vencidos filtrados por data_vencimento
       let queryPagarPendentes = supabase
@@ -638,8 +656,7 @@ export default function Extrato() {
         queryPagarPendentes = queryPagarPendentes.gte('data_vencimento', dateRange.start).lte('data_vencimento', dateRange.end);
       }
 
-      const { data: pagarPendentes, error: errPagarPend } = await queryPagarPendentes;
-      if (errPagarPend) throw errPagarPend;
+      const pagarPendentes = await fetchAllPages((from, to) => queryPagarPendentes.range(from, to));
 
       pagarCombinado = [...(pagarPagos || []), ...(pagarPendentes || [])];
 
@@ -824,27 +841,6 @@ export default function Extrato() {
       // IMPORTANTE: paginar evita o limite padrão de 1000 linhas do Supabase sem quebrar o cliente
       const dataInicioFiltro = dateRange?.start || format(new Date(), 'yyyy-MM-dd');
       const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-      const fetchAllPages = async (
-        buildQuery: (from: number, to: number) => any
-      ): Promise<any[]> => {
-        const pageSize = 1000;
-        let from = 0;
-        const results: any[] = [];
-
-        while (true) {
-          const { data, error } = await buildQuery(from, from + pageSize - 1);
-          if (error) throw error;
-
-          const chunk = data || [];
-          results.push(...chunk);
-
-          if (chunk.length < pageSize) break;
-          from += pageSize;
-        }
-
-        return results;
-      };
 
       const [entradasAnteriores, saidasAnteriores, pendentesReceberAnt, pendentesPagarAnt] = await Promise.all([
         fetchAllPages((from, to) =>
