@@ -91,6 +91,10 @@ export default function Contratos() {
           parcelas_contrato (
             id,
             status
+          ),
+          contratos_centros_custo (
+            percentual,
+            centros_custo:centro_custo_id (codigo, descricao)
           )
         `)
         .order('created_at', { ascending: false });
