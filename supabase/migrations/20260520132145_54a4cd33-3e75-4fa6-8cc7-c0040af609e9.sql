@@ -1,0 +1,1 @@
+DELETE FROM public.lancamentos_centros_custo WHERE id IN ('ec8523ce-7ed7-416b-9466-4d5bc5f6870d','1f3bb7b1-8bc6-4259-bdbd-3677aecb8724','7653d604-7509-44b0-862b-1ef13f349797','3ecf4c0d-624a-4b05-b04e-24bc9c2c541e');
