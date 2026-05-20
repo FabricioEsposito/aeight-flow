@@ -296,7 +296,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       if (parcelaIds.length > 0) {
         // Get contrato_id for each parcela (paginated to avoid 1000-row limit)
         const parcelas = await fetchInChunks<{ id: string; contrato_id: string | null }>(
-          (chunk) => supabase
+          async (chunk) => await supabase
             .from('parcelas_contrato')
             .select('id, contrato_id')
             .in('id', chunk),
@@ -309,20 +309,21 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           if (contratoIds.length > 0) {
             const [rateios, contratosData] = await Promise.all([
               fetchInChunks<any>(
-                (chunk) => supabase
+                async (chunk) => await supabase
                   .from('contratos_centros_custo')
                   .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
                   .in('contrato_id', chunk),
                 contratoIds
               ),
               fetchInChunks<any>(
-                (chunk) => supabase
+                async (chunk) => await supabase
                   .from('contratos')
                   .select('id, servicos')
                   .in('id', chunk),
                 contratoIds
               ),
             ]);
+
 
 
             // Resolver nomes de serviços
