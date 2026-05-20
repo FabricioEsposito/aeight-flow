@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
+import { CompanyTag, CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
