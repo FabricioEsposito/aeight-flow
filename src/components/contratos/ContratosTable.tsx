@@ -46,6 +46,7 @@ interface Contrato {
   fornecedores?: { razao_social: string; nome_fantasia: string | null; cnpj_cpf: string };
   tem_go_live?: boolean;
   centro_custo_info?: CentroCusto;
+  centros_custo_multi?: { codigo: string; descricao: string; percentual: number }[];
   importancia_cliente_fornecedor?: 'importante' | 'mediano' | 'nao_importante';
   link_contrato?: string | null;
 }
