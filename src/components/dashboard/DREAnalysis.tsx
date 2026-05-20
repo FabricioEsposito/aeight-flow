@@ -277,27 +277,53 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
       };
 
       
+      // Helper to chunk .in() queries (avoids Supabase 1000-row truncation)
+      const fetchInChunks = async <T = any>(
+        runner: (chunk: string[]) => Promise<{ data: T[] | null; error: any }>,
+        ids: string[],
+        chunkSize: number = 500
+      ): Promise<T[]> => {
+        const out: T[] = [];
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          const chunk = ids.slice(i, i + chunkSize);
+          const { data, error } = await runner(chunk);
+          if (error) throw error;
+          if (data && data.length > 0) out.push(...data);
+        }
+        return out;
+      };
+
       if (parcelaIds.length > 0) {
-        // Get contrato_id for each parcela
-        const { data: parcelas } = await supabase
-          .from('parcelas_contrato')
-          .select('id, contrato_id')
-          .in('id', parcelaIds);
+        // Get contrato_id for each parcela (paginated to avoid 1000-row limit)
+        const parcelas = await fetchInChunks<{ id: string; contrato_id: string | null }>(
+          (chunk) => supabase
+            .from('parcelas_contrato')
+            .select('id, contrato_id')
+            .in('id', chunk),
+          parcelaIds
+        );
 
         if (parcelas && parcelas.length > 0) {
           const contratoIds = [...new Set(parcelas.map(p => p.contrato_id).filter(Boolean))] as string[];
           
           if (contratoIds.length > 0) {
-            const [{ data: rateios }, { data: contratosData }] = await Promise.all([
-              supabase
-                .from('contratos_centros_custo')
-                .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-                .in('contrato_id', contratoIds),
-              supabase
-                .from('contratos')
-                .select('id, servicos')
-                .in('id', contratoIds),
+            const [rateios, contratosData] = await Promise.all([
+              fetchInChunks<any>(
+                (chunk) => supabase
+                  .from('contratos_centros_custo')
+                  .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+                  .in('contrato_id', chunk),
+                contratoIds
+              ),
+              fetchInChunks<any>(
+                (chunk) => supabase
+                  .from('contratos')
+                  .select('id, servicos')
+                  .in('id', chunk),
+                contratoIds
+              ),
             ]);
+
 
             // Resolver nomes de serviços
             const allServicoIds = new Set<string>();
