@@ -49,6 +49,7 @@ interface Contrato {
   plano_contas?: PlanoContas;
   tem_go_live?: boolean;
   centro_custo_info?: CentroCusto;
+  centros_custo_multi?: { codigo: string; descricao: string; percentual: number }[];
 }
 
 export default function Contratos() {
