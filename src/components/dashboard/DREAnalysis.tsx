@@ -1678,7 +1678,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         <>
           {margemLinha && (
             <DRETrendChart
-              title="Margem de Contribuição vs Meta Ideal"
+              title="Margem de Contribuição vs Margem Ideal"
               description="Comparativo mensal entre a margem realizada e a meta ideal para empresas de serviço (referência: 30%)."
               meses={dreMensal.meses}
               valores={margemLinha.valores}
@@ -1691,7 +1691,7 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
           )}
           {ebtidaLinha && receitaLinha && (
             <DRETrendChart
-              title="EBITDA vs Meta Ideal"
+              title="EBITDA vs Margem Ideal"
               description="Comparativo mensal do EBITDA realizado e a meta ideal calculada como % da Receita do mês."
               meses={dreMensal.meses}
               valores={ebtidaLinha.valores}
