@@ -27,11 +27,28 @@ export function useCentroCustoRateio(parcelaIds: (string | null | undefined)[]) 
     const fetchRateio = async () => {
       setLoading(true);
       try {
+        // Chunk .in() queries to avoid Supabase 1000-row truncation
+        const fetchChunks = async <T = any>(
+          runner: (chunk: string[]) => Promise<{ data: T[] | null; error: any }>,
+          ids: string[],
+          chunkSize: number = 500
+        ): Promise<T[]> => {
+          const out: T[] = [];
+          for (let i = 0; i < ids.length; i += chunkSize) {
+            const { data } = await runner(ids.slice(i, i + chunkSize));
+            if (data && data.length) out.push(...data);
+          }
+          return out;
+        };
+
         // Step 1: Get contrato_id for each parcela_id
-        const { data: parcelas } = await supabase
-          .from('parcelas_contrato')
-          .select('id, contrato_id')
-          .in('id', validIds);
+        const parcelas = await fetchChunks<{ id: string; contrato_id: string | null }>(
+          async (chunk) => await supabase
+            .from('parcelas_contrato')
+            .select('id, contrato_id')
+            .in('id', chunk),
+          validIds
+        );
 
         if (!parcelas || parcelas.length === 0) {
           setRateioMap(new Map());
@@ -47,10 +64,14 @@ export function useCentroCustoRateio(parcelaIds: (string | null | undefined)[]) 
         }
 
         // Step 3: Fetch contratos_centros_custo with centro_custo details
-        const { data: rateios } = await supabase
-          .from('contratos_centros_custo')
-          .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-          .in('contrato_id', contratoIds);
+        const rateios = await fetchChunks<any>(
+          async (chunk) => await supabase
+            .from('contratos_centros_custo')
+            .select('contrato_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+            .in('contrato_id', chunk),
+          contratoIds
+        );
+
 
         if (!rateios || rateios.length === 0) {
           setRateioMap(new Map());

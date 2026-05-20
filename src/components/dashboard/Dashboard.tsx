@@ -202,19 +202,40 @@ export function Dashboard() {
       let rateioMap = new Map<string, Array<{ centro_custo_id: string; percentual: number }>>();
       
       if (parcelaIds.length > 0) {
-        const { data: parcelas } = await supabase
-          .from('parcelas_contrato')
-          .select('id, contrato_id')
-          .in('id', parcelaIds);
+        // Paginated .in() to avoid 1000-row truncation
+        const fetchChunks = async <T = any>(
+          runner: (chunk: string[]) => Promise<{ data: T[] | null; error: any }>,
+          ids: string[],
+          chunkSize: number = 500
+        ): Promise<T[]> => {
+          const out: T[] = [];
+          for (let i = 0; i < ids.length; i += chunkSize) {
+            const { data } = await runner(ids.slice(i, i + chunkSize));
+            if (data && data.length) out.push(...data);
+          }
+          return out;
+        };
+
+        const parcelas = await fetchChunks<{ id: string; contrato_id: string | null }>(
+          async (chunk) => await supabase
+            .from('parcelas_contrato')
+            .select('id, contrato_id')
+            .in('id', chunk),
+          parcelaIds
+        );
 
         if (parcelas && parcelas.length > 0) {
           const contratoIds = [...new Set(parcelas.map(p => p.contrato_id).filter(Boolean))] as string[];
           
           if (contratoIds.length > 0) {
-            const { data: rateios } = await supabase
-              .from('contratos_centros_custo')
-              .select('contrato_id, centro_custo_id, percentual')
-              .in('contrato_id', contratoIds);
+            const rateios = await fetchChunks<any>(
+              async (chunk) => await supabase
+                .from('contratos_centros_custo')
+                .select('contrato_id, centro_custo_id, percentual')
+                .in('contrato_id', chunk),
+              contratoIds
+            );
+
 
             if (rateios && rateios.length > 0) {
               const contratoRateioMap = new Map<string, Array<{ centro_custo_id: string; percentual: number }>>();
