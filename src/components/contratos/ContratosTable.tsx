@@ -254,8 +254,14 @@ export function ContratosTable({
                       {formatRecorrencia(contrato.recorrente, contrato.periodo_recorrencia)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm" title={contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
-                    {contrato.centro_custo_info ? (
+                  <TableCell className="text-sm" title={contrato.centros_custo_multi ? contrato.centros_custo_multi.map(r => `${r.codigo} - ${r.descricao} (${r.percentual}%)`).join(' | ') : contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
+                    {contrato.centros_custo_multi ? (
+                      <div className="flex flex-col gap-0.5">
+                        {contrato.centros_custo_multi.map((r, i) => (
+                          <CompanyTagWithPercent key={i} codigo={r.codigo} percentual={r.percentual} />
+                        ))}
+                      </div>
+                    ) : contrato.centro_custo_info ? (
                       <CompanyTag codigo={contrato.centro_custo_info.codigo} />
                     ) : (
                       <span className="text-xs text-muted-foreground">-</span>
