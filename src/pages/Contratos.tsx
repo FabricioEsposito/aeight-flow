@@ -125,9 +125,17 @@ export default function Contratos() {
     const temGoLive = (contrato as any).parcelas_contrato?.some(
       (parcela: any) => parcela.status === 'aguardando_conclusao'
     ) || false;
+    const rateios = ((contrato as any).contratos_centros_custo || [])
+      .filter((r: any) => r.centros_custo)
+      .map((r: any) => ({
+        codigo: r.centros_custo.codigo,
+        descricao: r.centros_custo.descricao,
+        percentual: Number(r.percentual) || 0,
+      }));
     return {
       ...contrato,
       centro_custo_info: centroCustoInfo,
+      centros_custo_multi: rateios.length > 1 ? rateios : undefined,
       tem_go_live: temGoLive
     };
   });
