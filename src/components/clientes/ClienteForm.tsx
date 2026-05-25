@@ -160,10 +160,21 @@ export function ClienteForm({ cliente, onClose, onSuccess }: ClienteFormProps) {
       }
 
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Erro ao salvar cliente:", error);
+      const code = error?.code;
+      const rawMsg = error?.message || error?.details || error?.hint;
+      let description = rawMsg || "Erro desconhecido";
+      if (code === "23505" || /duplicate key|already exists|clientes_cnpj_cpf_key/i.test(rawMsg || "")) {
+        description = "Já existe um cliente cadastrado com este CNPJ/CPF.";
+      } else if (code === "23502") {
+        description = "Há campos obrigatórios não preenchidos.";
+      } else if (code === "42501" || /row-level security/i.test(rawMsg || "")) {
+        description = "Você não tem permissão para realizar esta ação.";
+      }
       toast({
         title: "Erro ao salvar",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        description,
         variant: "destructive",
       });
     } finally {
