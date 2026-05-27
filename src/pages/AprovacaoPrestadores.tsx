@@ -125,6 +125,12 @@ export default function AprovacaoPrestadores() {
   );
 }
 
+function isBatchEligible(step: Step, item: any) {
+  if (step === 'rh_gerente' && item.tipo === 'nf_mensal') return false;
+  if (step === 'financeiro' && item.tipo === 'reembolso') return false;
+  return true;
+}
+
 function PainelStep({ step }: { step: Step }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -137,6 +143,11 @@ function PainelStep({ step }: { step: Step }) {
   const [dataVenc, setDataVenc] = useState('');
   const [contaBanc, setContaBanc] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [aprovarLoteOpen, setAprovarLoteOpen] = useState(false);
+  const [rejeitarLoteOpen, setRejeitarLoteOpen] = useState(false);
+  const [motivoLote, setMotivoLote] = useState('');
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   const statusFiltro =
     step === 'lider' ? 'pendente_lider'
