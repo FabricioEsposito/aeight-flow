@@ -10,8 +10,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const FROM = "Aeight Financeiro <financeiro@financeiro.aeight.global>";
-const CC = "financeiro@aeight.global";
+const FROM = "Aeight RH <rh@financeiro.aeight.global>";
+const CC = "hello.people@b8one.com";
 
 function fmtBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
