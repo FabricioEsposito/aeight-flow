@@ -673,6 +673,41 @@ function PainelStep({ step }: { step: Step }) {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={aprovarLoteOpen} onOpenChange={setAprovarLoteOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Aprovar em lote</DialogTitle></DialogHeader>
+            <p className="text-sm">
+              Confirmar aprovação de{' '}
+              <strong>{Array.from(selected).filter((id) => { const it = items.find((i: any) => i.id === id); return it && isBatchEligible(step, it); }).length}</strong>{' '}
+              solicitação(ões)?
+            </p>
+            {step === 'financeiro' && (
+              <p className="text-xs text-muted-foreground">Será enviado e-mail de aprovação para cada fornecedor.</p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAprovarLoteOpen(false)}>Cancelar</Button>
+              <Button onClick={handleAprovarLote} disabled={processing}>
+                {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Confirmar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={rejeitarLoteOpen} onOpenChange={setRejeitarLoteOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Rejeitar em lote</DialogTitle></DialogHeader>
+            <p className="text-sm">Rejeitar <strong>{selected.size}</strong> solicitação(ões). O motivo abaixo será aplicado a todas.</p>
+            <Label>Motivo</Label>
+            <Textarea value={motivoLote} onChange={(e) => setMotivoLote(e.target.value)} rows={3} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRejeitarLoteOpen(false)}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleRejeitarLote} disabled={processing || !motivoLote.trim()}>
+                {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Rejeitar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <DetalheSolicitacaoDialog item={detalheItem} onClose={() => setDetalheItem(null)} />
       </CardContent>
     </Card>
