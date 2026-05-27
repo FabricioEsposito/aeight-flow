@@ -486,49 +486,132 @@ function PainelStep({ step }: { step: Step }) {
         {itemsFiltrados.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma pendência.</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>CC</TableHead>
-                <TableHead>Regime</TableHead>
-                <TableHead>Mês ref.</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead>Anexo</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itemsFiltrados.map((s: any) => (
-                <TableRow key={s.id}>
-                  <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                  <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
-                  <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
-                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
-                  <TableCell className="text-xs">
-                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
-                  <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
-                  <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button size="sm" variant="outline" onClick={() => setDetalheItem(s)}><Eye className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="default" onClick={() => setAprovarItem(s)}><Check className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="destructive" onClick={() => setRejeitarItem(s)}><X className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            {(() => {
+              const elegiveis = itemsFiltrados.filter((s: any) => isBatchEligible(step, s));
+              const allChecked = elegiveis.length > 0 && elegiveis.every((s: any) => selected.has(s.id));
+              const someChecked = elegiveis.some((s: any) => selected.has(s.id));
+              const selecionadosCount = itemsFiltrados.filter((s: any) => selected.has(s.id)).length;
+              const selecionadosAprovaveis = elegiveis.filter((s: any) => selected.has(s.id)).length;
+              return (
+                <>
+                  {selecionadosCount > 0 && (
+                    <div className="flex items-center justify-between gap-3 mb-3 p-3 rounded-md border bg-muted/30">
+                      <span className="text-sm">
+                        <strong>{selecionadosCount}</strong> selecionado(s)
+                        {selecionadosCount !== selecionadosAprovaveis && (
+                          <span className="text-muted-foreground"> · {selecionadosAprovaveis} aprovável(is) em lote</span>
+                        )}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="default" disabled={processing || selecionadosAprovaveis === 0} onClick={() => setAprovarLoteOpen(true)}>
+                          <Check className="h-4 w-4 mr-1" /> Aprovar selecionados
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled={processing} onClick={() => { setMotivoLote(''); setRejeitarLoteOpen(true); }}>
+                          <X className="h-4 w-4 mr-1" /> Rejeitar selecionados
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={processing} onClick={() => setSelected(new Set())}>Limpar</Button>
+                      </div>
+                    </div>
+                  )}
+                  {batchProgress && (
+                    <div className="text-xs text-muted-foreground mb-2">Processando {batchProgress.done}/{batchProgress.total}…</div>
+                  )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">
+                          <Checkbox
+                            checked={allChecked ? true : (someChecked ? 'indeterminate' : false)}
+                            onCheckedChange={(v) => {
+                              if (v) {
+                                const next = new Set(selected);
+                                itemsFiltrados.forEach((s: any) => next.add(s.id));
+                                setSelected(next);
+                              } else {
+                                setSelected(new Set());
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead>CC</TableHead>
+                        <TableHead>Regime</TableHead>
+                        <TableHead>Mês ref.</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Anexo</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {itemsFiltrados.map((s: any) => {
+                        const elegivel = isBatchEligible(step, s);
+                        return (
+                          <TableRow key={s.id} data-state={selected.has(s.id) ? 'selected' : undefined}>
+                            <TableCell>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <Checkbox
+                                        checked={selected.has(s.id)}
+                                        onCheckedChange={(v) => {
+                                          const next = new Set(selected);
+                                          if (v) next.add(s.id); else next.delete(s.id);
+                                          setSelected(next);
+                                        }}
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                  {!elegivel && (
+                                    <TooltipContent>
+                                      {step === 'rh_gerente'
+                                        ? 'NF mensal exige vincular parcela: aprove individualmente. Pode ser rejeitada em lote.'
+                                        : 'Reembolso exige data de vencimento e conta bancária: aprove individualmente. Pode ser rejeitado em lote.'}
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                            <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="gap-1">
+                                {s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}
+                                {!elegivel && <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                            <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
+                            <TableCell className="text-xs">
+                              <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
+                            <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
+                            <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button size="sm" variant="outline" onClick={() => setDetalheItem(s)}><Eye className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="default" onClick={() => setAprovarItem(s)}><Check className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="destructive" onClick={() => setRejeitarItem(s)}><X className="h-4 w-4" /></Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </>
+              );
+            })()}
+          </>
         )}
+
 
 
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
