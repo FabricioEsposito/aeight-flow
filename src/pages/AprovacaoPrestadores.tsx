@@ -254,90 +254,115 @@ function PainelStep({ step }: { step: Step }) {
     },
   });
 
+  // Núcleo da aprovação para 1 item. Em lote, parcelaId/dataVenc/contaBanc são undefined
+  // (itens que precisariam desses campos são excluídos da elegibilidade do lote).
+  const aprovarUmItem = async (
+    item: any,
+    opts: { parcelaId?: string; dataVenc?: string; contaBanc?: string } = {},
+  ) => {
+    if (step === 'lider') {
+      const { error } = await supabase.from('solicitacoes_prestador' as any).update({
+        status: 'aprovado_lider',
+        aprovador_lider_id: user!.id,
+        data_aprovacao_lider: new Date().toISOString(),
+      }).eq('id', item.id);
+      if (error) throw error;
+    } else if (step === 'rh_analista') {
+      const { error } = await supabase.from('solicitacoes_prestador' as any).update({
+        status: 'pendente_rh',
+        aprovador_rh_analista_id: user!.id,
+        data_aprovacao_rh_analista: new Date().toISOString(),
+      }).eq('id', item.id);
+      if (error) throw error;
+    } else if (step === 'rh_gerente') {
+      const update: any = {
+        status: 'aprovado_rh',
+        aprovador_rh_gerente_id: user!.id,
+        data_aprovacao_rh_gerente: new Date().toISOString(),
+        aprovador_rh_id: user!.id,
+        data_aprovacao_rh: new Date().toISOString(),
+      };
+      if (item.tipo === 'nf_mensal') {
+        if (!opts.parcelaId) throw new Error('Selecione a parcela');
+        update.parcela_id = opts.parcelaId;
+      }
+      const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', item.id);
+      if (error) throw error;
+    } else {
+      if (item.tipo === 'reembolso') {
+        if (!opts.dataVenc) throw new Error('Defina a data de vencimento');
+        const { data: plano } = await supabase.from('plano_contas').select('id').eq('codigo', '3.1.14').maybeSingle();
+        const { data: cp, error: cpError } = await supabase.from('contas_pagar').insert({
+          fornecedor_id: item.fornecedor_id,
+          descricao: `Reembolso - ${item.descricao || ''}`.slice(0, 200),
+          valor: item.valor,
+          data_competencia: opts.dataVenc,
+          data_vencimento: opts.dataVenc,
+          plano_conta_id: plano?.id || null,
+          conta_bancaria_id: opts.contaBanc || null,
+          link_nf: item.arquivo_path,
+          status: 'pendente',
+        } as any).select('id').single();
+        if (cpError) throw cpError;
+        await supabase.from('solicitacoes_prestador' as any).update({
+          status: 'aprovado_financeiro',
+          aprovador_financeiro_id: user!.id,
+          data_aprovacao_financeiro: new Date().toISOString(),
+          conta_pagar_id: cp.id,
+          data_vencimento_pagamento: opts.dataVenc,
+          conta_bancaria_id: opts.contaBanc || null,
+        }).eq('id', item.id);
+      } else {
+        if (item.tipo === 'nf_mensal' && item.parcela_id) {
+          const { data: cp } = await supabase
+            .from('contas_pagar').select('id').eq('parcela_id', item.parcela_id).maybeSingle();
+          if (cp) {
+            await supabase.from('contas_pagar').update({
+              link_nf: item.arquivo_path,
+            } as any).eq('id', cp.id);
+          }
+        }
+        await supabase.from('solicitacoes_prestador' as any).update({
+          status: 'aprovado_financeiro',
+          aprovador_financeiro_id: user!.id,
+          data_aprovacao_financeiro: new Date().toISOString(),
+        }).eq('id', item.id);
+      }
+    }
+    if (step === 'financeiro') {
+      try {
+        await supabase.functions.invoke('notify-solicitacao-prestador', {
+          body: { solicitacao_id: item.id, evento: 'aprovado' },
+        });
+      } catch (err) {
+        console.error('Erro ao enviar email de aprovação:', err);
+      }
+    }
+  };
+
+  const rejeitarUmItem = async (item: any, motivoRej: string) => {
+    const now = new Date().toISOString();
+    const update: any =
+      step === 'lider' ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: now, motivo_rejeicao_lider: motivoRej }
+      : step === 'rh_analista' ? { status: 'rejeitado_rh', aprovador_rh_analista_id: user!.id, data_aprovacao_rh_analista: now, motivo_rejeicao_rh_analista: motivoRej, motivo_rejeicao_rh: motivoRej }
+      : step === 'rh_gerente' ? { status: 'rejeitado_rh', aprovador_rh_gerente_id: user!.id, data_aprovacao_rh_gerente: now, motivo_rejeicao_rh_gerente: motivoRej, motivo_rejeicao_rh: motivoRej }
+      : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivoRej };
+    const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', item.id);
+    if (error) throw error;
+    try {
+      await supabase.functions.invoke('notify-solicitacao-prestador', {
+        body: { solicitacao_id: item.id, evento: 'rejeitado', motivo: motivoRej },
+      });
+    } catch (err) {
+      console.error('Erro ao enviar email de rejeição:', err);
+    }
+  };
+
   const handleAprovar = async () => {
     if (!aprovarItem) return;
     setProcessing(true);
     try {
-      if (step === 'lider') {
-        const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-          status: 'aprovado_lider',
-          aprovador_lider_id: user!.id,
-          data_aprovacao_lider: new Date().toISOString(),
-        }).eq('id', aprovarItem.id);
-        if (error) throw error;
-      } else if (step === 'rh_analista') {
-        const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-          status: 'pendente_rh',
-          aprovador_rh_analista_id: user!.id,
-          data_aprovacao_rh_analista: new Date().toISOString(),
-        }).eq('id', aprovarItem.id);
-        if (error) throw error;
-      } else if (step === 'rh_gerente') {
-        const update: any = {
-          status: 'aprovado_rh',
-          aprovador_rh_gerente_id: user!.id,
-          data_aprovacao_rh_gerente: new Date().toISOString(),
-          aprovador_rh_id: user!.id,
-          data_aprovacao_rh: new Date().toISOString(),
-        };
-        if (aprovarItem.tipo === 'nf_mensal') {
-          if (!parcelaId) throw new Error('Selecione a parcela');
-          update.parcela_id = parcelaId;
-        }
-        const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', aprovarItem.id);
-        if (error) throw error;
-      } else {
-        if (aprovarItem.tipo === 'reembolso') {
-          if (!dataVenc) throw new Error('Defina a data de vencimento');
-          const { data: plano } = await supabase.from('plano_contas').select('id').eq('codigo', '3.1.14').maybeSingle();
-          const { data: cp, error: cpError } = await supabase.from('contas_pagar').insert({
-            fornecedor_id: aprovarItem.fornecedor_id,
-            descricao: `Reembolso - ${aprovarItem.descricao || ''}`.slice(0, 200),
-            valor: aprovarItem.valor,
-            data_competencia: dataVenc,
-            data_vencimento: dataVenc,
-            plano_conta_id: plano?.id || null,
-            conta_bancaria_id: contaBanc || null,
-            link_nf: aprovarItem.arquivo_path,
-            status: 'pendente',
-          } as any).select('id').single();
-          if (cpError) throw cpError;
-          await supabase.from('solicitacoes_prestador' as any).update({
-            status: 'aprovado_financeiro',
-            aprovador_financeiro_id: user!.id,
-            data_aprovacao_financeiro: new Date().toISOString(),
-            conta_pagar_id: cp.id,
-            data_vencimento_pagamento: dataVenc,
-            conta_bancaria_id: contaBanc || null,
-          }).eq('id', aprovarItem.id);
-        } else {
-          // nf_mensal: vincular NF (link_nf + numero_nf) à parcela do contrato no momento da aprovação financeira
-          if (aprovarItem.tipo === 'nf_mensal' && aprovarItem.parcela_id) {
-            const { data: cp } = await supabase
-              .from('contas_pagar').select('id').eq('parcela_id', aprovarItem.parcela_id).maybeSingle();
-            if (cp) {
-              await supabase.from('contas_pagar').update({
-                link_nf: aprovarItem.arquivo_path,
-              } as any).eq('id', cp.id);
-            }
-          }
-          await supabase.from('solicitacoes_prestador' as any).update({
-            status: 'aprovado_financeiro',
-            aprovador_financeiro_id: user!.id,
-            data_aprovacao_financeiro: new Date().toISOString(),
-          }).eq('id', aprovarItem.id);
-        }
-      }
-      // Quando aprovação final (financeiro), notifica fornecedor por email
-      if (step === 'financeiro') {
-        try {
-          await supabase.functions.invoke('notify-solicitacao-prestador', {
-            body: { solicitacao_id: aprovarItem.id, evento: 'aprovado' },
-          });
-        } catch (err) {
-          console.error('Erro ao enviar email de aprovação:', err);
-        }
-      }
+      await aprovarUmItem(aprovarItem, { parcelaId, dataVenc, contaBanc });
       toast({ title: 'Aprovado!' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
       queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
@@ -354,21 +379,7 @@ function PainelStep({ step }: { step: Step }) {
     if (!rejeitarItem || !motivo.trim()) return;
     setProcessing(true);
     try {
-      const now = new Date().toISOString();
-      const update: any =
-        step === 'lider' ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: now, motivo_rejeicao_lider: motivo }
-        : step === 'rh_analista' ? { status: 'rejeitado_rh', aprovador_rh_analista_id: user!.id, data_aprovacao_rh_analista: now, motivo_rejeicao_rh_analista: motivo, motivo_rejeicao_rh: motivo }
-        : step === 'rh_gerente' ? { status: 'rejeitado_rh', aprovador_rh_gerente_id: user!.id, data_aprovacao_rh_gerente: now, motivo_rejeicao_rh_gerente: motivo, motivo_rejeicao_rh: motivo }
-        : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivo };
-      const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', rejeitarItem.id);
-      if (error) throw error;
-      try {
-        await supabase.functions.invoke('notify-solicitacao-prestador', {
-          body: { solicitacao_id: rejeitarItem.id, evento: 'rejeitado', motivo },
-        });
-      } catch (err) {
-        console.error('Erro ao enviar email de rejeição:', err);
-      }
+      await rejeitarUmItem(rejeitarItem, motivo);
       toast({ title: 'Rejeitado' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
       queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
@@ -376,6 +387,51 @@ function PainelStep({ step }: { step: Step }) {
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally { setProcessing(false); }
+  };
+
+  const runBatch = async (
+    ids: string[],
+    fn: (item: any) => Promise<void>,
+    label: string,
+  ) => {
+    setProcessing(true);
+    setBatchProgress({ done: 0, total: ids.length });
+    let ok = 0; const errs: string[] = [];
+    for (const id of ids) {
+      const item = items.find((i: any) => i.id === id);
+      if (!item) continue;
+      try { await fn(item); ok++; } catch (e: any) { errs.push(e.message || 'erro'); }
+      setBatchProgress((p) => p ? { ...p, done: p.done + 1 } : null);
+    }
+    setBatchProgress(null);
+    setProcessing(false);
+    queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
+    queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
+    setSelected(new Set());
+    if (errs.length) {
+      toast({ title: `${label}: ${ok} ok, ${errs.length} com erro`, description: errs.slice(0, 3).join(' | '), variant: 'destructive' });
+    } else {
+      toast({ title: `${label} concluído`, description: `${ok} item(ns) processado(s).` });
+    }
+  };
+
+  const handleAprovarLote = async () => {
+    const ids = Array.from(selected).filter((id) => {
+      const it = items.find((i: any) => i.id === id);
+      return it && isBatchEligible(step, it);
+    });
+    if (!ids.length) return;
+    setAprovarLoteOpen(false);
+    await runBatch(ids, (item) => aprovarUmItem(item), 'Aprovação em lote');
+  };
+
+  const handleRejeitarLote = async () => {
+    const ids = Array.from(selected);
+    if (!ids.length || !motivoLote.trim()) return;
+    const mot = motivoLote;
+    setRejeitarLoteOpen(false);
+    setMotivoLote('');
+    await runBatch(ids, (item) => rejeitarUmItem(item, mot), 'Rejeição em lote');
   };
 
   return (
