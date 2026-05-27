@@ -89,9 +89,16 @@ serve(async (req) => {
     if (sErr) throw sErr;
     if (!sol) throw new Error("Solicitação não encontrada");
 
-    const fornEmail = (sol as any).fornecedor?.email;
-    if (!fornEmail) {
-      return new Response(JSON.stringify({ skipped: true, reason: "fornecedor sem email" }), {
+    const rawEmail = (sol as any).fornecedor?.email;
+    const destinatarios: string[] = Array.isArray(rawEmail)
+      ? rawEmail.filter((e: any) => typeof e === "string" && e.includes("@"))
+      : typeof rawEmail === "string" && rawEmail.includes("@")
+        ? [rawEmail]
+        : [];
+
+    if (destinatarios.length === 0) {
+      console.warn("Fornecedor sem email válido", { solicitacao_id, rawEmail });
+      return new Response(JSON.stringify({ skipped: true, reason: "fornecedor sem email válido" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -112,13 +119,22 @@ serve(async (req) => {
       numeroNf: sol.numero_nf,
     });
 
+    console.log("Enviando email", { evento, destinatarios, cc: CC, solicitacao_id });
+
     const result = await resend.emails.send({
       from: FROM,
-      to: [fornEmail],
+      to: destinatarios,
       cc: [CC],
       subject: `${aprovado ? "[Aprovada]" : "[Rejeitada]"} ${tipoLabel} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`,
       html,
     });
+
+    if ((result as any)?.error) {
+      console.error("Resend retornou erro:", (result as any).error);
+      return new Response(JSON.stringify({ error: (result as any).error }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, result }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
