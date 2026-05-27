@@ -85,24 +85,27 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
 
       setSubmitting(true);
 
-      // Determine initial status based on whether the solicitante has a Líder de Área
-      // If has leader → pendente_lider; else skip to analyst RH (status aprovado_lider)
+      // Determine initial status:
+      // - Reembolso: if has leader → pendente_lider; else skip to analyst
+      // - NF Mensal: always skip leader approval, go directly to analyst
       let initialStatus = 'aprovado_lider';
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('grupo_id')
-        .eq('id', user!.id)
-        .maybeSingle();
-      const grupoId = (prof as any)?.grupo_id;
-      if (grupoId) {
-        const { data: grupo } = await supabase
-          .from('grupos_area')
-          .select('lider_user_id')
-          .eq('id', grupoId)
+      if (tipo === 'reembolso') {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('grupo_id')
+          .eq('id', user!.id)
           .maybeSingle();
-        const liderId = (grupo as any)?.lider_user_id;
-        if (liderId && liderId !== user!.id) {
-          initialStatus = 'pendente_lider';
+        const grupoId = (prof as any)?.grupo_id;
+        if (grupoId) {
+          const { data: grupo } = await supabase
+            .from('grupos_area')
+            .select('lider_user_id')
+            .eq('id', grupoId)
+            .maybeSingle();
+          const liderId = (grupo as any)?.lider_user_id;
+          if (liderId && liderId !== user!.id) {
+            initialStatus = 'pendente_lider';
+          }
         }
       }
 
