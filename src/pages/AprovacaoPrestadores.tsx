@@ -97,7 +97,7 @@ export default function AprovacaoPrestadores() {
   if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
   if (!canLider && !canRHAnalista && !canRHGerente && !canFin) return <Navigate to="/" replace />;
 
-  const defaultTab: Step = canLider ? 'lider' : canRHAnalista ? 'rh_analista' : canRHGerente ? 'rh_gerente' : 'financeiro';
+  const defaultTab: string = canLider ? 'lider' : canRHAnalista ? 'rh_analista' : canRHGerente ? 'rh_gerente' : canFin ? 'financeiro' : 'historico';
 
   return (
     <div className="space-y-6">
@@ -111,11 +111,13 @@ export default function AprovacaoPrestadores() {
           {canRHAnalista && <TabsTrigger value="rh_analista">Validação Analista RH</TabsTrigger>}
           {canRHGerente && <TabsTrigger value="rh_gerente">Aprovação Gerente RH</TabsTrigger>}
           {canFin && <TabsTrigger value="financeiro">Aprovação Financeiro</TabsTrigger>}
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
         {canLider && <TabsContent value="lider"><PainelStep step="lider" /></TabsContent>}
         {canRHAnalista && <TabsContent value="rh_analista"><PainelStep step="rh_analista" /></TabsContent>}
         {canRHGerente && <TabsContent value="rh_gerente"><PainelStep step="rh_gerente" /></TabsContent>}
         {canFin && <TabsContent value="financeiro"><PainelStep step="financeiro" /></TabsContent>}
+        <TabsContent value="historico"><HistoricoPanel /></TabsContent>
       </Tabs>
     </div>
   );
@@ -459,15 +461,6 @@ function PainelStep({ step }: { step: Step }) {
           </Table>
         )}
 
-        <HistoricoSolicitacoes
-          step={step}
-          onDetalhar={setDetalheItem}
-          dateRange={dateRange}
-          filtroCC={filtroCC}
-          filtroTipo={filtroTipo}
-          filtroRegime={filtroRegime}
-          centrosCusto={centrosCusto}
-        />
 
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
           <DialogContent>
@@ -548,24 +541,60 @@ function statusLabel(s: string) {
   return map[s] || { label: s, variant: 'outline' };
 }
 
-function HistoricoSolicitacoes({
-  step,
-  onDetalhar,
-  dateRange,
-  filtroCC,
-  filtroTipo,
-  filtroRegime,
-  centrosCusto,
-}: {
-  step: Step;
-  onDetalhar: (s: any) => void;
-  dateRange: { from?: Date; to?: Date };
-  filtroCC: string;
-  filtroTipo: string;
-  filtroRegime: string;
-  centrosCusto: any[];
-}) {
+function getDataDecisao(s: any): string | null {
+  switch (s.status) {
+    case 'aprovado_lider':
+    case 'rejeitado_lider':
+      return s.data_aprovacao_lider || null;
+    case 'aprovado_rh':
+      return s.data_aprovacao_rh_gerente || s.data_aprovacao_rh || null;
+    case 'rejeitado_rh':
+      return s.data_aprovacao_rh_gerente || s.data_aprovacao_rh_analista || s.data_aprovacao_rh || null;
+    case 'aprovado_financeiro':
+    case 'rejeitado_financeiro':
+      return s.data_aprovacao_financeiro || null;
+    default:
+      return null;
+  }
+}
+
+function HistoricoPanel() {
   const { user } = useAuth();
+  const [detalheItem, setDetalheItem] = useState<any>(null);
+
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [filtroCC, setFiltroCC] = useState<string>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [filtroRegime, setFiltroRegime] = useState<string>('todos');
+  const [filtroStatus, setFiltroStatus] = useState<string>('todos');
+
+  const handleDateChange = (preset: DateRangePreset, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDatePreset(preset);
+    if (preset === 'todo-periodo') { setDateRange({}); return; }
+    if (range?.from && range?.to) { setDateRange({ from: range.from, to: range.to }); return; }
+    const today = new Date();
+    const r = (() => {
+      switch (preset) {
+        case 'hoje': return { from: today, to: today };
+        case 'esta-semana': return { from: startOfWeek(today, { weekStartsOn: 1 }), to: endOfWeek(today, { weekStartsOn: 1 }) };
+        case 'este-mes': return { from: startOfMonth(today), to: endOfMonth(today) };
+        case 'este-ano': return { from: startOfYear(today), to: endOfYear(today) };
+        case 'ultimos-30-dias': return { from: subDays(today, 30), to: today };
+        case 'ultimos-12-meses': return { from: subMonths(today, 12), to: today };
+        default: return { from: undefined as any, to: undefined as any };
+      }
+    })();
+    setDateRange(r);
+  };
+
+  const { data: centrosCusto = [] } = useQuery({
+    queryKey: ['centros-custo-filter'],
+    queryFn: async () => {
+      const { data } = await supabase.from('centros_custo').select('id, codigo, descricao').eq('status', 'ativo').order('codigo');
+      return data || [];
+    },
+  });
 
   const { data: items = [] } = useQuery({
     queryKey: ['historico-prestador', user?.id],
@@ -583,69 +612,133 @@ function HistoricoSolicitacoes({
           'rejeitado_financeiro',
         ])
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
       return enrichSolicitacoes((data as any[]) || []);
     },
   });
 
-  const itemsFiltrados = filtrarSolicitacoes(items, dateRange, filtroCC, filtroTipo, filtroRegime);
+  const itemsFiltrados = filtrarSolicitacoes(items, dateRange, filtroCC, filtroTipo, filtroRegime)
+    .filter((s: any) => filtroStatus === 'todos' ? true : s.status === filtroStatus);
 
   return (
-    <div className="mt-8">
-      <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico (aprovadas / rejeitadas)</h3>
-      {itemsFiltrados.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-4 text-center">Nenhum histórico ainda.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Fornecedor</TableHead>
+    <Card>
+      <CardHeader><CardTitle className="text-base">Histórico (aprovadas / rejeitadas)</CardTitle></CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-3 mb-4 items-end">
+          <div>
+            <Label className="text-xs block mb-1">Período</Label>
+            <DateRangeFilter value={datePreset} onChange={handleDateChange} customRange={{ from: dateRange.from, to: dateRange.to }} />
+          </div>
+          <div>
+            <Label className="text-xs">Centro de custo</Label>
+            <Select value={filtroCC} onValueChange={setFiltroCC}>
+              <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {centrosCusto.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>{c.codigo} - {c.descricao}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo</Label>
+            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="nf_mensal">NF</SelectItem>
+                <SelectItem value="reembolso">Reembolso</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Regime</Label>
+            <Select value={filtroRegime} onValueChange={setFiltroRegime}>
+              <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="prestador">Prestador de serviço</SelectItem>
+                <SelectItem value="funcionario">Funcionário</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Status</Label>
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="aprovado_lider">Aprovado Líder</SelectItem>
+                <SelectItem value="aprovado_rh">Aprovado RH</SelectItem>
+                <SelectItem value="aprovado_financeiro">Aprovado Financeiro</SelectItem>
+                <SelectItem value="rejeitado_lider">Rejeitado Líder</SelectItem>
+                <SelectItem value="rejeitado_rh">Rejeitado RH</SelectItem>
+                <SelectItem value="rejeitado_financeiro">Rejeitado Financeiro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {itemsFiltrados.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">Nenhum histórico.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data solicitação</TableHead>
+                <TableHead>Data decisão</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Fornecedor</TableHead>
                 <TableHead>CC</TableHead>
                 <TableHead>Regime</TableHead>
-              <TableHead>Mês ref.</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Anexo</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {itemsFiltrados.map((s: any) => {
-              const st = statusLabel(s.status);
-              return (
-                <TableRow key={s.id}>
-                  <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                  <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
-                  <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
-                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
-                  <TableCell className="text-xs">
-                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
-                  <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
-                  <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                  <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => onDetalhar(s)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+                <TableHead>Mês ref.</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Anexo</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {itemsFiltrados.map((s: any) => {
+                const st = statusLabel(s.status);
+                const dataDecisao = getDataDecisao(s);
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                    <TableCell className="text-xs">{dataDecisao ? format(new Date(dataDecisao), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
+                    <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
+                    <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                    <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
+                    <TableCell className="text-xs">
+                      <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
+                    <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
+                    <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => setDetalheItem(s)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+
+        <DetalheSolicitacaoDialog item={detalheItem} onClose={() => setDetalheItem(null)} />
+      </CardContent>
+    </Card>
   );
 }
 
