@@ -147,7 +147,7 @@ export default function Extrato() {
 
       const fetchChunked = async <T,>(
         ids: string[],
-        runner: (chunk: string[]) => Promise<{ data: T[] | null }>
+        runner: (chunk: string[]) => PromiseLike<{ data: T[] | null }>
       ): Promise<T[]> => {
         const out: T[] = [];
         for (let i = 0; i < ids.length; i += 500) {
@@ -156,6 +156,7 @@ export default function Extrato() {
         }
         return out;
       };
+
 
       if (receberIds.length > 0) {
         const rows = await fetchChunked<any>(receberIds, (chunk) =>
