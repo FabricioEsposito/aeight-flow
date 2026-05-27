@@ -346,8 +346,16 @@ function PainelStep({ step }: { step: Step }) {
         : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivo };
       const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', rejeitarItem.id);
       if (error) throw error;
+      try {
+        await supabase.functions.invoke('notify-solicitacao-prestador', {
+          body: { solicitacao_id: rejeitarItem.id, evento: 'rejeitado', motivo },
+        });
+      } catch (err) {
+        console.error('Erro ao enviar email de rejeição:', err);
+      }
       toast({ title: 'Rejeitado' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
       setRejeitarItem(null); setMotivo('');
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
