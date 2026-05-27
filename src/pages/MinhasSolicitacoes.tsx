@@ -84,7 +84,7 @@ export default function MinhasSolicitacoes() {
                           <TableCell className="text-xs">{String(s.mes_referencia).padStart(2, '0')}/{s.ano_referencia}</TableCell>
                           <TableCell className="text-sm">{s.numero_nf}</TableCell>
                           <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell><StatusBadge status={s.status} /></TableCell>
+                          <TableCell><StatusBadge status={s.status} tipo="nf_mensal" /></TableCell>
                           <TableCell>
                             <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
                               <ExternalLink className="h-4 w-4" />
