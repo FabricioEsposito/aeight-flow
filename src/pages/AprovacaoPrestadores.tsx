@@ -313,8 +313,19 @@ function PainelStep({ step }: { step: Step }) {
           }).eq('id', aprovarItem.id);
         }
       }
+      // Quando aprovação final (financeiro), notifica fornecedor por email
+      if (step === 'financeiro') {
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: aprovarItem.id, evento: 'aprovado' },
+          });
+        } catch (err) {
+          console.error('Erro ao enviar email de aprovação:', err);
+        }
+      }
       toast({ title: 'Aprovado!' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
       setAprovarItem(null);
       setParcelaId(''); setDataVenc(''); setContaBanc('');
     } catch (e: any) {
@@ -336,8 +347,16 @@ function PainelStep({ step }: { step: Step }) {
         : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivo };
       const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', rejeitarItem.id);
       if (error) throw error;
+      try {
+        await supabase.functions.invoke('notify-solicitacao-prestador', {
+          body: { solicitacao_id: rejeitarItem.id, evento: 'rejeitado', motivo },
+        });
+      } catch (err) {
+        console.error('Erro ao enviar email de rejeição:', err);
+      }
       toast({ title: 'Rejeitado' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
       setRejeitarItem(null); setMotivo('');
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -547,22 +566,24 @@ function HistoricoSolicitacoes({
   centrosCusto: any[];
 }) {
   const { user } = useAuth();
-  const aprovadorField =
-    step === 'lider' ? 'aprovador_lider_id'
-    : step === 'rh_analista' ? 'aprovador_rh_analista_id'
-    : step === 'rh_gerente' ? 'aprovador_rh_gerente_id'
-    : 'aprovador_financeiro_id';
 
   const { data: items = [] } = useQuery({
-    queryKey: ['historico-prestador', step, user?.id],
+    queryKey: ['historico-prestador', user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('solicitacoes_prestador' as any)
         .select('*, fornecedor:fornecedores(razao_social, nome_fantasia)')
-        .eq(aprovadorField, user!.id)
+        .in('status', [
+          'aprovado_lider',
+          'aprovado_rh',
+          'aprovado_financeiro',
+          'rejeitado_lider',
+          'rejeitado_rh',
+          'rejeitado_financeiro',
+        ])
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
       if (error) throw error;
       return enrichSolicitacoes((data as any[]) || []);
     },
@@ -572,7 +593,7 @@ function HistoricoSolicitacoes({
 
   return (
     <div className="mt-8">
-      <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico de aprovações/rejeições</h3>
+      <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico (aprovadas / rejeitadas)</h3>
       {itemsFiltrados.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Nenhum histórico ainda.</p>
       ) : (
