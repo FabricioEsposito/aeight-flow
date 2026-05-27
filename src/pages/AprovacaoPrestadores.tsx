@@ -313,6 +313,16 @@ function PainelStep({ step }: { step: Step }) {
           }).eq('id', aprovarItem.id);
         }
       }
+      // Quando aprovação final (financeiro), notifica fornecedor por email
+      if (step === 'financeiro') {
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: aprovarItem.id, evento: 'aprovado' },
+          });
+        } catch (err) {
+          console.error('Erro ao enviar email de aprovação:', err);
+        }
+      }
       toast({ title: 'Aprovado!' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
       setAprovarItem(null);
