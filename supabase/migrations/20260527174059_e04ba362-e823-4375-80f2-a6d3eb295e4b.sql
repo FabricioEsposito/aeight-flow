@@ -1,0 +1,1 @@
+UPDATE public.solicitacoes_prestador SET status='aprovado_lider' WHERE tipo='nf_mensal' AND status='pendente_lider';
