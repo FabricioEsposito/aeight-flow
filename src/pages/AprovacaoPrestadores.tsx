@@ -97,7 +97,7 @@ export default function AprovacaoPrestadores() {
   if (roleLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
   if (!canLider && !canRHAnalista && !canRHGerente && !canFin) return <Navigate to="/" replace />;
 
-  const defaultTab: Step = canLider ? 'lider' : canRHAnalista ? 'rh_analista' : canRHGerente ? 'rh_gerente' : 'financeiro';
+  const defaultTab: string = canLider ? 'lider' : canRHAnalista ? 'rh_analista' : canRHGerente ? 'rh_gerente' : canFin ? 'financeiro' : 'historico';
 
   return (
     <div className="space-y-6">
@@ -111,11 +111,13 @@ export default function AprovacaoPrestadores() {
           {canRHAnalista && <TabsTrigger value="rh_analista">Validação Analista RH</TabsTrigger>}
           {canRHGerente && <TabsTrigger value="rh_gerente">Aprovação Gerente RH</TabsTrigger>}
           {canFin && <TabsTrigger value="financeiro">Aprovação Financeiro</TabsTrigger>}
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
         {canLider && <TabsContent value="lider"><PainelStep step="lider" /></TabsContent>}
         {canRHAnalista && <TabsContent value="rh_analista"><PainelStep step="rh_analista" /></TabsContent>}
         {canRHGerente && <TabsContent value="rh_gerente"><PainelStep step="rh_gerente" /></TabsContent>}
         {canFin && <TabsContent value="financeiro"><PainelStep step="financeiro" /></TabsContent>}
+        <TabsContent value="historico"><HistoricoPanel /></TabsContent>
       </Tabs>
     </div>
   );
