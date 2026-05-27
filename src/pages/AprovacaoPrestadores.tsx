@@ -566,22 +566,24 @@ function HistoricoSolicitacoes({
   centrosCusto: any[];
 }) {
   const { user } = useAuth();
-  const aprovadorField =
-    step === 'lider' ? 'aprovador_lider_id'
-    : step === 'rh_analista' ? 'aprovador_rh_analista_id'
-    : step === 'rh_gerente' ? 'aprovador_rh_gerente_id'
-    : 'aprovador_financeiro_id';
 
   const { data: items = [] } = useQuery({
-    queryKey: ['historico-prestador', step, user?.id],
+    queryKey: ['historico-prestador', user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('solicitacoes_prestador' as any)
         .select('*, fornecedor:fornecedores(razao_social, nome_fantasia)')
-        .eq(aprovadorField, user!.id)
+        .in('status', [
+          'aprovado_lider',
+          'aprovado_rh',
+          'aprovado_financeiro',
+          'rejeitado_lider',
+          'rejeitado_rh',
+          'rejeitado_financeiro',
+        ])
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
       if (error) throw error;
       return enrichSolicitacoes((data as any[]) || []);
     },
@@ -591,7 +593,7 @@ function HistoricoSolicitacoes({
 
   return (
     <div className="mt-8">
-      <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico de aprovações/rejeições</h3>
+      <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Histórico (aprovadas / rejeitadas)</h3>
       {itemsFiltrados.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Nenhum histórico ainda.</p>
       ) : (
