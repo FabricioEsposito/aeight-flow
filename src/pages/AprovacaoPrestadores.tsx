@@ -13,7 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Check, X, Loader2, Eye, Crown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ExternalLink, Check, X, Loader2, Eye, Crown, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import { DateRangeFilter, type DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { ptBR } from 'date-fns/locale';
@@ -123,6 +125,12 @@ export default function AprovacaoPrestadores() {
   );
 }
 
+function isBatchEligible(step: Step, item: any) {
+  if (step === 'rh_gerente' && item.tipo === 'nf_mensal') return false;
+  if (step === 'financeiro' && item.tipo === 'reembolso') return false;
+  return true;
+}
+
 function PainelStep({ step }: { step: Step }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -135,6 +143,11 @@ function PainelStep({ step }: { step: Step }) {
   const [dataVenc, setDataVenc] = useState('');
   const [contaBanc, setContaBanc] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [aprovarLoteOpen, setAprovarLoteOpen] = useState(false);
+  const [rejeitarLoteOpen, setRejeitarLoteOpen] = useState(false);
+  const [motivoLote, setMotivoLote] = useState('');
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   const statusFiltro =
     step === 'lider' ? 'pendente_lider'
@@ -241,90 +254,115 @@ function PainelStep({ step }: { step: Step }) {
     },
   });
 
+  // Núcleo da aprovação para 1 item. Em lote, parcelaId/dataVenc/contaBanc são undefined
+  // (itens que precisariam desses campos são excluídos da elegibilidade do lote).
+  const aprovarUmItem = async (
+    item: any,
+    opts: { parcelaId?: string; dataVenc?: string; contaBanc?: string } = {},
+  ) => {
+    if (step === 'lider') {
+      const { error } = await supabase.from('solicitacoes_prestador' as any).update({
+        status: 'aprovado_lider',
+        aprovador_lider_id: user!.id,
+        data_aprovacao_lider: new Date().toISOString(),
+      }).eq('id', item.id);
+      if (error) throw error;
+    } else if (step === 'rh_analista') {
+      const { error } = await supabase.from('solicitacoes_prestador' as any).update({
+        status: 'pendente_rh',
+        aprovador_rh_analista_id: user!.id,
+        data_aprovacao_rh_analista: new Date().toISOString(),
+      }).eq('id', item.id);
+      if (error) throw error;
+    } else if (step === 'rh_gerente') {
+      const update: any = {
+        status: 'aprovado_rh',
+        aprovador_rh_gerente_id: user!.id,
+        data_aprovacao_rh_gerente: new Date().toISOString(),
+        aprovador_rh_id: user!.id,
+        data_aprovacao_rh: new Date().toISOString(),
+      };
+      if (item.tipo === 'nf_mensal') {
+        if (!opts.parcelaId) throw new Error('Selecione a parcela');
+        update.parcela_id = opts.parcelaId;
+      }
+      const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', item.id);
+      if (error) throw error;
+    } else {
+      if (item.tipo === 'reembolso') {
+        if (!opts.dataVenc) throw new Error('Defina a data de vencimento');
+        const { data: plano } = await supabase.from('plano_contas').select('id').eq('codigo', '3.1.14').maybeSingle();
+        const { data: cp, error: cpError } = await supabase.from('contas_pagar').insert({
+          fornecedor_id: item.fornecedor_id,
+          descricao: `Reembolso - ${item.descricao || ''}`.slice(0, 200),
+          valor: item.valor,
+          data_competencia: opts.dataVenc,
+          data_vencimento: opts.dataVenc,
+          plano_conta_id: plano?.id || null,
+          conta_bancaria_id: opts.contaBanc || null,
+          link_nf: item.arquivo_path,
+          status: 'pendente',
+        } as any).select('id').single();
+        if (cpError) throw cpError;
+        await supabase.from('solicitacoes_prestador' as any).update({
+          status: 'aprovado_financeiro',
+          aprovador_financeiro_id: user!.id,
+          data_aprovacao_financeiro: new Date().toISOString(),
+          conta_pagar_id: cp.id,
+          data_vencimento_pagamento: opts.dataVenc,
+          conta_bancaria_id: opts.contaBanc || null,
+        }).eq('id', item.id);
+      } else {
+        if (item.tipo === 'nf_mensal' && item.parcela_id) {
+          const { data: cp } = await supabase
+            .from('contas_pagar').select('id').eq('parcela_id', item.parcela_id).maybeSingle();
+          if (cp) {
+            await supabase.from('contas_pagar').update({
+              link_nf: item.arquivo_path,
+            } as any).eq('id', cp.id);
+          }
+        }
+        await supabase.from('solicitacoes_prestador' as any).update({
+          status: 'aprovado_financeiro',
+          aprovador_financeiro_id: user!.id,
+          data_aprovacao_financeiro: new Date().toISOString(),
+        }).eq('id', item.id);
+      }
+    }
+    if (step === 'financeiro') {
+      try {
+        await supabase.functions.invoke('notify-solicitacao-prestador', {
+          body: { solicitacao_id: item.id, evento: 'aprovado' },
+        });
+      } catch (err) {
+        console.error('Erro ao enviar email de aprovação:', err);
+      }
+    }
+  };
+
+  const rejeitarUmItem = async (item: any, motivoRej: string) => {
+    const now = new Date().toISOString();
+    const update: any =
+      step === 'lider' ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: now, motivo_rejeicao_lider: motivoRej }
+      : step === 'rh_analista' ? { status: 'rejeitado_rh', aprovador_rh_analista_id: user!.id, data_aprovacao_rh_analista: now, motivo_rejeicao_rh_analista: motivoRej, motivo_rejeicao_rh: motivoRej }
+      : step === 'rh_gerente' ? { status: 'rejeitado_rh', aprovador_rh_gerente_id: user!.id, data_aprovacao_rh_gerente: now, motivo_rejeicao_rh_gerente: motivoRej, motivo_rejeicao_rh: motivoRej }
+      : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivoRej };
+    const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', item.id);
+    if (error) throw error;
+    try {
+      await supabase.functions.invoke('notify-solicitacao-prestador', {
+        body: { solicitacao_id: item.id, evento: 'rejeitado', motivo: motivoRej },
+      });
+    } catch (err) {
+      console.error('Erro ao enviar email de rejeição:', err);
+    }
+  };
+
   const handleAprovar = async () => {
     if (!aprovarItem) return;
     setProcessing(true);
     try {
-      if (step === 'lider') {
-        const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-          status: 'aprovado_lider',
-          aprovador_lider_id: user!.id,
-          data_aprovacao_lider: new Date().toISOString(),
-        }).eq('id', aprovarItem.id);
-        if (error) throw error;
-      } else if (step === 'rh_analista') {
-        const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-          status: 'pendente_rh',
-          aprovador_rh_analista_id: user!.id,
-          data_aprovacao_rh_analista: new Date().toISOString(),
-        }).eq('id', aprovarItem.id);
-        if (error) throw error;
-      } else if (step === 'rh_gerente') {
-        const update: any = {
-          status: 'aprovado_rh',
-          aprovador_rh_gerente_id: user!.id,
-          data_aprovacao_rh_gerente: new Date().toISOString(),
-          aprovador_rh_id: user!.id,
-          data_aprovacao_rh: new Date().toISOString(),
-        };
-        if (aprovarItem.tipo === 'nf_mensal') {
-          if (!parcelaId) throw new Error('Selecione a parcela');
-          update.parcela_id = parcelaId;
-        }
-        const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', aprovarItem.id);
-        if (error) throw error;
-      } else {
-        if (aprovarItem.tipo === 'reembolso') {
-          if (!dataVenc) throw new Error('Defina a data de vencimento');
-          const { data: plano } = await supabase.from('plano_contas').select('id').eq('codigo', '3.1.14').maybeSingle();
-          const { data: cp, error: cpError } = await supabase.from('contas_pagar').insert({
-            fornecedor_id: aprovarItem.fornecedor_id,
-            descricao: `Reembolso - ${aprovarItem.descricao || ''}`.slice(0, 200),
-            valor: aprovarItem.valor,
-            data_competencia: dataVenc,
-            data_vencimento: dataVenc,
-            plano_conta_id: plano?.id || null,
-            conta_bancaria_id: contaBanc || null,
-            link_nf: aprovarItem.arquivo_path,
-            status: 'pendente',
-          } as any).select('id').single();
-          if (cpError) throw cpError;
-          await supabase.from('solicitacoes_prestador' as any).update({
-            status: 'aprovado_financeiro',
-            aprovador_financeiro_id: user!.id,
-            data_aprovacao_financeiro: new Date().toISOString(),
-            conta_pagar_id: cp.id,
-            data_vencimento_pagamento: dataVenc,
-            conta_bancaria_id: contaBanc || null,
-          }).eq('id', aprovarItem.id);
-        } else {
-          // nf_mensal: vincular NF (link_nf + numero_nf) à parcela do contrato no momento da aprovação financeira
-          if (aprovarItem.tipo === 'nf_mensal' && aprovarItem.parcela_id) {
-            const { data: cp } = await supabase
-              .from('contas_pagar').select('id').eq('parcela_id', aprovarItem.parcela_id).maybeSingle();
-            if (cp) {
-              await supabase.from('contas_pagar').update({
-                link_nf: aprovarItem.arquivo_path,
-              } as any).eq('id', cp.id);
-            }
-          }
-          await supabase.from('solicitacoes_prestador' as any).update({
-            status: 'aprovado_financeiro',
-            aprovador_financeiro_id: user!.id,
-            data_aprovacao_financeiro: new Date().toISOString(),
-          }).eq('id', aprovarItem.id);
-        }
-      }
-      // Quando aprovação final (financeiro), notifica fornecedor por email
-      if (step === 'financeiro') {
-        try {
-          await supabase.functions.invoke('notify-solicitacao-prestador', {
-            body: { solicitacao_id: aprovarItem.id, evento: 'aprovado' },
-          });
-        } catch (err) {
-          console.error('Erro ao enviar email de aprovação:', err);
-        }
-      }
+      await aprovarUmItem(aprovarItem, { parcelaId, dataVenc, contaBanc });
       toast({ title: 'Aprovado!' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
       queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
@@ -341,21 +379,7 @@ function PainelStep({ step }: { step: Step }) {
     if (!rejeitarItem || !motivo.trim()) return;
     setProcessing(true);
     try {
-      const now = new Date().toISOString();
-      const update: any =
-        step === 'lider' ? { status: 'rejeitado_lider', aprovador_lider_id: user!.id, data_aprovacao_lider: now, motivo_rejeicao_lider: motivo }
-        : step === 'rh_analista' ? { status: 'rejeitado_rh', aprovador_rh_analista_id: user!.id, data_aprovacao_rh_analista: now, motivo_rejeicao_rh_analista: motivo, motivo_rejeicao_rh: motivo }
-        : step === 'rh_gerente' ? { status: 'rejeitado_rh', aprovador_rh_gerente_id: user!.id, data_aprovacao_rh_gerente: now, motivo_rejeicao_rh_gerente: motivo, motivo_rejeicao_rh: motivo }
-        : { status: 'rejeitado_financeiro', aprovador_financeiro_id: user!.id, data_aprovacao_financeiro: now, motivo_rejeicao_financeiro: motivo };
-      const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', rejeitarItem.id);
-      if (error) throw error;
-      try {
-        await supabase.functions.invoke('notify-solicitacao-prestador', {
-          body: { solicitacao_id: rejeitarItem.id, evento: 'rejeitado', motivo },
-        });
-      } catch (err) {
-        console.error('Erro ao enviar email de rejeição:', err);
-      }
+      await rejeitarUmItem(rejeitarItem, motivo);
       toast({ title: 'Rejeitado' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
       queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
@@ -363,6 +387,51 @@ function PainelStep({ step }: { step: Step }) {
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally { setProcessing(false); }
+  };
+
+  const runBatch = async (
+    ids: string[],
+    fn: (item: any) => Promise<void>,
+    label: string,
+  ) => {
+    setProcessing(true);
+    setBatchProgress({ done: 0, total: ids.length });
+    let ok = 0; const errs: string[] = [];
+    for (const id of ids) {
+      const item = items.find((i: any) => i.id === id);
+      if (!item) continue;
+      try { await fn(item); ok++; } catch (e: any) { errs.push(e.message || 'erro'); }
+      setBatchProgress((p) => p ? { ...p, done: p.done + 1 } : null);
+    }
+    setBatchProgress(null);
+    setProcessing(false);
+    queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
+    queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
+    setSelected(new Set());
+    if (errs.length) {
+      toast({ title: `${label}: ${ok} ok, ${errs.length} com erro`, description: errs.slice(0, 3).join(' | '), variant: 'destructive' });
+    } else {
+      toast({ title: `${label} concluído`, description: `${ok} item(ns) processado(s).` });
+    }
+  };
+
+  const handleAprovarLote = async () => {
+    const ids = Array.from(selected).filter((id) => {
+      const it = items.find((i: any) => i.id === id);
+      return it && isBatchEligible(step, it);
+    });
+    if (!ids.length) return;
+    setAprovarLoteOpen(false);
+    await runBatch(ids, (item) => aprovarUmItem(item), 'Aprovação em lote');
+  };
+
+  const handleRejeitarLote = async () => {
+    const ids = Array.from(selected);
+    if (!ids.length || !motivoLote.trim()) return;
+    const mot = motivoLote;
+    setRejeitarLoteOpen(false);
+    setMotivoLote('');
+    await runBatch(ids, (item) => rejeitarUmItem(item, mot), 'Rejeição em lote');
   };
 
   return (
@@ -417,49 +486,132 @@ function PainelStep({ step }: { step: Step }) {
         {itemsFiltrados.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma pendência.</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>CC</TableHead>
-                <TableHead>Regime</TableHead>
-                <TableHead>Mês ref.</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead>Anexo</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itemsFiltrados.map((s: any) => (
-                <TableRow key={s.id}>
-                  <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                  <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
-                  <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
-                  <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
-                  <TableCell className="text-xs">
-                    <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
-                  <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
-                  <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button size="sm" variant="outline" onClick={() => setDetalheItem(s)}><Eye className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="default" onClick={() => setAprovarItem(s)}><Check className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="destructive" onClick={() => setRejeitarItem(s)}><X className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            {(() => {
+              const elegiveis = itemsFiltrados.filter((s: any) => isBatchEligible(step, s));
+              const allChecked = elegiveis.length > 0 && elegiveis.every((s: any) => selected.has(s.id));
+              const someChecked = elegiveis.some((s: any) => selected.has(s.id));
+              const selecionadosCount = itemsFiltrados.filter((s: any) => selected.has(s.id)).length;
+              const selecionadosAprovaveis = elegiveis.filter((s: any) => selected.has(s.id)).length;
+              return (
+                <>
+                  {selecionadosCount > 0 && (
+                    <div className="flex items-center justify-between gap-3 mb-3 p-3 rounded-md border bg-muted/30">
+                      <span className="text-sm">
+                        <strong>{selecionadosCount}</strong> selecionado(s)
+                        {selecionadosCount !== selecionadosAprovaveis && (
+                          <span className="text-muted-foreground"> · {selecionadosAprovaveis} aprovável(is) em lote</span>
+                        )}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="default" disabled={processing || selecionadosAprovaveis === 0} onClick={() => setAprovarLoteOpen(true)}>
+                          <Check className="h-4 w-4 mr-1" /> Aprovar selecionados
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled={processing} onClick={() => { setMotivoLote(''); setRejeitarLoteOpen(true); }}>
+                          <X className="h-4 w-4 mr-1" /> Rejeitar selecionados
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={processing} onClick={() => setSelected(new Set())}>Limpar</Button>
+                      </div>
+                    </div>
+                  )}
+                  {batchProgress && (
+                    <div className="text-xs text-muted-foreground mb-2">Processando {batchProgress.done}/{batchProgress.total}…</div>
+                  )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">
+                          <Checkbox
+                            checked={allChecked ? true : (someChecked ? 'indeterminate' : false)}
+                            onCheckedChange={(v) => {
+                              if (v) {
+                                const next = new Set(selected);
+                                itemsFiltrados.forEach((s: any) => next.add(s.id));
+                                setSelected(next);
+                              } else {
+                                setSelected(new Set());
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead>CC</TableHead>
+                        <TableHead>Regime</TableHead>
+                        <TableHead>Mês ref.</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Anexo</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {itemsFiltrados.map((s: any) => {
+                        const elegivel = isBatchEligible(step, s);
+                        return (
+                          <TableRow key={s.id} data-state={selected.has(s.id) ? 'selected' : undefined}>
+                            <TableCell>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <Checkbox
+                                        checked={selected.has(s.id)}
+                                        onCheckedChange={(v) => {
+                                          const next = new Set(selected);
+                                          if (v) next.add(s.id); else next.delete(s.id);
+                                          setSelected(next);
+                                        }}
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                  {!elegivel && (
+                                    <TooltipContent>
+                                      {step === 'rh_gerente'
+                                        ? 'NF mensal exige vincular parcela: aprove individualmente. Pode ser rejeitada em lote.'
+                                        : 'Reembolso exige data de vencimento e conta bancária: aprove individualmente. Pode ser rejeitado em lote.'}
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                            <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="gap-1">
+                                {s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}
+                                {!elegivel && <AlertCircle className="h-3 w-3 text-muted-foreground" />}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
+                            <TableCell className="text-xs">{(() => { const cc = centrosCusto.find((c: any) => c.id === s._centro_custo); return cc ? `${cc.codigo} - ${cc.descricao}` : '—'; })()}</TableCell>
+                            <TableCell className="text-xs">
+                              <Badge variant="secondary">{s._regime === 'funcionario' ? 'Funcionário' : 'Prestador'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-xs">{String(s.mes_referencia).padStart(2,'0')}/{s.ano_referencia}</TableCell>
+                            <TableCell className="text-sm max-w-xs truncate">{s.descricao}</TableCell>
+                            <TableCell className="text-right text-sm">R$ {Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => openStorageFile(s.arquivo_path, 'prestador-docs')}>
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button size="sm" variant="outline" onClick={() => setDetalheItem(s)}><Eye className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="default" onClick={() => setAprovarItem(s)}><Check className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="destructive" onClick={() => setRejeitarItem(s)}><X className="h-4 w-4" /></Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </>
+              );
+            })()}
+          </>
         )}
+
 
 
         <Dialog open={!!aprovarItem} onOpenChange={(o) => !o && setAprovarItem(null)}>
@@ -517,6 +669,41 @@ function PainelStep({ step }: { step: Step }) {
             <DialogFooter>
               <Button variant="outline" onClick={() => setRejeitarItem(null)}>Cancelar</Button>
               <Button variant="destructive" onClick={handleRejeitar} disabled={processing || !motivo.trim()}>Rejeitar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={aprovarLoteOpen} onOpenChange={setAprovarLoteOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Aprovar em lote</DialogTitle></DialogHeader>
+            <p className="text-sm">
+              Confirmar aprovação de{' '}
+              <strong>{Array.from(selected).filter((id) => { const it = items.find((i: any) => i.id === id); return it && isBatchEligible(step, it); }).length}</strong>{' '}
+              solicitação(ões)?
+            </p>
+            {step === 'financeiro' && (
+              <p className="text-xs text-muted-foreground">Será enviado e-mail de aprovação para cada fornecedor.</p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAprovarLoteOpen(false)}>Cancelar</Button>
+              <Button onClick={handleAprovarLote} disabled={processing}>
+                {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Confirmar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={rejeitarLoteOpen} onOpenChange={setRejeitarLoteOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Rejeitar em lote</DialogTitle></DialogHeader>
+            <p className="text-sm">Rejeitar <strong>{selected.size}</strong> solicitação(ões). O motivo abaixo será aplicado a todas.</p>
+            <Label>Motivo</Label>
+            <Textarea value={motivoLote} onChange={(e) => setMotivoLote(e.target.value)} rows={3} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRejeitarLoteOpen(false)}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleRejeitarLote} disabled={processing || !motivoLote.trim()}>
+                {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Rejeitar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
