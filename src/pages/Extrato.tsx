@@ -145,37 +145,49 @@ export default function Extrato() {
 
       const result = new Map<string, CentroCustoRateioItem[]>();
 
+      const fetchChunked = async <T,>(
+        ids: string[],
+        runner: (chunk: string[]) => Promise<{ data: T[] | null }>
+      ): Promise<T[]> => {
+        const out: T[] = [];
+        for (let i = 0; i < ids.length; i += 500) {
+          const { data } = await runner(ids.slice(i, i + 500));
+          if (data) out.push(...data);
+        }
+        return out;
+      };
+
       if (receberIds.length > 0) {
-        const { data } = await supabase
-          .from('lancamentos_centros_custo')
-          .select('conta_receber_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-          .in('conta_receber_id', receberIds);
-        if (data) {
-          for (const r of data) {
-            const cc = r.centros_custo as any;
-            if (!cc) continue;
-            const item: CentroCustoRateioItem = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
-            const existing = result.get(r.conta_receber_id!) || [];
-            existing.push(item);
-            result.set(r.conta_receber_id!, existing);
-          }
+        const rows = await fetchChunked<any>(receberIds, (chunk) =>
+          supabase
+            .from('lancamentos_centros_custo')
+            .select('conta_receber_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+            .in('conta_receber_id', chunk)
+        );
+        for (const r of rows) {
+          const cc = r.centros_custo as any;
+          if (!cc) continue;
+          const item: CentroCustoRateioItem = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+          const existing = result.get(r.conta_receber_id!) || [];
+          existing.push(item);
+          result.set(r.conta_receber_id!, existing);
         }
       }
 
       if (pagarIds.length > 0) {
-        const { data } = await supabase
-          .from('lancamentos_centros_custo')
-          .select('conta_pagar_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
-          .in('conta_pagar_id', pagarIds);
-        if (data) {
-          for (const r of data) {
-            const cc = r.centros_custo as any;
-            if (!cc) continue;
-            const item: CentroCustoRateioItem = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
-            const existing = result.get(r.conta_pagar_id!) || [];
-            existing.push(item);
-            result.set(r.conta_pagar_id!, existing);
-          }
+        const rows = await fetchChunked<any>(pagarIds, (chunk) =>
+          supabase
+            .from('lancamentos_centros_custo')
+            .select('conta_pagar_id, centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+            .in('conta_pagar_id', chunk)
+        );
+        for (const r of rows) {
+          const cc = r.centros_custo as any;
+          if (!cc) continue;
+          const item: CentroCustoRateioItem = { codigo: cc.codigo, descricao: cc.descricao, percentual: r.percentual, centro_custo_id: r.centro_custo_id };
+          const existing = result.get(r.conta_pagar_id!) || [];
+          existing.push(item);
+          result.set(r.conta_pagar_id!, existing);
         }
       }
 
@@ -184,6 +196,7 @@ export default function Extrato() {
 
     fetchLancamentoRateio();
   }, [lancamentos]);
+
 
   // Enrich lancamentos with rateio data (contratos via parcela_id + individuais via lancamentos_centros_custo)
   const lancamentosEnriquecidos = useMemo(() => {
