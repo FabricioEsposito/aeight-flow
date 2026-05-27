@@ -22,8 +22,10 @@ const statusLabels: Record<string, { label: string; color: string; icon: any }> 
   pago: { label: 'Pago', color: 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-200', icon: CheckCircle2 },
 };
 
-export function StatusBadge({ status }: { status: string }) {
-  const cfg = statusLabels[status] || { label: status, color: 'bg-muted', icon: Clock };
+export function StatusBadge({ status, tipo }: { status: string; tipo?: string }) {
+  // Para NF Mensal não há aprovação de líder; status aprovado_lider deve aparecer como pendente para o RH
+  const effectiveStatus = tipo === 'nf_mensal' && status === 'aprovado_lider' ? 'pendente_rh' : status;
+  const cfg = statusLabels[effectiveStatus] || { label: effectiveStatus, color: 'bg-muted', icon: Clock };
   const Icon = cfg.icon;
   return (
     <Badge variant="outline" className={`${cfg.color} border-0 gap-1`}>
