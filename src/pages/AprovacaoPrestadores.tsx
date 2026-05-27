@@ -325,6 +325,7 @@ function PainelStep({ step }: { step: Step }) {
       }
       toast({ title: 'Aprovado!' });
       queryClient.invalidateQueries({ queryKey: ['aprov-prestador'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-prestador'] });
       setAprovarItem(null);
       setParcelaId(''); setDataVenc(''); setContaBanc('');
     } catch (e: any) {
