@@ -428,12 +428,13 @@ export function EditParcelaDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Valor Original (R$)</Label>
-              <CurrencyInput
-                value={valorOriginal}
-                onChange={setValorOriginal}
-                placeholder="0,00"
-              />
+              <Label className="text-muted-foreground">Valor Bruto / Original (não editável)</Label>
+              <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
+                {formatCurrency(valorOriginal)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O valor bruto é preservado para o relatório de retenções. Para ajustar o valor efetivamente recebido/pago, utilize Juros, Multa ou Desconto acima.
+              </p>
             </div>
 
             <div className="bg-muted p-4 rounded-lg space-y-2">
