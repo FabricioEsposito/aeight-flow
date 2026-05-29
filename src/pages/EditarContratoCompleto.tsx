@@ -1161,7 +1161,8 @@ export default function EditarContratoCompleto() {
               <TableRow>
                 <TableHead>Parcela</TableHead>
                 <TableHead>Data Vencimento</TableHead>
-                <TableHead>Valor (R$)</TableHead>
+                <TableHead>Valor Bruto (R$)</TableHead>
+                <TableHead>Valor Líquido (R$)</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -1186,6 +1187,14 @@ export default function EditarContratoCompleto() {
                       value={parcela.valor}
                       onChange={(value) => handleParcelaChange(index, 'valor', value)}
                     />
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {(
+                        (parcela.valor || 0) *
+                        (1 - ((irrfPercentual || 0) + (pisPercentual || 0) + (cofinsPercentual || 0) + (csllPercentual || 0)) / 100)
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
                   </TableCell>
                   <TableCell>
                     {parcela.status === 'aguardando_conclusao' ? (
