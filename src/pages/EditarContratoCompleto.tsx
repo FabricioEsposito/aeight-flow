@@ -129,12 +129,9 @@ export default function EditarContratoCompleto() {
     prevCentroCustoRef.current = centroCustoId;
   }, [centroCustoId, vendedorId]);
 
-  // Recalculate parcels when values change
-  useEffect(() => {
-    if (parcelas.length > 0 && valorUnitario > 0) {
-      recalcularParcelas();
-    }
-  }, [quantidade, valorUnitario, descontoPercentual, descontoValor, descontoTipo, irrfPercentual, pisPercentual, cofinsPercentual, csllPercentual]);
+  // OBS: removido o recálculo automático que dividia parcelas igualmente
+  // ao alterar valores/impostos, pois sobrescrevia parcelamentos customizados.
+  // Use o botão "Redistribuir igualmente" para forçar divisão equitativa.
 
   const fetchContasBancarias = async () => {
     const { data } = await supabase
