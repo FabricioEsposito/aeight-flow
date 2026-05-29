@@ -1129,16 +1129,31 @@ export default function EditarContratoCompleto() {
       {/* Parcelas */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Parcelas</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReprocessarParcelas}
-            disabled={reprocessing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${reprocessing ? 'animate-spin' : ''}`} />
-            {reprocessing ? 'Reprocessando...' : 'Reprocessar Parcelas'}
-          </Button>
+          <div>
+            <CardTitle>Parcelas</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Edite o valor de cada parcela manualmente para aplicar percentuais customizados (ex: 50% / 25% / 25%).
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={recalcularParcelas}
+              title="Distribui o valor total igualmente entre todas as parcelas"
+            >
+              Redistribuir igualmente
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReprocessarParcelas}
+              disabled={reprocessing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${reprocessing ? 'animate-spin' : ''}`} />
+              {reprocessing ? 'Reprocessando...' : 'Reprocessar Parcelas'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
