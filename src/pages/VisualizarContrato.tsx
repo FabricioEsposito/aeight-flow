@@ -446,30 +446,36 @@ export default function VisualizarContrato() {
               <TableRow>
                 <TableHead>Parcela</TableHead>
                 <TableHead>Data Vencimento</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-right">Valor Bruto</TableHead>
+                <TableHead className="text-right">Valor Líquido</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {parcelas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Nenhuma parcela encontrada
                   </TableCell>
                 </TableRow>
               ) : (
-                parcelas.map((parcela) => (
-                  <TableRow key={parcela.id}>
-                    <TableCell>{parcela.numero_parcela}</TableCell>
-                    <TableCell>{formatDate(parcela.data_vencimento)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(parcela.valor)}</TableCell>
-                    <TableCell>
-                      <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'}>
-                        {parcela.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+                parcelas.map((parcela) => {
+                  const taxRate = ((contrato.irrf_percentual || 0) + (contrato.pis_percentual || 0) + (contrato.cofins_percentual || 0) + (contrato.csll_percentual || 0)) / 100;
+                  const liquido = (parcela.valor || 0) * (1 - taxRate);
+                  return (
+                    <TableRow key={parcela.id}>
+                      <TableCell>{parcela.numero_parcela}</TableCell>
+                      <TableCell>{formatDate(parcela.data_vencimento)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(parcela.valor)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatCurrency(liquido)}</TableCell>
+                      <TableCell>
+                        <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'}>
+                          {parcela.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
