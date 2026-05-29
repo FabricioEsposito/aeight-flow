@@ -1189,6 +1189,14 @@ export default function EditarContratoCompleto() {
                     />
                   </TableCell>
                   <TableCell>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {(
+                        (parcela.valor || 0) *
+                        (1 - ((irrfPercentual || 0) + (pisPercentual || 0) + (cofinsPercentual || 0) + (csllPercentual || 0)) / 100)
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </TableCell>
+                  <TableCell>
                     {parcela.status === 'aguardando_conclusao' ? (
                       <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                         Go Live
