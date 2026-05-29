@@ -63,6 +63,7 @@ export default function NovoContrato() {
   // Classificação
   const [planoContasId, setPlanoContasId] = useState('');
   const [vendedorId, setVendedorId] = useState('');
+  const [parceiroId, setParceiroId] = useState('');
   const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [centroCusto, setCentroCusto] = useState('');
   const prevCentroCustoRef = useRef<string>('');
