@@ -66,6 +66,7 @@ export default function EditarContratoCompleto() {
   const [centroCustoId, setCentroCustoId] = useState('');
   const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [vendedorId, setVendedorId] = useState('');
+  const [parceiroId, setParceiroId] = useState('');
   const prevCentroCustoRef = useRef<string>('');
   const [descricaoServico, setDescricaoServico] = useState('');
   const [quantidade, setQuantidade] = useState(1);
