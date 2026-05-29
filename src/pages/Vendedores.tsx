@@ -137,6 +137,8 @@ export default function Vendedores() {
         nome: vendedor.nome,
         fornecedor_id: vendedor.fornecedor_id || "",
         status: (vendedor.status as any) || 'ativo',
+        tipo: ((vendedor.tipo as any) || 'interno') as 'interno' | 'parceiro',
+        percentual_comissao: Number(vendedor.percentual_comissao ?? 0),
       });
 
       const vendedorLinks = links.filter((l) => l.vendedor_id === vendedor.id);
@@ -156,6 +158,8 @@ export default function Vendedores() {
         nome: "",
         fornecedor_id: "",
         status: 'ativo',
+        tipo: 'interno',
+        percentual_comissao: 0,
       });
 
       const next: Record<string, { selected: boolean; meta: number; percentual_comissao: number }> = {};
@@ -164,6 +168,7 @@ export default function Vendedores() {
       });
       setFormCentros(next);
     }
+
     setDialogOpen(true);
   };
 
