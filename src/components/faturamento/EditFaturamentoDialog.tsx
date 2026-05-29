@@ -60,9 +60,15 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   const [linkNf, setLinkNf] = useState('');
   const [linkBoleto, setLinkBoleto] = useState('');
   const [valorLiquido, setValorLiquido] = useState(0);
+  const [valorBrutoEdit, setValorBrutoEdit] = useState(0);
+  const [centroCustoCodigo, setCentroCustoCodigo] = useState<string | null>(null);
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Centros de custo que permitem edição do valor bruto:
+  // 002 - Lomadee (take rate sobre o bruto) e 003 - Cryah (investimento em mídia variável)
+  const brutoEditavel = centroCustoCodigo === '002' || centroCustoCodigo === '003';
 
   useEffect(() => {
     if (faturamento) {
@@ -70,7 +76,19 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setLinkNf(faturamento.link_nf || '');
       setLinkBoleto(faturamento.link_boleto || '');
       setValorLiquido(faturamento.valor_liquido);
+      setValorBrutoEdit(faturamento.valor_bruto || 0);
       setDataVencimento(parseISO(faturamento.data_vencimento + 'T00:00:00'));
+
+      if (faturamento.centro_custo) {
+        supabase
+          .from('centros_custo')
+          .select('codigo')
+          .eq('id', faturamento.centro_custo)
+          .maybeSingle()
+          .then(({ data }) => setCentroCustoCodigo(data?.codigo || null));
+      } else {
+        setCentroCustoCodigo(null);
+      }
     }
   }, [faturamento]);
 
@@ -78,10 +96,9 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  // Valor bruto é IMUTÁVEL — vem do contrato e é usado em relatórios de retenção.
-  const valorBruto = faturamento?.valor_bruto || 0;
+  // Valor bruto exibido — usa o valor em edição (se permitido) ou o original.
+  const valorBruto = brutoEditavel ? valorBrutoEdit : (faturamento?.valor_bruto || 0);
 
-  // Calcular valores de impostos baseados no valor bruto (sempre fixo)
   const calcularImpostos = () => {
     if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0 };
     const irrf = valorBruto * (faturamento.irrf_percentual / 100);
@@ -94,24 +111,36 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
   const impostos = calcularImpostos();
 
+  // Quando o bruto editável muda, recalcula o líquido automaticamente.
+  const handleBrutoChange = (novoBruto: number) => {
+    setValorBrutoEdit(novoBruto);
+    if (!faturamento) return;
+    const taxRate = (faturamento.irrf_percentual + faturamento.pis_percentual +
+                     faturamento.cofins_percentual + faturamento.csll_percentual) / 100;
+    setValorLiquido(Number((novoBruto * (1 - taxRate)).toFixed(2)));
+  };
+
   const handleSave = async () => {
     if (!faturamento) return;
 
     try {
       setLoading(true);
       const valorAlterado = valorLiquido !== faturamento.valor_liquido;
+      const brutoAlterado = brutoEditavel && valorBrutoEdit !== (faturamento.valor_bruto || 0);
       const novaDataVencimento = dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : faturamento.data_vencimento;
       const dataVencimentoAlterada = novaDataVencimento !== faturamento.data_vencimento;
 
-      // 1. Atualizar contas_receber — APENAS o valor LÍQUIDO (recebido).
-      //    O valor bruto permanece intacto (parcela.valor / contrato.valor_bruto) para preservar
-      //    o relatório de retenções da contabilidade.
+      // 1. Atualizar contas_receber — valor LÍQUIDO sempre; valor_original (bruto) apenas
+      //    se o centro de custo permitir edição do bruto (Lomadee/Cryah).
       const updateCR: any = {
         numero_nf: numeroNf || null,
         link_nf: linkNf || null,
         link_boleto: linkBoleto || null,
         valor: valorLiquido,
       };
+      if (brutoAlterado) {
+        updateCR.valor_original = valorBrutoEdit;
+      }
       if (dataVencimentoAlterada) {
         updateCR.data_vencimento = novaDataVencimento;
         if (!updateCR.data_vencimento_original) {
@@ -126,8 +155,8 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
       if (crError) throw crError;
 
-      // 2. Propagar APENAS data de vencimento para parcela (valor bruto NÃO é alterado aqui).
-      if (dataVencimentoAlterada) {
+      // 2. Propagar para parcela: data sempre, valor bruto apenas se permitido alterar.
+      if (dataVencimentoAlterada || brutoAlterado) {
         const { data: contaReceber, error: fetchError } = await supabase
           .from('contas_receber')
           .select('parcela_id')
@@ -137,9 +166,13 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
         if (fetchError) throw fetchError;
 
         if (contaReceber?.parcela_id) {
+          const parcelaUpdate: any = {};
+          if (dataVencimentoAlterada) parcelaUpdate.data_vencimento = novaDataVencimento;
+          if (brutoAlterado) parcelaUpdate.valor = valorBrutoEdit;
+
           const { error: parcelaError } = await supabase
             .from('parcelas_contrato')
-            .update({ data_vencimento: novaDataVencimento })
+            .update(parcelaUpdate)
             .eq('id', contaReceber.parcela_id);
 
           if (parcelaError) throw parcelaError;
@@ -166,6 +199,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
       const messages: string[] = [];
       if (dataVencimentoAlterada) messages.push('data de vencimento');
+      if (brutoAlterado) messages.push('valor bruto');
       if (valorAlterado) messages.push('valor líquido');
 
       toast({
@@ -245,13 +279,26 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Valor Bruto (não editável)</Label>
-            <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
-              {formatCurrency(valorBruto)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              O valor bruto é preservado para o relatório de retenções e não pode ser alterado aqui.
-            </p>
+            <Label className={brutoEditavel ? '' : 'text-muted-foreground'}>
+              Valor Bruto {brutoEditavel ? `(editável — ${centroCustoCodigo === '002' ? 'Lomadee' : 'Cryah'})` : '(não editável)'}
+            </Label>
+            {brutoEditavel ? (
+              <>
+                <CurrencyInput value={valorBrutoEdit} onChange={handleBrutoChange} />
+                <p className="text-xs text-amber-600">
+                  Alterar o bruto recalcula automaticamente o líquido e propaga para parcela/extrato.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
+                  {formatCurrency(valorBruto)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  O valor bruto é preservado para o relatório de retenções e não pode ser alterado aqui.
+                </p>
+              </>
+            )}
           </div>
 
           {temRetencoes && (
