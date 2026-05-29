@@ -476,9 +476,33 @@ export default function Vendedores() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {selectedVendedor ? "Editar Vendedor" : "Novo Vendedor"}
+                {selectedVendedor ? `Editar ${formData.tipo === 'parceiro' ? 'Parceiro' : 'Vendedor'}` : `Novo ${formData.tipo === 'parceiro' ? 'Parceiro' : 'Vendedor'}`}
               </DialogTitle>
             </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Tipo *</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.tipo === 'interno' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipo: 'interno' })}
+                  >
+                    Vendedor (Interno)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.tipo === 'parceiro' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipo: 'parceiro' })}
+                  >
+                    Parceiro (Indicador)
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Parceiros recebem % fixo sobre os recebimentos do contrato indicado (sem meta batida).
+                </p>
+              </div>
+
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome *</Label>
