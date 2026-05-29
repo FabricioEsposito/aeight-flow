@@ -279,13 +279,26 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Valor Bruto (não editável)</Label>
-            <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
-              {formatCurrency(valorBruto)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              O valor bruto é preservado para o relatório de retenções e não pode ser alterado aqui.
-            </p>
+            <Label className={brutoEditavel ? '' : 'text-muted-foreground'}>
+              Valor Bruto {brutoEditavel ? `(editável — ${centroCustoCodigo === '002' ? 'Lomadee' : 'Cryah'})` : '(não editável)'}
+            </Label>
+            {brutoEditavel ? (
+              <>
+                <CurrencyInput value={valorBrutoEdit} onChange={handleBrutoChange} />
+                <p className="text-xs text-amber-600">
+                  Alterar o bruto recalcula automaticamente o líquido e propaga para parcela/extrato.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
+                  {formatCurrency(valorBruto)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  O valor bruto é preservado para o relatório de retenções e não pode ser alterado aqui.
+                </p>
+              </>
+            )}
           </div>
 
           {temRetencoes && (
