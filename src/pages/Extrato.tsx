@@ -1753,7 +1753,7 @@ export default function Extrato() {
             // Se tiver parcela_id, atualiza também a parcela do contrato
             if (lanc.parcela_id) {
               const parcelaUpdate: any = { status: 'pendente' };
-              if (updateData.valor) parcelaUpdate.valor = updateData.valor;
+              // NÃO propaga valor para a parcela (valor bruto é imutável).
               if (updateData.data_vencimento) parcelaUpdate.data_vencimento = updateData.data_vencimento;
               await supabase.from('parcelas_contrato').update(parcelaUpdate).eq('id', lanc.parcela_id);
             }
