@@ -632,6 +632,7 @@ export default function EditarContratoCompleto() {
           plano_contas_id: planoContasId,
           centro_custo: centroCustoId,
           vendedor_responsavel: tipoContrato === 'venda' ? vendedorId : null,
+          parceiro_id: tipoContrato === 'venda' && parceiroId ? parceiroId : null,
           descricao_servico: descricaoServico,
           quantidade,
           valor_unitario: valorUnitario,
