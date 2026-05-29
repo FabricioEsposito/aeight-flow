@@ -35,6 +35,7 @@ import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
+import { ParceiroSelect } from '@/components/contratos/ParceiroSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { DateInput } from '@/components/ui/date-input';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
