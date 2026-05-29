@@ -35,6 +35,7 @@ import { ClienteSelect } from '@/components/contratos/ClienteSelect';
 import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
+import { ParceiroSelect } from '@/components/contratos/ParceiroSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { DateInput } from '@/components/ui/date-input';
 import { CurrencyInput, PercentageInput } from '@/components/ui/currency-input';
@@ -65,6 +66,7 @@ export default function EditarContratoCompleto() {
   const [centroCustoId, setCentroCustoId] = useState('');
   const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [vendedorId, setVendedorId] = useState('');
+  const [parceiroId, setParceiroId] = useState('');
   const prevCentroCustoRef = useRef<string>('');
   const [descricaoServico, setDescricaoServico] = useState('');
   const [quantidade, setQuantidade] = useState(1);
@@ -164,6 +166,7 @@ export default function EditarContratoCompleto() {
       setPlanoContasId(data.plano_contas_id || '');
       setCentroCustoId(data.centro_custo || '');
       setVendedorId(data.vendedor_responsavel || '');
+      setParceiroId((data as any).parceiro_id || '');
       setDescricaoServico(data.descricao_servico || '');
       setQuantidade(data.quantidade || 1);
       setValorUnitario(data.valor_unitario || 0);
@@ -629,6 +632,7 @@ export default function EditarContratoCompleto() {
           plano_contas_id: planoContasId,
           centro_custo: centroCustoId,
           vendedor_responsavel: tipoContrato === 'venda' ? vendedorId : null,
+          parceiro_id: tipoContrato === 'venda' && parceiroId ? parceiroId : null,
           descricao_servico: descricaoServico,
           quantidade,
           valor_unitario: valorUnitario,
@@ -889,6 +893,16 @@ export default function EditarContratoCompleto() {
             <div className="space-y-2">
               <Label>Vendedor Responsável</Label>
               <VendedorSelect value={vendedorId} onChange={setVendedorId} centroCustoId={centroCustoId || undefined} />
+            </div>
+          )}
+
+          {tipoContrato === 'venda' && (
+            <div className="space-y-2">
+              <Label>Parceiro da venda (indicação)</Label>
+              <ParceiroSelect value={parceiroId} onChange={setParceiroId} />
+              <p className="text-xs text-muted-foreground">
+                Opcional. O parceiro receberá comissão sobre os recebimentos deste contrato.
+              </p>
             </div>
           )}
 

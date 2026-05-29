@@ -563,6 +563,7 @@ export type Database = {
           link_contrato: string | null
           numero_contrato: string
           observacoes_faturamento: string | null
+          parceiro_id: string | null
           percentual_investimento_midia: number | null
           periodo_recorrencia: string | null
           pis_cofins_percentual: number | null
@@ -608,6 +609,7 @@ export type Database = {
           link_contrato?: string | null
           numero_contrato: string
           observacoes_faturamento?: string | null
+          parceiro_id?: string | null
           percentual_investimento_midia?: number | null
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null
@@ -653,6 +655,7 @@ export type Database = {
           link_contrato?: string | null
           numero_contrato?: string
           observacoes_faturamento?: string | null
+          parceiro_id?: string | null
           percentual_investimento_midia?: number | null
           periodo_recorrencia?: string | null
           pis_cofins_percentual?: number | null
@@ -2203,6 +2206,7 @@ export type Database = {
           nome: string
           percentual_comissao: number
           status: string
+          tipo: string
           updated_at: string
         }
         Insert: {
@@ -2216,6 +2220,7 @@ export type Database = {
           nome: string
           percentual_comissao?: number
           status?: string
+          tipo?: string
           updated_at?: string
         }
         Update: {
@@ -2229,6 +2234,7 @@ export type Database = {
           nome?: string
           percentual_comissao?: number
           status?: string
+          tipo?: string
           updated_at?: string
         }
         Relationships: [

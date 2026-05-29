@@ -14,6 +14,7 @@ import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { ServicosMultiSelect } from '@/components/contratos/ServicosMultiSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
+import { ParceiroSelect } from '@/components/contratos/ParceiroSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
 import { ParcelamentoCustomizado, ParcelaCustomizada } from '@/components/contratos/ParcelamentoCustomizado';
@@ -62,6 +63,7 @@ export default function NovoContrato() {
   // Classificação
   const [planoContasId, setPlanoContasId] = useState('');
   const [vendedorId, setVendedorId] = useState('');
+  const [parceiroId, setParceiroId] = useState('');
   const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [centroCusto, setCentroCusto] = useState('');
   const prevCentroCustoRef = useRef<string>('');
@@ -456,6 +458,7 @@ export default function NovoContrato() {
         plano_contas_id: planoContasId,
         centro_custo: centroCusto,
         vendedor_responsavel: tipoContrato === 'venda' ? vendedorId : null,
+        parceiro_id: tipoContrato === 'venda' && parceiroId ? parceiroId : null,
         importancia_cliente_fornecedor: importanciaClienteFornecedor,
         servicos: itens.map(item => item.servicoId).filter(Boolean),
         descricao_servico: itens.map(item => `${item.detalhes} (${item.quantidade}x R$ ${item.valorUnitario})`).join('\n'),
@@ -829,6 +832,16 @@ export default function NovoContrato() {
                   <div className="space-y-2">
                     <Label>Vendedor responsável</Label>
                     <VendedorSelect value={vendedorId} onChange={setVendedorId} centroCustoId={centroCusto || undefined} />
+                  </div>
+                )}
+
+                {tipoContrato === 'venda' && (
+                  <div className="space-y-2">
+                    <Label>Parceiro da venda (indicação)</Label>
+                    <ParceiroSelect value={parceiroId} onChange={setParceiroId} />
+                    <p className="text-xs text-muted-foreground">
+                      Opcional. O parceiro receberá comissão sobre os recebimentos deste contrato.
+                    </p>
                   </div>
                 )}
               </div>

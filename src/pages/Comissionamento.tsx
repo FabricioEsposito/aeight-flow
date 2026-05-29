@@ -226,6 +226,7 @@ export default function Comissionamento() {
         .from("vendedores")
         .select("id, nome, percentual_comissao, centro_custo, fornecedor_id")
         .eq("status", "ativo")
+        .eq("tipo" as any, "interno")
         .order("nome");
 
       if (selectedCentroCusto.length > 0) {

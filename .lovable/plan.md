@@ -1,78 +1,44 @@
-# Split Afiliado — Extrato e DRE
+# Comissionamento de Parceiros
 
-## Objetivo
-Permitir registrar, em lançamentos de receita cujo serviço é "Marketing de Afiliados", um valor de **Split Afiliado** (parcela a ser repassada ao afiliado). Esse valor não altera o valor do lançamento — serve como informação contábil para uma nova visão do DRE.
+## Visão geral
+Parceiros são indicadores externos (não-staff) que recebem percentual fixo sobre os recebimentos do contrato indicado. Vão reaproveitar a tabela `vendedores` com um marcador `tipo`, mas **não** participam de meta batida, override por contrato nem comissão extraordinária — apenas o `percentual_comissao` cadastrado no parceiro, aplicado sobre cada parcela recebida do(s) contrato(s) em que ele foi indicado.
 
-## Banco de dados
+## Banco de dados (1 migration)
 
-Adicionar coluna em `contas_receber`:
-- `split_afiliado` (numeric, nullable, default null) — valor em R$ do split repassado ao afiliado.
+1. **`vendedores.tipo`** (`text`, default `'interno'`, check em `'interno' | 'parceiro'`).
+2. **`contratos.parceiro_id`** (`uuid`, nullable) — referência ao vendedor com `tipo='parceiro'`.
+3. Sem novas tabelas — `solicitacoes_comissao` e `comissao_percentual_override` continuam servindo (override fica desabilitado na UI para parceiros).
 
-Sem alteração em RLS (já coberto pelas policies existentes).
+## Cadastro de parceiros (`/vendedores`)
 
-## Onde editar o Split Afiliado
+- Nova aba **"Parceiros"** ao lado de "Vendedores" usando o mesmo componente, com `tipo='parceiro'` fixo.
+- Formulário simplificado: nome, % de comissão, fornecedor vinculado (obrigatório, para gerar contas a pagar), status. Sem meta, sem centro de custo (parceiro não tem meta).
+- Listagem filtra por `tipo`. Vínculo `vendedores_centros_custo` não é usado para parceiros.
 
-O campo aparece **somente quando o serviço selecionado for "Marketing de Afiliados"** (id `1cee9599-206e-47bc-b19e-d2cd8177d9d8`):
+## Contratos
 
-1. **Edição de parcela no extrato** (`EditParcelaDialog.tsx`)
-   - Novo input "Split Afiliado (R$)" usando `CurrencyInput`.
-   - Liberar edição mesmo quando a parcela já está baixada/conciliada (sem precisar reconciliar). Demais campos seguem a regra atual; somente `split_afiliado` é editável em qualquer status.
-   - Helper text: "Valor repassado ao afiliado. Não altera o valor do lançamento."
+- Em `NovoContrato.tsx` e `EditarContratoCompleto.tsx`: adicionar campo **"Parceiro da venda"** (opcional, só em contratos de venda), usando um `ParceiroSelect` análogo ao `VendedorSelect`, mas filtrando `tipo='parceiro'`.
+- Persistir em `contratos.parceiro_id`.
 
-2. **Lançamento avulso de receita** (`NovoLancamentoDialog.tsx`)
-   - Mesmo input, condicional ao serviço selecionado.
+## Área de Comissionamento de Parceiros (`/comissionamento-parceiros`)
 
-3. **Importação por planilha** (`ImportarLancamentosDialog.tsx`)
-   - Nova coluna opcional `split_afiliado` na planilha modelo.
-   - Aplicada apenas quando `servico_id` corresponde a Marketing de Afiliados; caso contrário o valor é ignorado com aviso.
-   - Atualizar template de download e parser.
+Nova página espelhando `Comissionamento.tsx`, mas com regras enxutas:
 
-4. **Exibição no extrato** (`Extrato.tsx`)
-   - Mostrar o valor numa tag/coluna auxiliar discreta na linha (badge "Split: R$ X") quando preenchido, sem nova coluna obrigatória.
+- **Seleção**: dropdown de parceiros (vendedores com `tipo='parceiro'`).
+- **Cálculo**: para o mês/ano de referência, soma `contas_receber` com `status='recebido'` cujo `parcela_id` pertence a contrato com `parceiro_id = parceiro selecionado` (filtrar por `data_recebimento` no mês de referência). Aplica `percentual_comissao` do parceiro.
+- **Sem** meta batida, **sem** extraordinária, **sem** override por contrato (botões/abas removidos).
+- **Fluxo de solicitação/aprovação**: mesmo de vendedores (`solicitacoes_comissao` → admin/finance_manager aprovam → gera `contas_pagar` vinculada ao `fornecedor_id` do parceiro). Adicionar coluna implícita no filtro: `vendedor.tipo='parceiro'` separa as filas.
+- **Sidebar**: novo item "Comissão Parceiros" no grupo Comercial.
 
-## DRE — Visão "Com Split Afiliado"
+## Frontend — arquivos afetados
 
-Em `DREAnalysis.tsx`:
+- `src/pages/Vendedores.tsx` — abas Vendedores / Parceiros.
+- `src/components/contratos/ParceiroSelect.tsx` — novo (clone enxuto de `VendedorSelect`).
+- `src/pages/NovoContrato.tsx`, `src/pages/EditarContratoCompleto.tsx` — campo parceiro + persistência.
+- `src/pages/ComissionamentoParceiros.tsx` — nova página (versão reduzida de `Comissionamento.tsx`).
+- `src/App.tsx` — rota nova.
+- `src/components/layout/AppSidebar.tsx` — item novo.
+- `Comissionamento.tsx` existente — filtrar dropdown para `tipo='interno'` para não misturar.
 
-1. Novo toggle no header: **"Visualizar DRE com Split Afiliado"** (ao lado dos toggles existentes), persistido no estado local.
-
-2. Buscar `split_afiliado` em todas as `contas_receber` carregadas no período.
-
-3. Quando o toggle está **ligado**:
-   - Calcular `totalSplit` = soma de `split_afiliado` (por mês quando DRE mensal).
-   - Subtrair `totalSplit` do total da Receita Bruta (linha 1.1 / "Receita de Clientes") do período/mês.
-   - Inserir nova linha **logo após Receita Bruta**: `(-) Split Afiliado` com o valor negativo. Linha-resumo, sem detalhes.
-   - **Ocultar** as linhas das categorias `2.1.11`, `2.1.12` e `2.1.13` (e excluir seus valores dos totais de CMV / resultado).
-   - Recalcular totais subsequentes (Resultado Bruto, margens, AV%, AH%, etc.) com Receita ajustada e CMV reduzido.
-
-4. Quando o toggle está **desligado**: comportamento atual, sem alterações.
-
-5. O toggle vale tanto para a visão consolidada quanto para o DRE mensal e para os tooltips de AH%.
-
-## Aspectos técnicos
-
-```text
-contas_receber
-├── split_afiliado numeric NULL   ← novo
-```
-
-- Migration adiciona coluna; types do Supabase serão regenerados automaticamente.
-- `EditParcelaDialog`: relaxar `disabled` apenas para o input de split quando status é `recebido`/baixado.
-- `DREAnalysis`: 
-  - novo state `showSplitAfiliado`
-  - no fetch de receitas, incluir `split_afiliado` no select
-  - função `getCategoriasOcultas()` retorna `['2.1.11','2.1.12','2.1.13']` quando `showSplitAfiliado`
-  - injetar linha sintética `splitAfiliado` no array `dreData`/`dreMensal` posicionada após Receita Bruta
-- Excel/PDF do DRE: respeitar o toggle (mesma estrutura visível).
-
-## Fora de escopo
-- Não cria tabela de "afiliados" nem cadastro do beneficiário do split (apenas o valor).
-- Não gera lançamento automático de despesa a pagar para o afiliado.
-- Sem alteração em comissionamento, faturamento ou cobrança.
-## Status — implementação concluída
-- ✅ Migration `split_afiliado` em `contas_receber`
-- ✅ DRE: toggle, recálculo da Receita, ocultação 2.1.11/2.1.12/2.1.13, linha sintética "(-) Split Afiliado" no consolidado e mensal
-- ✅ EditParcelaDialog: campo Split Afiliado condicional, liberado para qualquer status
-- ✅ NovoLancamentoDialog: campo Split Afiliado condicional
-- ✅ ImportarLancamentosDialog: coluna "Split Afiliado (R$)" no template + parsing + insert
-- ✅ Extrato: badge "Split: R$ X" na linha
+## Fora do escopo
+- Edição em massa de parceiros, dashboard próprio, exportação dedicada (podemos fazer depois se precisar).
