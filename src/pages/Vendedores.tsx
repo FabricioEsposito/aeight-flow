@@ -184,11 +184,12 @@ export default function Vendedores() {
 
     try {
       const sb = supabase as any;
+      const isParceiro = formData.tipo === 'parceiro';
       const selectedCentroIds = Object.entries(formCentros)
         .filter(([, v]) => v.selected)
         .map(([ccId]) => ccId);
 
-      if (selectedCentroIds.length === 0) {
+      if (!isParceiro && selectedCentroIds.length === 0) {
         toast({
           title: 'Erro',
           description: 'Selecione pelo menos um Centro de Custo para o vendedor.',
@@ -200,30 +201,32 @@ export default function Vendedores() {
       let vendedorId = selectedVendedor?.id;
 
       if (selectedVendedor) {
-        const { error } = await supabase
+        const { error } = await sb
           .from("vendedores")
           .update({
             nome: formData.nome,
             fornecedor_id: formData.fornecedor_id || null,
             status: formData.status,
+            tipo: formData.tipo,
+            percentual_comissao: isParceiro ? Number(formData.percentual_comissao || 0) : (selectedVendedor.percentual_comissao ?? 0),
           })
           .eq("id", selectedVendedor.id);
 
         if (error) throw error;
         toast({
           title: "Sucesso",
-          description: "Vendedor atualizado com sucesso.",
+          description: `${isParceiro ? 'Parceiro' : 'Vendedor'} atualizado com sucesso.`,
         });
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await sb
           .from("vendedores")
           .insert({
             nome: formData.nome,
             fornecedor_id: formData.fornecedor_id || null,
             status: formData.status,
-            // Mantemos defaults globais como fallback legado
+            tipo: formData.tipo,
             meta: 0,
-            percentual_comissao: 0,
+            percentual_comissao: isParceiro ? Number(formData.percentual_comissao || 0) : 0,
             centro_custo: null,
             is_merged: false,
           } as any)
@@ -234,9 +237,10 @@ export default function Vendedores() {
         vendedorId = data?.id;
         toast({
           title: "Sucesso",
-          description: "Vendedor cadastrado com sucesso.",
+          description: `${isParceiro ? 'Parceiro' : 'Vendedor'} cadastrado com sucesso.`,
         });
       }
+
 
       if (vendedorId) {
         const upserts = selectedCentroIds.map((ccId) => ({
