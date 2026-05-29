@@ -1161,7 +1161,8 @@ export default function EditarContratoCompleto() {
               <TableRow>
                 <TableHead>Parcela</TableHead>
                 <TableHead>Data Vencimento</TableHead>
-                <TableHead>Valor (R$)</TableHead>
+                <TableHead>Valor Bruto (R$)</TableHead>
+                <TableHead>Valor Líquido (R$)</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
