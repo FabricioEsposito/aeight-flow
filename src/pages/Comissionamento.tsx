@@ -222,11 +222,11 @@ export default function Comissionamento() {
 
   const fetchVendedores = async () => {
     try {
-      let query = supabase
+      let query: any = (supabase as any)
         .from("vendedores")
         .select("id, nome, percentual_comissao, centro_custo, fornecedor_id")
         .eq("status", "ativo")
-        .eq("tipo" as any, "interno")
+        .eq("tipo", "interno")
         .order("nome");
 
       if (selectedCentroCusto.length > 0) {
