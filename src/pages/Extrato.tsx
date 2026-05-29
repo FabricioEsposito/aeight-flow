@@ -1465,17 +1465,9 @@ export default function Extrato() {
       console.log('[Extrato] update result - error:', error);
       if (error) throw error;
 
-      // Propagar alteração do valor original para parcelas_contrato
-      if (selectedLancamento.parcela_id && data.valor_original) {
-        const { error: parcelaError } = await supabase
-          .from('parcelas_contrato')
-          .update({ valor: data.valor_original })
-          .eq('id', selectedLancamento.parcela_id);
-
-        if (parcelaError) {
-          console.error('Erro ao atualizar parcela do contrato:', parcelaError);
-        }
-      }
+      // OBS: NÃO propagamos data.valor_original para parcelas_contrato.valor.
+      // O valor bruto (parcela) é imutável a partir do extrato; ajustes de recebimento
+      // são feitos via juros/multa/desconto e refletem apenas em contas_receber/pagar.
 
       // Se o fornecedor/cliente mudou e é um lançamento com contrato recorrente, atualizar todas as parcelas pendentes
       let parcelasAtualizadas = 0;
