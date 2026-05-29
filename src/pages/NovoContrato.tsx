@@ -834,6 +834,16 @@ export default function NovoContrato() {
                     <VendedorSelect value={vendedorId} onChange={setVendedorId} centroCustoId={centroCusto || undefined} />
                   </div>
                 )}
+
+                {tipoContrato === 'venda' && (
+                  <div className="space-y-2">
+                    <Label>Parceiro da venda (indicação)</Label>
+                    <ParceiroSelect value={parceiroId} onChange={setParceiroId} />
+                    <p className="text-xs text-muted-foreground">
+                      Opcional. O parceiro receberá comissão sobre os recebimentos deste contrato.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
