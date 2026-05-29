@@ -242,7 +242,7 @@ export default function Vendedores() {
       }
 
 
-      if (vendedorId) {
+      if (vendedorId && !isParceiro) {
         const upserts = selectedCentroIds.map((ccId) => ({
           vendedor_id: vendedorId,
           centro_custo_id: ccId,
@@ -250,12 +250,13 @@ export default function Vendedores() {
           percentual_comissao: Number(formCentros[ccId]?.percentual_comissao ?? 0),
         }));
 
-        const upsertRes = await sb
-          .from('vendedores_centros_custo')
-          .upsert(upserts, { onConflict: 'vendedor_id,centro_custo_id' });
-        if (upsertRes.error) throw upsertRes.error;
+        if (upserts.length > 0) {
+          const upsertRes = await sb
+            .from('vendedores_centros_custo')
+            .upsert(upserts, { onConflict: 'vendedor_id,centro_custo_id' });
+          if (upsertRes.error) throw upsertRes.error;
+        }
 
-        // Remove vínculos desmarcados
         if (selectedCentroIds.length > 0) {
           const delRes = await sb
             .from('vendedores_centros_custo')
@@ -264,7 +265,15 @@ export default function Vendedores() {
             .not('centro_custo_id', 'in', `(${selectedCentroIds.map((id) => `"${id}"`).join(',')})`);
           if (delRes.error) throw delRes.error;
         }
+      } else if (vendedorId && isParceiro) {
+        // Parceiros não usam centros de custo — limpar vínculos legados
+        const delRes = await sb
+          .from('vendedores_centros_custo')
+          .delete()
+          .eq('vendedor_id', vendedorId);
+        if (delRes.error) throw delRes.error;
       }
+
 
       setDialogOpen(false);
       fetchData();
