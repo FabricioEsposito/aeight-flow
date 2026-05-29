@@ -166,6 +166,7 @@ export default function EditarContratoCompleto() {
       setPlanoContasId(data.plano_contas_id || '');
       setCentroCustoId(data.centro_custo || '');
       setVendedorId(data.vendedor_responsavel || '');
+      setParceiroId((data as any).parceiro_id || '');
       setDescricaoServico(data.descricao_servico || '');
       setQuantidade(data.quantidade || 1);
       setValorUnitario(data.valor_unitario || 0);
