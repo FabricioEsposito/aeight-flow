@@ -66,7 +66,10 @@ export default function Vendedores() {
     nome: "",
     fornecedor_id: "",
     status: "ativo" as 'ativo' | 'inativo',
+    tipo: "interno" as 'interno' | 'parceiro',
+    percentual_comissao: 0,
   });
+
 
   const [formCentros, setFormCentros] = useState<Record<string, { selected: boolean; meta: number; percentual_comissao: number }>>({});
   const { toast } = useToast();
