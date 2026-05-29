@@ -24,7 +24,10 @@ interface Vendedor {
   status: string;
   created_at: string;
   is_merged?: boolean;
+  tipo?: string | null;
+  percentual_comissao?: number | null;
 }
+
 
 interface VendedorCentroCustoLink {
   id: string;
