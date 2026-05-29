@@ -458,6 +458,7 @@ export default function NovoContrato() {
         plano_contas_id: planoContasId,
         centro_custo: centroCusto,
         vendedor_responsavel: tipoContrato === 'venda' ? vendedorId : null,
+        parceiro_id: tipoContrato === 'venda' && parceiroId ? parceiroId : null,
         importancia_cliente_fornecedor: importanciaClienteFornecedor,
         servicos: itens.map(item => item.servicoId).filter(Boolean),
         descricao_servico: itens.map(item => `${item.detalhes} (${item.quantidade}x R$ ${item.valorUnitario})`).join('\n'),
