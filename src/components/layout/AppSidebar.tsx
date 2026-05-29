@@ -64,6 +64,7 @@ const allNavigationGroups: NavGroup[] = [
       { title: "Dashboard Comercial", url: "/dashboard-comercial", icon: ShoppingCart },
       { title: "Vendedores", url: "/vendedores", icon: UserCheck },
       { title: "Comissionamento", url: "/comissionamento", icon: DollarSign },
+      { title: "Comissão Parceiros", url: "/comissionamento-parceiros", icon: DollarSign },
     ]
   },
   {
