@@ -32,6 +32,7 @@ import ControleFaturamento from "./pages/ControleFaturamento";
 import Vendedores from "./pages/Vendedores";
 import DashboardComercial from "./pages/DashboardComercial";
 import Comissionamento from "./pages/Comissionamento";
+import ComissionamentoParceiros from "./pages/ComissionamentoParceiros";
 import RHDashboardPage from "./pages/RHDashboardPage";
 import RHFolhaPagamento from "./pages/RHFolhaPagamento";
 import RHBeneficios from "./pages/RHBeneficios";
