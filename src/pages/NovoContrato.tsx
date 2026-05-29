@@ -14,6 +14,7 @@ import { FornecedorSelect } from '@/components/contratos/FornecedorSelect';
 import { PlanoContasSelect } from '@/components/contratos/PlanoContasSelect';
 import { ServicosMultiSelect } from '@/components/contratos/ServicosMultiSelect';
 import { VendedorSelect } from '@/components/contratos/VendedorSelect';
+import { ParceiroSelect } from '@/components/contratos/ParceiroSelect';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { PreviewParcelas } from '@/components/contratos/PreviewParcelas';
 import { ParcelamentoCustomizado, ParcelaCustomizada } from '@/components/contratos/ParcelamentoCustomizado';
