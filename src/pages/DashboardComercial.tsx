@@ -166,7 +166,12 @@ export default function DashboardComercial() {
         .select("vendedor_id, centro_custo_id, meta, percentual_comissao");
 
       // Fetch vendedores - filter for salesperson role or by linked centers
-      let vendedoresQuery = (supabase as any).from("vendedores").select("*").eq("status", "ativo").eq("is_merged", false);
+      let vendedoresQuery = (supabase as any)
+        .from("vendedores")
+        .select("*")
+        .eq("status", "ativo")
+        .eq("is_merged", false)
+        .eq("tipo", "interno");
       if (isSalesperson && userVendedorId) {
         vendedoresQuery = vendedoresQuery.eq("id", userVendedorId);
       } else if (selectedCentroCusto.length > 0) {
