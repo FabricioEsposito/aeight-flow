@@ -63,6 +63,7 @@ export function VendedorSelect({ value, onChange, disabled, centroCustoId }: Ven
             .select('id, nome, centro_custo')
             .eq('status', 'ativo')
             .eq('is_merged', false)
+            .eq('tipo', 'interno')
             .in('id', ids)
             .order('nome');
         }
@@ -72,6 +73,7 @@ export function VendedorSelect({ value, onChange, disabled, centroCustoId }: Ven
           .select('id, nome, centro_custo')
           .eq('status', 'ativo')
           .eq('is_merged', false)
+          .eq('tipo', 'interno')
           .order('nome');
       }
 
