@@ -24,7 +24,10 @@ interface Vendedor {
   status: string;
   created_at: string;
   is_merged?: boolean;
+  tipo?: string | null;
+  percentual_comissao?: number | null;
 }
+
 
 interface VendedorCentroCustoLink {
   id: string;
@@ -63,7 +66,10 @@ export default function Vendedores() {
     nome: "",
     fornecedor_id: "",
     status: "ativo" as 'ativo' | 'inativo',
+    tipo: "interno" as 'interno' | 'parceiro',
+    percentual_comissao: 0,
   });
+
 
   const [formCentros, setFormCentros] = useState<Record<string, { selected: boolean; meta: number; percentual_comissao: number }>>({});
   const { toast } = useToast();
@@ -131,6 +137,8 @@ export default function Vendedores() {
         nome: vendedor.nome,
         fornecedor_id: vendedor.fornecedor_id || "",
         status: (vendedor.status as any) || 'ativo',
+        tipo: ((vendedor.tipo as any) || 'interno') as 'interno' | 'parceiro',
+        percentual_comissao: Number(vendedor.percentual_comissao ?? 0),
       });
 
       const vendedorLinks = links.filter((l) => l.vendedor_id === vendedor.id);
@@ -150,6 +158,8 @@ export default function Vendedores() {
         nome: "",
         fornecedor_id: "",
         status: 'ativo',
+        tipo: 'interno',
+        percentual_comissao: 0,
       });
 
       const next: Record<string, { selected: boolean; meta: number; percentual_comissao: number }> = {};
@@ -158,6 +168,7 @@ export default function Vendedores() {
       });
       setFormCentros(next);
     }
+
     setDialogOpen(true);
   };
 
@@ -173,11 +184,12 @@ export default function Vendedores() {
 
     try {
       const sb = supabase as any;
+      const isParceiro = formData.tipo === 'parceiro';
       const selectedCentroIds = Object.entries(formCentros)
         .filter(([, v]) => v.selected)
         .map(([ccId]) => ccId);
 
-      if (selectedCentroIds.length === 0) {
+      if (!isParceiro && selectedCentroIds.length === 0) {
         toast({
           title: 'Erro',
           description: 'Selecione pelo menos um Centro de Custo para o vendedor.',
@@ -189,30 +201,32 @@ export default function Vendedores() {
       let vendedorId = selectedVendedor?.id;
 
       if (selectedVendedor) {
-        const { error } = await supabase
+        const { error } = await sb
           .from("vendedores")
           .update({
             nome: formData.nome,
             fornecedor_id: formData.fornecedor_id || null,
             status: formData.status,
+            tipo: formData.tipo,
+            percentual_comissao: isParceiro ? Number(formData.percentual_comissao || 0) : (selectedVendedor.percentual_comissao ?? 0),
           })
           .eq("id", selectedVendedor.id);
 
         if (error) throw error;
         toast({
           title: "Sucesso",
-          description: "Vendedor atualizado com sucesso.",
+          description: `${isParceiro ? 'Parceiro' : 'Vendedor'} atualizado com sucesso.`,
         });
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await sb
           .from("vendedores")
           .insert({
             nome: formData.nome,
             fornecedor_id: formData.fornecedor_id || null,
             status: formData.status,
-            // Mantemos defaults globais como fallback legado
+            tipo: formData.tipo,
             meta: 0,
-            percentual_comissao: 0,
+            percentual_comissao: isParceiro ? Number(formData.percentual_comissao || 0) : 0,
             centro_custo: null,
             is_merged: false,
           } as any)
@@ -223,11 +237,12 @@ export default function Vendedores() {
         vendedorId = data?.id;
         toast({
           title: "Sucesso",
-          description: "Vendedor cadastrado com sucesso.",
+          description: `${isParceiro ? 'Parceiro' : 'Vendedor'} cadastrado com sucesso.`,
         });
       }
 
-      if (vendedorId) {
+
+      if (vendedorId && !isParceiro) {
         const upserts = selectedCentroIds.map((ccId) => ({
           vendedor_id: vendedorId,
           centro_custo_id: ccId,
@@ -235,12 +250,13 @@ export default function Vendedores() {
           percentual_comissao: Number(formCentros[ccId]?.percentual_comissao ?? 0),
         }));
 
-        const upsertRes = await sb
-          .from('vendedores_centros_custo')
-          .upsert(upserts, { onConflict: 'vendedor_id,centro_custo_id' });
-        if (upsertRes.error) throw upsertRes.error;
+        if (upserts.length > 0) {
+          const upsertRes = await sb
+            .from('vendedores_centros_custo')
+            .upsert(upserts, { onConflict: 'vendedor_id,centro_custo_id' });
+          if (upsertRes.error) throw upsertRes.error;
+        }
 
-        // Remove vínculos desmarcados
         if (selectedCentroIds.length > 0) {
           const delRes = await sb
             .from('vendedores_centros_custo')
@@ -249,7 +265,15 @@ export default function Vendedores() {
             .not('centro_custo_id', 'in', `(${selectedCentroIds.map((id) => `"${id}"`).join(',')})`);
           if (delRes.error) throw delRes.error;
         }
+      } else if (vendedorId && isParceiro) {
+        // Parceiros não usam centros de custo — limpar vínculos legados
+        const delRes = await sb
+          .from('vendedores_centros_custo')
+          .delete()
+          .eq('vendedor_id', vendedorId);
+        if (delRes.error) throw delRes.error;
       }
+
 
       setDialogOpen(false);
       fetchData();
@@ -452,10 +476,34 @@ export default function Vendedores() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {selectedVendedor ? "Editar Vendedor" : "Novo Vendedor"}
+                {selectedVendedor ? `Editar ${formData.tipo === 'parceiro' ? 'Parceiro' : 'Vendedor'}` : `Novo ${formData.tipo === 'parceiro' ? 'Parceiro' : 'Vendedor'}`}
               </DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Tipo *</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.tipo === 'interno' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipo: 'interno' })}
+                  >
+                    Vendedor (Interno)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.tipo === 'parceiro' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipo: 'parceiro' })}
+                  >
+                    Parceiro (Indicador)
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Parceiros recebem % fixo sobre os recebimentos do contrato indicado (sem meta batida).
+                </p>
+              </div>
+
+
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome *</Label>
                 <Input
@@ -505,72 +553,89 @@ export default function Vendedores() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <Label>Centros de Custo do vendedor *</Label>
+              {formData.tipo === 'parceiro' ? (
+                <div className="space-y-2">
+                  <Label>Comissão do Parceiro (%) *</Label>
+                  <CurrencyInput
+                    value={formData.percentual_comissao}
+                    onChange={(value) =>
+                      setFormData({ ...formData, percentual_comissao: value })
+                    }
+                    placeholder="0,00"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Marque os centros que este vendedor atende e defina Meta/Comissão por centro.
+                    % aplicado sobre cada parcela recebida do contrato indicado.
                   </p>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Centros de Custo do vendedor *</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Marque os centros que este vendedor atende e defina Meta/Comissão por centro.
+                    </p>
+                  </div>
 
-                <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
-                  {centrosCusto.map((cc) => {
-                    const current = formCentros[cc.id] || { selected: false, meta: 0, percentual_comissao: 0 };
-                    return (
-                      <div key={cc.id} className="rounded-md border p-3 space-y-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{cc.codigo} - {cc.descricao}</div>
+                  <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
+                    {centrosCusto.map((cc) => {
+                      const current = formCentros[cc.id] || { selected: false, meta: 0, percentual_comissao: 0 };
+                      return (
+                        <div key={cc.id} className="rounded-md border p-3 space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{cc.codigo} - {cc.descricao}</div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant={current.selected ? 'default' : 'outline'}
+                              onClick={() =>
+                                setFormCentros((prev) => ({
+                                  ...prev,
+                                  [cc.id]: { ...current, selected: !current.selected },
+                                }))
+                              }
+                            >
+                              {current.selected ? 'Selecionado' : 'Selecionar'}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant={current.selected ? 'default' : 'outline'}
-                            onClick={() =>
-                              setFormCentros((prev) => ({
-                                ...prev,
-                                [cc.id]: { ...current, selected: !current.selected },
-                              }))
-                            }
-                          >
-                            {current.selected ? 'Selecionado' : 'Selecionar'}
-                          </Button>
+
+                          {current.selected && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label>Meta Mensal (R$)</Label>
+                                <CurrencyInput
+                                  value={current.meta}
+                                  onChange={(value) =>
+                                    setFormCentros((prev) => ({
+                                      ...prev,
+                                      [cc.id]: { ...current, meta: value },
+                                    }))
+                                  }
+                                  placeholder="0,00"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Comissão (%)</Label>
+                                <CurrencyInput
+                                  value={current.percentual_comissao}
+                                  onChange={(value) =>
+                                    setFormCentros((prev) => ({
+                                      ...prev,
+                                      [cc.id]: { ...current, percentual_comissao: value },
+                                    }))
+                                  }
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
-
-                        {current.selected && (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label>Meta Mensal (R$)</Label>
-                              <CurrencyInput
-                                value={current.meta}
-                                onChange={(value) =>
-                                  setFormCentros((prev) => ({
-                                    ...prev,
-                                    [cc.id]: { ...current, meta: value },
-                                  }))
-                                }
-                                placeholder="0,00"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Comissão (%)</Label>
-                              <CurrencyInput
-                                value={current.percentual_comissao}
-                                onChange={(value) =>
-                                  setFormCentros((prev) => ({
-                                    ...prev,
-                                    [cc.id]: { ...current, percentual_comissao: value },
-                                  }))
-                                }
-                                placeholder="0,00"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
