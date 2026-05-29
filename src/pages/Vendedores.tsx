@@ -503,7 +503,7 @@ export default function Vendedores() {
                 </p>
               </div>
 
-            <div className="grid gap-4 py-4">
+
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome *</Label>
                 <Input
