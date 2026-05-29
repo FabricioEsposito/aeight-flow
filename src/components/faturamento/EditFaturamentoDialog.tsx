@@ -60,9 +60,15 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   const [linkNf, setLinkNf] = useState('');
   const [linkBoleto, setLinkBoleto] = useState('');
   const [valorLiquido, setValorLiquido] = useState(0);
+  const [valorBrutoEdit, setValorBrutoEdit] = useState(0);
+  const [centroCustoCodigo, setCentroCustoCodigo] = useState<string | null>(null);
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Centros de custo que permitem edição do valor bruto:
+  // 002 - Lomadee (take rate sobre o bruto) e 003 - Cryah (investimento em mídia variável)
+  const brutoEditavel = centroCustoCodigo === '002' || centroCustoCodigo === '003';
 
   useEffect(() => {
     if (faturamento) {
@@ -70,7 +76,19 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setLinkNf(faturamento.link_nf || '');
       setLinkBoleto(faturamento.link_boleto || '');
       setValorLiquido(faturamento.valor_liquido);
+      setValorBrutoEdit(faturamento.valor_bruto || 0);
       setDataVencimento(parseISO(faturamento.data_vencimento + 'T00:00:00'));
+
+      if (faturamento.centro_custo) {
+        supabase
+          .from('centros_custo')
+          .select('codigo')
+          .eq('id', faturamento.centro_custo)
+          .maybeSingle()
+          .then(({ data }) => setCentroCustoCodigo(data?.codigo || null));
+      } else {
+        setCentroCustoCodigo(null);
+      }
     }
   }, [faturamento]);
 
@@ -78,10 +96,9 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  // Valor bruto é IMUTÁVEL — vem do contrato e é usado em relatórios de retenção.
-  const valorBruto = faturamento?.valor_bruto || 0;
+  // Valor bruto exibido — usa o valor em edição (se permitido) ou o original.
+  const valorBruto = brutoEditavel ? valorBrutoEdit : (faturamento?.valor_bruto || 0);
 
-  // Calcular valores de impostos baseados no valor bruto (sempre fixo)
   const calcularImpostos = () => {
     if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0 };
     const irrf = valorBruto * (faturamento.irrf_percentual / 100);
@@ -93,6 +110,15 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   };
 
   const impostos = calcularImpostos();
+
+  // Quando o bruto editável muda, recalcula o líquido automaticamente.
+  const handleBrutoChange = (novoBruto: number) => {
+    setValorBrutoEdit(novoBruto);
+    if (!faturamento) return;
+    const taxRate = (faturamento.irrf_percentual + faturamento.pis_percentual +
+                     faturamento.cofins_percentual + faturamento.csll_percentual) / 100;
+    setValorLiquido(Number((novoBruto * (1 - taxRate)).toFixed(2)));
+  };
 
   const handleSave = async () => {
     if (!faturamento) return;
