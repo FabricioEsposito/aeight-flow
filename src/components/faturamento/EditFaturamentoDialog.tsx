@@ -245,16 +245,13 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label>Valor Bruto</Label>
-            <CurrencyInput
-              value={valorBruto}
-              onChange={setValorBruto}
-            />
-            {valorBruto !== faturamento.valor_bruto && (
-              <p className="text-xs text-amber-600">
-                Alteração será refletida no contrato, parcela e extrato.
-              </p>
-            )}
+            <Label className="text-muted-foreground">Valor Bruto (não editável)</Label>
+            <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
+              {formatCurrency(valorBruto)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              O valor bruto é preservado para o relatório de retenções e não pode ser alterado aqui.
+            </p>
           </div>
 
           {temRetencoes && (
@@ -294,10 +291,13 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           )}
 
           <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
-            <div className="flex justify-between items-center">
-              <Label className="text-primary font-semibold">Valor Líquido:</Label>
-              <span className="text-lg font-bold text-primary">{formatCurrency(impostos.valorLiquido)}</span>
-            </div>
+            <Label className="text-primary font-semibold">Valor Líquido (recebido)</Label>
+            <CurrencyInput value={valorLiquido} onChange={setValorLiquido} />
+            {valorLiquido !== faturamento.valor_liquido && (
+              <p className="text-xs text-amber-600">
+                Ajuste aplicado apenas ao recebimento (extrato/movimentação). Bruto e retenções permanecem inalterados.
+              </p>
+            )}
           </div>
 
           {/* Observações de Faturamento */}
