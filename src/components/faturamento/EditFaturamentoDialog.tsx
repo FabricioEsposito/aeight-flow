@@ -59,7 +59,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   const [numeroNf, setNumeroNf] = useState('');
   const [linkNf, setLinkNf] = useState('');
   const [linkBoleto, setLinkBoleto] = useState('');
-  const [valorBruto, setValorBruto] = useState(0);
+  const [valorLiquido, setValorLiquido] = useState(0);
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -69,7 +69,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setNumeroNf(faturamento.numero_nf || '');
       setLinkNf(faturamento.link_nf || '');
       setLinkBoleto(faturamento.link_boleto || '');
-      setValorBruto(faturamento.valor_bruto);
+      setValorLiquido(faturamento.valor_liquido);
       setDataVencimento(parseISO(faturamento.data_vencimento + 'T00:00:00'));
     }
   }, [faturamento]);
@@ -78,20 +78,18 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  // Calcular valores de impostos baseados no valor bruto
+  // Valor bruto é IMUTÁVEL — vem do contrato e é usado em relatórios de retenção.
+  const valorBruto = faturamento?.valor_bruto || 0;
+
+  // Calcular valores de impostos baseados no valor bruto (sempre fixo)
   const calcularImpostos = () => {
-    if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0, valorLiquido: valorBruto };
-    
+    if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0 };
     const irrf = valorBruto * (faturamento.irrf_percentual / 100);
     const pis = valorBruto * (faturamento.pis_percentual / 100);
     const cofins = valorBruto * (faturamento.cofins_percentual / 100);
     const csll = valorBruto * (faturamento.csll_percentual / 100);
     const total = irrf + pis + cofins + csll;
-    
-    // Se não há retenções, valor líquido = valor bruto
-    const valorLiquido = total > 0 ? valorBruto - total : valorBruto;
-    
-    return { irrf, pis, cofins, csll, total, valorLiquido };
+    return { irrf, pis, cofins, csll, total };
   };
 
   const impostos = calcularImpostos();
