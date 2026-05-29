@@ -896,6 +896,16 @@ export default function EditarContratoCompleto() {
             </div>
           )}
 
+          {tipoContrato === 'venda' && (
+            <div className="space-y-2">
+              <Label>Parceiro da venda (indicação)</Label>
+              <ParceiroSelect value={parceiroId} onChange={setParceiroId} />
+              <p className="text-xs text-muted-foreground">
+                Opcional. O parceiro receberá comissão sobre os recebimentos deste contrato.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Importância do {tipoContrato === 'venda' ? 'Cliente' : 'Fornecedor'}</Label>
             <Select value={importanciaClienteFornecedor} onValueChange={(value: any) => setImportanciaClienteFornecedor(value)}>
