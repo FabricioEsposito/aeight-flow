@@ -59,7 +59,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
   const [numeroNf, setNumeroNf] = useState('');
   const [linkNf, setLinkNf] = useState('');
   const [linkBoleto, setLinkBoleto] = useState('');
-  const [valorBruto, setValorBruto] = useState(0);
+  const [valorLiquido, setValorLiquido] = useState(0);
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -69,7 +69,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
       setNumeroNf(faturamento.numero_nf || '');
       setLinkNf(faturamento.link_nf || '');
       setLinkBoleto(faturamento.link_boleto || '');
-      setValorBruto(faturamento.valor_bruto);
+      setValorLiquido(faturamento.valor_liquido);
       setDataVencimento(parseISO(faturamento.data_vencimento + 'T00:00:00'));
     }
   }, [faturamento]);
@@ -78,20 +78,18 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  // Calcular valores de impostos baseados no valor bruto
+  // Valor bruto é IMUTÁVEL — vem do contrato e é usado em relatórios de retenção.
+  const valorBruto = faturamento?.valor_bruto || 0;
+
+  // Calcular valores de impostos baseados no valor bruto (sempre fixo)
   const calcularImpostos = () => {
-    if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0, valorLiquido: valorBruto };
-    
+    if (!faturamento) return { irrf: 0, pis: 0, cofins: 0, csll: 0, total: 0 };
     const irrf = valorBruto * (faturamento.irrf_percentual / 100);
     const pis = valorBruto * (faturamento.pis_percentual / 100);
     const cofins = valorBruto * (faturamento.cofins_percentual / 100);
     const csll = valorBruto * (faturamento.csll_percentual / 100);
     const total = irrf + pis + cofins + csll;
-    
-    // Se não há retenções, valor líquido = valor bruto
-    const valorLiquido = total > 0 ? valorBruto - total : valorBruto;
-    
-    return { irrf, pis, cofins, csll, total, valorLiquido };
+    return { irrf, pis, cofins, csll, total };
   };
 
   const impostos = calcularImpostos();
@@ -101,17 +99,18 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
     try {
       setLoading(true);
-      const valorAlterado = valorBruto !== faturamento.valor_bruto;
-      const valorLiquidoCalculado = impostos.valorLiquido;
+      const valorAlterado = valorLiquido !== faturamento.valor_liquido;
       const novaDataVencimento = dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : faturamento.data_vencimento;
       const dataVencimentoAlterada = novaDataVencimento !== faturamento.data_vencimento;
 
-      // 1. Atualizar contas_receber
+      // 1. Atualizar contas_receber — APENAS o valor LÍQUIDO (recebido).
+      //    O valor bruto permanece intacto (parcela.valor / contrato.valor_bruto) para preservar
+      //    o relatório de retenções da contabilidade.
       const updateCR: any = {
         numero_nf: numeroNf || null,
         link_nf: linkNf || null,
         link_boleto: linkBoleto || null,
-        valor: valorLiquidoCalculado,
+        valor: valorLiquido,
       };
       if (dataVencimentoAlterada) {
         updateCR.data_vencimento = novaDataVencimento;
@@ -127,8 +126,8 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
       if (crError) throw crError;
 
-      // 2. Propagar alterações para parcela, contrato e movimentações
-      if (valorAlterado || dataVencimentoAlterada) {
+      // 2. Propagar APENAS data de vencimento para parcela (valor bruto NÃO é alterado aqui).
+      if (dataVencimentoAlterada) {
         const { data: contaReceber, error: fetchError } = await supabase
           .from('contas_receber')
           .select('parcela_id')
@@ -138,70 +137,41 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
         if (fetchError) throw fetchError;
 
         if (contaReceber?.parcela_id) {
-          const parcelaUpdate: any = {};
-          if (valorAlterado) parcelaUpdate.valor = valorLiquidoCalculado;
-          if (dataVencimentoAlterada) parcelaUpdate.data_vencimento = novaDataVencimento;
+          const { error: parcelaError } = await supabase
+            .from('parcelas_contrato')
+            .update({ data_vencimento: novaDataVencimento })
+            .eq('id', contaReceber.parcela_id);
 
-          if (Object.keys(parcelaUpdate).length > 0) {
-            const { error: parcelaError } = await supabase
-              .from('parcelas_contrato')
-              .update(parcelaUpdate)
-              .eq('id', contaReceber.parcela_id);
-
-            if (parcelaError) throw parcelaError;
-          }
-
-          // Atualizar contrato se valor mudou
-          if (valorAlterado) {
-            const { data: parcela, error: parcelaFetchError } = await supabase
-              .from('parcelas_contrato')
-              .select('contrato_id')
-              .eq('id', contaReceber.parcela_id)
-              .single();
-
-            if (!parcelaFetchError && parcela?.contrato_id) {
-              const { error: contratoError } = await supabase
-                .from('contratos')
-                .update({ 
-                  valor_bruto: valorBruto,
-                  valor_total: valorLiquidoCalculado
-                })
-                .eq('id', parcela.contrato_id);
-
-              if (contratoError) {
-                console.error('Erro ao atualizar contrato:', contratoError);
-              }
-            }
-          }
+          if (parcelaError) throw parcelaError;
         }
+      }
 
-        // Atualizar movimentação correspondente (se existir e o status for pago)
-        if (faturamento.status === 'pago' || faturamento.status === 'recebido') {
-          const movUpdate: any = {};
-          if (valorAlterado) movUpdate.valor = valorLiquidoCalculado;
-          if (dataVencimentoAlterada) movUpdate.data_movimento = novaDataVencimento;
+      // 3. Atualizar movimentação (líquido recebido) se já está paga
+      if ((valorAlterado || dataVencimentoAlterada) && (faturamento.status === 'pago' || faturamento.status === 'recebido')) {
+        const movUpdate: any = {};
+        if (valorAlterado) movUpdate.valor = valorLiquido;
+        if (dataVencimentoAlterada) movUpdate.data_movimento = novaDataVencimento;
 
-          if (Object.keys(movUpdate).length > 0) {
-            const { error: movError } = await supabase
-              .from('movimentacoes')
-              .update(movUpdate)
-              .eq('conta_receber_id', faturamento.id);
+        if (Object.keys(movUpdate).length > 0) {
+          const { error: movError } = await supabase
+            .from('movimentacoes')
+            .update(movUpdate)
+            .eq('conta_receber_id', faturamento.id);
 
-            if (movError) {
-              console.error('Erro ao atualizar movimentação:', movError);
-            }
+          if (movError) {
+            console.error('Erro ao atualizar movimentação:', movError);
           }
         }
       }
 
       const messages: string[] = [];
       if (dataVencimentoAlterada) messages.push('data de vencimento');
-      if (valorAlterado) messages.push('valor');
-      
+      if (valorAlterado) messages.push('valor líquido');
+
       toast({
         title: "Sucesso",
-        description: messages.length > 0 
-          ? `Faturamento atualizado! Alterações propagadas: ${messages.join(', ')}.`
+        description: messages.length > 0
+          ? `Faturamento atualizado! Alterações: ${messages.join(', ')}.`
           : "Faturamento atualizado com sucesso!",
       });
 
@@ -275,16 +245,13 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           </div>
 
           <div className="space-y-2">
-            <Label>Valor Bruto</Label>
-            <CurrencyInput
-              value={valorBruto}
-              onChange={setValorBruto}
-            />
-            {valorBruto !== faturamento.valor_bruto && (
-              <p className="text-xs text-amber-600">
-                Alteração será refletida no contrato, parcela e extrato.
-              </p>
-            )}
+            <Label className="text-muted-foreground">Valor Bruto (não editável)</Label>
+            <div className="px-3 py-2 rounded-md border bg-muted/40 text-sm font-medium">
+              {formatCurrency(valorBruto)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              O valor bruto é preservado para o relatório de retenções e não pode ser alterado aqui.
+            </p>
           </div>
 
           {temRetencoes && (
@@ -324,10 +291,13 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
           )}
 
           <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
-            <div className="flex justify-between items-center">
-              <Label className="text-primary font-semibold">Valor Líquido:</Label>
-              <span className="text-lg font-bold text-primary">{formatCurrency(impostos.valorLiquido)}</span>
-            </div>
+            <Label className="text-primary font-semibold">Valor Líquido (recebido)</Label>
+            <CurrencyInput value={valorLiquido} onChange={setValorLiquido} />
+            {valorLiquido !== faturamento.valor_liquido && (
+              <p className="text-xs text-amber-600">
+                Ajuste aplicado apenas ao recebimento (extrato/movimentação). Bruto e retenções permanecem inalterados.
+              </p>
+            )}
           </div>
 
           {/* Observações de Faturamento */}
