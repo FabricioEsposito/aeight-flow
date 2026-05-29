@@ -1183,18 +1183,24 @@ export default function EditarContratoCompleto() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <CurrencyInput
-                      value={parcela.valor}
-                      onChange={(value) => handleParcelaChange(index, 'valor', value)}
-                    />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {(parcela.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {(
-                        (parcela.valor || 0) *
-                        (1 - ((irrfPercentual || 0) + (pisPercentual || 0) + (cofinsPercentual || 0) + (csllPercentual || 0)) / 100)
-                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
+                    {(() => {
+                      const taxRate = ((irrfPercentual || 0) + (pisPercentual || 0) + (cofinsPercentual || 0) + (csllPercentual || 0)) / 100;
+                      const liquido = (parcela.valor || 0) * (1 - taxRate);
+                      return (
+                        <CurrencyInput
+                          value={liquido}
+                          onChange={(novoLiquido) => {
+                            const novoBruto = taxRate < 1 ? novoLiquido / (1 - taxRate) : novoLiquido;
+                            handleParcelaChange(index, 'valor', novoBruto);
+                          }}
+                        />
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     {parcela.status === 'aguardando_conclusao' ? (
