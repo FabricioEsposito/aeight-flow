@@ -553,72 +553,89 @@ export default function Vendedores() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <Label>Centros de Custo do vendedor *</Label>
+              {formData.tipo === 'parceiro' ? (
+                <div className="space-y-2">
+                  <Label>Comissão do Parceiro (%) *</Label>
+                  <CurrencyInput
+                    value={formData.percentual_comissao}
+                    onChange={(value) =>
+                      setFormData({ ...formData, percentual_comissao: value })
+                    }
+                    placeholder="0,00"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Marque os centros que este vendedor atende e defina Meta/Comissão por centro.
+                    % aplicado sobre cada parcela recebida do contrato indicado.
                   </p>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Centros de Custo do vendedor *</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Marque os centros que este vendedor atende e defina Meta/Comissão por centro.
+                    </p>
+                  </div>
 
-                <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
-                  {centrosCusto.map((cc) => {
-                    const current = formCentros[cc.id] || { selected: false, meta: 0, percentual_comissao: 0 };
-                    return (
-                      <div key={cc.id} className="rounded-md border p-3 space-y-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{cc.codigo} - {cc.descricao}</div>
+                  <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
+                    {centrosCusto.map((cc) => {
+                      const current = formCentros[cc.id] || { selected: false, meta: 0, percentual_comissao: 0 };
+                      return (
+                        <div key={cc.id} className="rounded-md border p-3 space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{cc.codigo} - {cc.descricao}</div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant={current.selected ? 'default' : 'outline'}
+                              onClick={() =>
+                                setFormCentros((prev) => ({
+                                  ...prev,
+                                  [cc.id]: { ...current, selected: !current.selected },
+                                }))
+                              }
+                            >
+                              {current.selected ? 'Selecionado' : 'Selecionar'}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant={current.selected ? 'default' : 'outline'}
-                            onClick={() =>
-                              setFormCentros((prev) => ({
-                                ...prev,
-                                [cc.id]: { ...current, selected: !current.selected },
-                              }))
-                            }
-                          >
-                            {current.selected ? 'Selecionado' : 'Selecionar'}
-                          </Button>
+
+                          {current.selected && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label>Meta Mensal (R$)</Label>
+                                <CurrencyInput
+                                  value={current.meta}
+                                  onChange={(value) =>
+                                    setFormCentros((prev) => ({
+                                      ...prev,
+                                      [cc.id]: { ...current, meta: value },
+                                    }))
+                                  }
+                                  placeholder="0,00"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Comissão (%)</Label>
+                                <CurrencyInput
+                                  value={current.percentual_comissao}
+                                  onChange={(value) =>
+                                    setFormCentros((prev) => ({
+                                      ...prev,
+                                      [cc.id]: { ...current, percentual_comissao: value },
+                                    }))
+                                  }
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
-
-                        {current.selected && (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label>Meta Mensal (R$)</Label>
-                              <CurrencyInput
-                                value={current.meta}
-                                onChange={(value) =>
-                                  setFormCentros((prev) => ({
-                                    ...prev,
-                                    [cc.id]: { ...current, meta: value },
-                                  }))
-                                }
-                                placeholder="0,00"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Comissão (%)</Label>
-                              <CurrencyInput
-                                value={current.percentual_comissao}
-                                onChange={(value) =>
-                                  setFormCentros((prev) => ({
-                                    ...prev,
-                                    [cc.id]: { ...current, percentual_comissao: value },
-                                  }))
-                                }
-                                placeholder="0,00"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
