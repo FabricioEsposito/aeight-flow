@@ -126,18 +126,21 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
     try {
       setLoading(true);
       const valorAlterado = valorLiquido !== faturamento.valor_liquido;
+      const brutoAlterado = brutoEditavel && valorBrutoEdit !== (faturamento.valor_bruto || 0);
       const novaDataVencimento = dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : faturamento.data_vencimento;
       const dataVencimentoAlterada = novaDataVencimento !== faturamento.data_vencimento;
 
-      // 1. Atualizar contas_receber — APENAS o valor LÍQUIDO (recebido).
-      //    O valor bruto permanece intacto (parcela.valor / contrato.valor_bruto) para preservar
-      //    o relatório de retenções da contabilidade.
+      // 1. Atualizar contas_receber — valor LÍQUIDO sempre; valor_original (bruto) apenas
+      //    se o centro de custo permitir edição do bruto (Lomadee/Cryah).
       const updateCR: any = {
         numero_nf: numeroNf || null,
         link_nf: linkNf || null,
         link_boleto: linkBoleto || null,
         valor: valorLiquido,
       };
+      if (brutoAlterado) {
+        updateCR.valor_original = valorBrutoEdit;
+      }
       if (dataVencimentoAlterada) {
         updateCR.data_vencimento = novaDataVencimento;
         if (!updateCR.data_vencimento_original) {
@@ -152,8 +155,8 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
       if (crError) throw crError;
 
-      // 2. Propagar APENAS data de vencimento para parcela (valor bruto NÃO é alterado aqui).
-      if (dataVencimentoAlterada) {
+      // 2. Propagar para parcela: data sempre, valor bruto apenas se permitido alterar.
+      if (dataVencimentoAlterada || brutoAlterado) {
         const { data: contaReceber, error: fetchError } = await supabase
           .from('contas_receber')
           .select('parcela_id')
@@ -163,9 +166,13 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
         if (fetchError) throw fetchError;
 
         if (contaReceber?.parcela_id) {
+          const parcelaUpdate: any = {};
+          if (dataVencimentoAlterada) parcelaUpdate.data_vencimento = novaDataVencimento;
+          if (brutoAlterado) parcelaUpdate.valor = valorBrutoEdit;
+
           const { error: parcelaError } = await supabase
             .from('parcelas_contrato')
-            .update({ data_vencimento: novaDataVencimento })
+            .update(parcelaUpdate)
             .eq('id', contaReceber.parcela_id);
 
           if (parcelaError) throw parcelaError;
@@ -192,6 +199,7 @@ export function EditFaturamentoDialog({ open, onOpenChange, faturamento, onSucce
 
       const messages: string[] = [];
       if (dataVencimentoAlterada) messages.push('data de vencimento');
+      if (brutoAlterado) messages.push('valor bruto');
       if (valorAlterado) messages.push('valor líquido');
 
       toast({
