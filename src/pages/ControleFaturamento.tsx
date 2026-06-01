@@ -155,6 +155,7 @@ export default function ControleFaturamento() {
           clientes:cliente_id (razao_social, nome_fantasia, cnpj_cpf, email, endereco, numero, complemento, bairro, cidade, uf, cep),
           parcelas_contrato:parcela_id (
             contrato_id,
+            valor,
             contratos:contrato_id (
               id,
               numero_contrato,
@@ -234,26 +235,28 @@ export default function ControleFaturamento() {
                                   (contrato?.cofins_percentual || 0) + (contrato?.csll_percentual || 0);
 
         const taxaImpostos = totalImpostosPct / 100;
-        const valorLancado = Number(item.valor || 0);
+        const valorLiquidoLancado = Number(item.valor || 0);
         const valorOriginal = item.valor_original !== null && item.valor_original !== undefined
           ? Number(item.valor_original)
           : null;
+        const valorParcelaContrato = parcela?.valor !== null && parcela?.valor !== undefined
+          ? Number(parcela.valor)
+          : null;
 
         const round2 = (v: number) => Math.round(v * 100) / 100;
-        const within = (a: number, b: number, rel = 0.01, abs = 0.5) =>
-          Math.abs(a - b) <= Math.max(abs, Math.abs(b) * rel);
-
-        const contratoValorBruto = contrato?.valor_bruto ? Number(contrato.valor_bruto) : 0;
-        const contratoValorTotal = contrato?.valor_total ? Number(contrato.valor_total) : 0;
-        const hasContratoBruto = contratoValorBruto > 0;
 
         // Regra (modelo atual):
-        // O `valor` da parcela armazena o VALOR BRUTO do contrato (antes dos impostos).
-        // O Valor Líquido exibido é sempre bruto × (1 - taxaImpostos).
-        const valorBruto = valorLancado;
-        const valorLiquido = taxaImpostos > 0 && taxaImpostos < 1
+        // `parcelas_contrato.valor` / `contas_receber.valor_original` guardam o BRUTO.
+        // `contas_receber.valor` guarda o LÍQUIDO lançado/ajustável.
+        const valorBruto = valorParcelaContrato && valorParcelaContrato > 0
+          ? valorParcelaContrato
+          : valorOriginal && valorOriginal > 0
+            ? valorOriginal
+            : valorLiquidoLancado;
+        const valorLiquidoCalculado = taxaImpostos > 0 && taxaImpostos < 1
           ? round2(valorBruto * (1 - taxaImpostos))
           : valorBruto;
+        const valorLiquido = valorLiquidoLancado > 0 ? valorLiquidoLancado : valorLiquidoCalculado;
 
         return {
           id: item.id,
