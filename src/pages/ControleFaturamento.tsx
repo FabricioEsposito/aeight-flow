@@ -248,17 +248,12 @@ export default function ControleFaturamento() {
         const hasContratoBruto = contratoValorBruto > 0;
 
         // Regra (modelo atual):
-        // O `valor` da parcela armazena o VALOR BRUTO do contrato.
-        // O Valor Líquido (a receber/recebido) é armazenado em `contas_receber.valor_original`
-        // ou calculado como bruto × (1 - taxaImpostos).
-        let valorBruto = valorLancado;
-        let valorLiquido = valorOriginal !== null ? valorOriginal : valorLancado;
-
-        if (taxaImpostos > 0 && taxaImpostos < 1) {
-          if (valorOriginal === null) {
-            valorLiquido = round2(valorBruto * (1 - taxaImpostos));
-          }
-        }
+        // O `valor` da parcela armazena o VALOR BRUTO do contrato (antes dos impostos).
+        // O Valor Líquido exibido é sempre bruto × (1 - taxaImpostos).
+        const valorBruto = valorLancado;
+        const valorLiquido = taxaImpostos > 0 && taxaImpostos < 1
+          ? round2(valorBruto * (1 - taxaImpostos))
+          : valorBruto;
 
         return {
           id: item.id,
