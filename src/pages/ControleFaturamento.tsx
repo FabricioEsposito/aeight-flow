@@ -247,35 +247,16 @@ export default function ControleFaturamento() {
         const contratoValorTotal = contrato?.valor_total ? Number(contrato.valor_total) : 0;
         const hasContratoBruto = contratoValorBruto > 0;
 
-        // Regra:
-        // O `valor` da parcela armazena o LÍQUIDO já com desconto e retenções aplicados.
-        // O "Valor Bruto" exibido no Controle de Faturamento deve ser o bruto JÁ COM DESCONTO,
-        // de forma que: bruto_com_desconto × (1 - taxaImpostos) = líquido.
-        // Assim, as retenções calculadas (bruto × alíquota) batem exatamente com o líquido.
+        // Regra (modelo atual):
+        // O `valor` da parcela armazena o VALOR BRUTO do contrato.
+        // O Valor Líquido (a receber/recebido) é armazenado em `contas_receber.valor_original`
+        // ou calculado como bruto × (1 - taxaImpostos).
         let valorBruto = valorLancado;
-        let valorLiquido = valorLancado;
+        let valorLiquido = valorOriginal !== null ? valorOriginal : valorLancado;
 
         if (taxaImpostos > 0 && taxaImpostos < 1) {
-          // Bruto com desconto = líquido / (1 - taxa). Funciona tanto com quanto sem desconto.
-          const brutoComDesconto = valorLancado / (1 - taxaImpostos);
-
-          // Detecta se o lançado já é o bruto (ex.: edição manual que persistiu o bruto):
-          // só quando bate com o bruto proporcional do contrato SEM desconto e NÃO bate com o líquido esperado.
-          const brutoProporcionalSemDesconto = hasContratoBruto && contratoValorTotal > 0
-            ? contratoValorBruto * (valorLancado / contratoValorTotal)
-            : brutoComDesconto;
-          const liquidoEsperado = brutoProporcionalSemDesconto * (1 - taxaImpostos);
-          const lancadoEhBruto = hasContratoBruto
-            && within(valorLancado, brutoProporcionalSemDesconto)
-            && !within(valorLancado, liquidoEsperado);
-
-          if (lancadoEhBruto) {
-            valorBruto = valorLancado;
+          if (valorOriginal === null) {
             valorLiquido = round2(valorBruto * (1 - taxaImpostos));
-          } else {
-            // Padrão: parcela é líquido — bruto = líquido / (1 - taxa) (já com desconto embutido)
-            valorBruto = brutoComDesconto;
-            valorLiquido = valorLancado;
           }
         }
 
