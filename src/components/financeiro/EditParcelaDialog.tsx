@@ -433,7 +433,30 @@ export function EditParcelaDialog({
                 {formatCurrency(valorOriginal)}
               </div>
               <p className="text-xs text-muted-foreground">
-                O valor bruto é preservado para o relatório de retenções. Para ajustar o valor efetivamente recebido/pago, utilize Juros, Multa ou Desconto acima.
+                O valor bruto é preservado para o relatório de retenções. Ajuste o valor líquido abaixo (ou Juros/Multa/Desconto acima) para refletir o que foi efetivamente {tipo === 'entrada' ? 'recebido' : 'pago'}.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Valor Líquido — {tipo === 'entrada' ? 'recebido' : 'pago'} (R$)</Label>
+              <CurrencyInput
+                value={valorTotal}
+                onChange={(novo) => {
+                  const diff = novo - valorOriginal;
+                  if (diff >= 0) {
+                    setJuros(diff);
+                    setMulta(0);
+                    setDesconto(0);
+                  } else {
+                    setJuros(0);
+                    setMulta(0);
+                    setDesconto(-diff);
+                  }
+                }}
+                placeholder="0,00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Editar este valor recalcula Juros/Desconto automaticamente para bater com o líquido informado.
               </p>
             </div>
 
