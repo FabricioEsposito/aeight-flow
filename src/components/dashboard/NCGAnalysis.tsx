@@ -215,13 +215,13 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
 
       // Saldos pendentes (snapshot até data fim do período)
       const pendentesReceberRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_vencimento, status', q =>
-        q.in('status', ['pendente', 'vencido', 'parcial'])
+        q.eq('status', 'pendente')
          .lte('data_vencimento', dateRange.to));
       const pendentesReceber = (await passesCcReceber(pendentesReceberRaw.filter((r: any) => !isExcluded(r.plano_conta_id))));
       const contasReceberSaldo = pendentesReceber.reduce((s, r: any) => s + (Number(r.valor) || 0), 0);
 
       const pendentesPagarRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, status', q =>
-        q.in('status', ['pendente', 'vencido', 'parcial'])
+        q.eq('status', 'pendente')
          .lte('data_vencimento', dateRange.to));
       const pendentesPagar = (await passesCcPagar(pendentesPagarRaw.filter((r: any) => !isExcluded(r.plano_conta_id))));
       const fornecedoresSaldo = pendentesPagar.reduce((s, r: any) => s + (Number(r.valor) || 0), 0);
