@@ -242,6 +242,7 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       // PMP real
       const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, data_pagamento, status', q =>
         q.eq('status', 'pago')
+         .not('data_pagamento', 'is', null)
          .gte('data_pagamento', dateRange.from)
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
