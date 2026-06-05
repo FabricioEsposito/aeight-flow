@@ -9,7 +9,8 @@ import {
   LineChart as LineChartIcon,
   BarChart3,
   Calculator,
-  FileText
+  FileText,
+  Banknote
 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
