@@ -289,7 +289,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
 
   const cicloData = [
     { nome: "PMR", dias: calc.pmr, fill: "hsl(217 91% 60%)" },
-    { nome: "PME", dias: calc.pme, fill: "hsl(142 71% 45%)" },
     { nome: "PMP", dias: -calc.pmp, fill: "hsl(0 84% 60%)" },
     { nome: "Ciclo", dias: calc.cicloFinanceiro, fill: "hsl(262 83% 58%)" },
   ];
