@@ -228,7 +228,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
 
       // PMR real: média ponderada de (data_recebimento - data_vencimento) nas contas recebidas no período
       const recebidasRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_vencimento, data_recebimento, status', q =>
-        q.eq('status', 'recebido')
+        q.eq('status', 'pago')
+         .not('data_recebimento', 'is', null)
          .gte('data_recebimento', dateRange.from)
          .lte('data_recebimento', dateRange.to));
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
