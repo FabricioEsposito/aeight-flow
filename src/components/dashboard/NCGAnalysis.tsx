@@ -349,7 +349,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         ["CMV", formatCurrency(values.cmv)],
         ["Despesas Administrativas", formatCurrency(values.despesasAdm)],
         ["Contas a Receber (pendentes)", formatCurrency(values.contasReceber)],
-        ["Estoque", formatCurrency(values.estoque)],
         ["Fornecedores (pendentes)", formatCurrency(values.fornecedores)],
         ["Dias do Período", String(values.diasPeriodo)],
       ],
@@ -359,7 +358,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       head: [["Indicador", "Resultado"]],
       body: [
         ["PMR (real)", formatDias(calc.pmr)],
-        ["PME", formatDias(calc.pme)],
         ["PMP (real)", formatDias(calc.pmp)],
         ["Ciclo Financeiro", formatDias(calc.cicloFinanceiro)],
         ["Custo Operacional Mensal", formatCurrency(calc.custoOpMensal)],
@@ -372,9 +370,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       head: [["Memória de Cálculo"]],
       body: [
         [`PMR = média (10% trimmed) de (data_recebimento − data_competência) = ${calc.pmr.toFixed(2)} dias`],
-        [`PME = (Estoque / CMV) × Dias = ${calc.pme.toFixed(2)} dias`],
         [`PMP = média (10% trimmed) de (data_pagamento − data_competência) = ${calc.pmp.toFixed(2)} dias`],
-        [`Ciclo Financeiro = PMR + PME - PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
+        [`Ciclo Financeiro = PMR − PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
         [`Custo Op. Diário = (CMV + Desp. Adm.) / Dias = ${formatCurrency(calc.custoOpDiario)}`],
         [`NCG = Custo Op. Diário × Ciclo Financeiro = ${formatCurrency(calc.ncg)}`],
       ],
