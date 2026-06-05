@@ -224,11 +224,19 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       const pendentesPagar = (await passesCcPagar(pendentesPagarRaw.filter((r: any) => !isExcluded(r.plano_conta_id))));
       const fornecedoresSaldo = pendentesPagar.reduce((s, r: any) => s + (Number(r.valor) || 0), 0);
 
-      // PMR real: média (10% trimmed) de (data_recebimento - data_competencia) nas contas recebidas no período
+      // PMR real: média de (data_recebimento - data_competencia) — apenas "1.1.1 Receita de clientes"
+      // Para evitar PMR zerado quando o período selecionado tem poucos/nenhum recebimento,
+      // usamos uma janela mínima de 90 dias (estendendo o "from" para trás se necessário).
+      const pmrFrom = (() => {
+        const minFrom = new Date(new Date(dateRange.to + 'T00:00:00').getTime() - 90 * 86400000);
+        const selFrom = new Date(dateRange.from + 'T00:00:00');
+        const f = selFrom < minFrom ? selFrom : minFrom;
+        return f.toISOString().slice(0, 10);
+      })();
       const recebidasRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_competencia, data_recebimento, status', q =>
         q.eq('status', 'pago')
          .not('data_recebimento', 'is', null)
-         .gte('data_recebimento', dateRange.from)
+         .gte('data_recebimento', pmrFrom)
          .lte('data_recebimento', dateRange.to));
       // PMR considera apenas "1.1.1 Receita de clientes"
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
