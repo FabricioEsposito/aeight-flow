@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -18,7 +24,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Calculator, Download, FileSpreadsheet, FileText, Info, RefreshCw } from "lucide-react";
+import { Calculator, Download, FileSpreadsheet, FileText, Info, RefreshCw, ArrowRight, Minus, Divide, X, TrendingUp } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
