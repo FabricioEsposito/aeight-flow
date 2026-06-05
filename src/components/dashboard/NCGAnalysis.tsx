@@ -75,7 +75,19 @@ async function fetchAll(table: 'contas_receber' | 'contas_pagar', select: string
 function diffDays(a: string, b: string): number {
   const da = new Date(a + 'T00:00:00').getTime();
   const db = new Date(b + 'T00:00:00').getTime();
-  return Math.max(0, (db - da) / 86400000);
+  return (db - da) / 86400000;
+}
+
+// Média aritmética com remoção de outliers (trimmed mean a 10%) para evitar distorções
+function trimmedMean(values: number[], trimPct = 0.1): number {
+  if (values.length === 0) return 0;
+  if (values.length < 5) {
+    return values.reduce((s, v) => s + v, 0) / values.length;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const cut = Math.floor(sorted.length * trimPct);
+  const trimmed = sorted.slice(cut, sorted.length - cut);
+  return trimmed.reduce((s, v) => s + v, 0) / trimmed.length;
 }
 
 export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
