@@ -505,6 +505,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         </Card>
       </div>
 
+      <NCGFlowchart calc={calc} />
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <IndicatorCard label="PMR (real)" value={formatDias(calc.pmr)} color="text-blue-600" />
         <IndicatorCard label="PMP (real)" value={formatDias(calc.pmp)} color="text-red-600" />
