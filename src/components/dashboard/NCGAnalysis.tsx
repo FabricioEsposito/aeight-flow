@@ -450,10 +450,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
               <CurrencyInput value={values.contasReceber} onChange={(v) => update("contasReceber", v)} />
             </div>
             <div>
-              <Label>Estoque (R$) - manual</Label>
-              <CurrencyInput value={values.estoque} onChange={(v) => update("estoque", v)} />
-            </div>
-            <div>
               <Label>Fornecedores pendentes (R$)</Label>
               <CurrencyInput value={values.fornecedores} onChange={(v) => update("fornecedores", v)} />
             </div>
