@@ -667,7 +667,7 @@ function FlowArrow({ icon: Icon }: { icon?: React.ElementType }) {
   );
 }
 
-function NCGFlowchart({ calc }: { calc: ReturnType<typeof useMemo> }) {
+function NCGFlowchart({ calc }: { calc: CalcResult }) {
   return (
     <Card className="border-dashed border-2">
       <CardHeader className="pb-2">
