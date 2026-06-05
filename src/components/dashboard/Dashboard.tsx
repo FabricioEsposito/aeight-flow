@@ -1502,7 +1502,12 @@ export function Dashboard() {
         )}
 
         {/* NCG */}
-        {analiseAtiva === 'ncg' && <NCGAnalysis />}
+        {analiseAtiva === 'ncg' && (
+          <NCGAnalysis
+            dateRange={getDateRange()}
+            centroCusto={selectedCentroCusto.length > 0 ? selectedCentroCusto : undefined}
+          />
+        )}
       </div>
     </div>
   );
