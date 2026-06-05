@@ -1502,6 +1502,9 @@ export function Dashboard() {
             drePerBU={drePerBU}
           />
         )}
+
+        {/* NCG */}
+        {analiseAtiva === 'ncg' && <NCGAnalysis />}
       </div>
     </div>
   );
