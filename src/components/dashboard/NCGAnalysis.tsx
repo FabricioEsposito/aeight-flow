@@ -480,9 +480,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <IndicatorCard label="PMR (real)" value={formatDias(calc.pmr)} color="text-blue-600" />
-        <IndicatorCard label="PME" value={formatDias(calc.pme)} color="text-emerald-600" />
         <IndicatorCard label="PMP (real)" value={formatDias(calc.pmp)} color="text-red-600" />
         <IndicatorCard label="Ciclo Financeiro" value={formatDias(calc.cicloFinanceiro)} color="text-purple-600" />
         <IndicatorCard label="Custo Op. Diário" value={formatCurrency(calc.custoOpDiario)} color="text-amber-600" />
