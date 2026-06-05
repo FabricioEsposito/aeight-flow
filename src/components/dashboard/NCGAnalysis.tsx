@@ -571,9 +571,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
               <h4 className="font-semibold">Fórmulas</h4>
               <ul className="space-y-1 text-muted-foreground">
                 <li>PMR = média aritmética (com 10% de outliers removidos) das diferenças data_recebimento − data_competência</li>
-                <li>PME = (Estoque / CMV) × Dias</li>
                 <li>PMP = média aritmética (com 10% de outliers removidos) das diferenças data_pagamento − data_competência</li>
-                <li>Ciclo Financeiro = PMR + PME − PMP</li>
+                <li>Ciclo Financeiro = PMR − PMP</li>
                 <li>Custo Op. Diário = (CMV + Desp. Adm.) / Dias</li>
                 <li className="font-semibold text-foreground">NCG = Custo Op. Diário × Ciclo Financeiro</li>
               </ul>
@@ -582,9 +581,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
               <h4 className="font-semibold">Resultado com os valores do período</h4>
               <ul className="space-y-1 text-muted-foreground font-mono text-xs">
                 <li>PMR = <strong>{calc.pmr.toFixed(2)} dias</strong></li>
-                <li>PME = <strong>{calc.pme.toFixed(2)} dias</strong></li>
                 <li>PMP = <strong>{calc.pmp.toFixed(2)} dias</strong></li>
-                <li>Ciclo = {calc.pmr.toFixed(2)} + {calc.pme.toFixed(2)} − {calc.pmp.toFixed(2)} = <strong>{calc.cicloFinanceiro.toFixed(2)} dias</strong></li>
+                <li>Ciclo = {calc.pmr.toFixed(2)} − {calc.pmp.toFixed(2)} = <strong>{calc.cicloFinanceiro.toFixed(2)} dias</strong></li>
                 <li>Custo Diário = ({formatCurrency(values.cmv)} + {formatCurrency(values.despesasAdm)}) / {values.diasPeriodo} = <strong>{formatCurrency(calc.custoOpDiario)}</strong></li>
                 <li className="text-foreground">NCG = {formatCurrency(calc.custoOpDiario)} × {calc.cicloFinanceiro.toFixed(2)} = <strong>{formatCurrency(calc.ncg)}</strong></li>
               </ul>
