@@ -246,11 +246,11 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         .filter((d: number) => Number.isFinite(d));
       const pmrReal = trimmedMean(pmrDias);
 
-      // PMP real: média (10% trimmed) de (data_pagamento - data_competencia)
+      // PMP real: média de (data_pagamento - data_competencia) com janela mínima de 90 dias
       const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_competencia, data_pagamento, status', q =>
         q.eq('status', 'pago')
          .not('data_pagamento', 'is', null)
-         .gte('data_pagamento', dateRange.from)
+         .gte('data_pagamento', pmrFrom)
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
         !isExcluded(r.plano_conta_id) && r.data_competencia && r.data_pagamento)));
