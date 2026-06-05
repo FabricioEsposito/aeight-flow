@@ -9,7 +9,8 @@ import {
   LineChart as LineChartIcon,
   BarChart3,
   Calculator,
-  FileText
+  FileText,
+  Banknote
 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ import { DREValues } from "@/lib/valuation-utils";
 import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
 import { ReguaCobranca } from "./ReguaCobranca";
 import { GestaoContratosAnalysis } from "./GestaoContratosAnalysis";
+import { NCGAnalysis } from "./NCGAnalysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContaBancariaMultiSelect } from "@/components/financeiro/ContaBancariaMultiSelect";
 import { calcularFluxoCaixa, prepararMovimentacoes, formatDateLocal } from "@/lib/fluxo-caixa-utils";
@@ -100,7 +102,7 @@ export function Dashboard() {
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
   
   // Controle de visualização
-  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao' | 'contratos'>('faturamento');
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao' | 'contratos' | 'ncg'>('faturamento');
   const [dreValoresParaSimulacao, setDreValoresParaSimulacao] = useState<DREValues>({
     receita: 0,
     cmv: 0,
@@ -957,6 +959,17 @@ export function Dashboard() {
                 <FileText className="w-4 h-4" />
                 Contratos
               </button>
+              <button
+                onClick={() => { setAnaliseAtiva('ncg'); }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'ncg'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Banknote className="w-4 h-4" />
+                NCG
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4" />
@@ -966,32 +979,34 @@ export function Dashboard() {
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap gap-4">
-          <DateRangeFilter
-            value={datePreset}
-            onChange={(preset, range) => {
-              setDatePreset(preset);
-              if (range) setCustomRange(range);
-            }}
-            customRange={customRange}
-          />
-
-          {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && analiseAtiva !== 'contratos' && (
-            <CentroCustoFilterSelect
-              value={selectedCentroCusto}
-              onValueChange={setSelectedCentroCusto}
-              className="w-[250px]"
+        {analiseAtiva !== 'ncg' && (
+          <div className="flex flex-wrap gap-4">
+            <DateRangeFilter
+              value={datePreset}
+              onChange={(preset, range) => {
+                setDatePreset(preset);
+                if (range) setCustomRange(range);
+              }}
+              customRange={customRange}
             />
-          )}
 
-          {analiseAtiva === 'caixa' && (
-            <ContaBancariaMultiSelect
-              contas={contasBancarias}
-              selectedIds={selectedContaBancaria}
-              onChange={setSelectedContaBancaria}
-            />
-          )}
-        </div>
+            {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && analiseAtiva !== 'contratos' && (
+              <CentroCustoFilterSelect
+                value={selectedCentroCusto}
+                onValueChange={setSelectedCentroCusto}
+                className="w-[250px]"
+              />
+            )}
+
+            {analiseAtiva === 'caixa' && (
+              <ContaBancariaMultiSelect
+                contas={contasBancarias}
+                selectedIds={selectedContaBancaria}
+                onChange={setSelectedContaBancaria}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -1487,6 +1502,9 @@ export function Dashboard() {
             drePerBU={drePerBU}
           />
         )}
+
+        {/* NCG */}
+        {analiseAtiva === 'ncg' && <NCGAnalysis />}
       </div>
     </div>
   );
