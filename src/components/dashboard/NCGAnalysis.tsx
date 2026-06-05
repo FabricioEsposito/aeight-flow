@@ -284,12 +284,13 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
 
   const calc = useMemo(() => {
     const dias = values.diasPeriodo > 0 ? values.diasPeriodo : 30;
-    // PMR e PMP: usar valores reais (vencimento → recebimento/pagamento)
-    const pmr = values.pmrReal;
-    const pmp = values.pmpReal;
+    // PMR = (Contas a Receber / Receita) × dias — inclui atrasados e em dia
+    const pmr = values.receita > 0 ? (values.contasReceber / values.receita) * dias : 0;
+    // PMP = (Fornecedores / (CMV + Despesas Adm.)) × dias
+    const custoOpMensal = values.cmv + values.despesasAdm;
+    const pmp = custoOpMensal > 0 ? (values.fornecedores / custoOpMensal) * dias : 0;
     // Ciclo financeiro sem PME (empresa de serviços sem estoque)
     const cicloFinanceiro = pmr - pmp;
-    const custoOpMensal = values.cmv + values.despesasAdm;
     const custoOpDiario = custoOpMensal / dias;
     const ncg = custoOpDiario * cicloFinanceiro;
 
