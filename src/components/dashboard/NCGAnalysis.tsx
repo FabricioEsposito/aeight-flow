@@ -96,7 +96,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     cmv: 0,
     despesasAdm: 0,
     contasReceber: 0,
-    estoque: 0,
     fornecedores: 0,
     diasPeriodo: 30,
     pmrReal: 0,
