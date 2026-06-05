@@ -44,7 +44,6 @@ interface DREValuesNCG {
   cmv: number;
   despesasAdm: number;
   contasReceber: number;
-  estoque: number;
   fornecedores: number;
   diasPeriodo: number;
   pmrReal: number; // calculated from data_vencimento → data_recebimento
