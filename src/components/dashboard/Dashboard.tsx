@@ -448,25 +448,45 @@ export function Dashboard() {
 
       // Fetch Contas a Receber para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
       // Igual ao Extrato: NÃO filtra por centro de custo, apenas por conta bancária
-      let contasReceberFluxoQuery = supabase
-        .from('contas_receber')
-        .select('valor, data_recebimento, data_vencimento, status, conta_bancaria_id');
-      
-      if (dateRange) {
-        // Para contas pagas, filtrar pela data de recebimento
-        // Para contas pendentes EM DIA, filtrar pela data de vencimento (vencidos NÃO contam no saldo)
-        contasReceberFluxoQuery = contasReceberFluxoQuery.or(
-          `and(status.eq.pago,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
-        );
-      } else {
-        contasReceberFluxoQuery = contasReceberFluxoQuery.in('status', ['pago', 'pendente']);
-      }
+      // IMPORTANTE: paginar para evitar limite de 1000 linhas do Supabase
+      const buildContasReceberFluxoQuery = () => {
+        let q = supabase
+          .from('contas_receber')
+          .select('valor, data_recebimento, data_vencimento, status, conta_bancaria_id')
+          .order('id', { ascending: true });
+        if (dateRange) {
+          q = q.or(
+            `and(status.eq.pago,data_recebimento.gte.${dateRange.from},data_recebimento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+          );
+        } else {
+          q = q.in('status', ['pago', 'pendente']);
+        }
+        if (selectedContaBancaria.length > 0) {
+          q = q.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        return q;
+      };
 
-      if (selectedContaBancaria.length > 0) {
-        contasReceberFluxoQuery = contasReceberFluxoQuery.in('conta_bancaria_id', selectedContaBancaria);
-      }
+      const fetchAllPagesGeneric = async <T,>(buildQuery: () => any): Promise<T[]> => {
+        const PAGE_SIZE = 1000;
+        let all: T[] = [];
+        let from = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+          if (data && data.length > 0) {
+            all = [...all, ...data];
+            hasMore = data.length === PAGE_SIZE;
+            from += PAGE_SIZE;
+          } else {
+            hasMore = false;
+          }
+        }
+        return all;
+      };
 
-      const { data: contasReceberFluxo } = await contasReceberFluxoQuery;
+      const contasReceberFluxo = await fetchAllPagesGeneric<any>(buildContasReceberFluxoQuery);
+
 
       // Fetch Contas a Pagar para estatísticas (pela data de competência)
       let contasPagarQuery = supabase
@@ -487,25 +507,27 @@ export function Dashboard() {
 
       // Fetch Contas a Pagar para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
       // Igual ao Extrato: NÃO filtra por centro de custo, apenas por conta bancária
-      let contasPagarFluxoQuery = supabase
-        .from('contas_pagar')
-        .select('valor, data_pagamento, data_vencimento, status, conta_bancaria_id');
-      
-      if (dateRange) {
-        // Para contas pagas, filtrar pela data de pagamento
-        // Para contas pendentes EM DIA, filtrar pela data de vencimento (vencidos NÃO contam no saldo)
-        contasPagarFluxoQuery = contasPagarFluxoQuery.or(
-          `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
-        );
-      } else {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.in('status', ['pago', 'pendente']);
-      }
+      // IMPORTANTE: paginar para evitar limite de 1000 linhas do Supabase
+      const buildContasPagarFluxoQuery = () => {
+        let q = supabase
+          .from('contas_pagar')
+          .select('valor, data_pagamento, data_vencimento, status, conta_bancaria_id')
+          .order('id', { ascending: true });
+        if (dateRange) {
+          q = q.or(
+            `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+          );
+        } else {
+          q = q.in('status', ['pago', 'pendente']);
+        }
+        if (selectedContaBancaria.length > 0) {
+          q = q.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        return q;
+      };
 
-      if (selectedContaBancaria.length > 0) {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.in('conta_bancaria_id', selectedContaBancaria);
-      }
+      const contasPagarFluxo = await fetchAllPagesGeneric<any>(buildContasPagarFluxoQuery);
 
-      const { data: contasPagarFluxo } = await contasPagarFluxoQuery;
 
       // Fetch Plano de Contas para filtrar Receita de Serviços
       const { data: planoContas } = await supabase
