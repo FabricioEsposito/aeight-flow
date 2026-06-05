@@ -278,14 +278,13 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     // PMR e PMP: usar valores reais (vencimento → recebimento/pagamento)
     const pmr = values.pmrReal;
     const pmp = values.pmpReal;
-    // PME: empresa de serviços geralmente sem estoque
-    const pme = values.cmv > 0 && values.estoque > 0 ? (values.estoque / values.cmv) * dias : 0;
-    const cicloFinanceiro = pmr + pme - pmp;
+    // Ciclo financeiro sem PME (empresa de serviços sem estoque)
+    const cicloFinanceiro = pmr - pmp;
     const custoOpMensal = values.cmv + values.despesasAdm;
     const custoOpDiario = custoOpMensal / dias;
     const ncg = custoOpDiario * cicloFinanceiro;
 
-    return { pmr, pme, pmp, cicloFinanceiro, custoOpMensal, custoOpDiario, ncg };
+    return { pmr, pmp, cicloFinanceiro, custoOpMensal, custoOpDiario, ncg };
   }, [values]);
 
   const cicloData = [
