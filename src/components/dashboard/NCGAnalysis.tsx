@@ -215,20 +215,21 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
 
       // Saldos pendentes (snapshot até data fim do período)
       const pendentesReceberRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_vencimento, status', q =>
-        q.in('status', ['pendente', 'vencido', 'parcial'])
+        q.eq('status', 'pendente')
          .lte('data_vencimento', dateRange.to));
       const pendentesReceber = (await passesCcReceber(pendentesReceberRaw.filter((r: any) => !isExcluded(r.plano_conta_id))));
       const contasReceberSaldo = pendentesReceber.reduce((s, r: any) => s + (Number(r.valor) || 0), 0);
 
       const pendentesPagarRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, status', q =>
-        q.in('status', ['pendente', 'vencido', 'parcial'])
+        q.eq('status', 'pendente')
          .lte('data_vencimento', dateRange.to));
       const pendentesPagar = (await passesCcPagar(pendentesPagarRaw.filter((r: any) => !isExcluded(r.plano_conta_id))));
       const fornecedoresSaldo = pendentesPagar.reduce((s, r: any) => s + (Number(r.valor) || 0), 0);
 
       // PMR real: média ponderada de (data_recebimento - data_vencimento) nas contas recebidas no período
       const recebidasRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_vencimento, data_recebimento, status', q =>
-        q.eq('status', 'recebido')
+        q.eq('status', 'pago')
+         .not('data_recebimento', 'is', null)
          .gte('data_recebimento', dateRange.from)
          .lte('data_recebimento', dateRange.to));
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
@@ -241,6 +242,7 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       // PMP real
       const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, data_pagamento, status', q =>
         q.eq('status', 'pago')
+         .not('data_pagamento', 'is', null)
          .gte('data_pagamento', dateRange.from)
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
