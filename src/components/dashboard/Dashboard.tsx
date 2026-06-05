@@ -507,25 +507,27 @@ export function Dashboard() {
 
       // Fetch Contas a Pagar para Fluxo de Caixa (pagas + pendentes/vencidas para previsão)
       // Igual ao Extrato: NÃO filtra por centro de custo, apenas por conta bancária
-      let contasPagarFluxoQuery = supabase
-        .from('contas_pagar')
-        .select('valor, data_pagamento, data_vencimento, status, conta_bancaria_id');
-      
-      if (dateRange) {
-        // Para contas pagas, filtrar pela data de pagamento
-        // Para contas pendentes EM DIA, filtrar pela data de vencimento (vencidos NÃO contam no saldo)
-        contasPagarFluxoQuery = contasPagarFluxoQuery.or(
-          `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
-        );
-      } else {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.in('status', ['pago', 'pendente']);
-      }
+      // IMPORTANTE: paginar para evitar limite de 1000 linhas do Supabase
+      const buildContasPagarFluxoQuery = () => {
+        let q = supabase
+          .from('contas_pagar')
+          .select('valor, data_pagamento, data_vencimento, status, conta_bancaria_id')
+          .order('id', { ascending: true });
+        if (dateRange) {
+          q = q.or(
+            `and(status.eq.pago,data_pagamento.gte.${dateRange.from},data_pagamento.lte.${dateRange.to}),and(status.eq.pendente,data_vencimento.gte.${dateRange.from},data_vencimento.lte.${dateRange.to})`
+          );
+        } else {
+          q = q.in('status', ['pago', 'pendente']);
+        }
+        if (selectedContaBancaria.length > 0) {
+          q = q.in('conta_bancaria_id', selectedContaBancaria);
+        }
+        return q;
+      };
 
-      if (selectedContaBancaria.length > 0) {
-        contasPagarFluxoQuery = contasPagarFluxoQuery.in('conta_bancaria_id', selectedContaBancaria);
-      }
+      const contasPagarFluxo = await fetchAllPagesGeneric<any>(buildContasPagarFluxoQuery);
 
-      const { data: contasPagarFluxo } = await contasPagarFluxoQuery;
 
       // Fetch Plano de Contas para filtrar Receita de Serviços
       const { data: planoContas } = await supabase
