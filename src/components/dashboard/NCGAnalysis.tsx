@@ -379,8 +379,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     autoTable(doc, {
       head: [["Memória de Cálculo"]],
       body: [
-        [`PMR = média (10% trimmed) de (data_recebimento − data_competência) = ${calc.pmr.toFixed(2)} dias`],
-        [`PMP = média (10% trimmed) de (data_pagamento − data_competência) = ${calc.pmp.toFixed(2)} dias`],
+        [`PMR = (Contas a Receber / Receita) × Dias = (${formatCurrency(values.contasReceber)} / ${formatCurrency(values.receita)}) × ${values.diasPeriodo} = ${calc.pmr.toFixed(2)} dias`],
+        [`PMP = (Fornecedores / (CMV + Desp. Adm.)) × Dias = (${formatCurrency(values.fornecedores)} / ${formatCurrency(calc.custoOpMensal)}) × ${values.diasPeriodo} = ${calc.pmp.toFixed(2)} dias`],
         [`Ciclo Financeiro = PMR − PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
         [`Custo Op. Diário = (CMV + Desp. Adm.) / Dias = ${formatCurrency(calc.custoOpDiario)}`],
         [`NCG = Custo Op. Diário × Ciclo Financeiro = ${formatCurrency(calc.ncg)}`],
