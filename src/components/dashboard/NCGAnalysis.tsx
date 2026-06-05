@@ -56,6 +56,15 @@ interface DREValuesNCG {
   pmpReal: number; // calculated from data_vencimento → data_pagamento
 }
 
+interface CalcResult {
+  pmr: number;
+  pmp: number;
+  cicloFinanceiro: number;
+  custoOpMensal: number;
+  custoOpDiario: number;
+  ncg: number;
+}
+
 const PAGE_SIZE = 1000;
 
 async function fetchAll(table: 'contas_receber' | 'contas_pagar', select: string, build: (q: any) => any) {
