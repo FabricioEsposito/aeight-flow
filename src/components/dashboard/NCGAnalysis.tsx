@@ -230,8 +230,9 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
          .not('data_recebimento', 'is', null)
          .gte('data_recebimento', dateRange.from)
          .lte('data_recebimento', dateRange.to));
+      // PMR considera apenas "1.1.1 Receita de clientes"
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
-        !isExcluded(r.plano_conta_id) && r.data_competencia && r.data_recebimento)));
+        !isExcluded(r.plano_conta_id) && r.data_competencia && r.data_recebimento && startsWith(r.plano_conta_id, '1.1.1'))));
       const pmrDias = recebidas
         .map((r: any) => diffDays(r.data_competencia, r.data_recebimento))
         .filter((d: number) => Number.isFinite(d));
