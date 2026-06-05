@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -18,7 +24,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Calculator, Download, FileSpreadsheet, FileText, Info, RefreshCw } from "lucide-react";
+import { Calculator, Download, FileSpreadsheet, FileText, Info, RefreshCw, ArrowRight, Minus, Divide, X, TrendingUp } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -48,6 +54,15 @@ interface DREValuesNCG {
   diasPeriodo: number;
   pmrReal: number; // calculated from data_vencimento → data_recebimento
   pmpReal: number; // calculated from data_vencimento → data_pagamento
+}
+
+interface CalcResult {
+  pmr: number;
+  pmp: number;
+  cicloFinanceiro: number;
+  custoOpMensal: number;
+  custoOpDiario: number;
+  ncg: number;
 }
 
 const PAGE_SIZE = 1000;
@@ -490,6 +505,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         </Card>
       </div>
 
+      <NCGFlowchart calc={calc} />
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <IndicatorCard label="PMR (real)" value={formatDias(calc.pmr)} color="text-blue-600" />
         <IndicatorCard label="PMP (real)" value={formatDias(calc.pmp)} color="text-red-600" />
@@ -601,6 +618,193 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function FlowNode({
+  label,
+  formula,
+  value,
+  colorClass,
+}: {
+  label: string;
+  formula: string;
+  value?: string;
+  colorClass: string;
+}) {
+  return (
+    <TooltipProvider delayDuration={100}>
+      <UITooltip>
+        <TooltipTrigger asChild>
+          <div className="flex flex-col items-center gap-1 min-w-[140px]">
+            <div
+              className={`
+                w-full rounded-lg border-2 px-3 py-2 text-center cursor-help
+                transition-shadow hover:shadow-md
+                ${colorClass}
+              `}
+            >
+              <div className="text-[10px] uppercase tracking-wider font-semibold opacity-80">
+                {label}
+              </div>
+              {value && (
+                <div className="text-sm font-bold">{value}</div>
+              )}
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[240px] text-xs leading-relaxed">
+          {formula}
+        </TooltipContent>
+      </UITooltip>
+    </TooltipProvider>
+  );
+}
+
+function FlowArrow({ icon: Icon }: { icon?: React.ElementType }) {
+  return (
+    <div className="flex items-center justify-center text-muted-foreground/60">
+      {Icon ? <Icon className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+    </div>
+  );
+}
+
+function NCGFlowchart({ calc }: { calc: CalcResult }) {
+  return (
+    <Card className="border-dashed border-2">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+          <TrendingUp className="w-4 h-4" />
+          Fluxo de Cálculo da NCG
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Desktop flowchart */}
+        <div className="hidden md:flex flex-col items-center gap-3">
+          {/* Row 1: Inputs */}
+          <div className="flex items-center gap-4">
+            <FlowNode
+              label="Entrada 1"
+              formula="Contas a Receber pendentes (R$). Inclui clientes em dia e atrasados."
+              colorClass="border-blue-500/50 bg-blue-500/5 text-blue-700 dark:text-blue-300"
+            />
+            <FlowArrow icon={Divide} />
+            <FlowNode
+              label="Entrada 2"
+              formula="Receita do período (R$). Apenas 1.1.1 Receita de clientes."
+              colorClass="border-blue-500/50 bg-blue-500/5 text-blue-700 dark:text-blue-300"
+            />
+            <FlowArrow icon={X} />
+            <FlowNode
+              label="Normalizador"
+              formula={`Dias do período selecionado (${calc ? 'atual' : '30'} dias). Converte o saldo proporcional em dias de prazo.`}
+              colorClass="border-slate-400/50 bg-slate-400/5 text-slate-700 dark:text-slate-300"
+            />
+          </div>
+
+          <ArrowRight className="w-4 h-4 text-muted-foreground/40 rotate-90" />
+
+          {/* Row 2: PMR / PMP */}
+          <div className="flex items-center gap-6">
+            <FlowNode
+              label="PMR"
+              formula="Prazo Médio de Recebimento = (Contas a Receber / Receita) x Dias. Quanto tempo, em média, a empresa leva para receber de seus clientes."
+              value={calc ? `${calc.pmr.toFixed(1)} dias` : "..."}
+              colorClass="border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300"
+            />
+
+            <div className="flex flex-col items-center gap-1">
+              <FlowArrow icon={Minus} />
+              <span className="text-[10px] text-muted-foreground uppercase">menos</span>
+            </div>
+
+            <FlowNode
+              label="PMP"
+              formula="Prazo Médio de Pagamento = (Fornecedores / Custo Operacional) x Dias. Quanto tempo, em média, a empresa leva para pagar seus fornecedores."
+              value={calc ? `${calc.pmp.toFixed(1)} dias` : "..."}
+              colorClass="border-red-500 bg-red-500/10 text-red-700 dark:text-red-300"
+            />
+          </div>
+
+          <ArrowRight className="w-4 h-4 text-muted-foreground/40 rotate-90" />
+
+          {/* Row 3: Ciclo */}
+          <FlowNode
+            label="Ciclo Financeiro"
+            formula="Diferença entre PMR e PMP. Representa o gap de dias que a empresa precisa financiar (recebe depois de pagar = ciclo positivo)."
+            value={calc ? `${calc.cicloFinanceiro.toFixed(1)} dias` : "..."}
+            colorClass="border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+          />
+
+          <ArrowRight className="w-4 h-4 text-muted-foreground/40 rotate-90" />
+
+          {/* Row 4: Custo Op + NCG */}
+          <div className="flex items-center gap-4">
+            <FlowNode
+              label="Custo Op. Diário"
+              formula="(CMV + Desp. Adm.) / Dias do período. Quanto a empresa gasta por dia para operar."
+              value={calc ? `R$ ${calc.custoOpDiario.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."}
+              colorClass="border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+            />
+            <FlowArrow icon={X} />
+            <FlowNode
+              label="Ciclo Financeiro"
+              formula="PMR - PMP. Dias de gap entre receber e pagar."
+              value={calc ? `${calc.cicloFinanceiro.toFixed(1)} dias` : "..."}
+              colorClass="border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+            />
+          </div>
+
+          <ArrowRight className="w-4 h-4 text-muted-foreground/40 rotate-90" />
+
+          {/* Row 5: NCG */}
+          <FlowNode
+            label="NCG"
+            formula="Necessidade de Capital de Giro = Custo Operacional Diário x Ciclo Financeiro. Valor financeiro necessário para cobrir o gap entre pagar fornecedores e receber clientes."
+            value={calc ? `R$ ${calc.ncg.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."}
+            colorClass="border-primary bg-primary/10 text-primary font-bold"
+          />
+        </div>
+
+        {/* Mobile: simplified vertical list */}
+        <div className="md:hidden flex flex-col gap-3">
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+            <div className="text-[10px] uppercase font-semibold text-blue-700 dark:text-blue-300">PMR</div>
+            <div className="text-xs text-muted-foreground">
+              (Contas a Receber / Receita) x Dias = {calc ? `${calc.pmr.toFixed(1)} dias` : "..."}
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">-</div>
+          <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+            <div className="text-[10px] uppercase font-semibold text-red-700 dark:text-red-300">PMP</div>
+            <div className="text-xs text-muted-foreground">
+              (Fornecedores / Custo Op.) x Dias = {calc ? `${calc.pmp.toFixed(1)} dias` : "..."}
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">=</div>
+          <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
+            <div className="text-[10px] uppercase font-semibold text-purple-700 dark:text-purple-300">Ciclo Financeiro</div>
+            <div className="text-xs text-muted-foreground">
+              PMR - PMP = {calc ? `${calc.cicloFinanceiro.toFixed(1)} dias` : "..."}
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">x</div>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+            <div className="text-[10px] uppercase font-semibold text-amber-700 dark:text-amber-300">Custo Op. Diário</div>
+            <div className="text-xs text-muted-foreground">
+              (CMV + Desp. Adm.) / Dias = {calc ? `R$ ${calc.custoOpDiario.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."}
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">=</div>
+          <div className="rounded-lg border-2 border-primary bg-primary/5 p-3">
+            <div className="text-[10px] uppercase font-semibold text-primary">NCG</div>
+            <div className="text-xs text-muted-foreground">
+              Custo Diário x Ciclo = {calc ? `R$ ${calc.ncg.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
