@@ -226,29 +226,29 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       const pendentesPagar = (await passesCcPagar(pendentesPagarRaw.filter((r: any) => !isExcluded(r.plano_conta_id))));
       const fornecedoresSaldo = pendentesPagar.reduce((s, r: any) => s + (Number(r.valor) || 0), 0);
 
-      // PMR real: média ponderada de (data_recebimento - data_vencimento) nas contas recebidas no período
-      const recebidasRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_vencimento, data_recebimento, status', q =>
+      // PMR real: média (10% trimmed) de (data_recebimento - data_competencia) nas contas recebidas no período
+      const recebidasRaw = await fetchAll('contas_receber', 'id, valor, plano_conta_id, data_competencia, data_recebimento, status', q =>
         q.eq('status', 'pago')
          .not('data_recebimento', 'is', null)
          .gte('data_recebimento', dateRange.from)
          .lte('data_recebimento', dateRange.to));
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
-        !isExcluded(r.plano_conta_id) && r.data_vencimento && r.data_recebimento)));
+        !isExcluded(r.plano_conta_id) && r.data_competencia && r.data_recebimento)));
       const pmrDias = recebidas
-        .map((r: any) => diffDays(r.data_vencimento, r.data_recebimento))
+        .map((r: any) => diffDays(r.data_competencia, r.data_recebimento))
         .filter((d: number) => Number.isFinite(d));
       const pmrReal = trimmedMean(pmrDias);
 
-      // PMP real
-      const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, data_pagamento, status', q =>
+      // PMP real: média (10% trimmed) de (data_pagamento - data_competencia)
+      const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_competencia, data_pagamento, status', q =>
         q.eq('status', 'pago')
          .not('data_pagamento', 'is', null)
          .gte('data_pagamento', dateRange.from)
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
-        !isExcluded(r.plano_conta_id) && r.data_vencimento && r.data_pagamento)));
+        !isExcluded(r.plano_conta_id) && r.data_competencia && r.data_pagamento)));
       const pmpDias = pagas
-        .map((r: any) => diffDays(r.data_vencimento, r.data_pagamento))
+        .map((r: any) => diffDays(r.data_competencia, r.data_pagamento))
         .filter((d: number) => Number.isFinite(d));
       const pmpReal = trimmedMean(pmpDias);
 
