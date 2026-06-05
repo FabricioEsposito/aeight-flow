@@ -44,7 +44,6 @@ interface DREValuesNCG {
   cmv: number;
   despesasAdm: number;
   contasReceber: number;
-  estoque: number;
   fornecedores: number;
   diasPeriodo: number;
   pmrReal: number; // calculated from data_vencimento → data_recebimento
@@ -97,7 +96,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     cmv: 0,
     despesasAdm: 0,
     contasReceber: 0,
-    estoque: 0,
     fornecedores: 0,
     diasPeriodo: 30,
     pmrReal: 0,
@@ -280,19 +278,17 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     // PMR e PMP: usar valores reais (vencimento → recebimento/pagamento)
     const pmr = values.pmrReal;
     const pmp = values.pmpReal;
-    // PME: empresa de serviços geralmente sem estoque
-    const pme = values.cmv > 0 && values.estoque > 0 ? (values.estoque / values.cmv) * dias : 0;
-    const cicloFinanceiro = pmr + pme - pmp;
+    // Ciclo financeiro sem PME (empresa de serviços sem estoque)
+    const cicloFinanceiro = pmr - pmp;
     const custoOpMensal = values.cmv + values.despesasAdm;
     const custoOpDiario = custoOpMensal / dias;
     const ncg = custoOpDiario * cicloFinanceiro;
 
-    return { pmr, pme, pmp, cicloFinanceiro, custoOpMensal, custoOpDiario, ncg };
+    return { pmr, pmp, cicloFinanceiro, custoOpMensal, custoOpDiario, ncg };
   }, [values]);
 
   const cicloData = [
     { nome: "PMR", dias: calc.pmr, fill: "hsl(217 91% 60%)" },
-    { nome: "PME", dias: calc.pme, fill: "hsl(142 71% 45%)" },
     { nome: "PMP", dias: -calc.pmp, fill: "hsl(0 84% 60%)" },
     { nome: "Ciclo", dias: calc.cicloFinanceiro, fill: "hsl(262 83% 58%)" },
   ];
@@ -321,13 +317,11 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       ["CMV (DRE)", values.cmv],
       ["Despesas Administrativas (DRE)", values.despesasAdm],
       ["Contas a Receber (pendentes)", values.contasReceber],
-      ["Estoque", values.estoque],
       ["Fornecedores (pendentes)", values.fornecedores],
       ["Dias do Período", values.diasPeriodo],
       [],
       ["Indicadores", "Resultado"],
       ["PMR real (competência → recebimento)", calc.pmr],
-      ["PME (estoque/CMV × dias)", calc.pme],
       ["PMP real (competência → pagamento)", calc.pmp],
       ["Ciclo Financeiro (dias)", calc.cicloFinanceiro],
       ["Custo Operacional Mensal", calc.custoOpMensal],
@@ -355,7 +349,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         ["CMV", formatCurrency(values.cmv)],
         ["Despesas Administrativas", formatCurrency(values.despesasAdm)],
         ["Contas a Receber (pendentes)", formatCurrency(values.contasReceber)],
-        ["Estoque", formatCurrency(values.estoque)],
         ["Fornecedores (pendentes)", formatCurrency(values.fornecedores)],
         ["Dias do Período", String(values.diasPeriodo)],
       ],
@@ -365,7 +358,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       head: [["Indicador", "Resultado"]],
       body: [
         ["PMR (real)", formatDias(calc.pmr)],
-        ["PME", formatDias(calc.pme)],
         ["PMP (real)", formatDias(calc.pmp)],
         ["Ciclo Financeiro", formatDias(calc.cicloFinanceiro)],
         ["Custo Operacional Mensal", formatCurrency(calc.custoOpMensal)],
@@ -378,9 +370,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       head: [["Memória de Cálculo"]],
       body: [
         [`PMR = média (10% trimmed) de (data_recebimento − data_competência) = ${calc.pmr.toFixed(2)} dias`],
-        [`PME = (Estoque / CMV) × Dias = ${calc.pme.toFixed(2)} dias`],
         [`PMP = média (10% trimmed) de (data_pagamento − data_competência) = ${calc.pmp.toFixed(2)} dias`],
-        [`Ciclo Financeiro = PMR + PME - PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
+        [`Ciclo Financeiro = PMR − PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
         [`Custo Op. Diário = (CMV + Desp. Adm.) / Dias = ${formatCurrency(calc.custoOpDiario)}`],
         [`NCG = Custo Op. Diário × Ciclo Financeiro = ${formatCurrency(calc.ncg)}`],
       ],
@@ -459,10 +450,6 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
               <CurrencyInput value={values.contasReceber} onChange={(v) => update("contasReceber", v)} />
             </div>
             <div>
-              <Label>Estoque (R$) - manual</Label>
-              <CurrencyInput value={values.estoque} onChange={(v) => update("estoque", v)} />
-            </div>
-            <div>
               <Label>Fornecedores pendentes (R$)</Label>
               <CurrencyInput value={values.fornecedores} onChange={(v) => update("fornecedores", v)} />
             </div>
@@ -493,9 +480,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <IndicatorCard label="PMR (real)" value={formatDias(calc.pmr)} color="text-blue-600" />
-        <IndicatorCard label="PME" value={formatDias(calc.pme)} color="text-emerald-600" />
         <IndicatorCard label="PMP (real)" value={formatDias(calc.pmp)} color="text-red-600" />
         <IndicatorCard label="Ciclo Financeiro" value={formatDias(calc.cicloFinanceiro)} color="text-purple-600" />
         <IndicatorCard label="Custo Op. Diário" value={formatCurrency(calc.custoOpDiario)} color="text-amber-600" />
@@ -585,9 +571,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
               <h4 className="font-semibold">Fórmulas</h4>
               <ul className="space-y-1 text-muted-foreground">
                 <li>PMR = média aritmética (com 10% de outliers removidos) das diferenças data_recebimento − data_competência</li>
-                <li>PME = (Estoque / CMV) × Dias</li>
                 <li>PMP = média aritmética (com 10% de outliers removidos) das diferenças data_pagamento − data_competência</li>
-                <li>Ciclo Financeiro = PMR + PME − PMP</li>
+                <li>Ciclo Financeiro = PMR − PMP</li>
                 <li>Custo Op. Diário = (CMV + Desp. Adm.) / Dias</li>
                 <li className="font-semibold text-foreground">NCG = Custo Op. Diário × Ciclo Financeiro</li>
               </ul>
@@ -596,9 +581,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
               <h4 className="font-semibold">Resultado com os valores do período</h4>
               <ul className="space-y-1 text-muted-foreground font-mono text-xs">
                 <li>PMR = <strong>{calc.pmr.toFixed(2)} dias</strong></li>
-                <li>PME = <strong>{calc.pme.toFixed(2)} dias</strong></li>
                 <li>PMP = <strong>{calc.pmp.toFixed(2)} dias</strong></li>
-                <li>Ciclo = {calc.pmr.toFixed(2)} + {calc.pme.toFixed(2)} − {calc.pmp.toFixed(2)} = <strong>{calc.cicloFinanceiro.toFixed(2)} dias</strong></li>
+                <li>Ciclo = {calc.pmr.toFixed(2)} − {calc.pmp.toFixed(2)} = <strong>{calc.cicloFinanceiro.toFixed(2)} dias</strong></li>
                 <li>Custo Diário = ({formatCurrency(values.cmv)} + {formatCurrency(values.despesasAdm)}) / {values.diasPeriodo} = <strong>{formatCurrency(calc.custoOpDiario)}</strong></li>
                 <li className="text-foreground">NCG = {formatCurrency(calc.custoOpDiario)} × {calc.cicloFinanceiro.toFixed(2)} = <strong>{formatCurrency(calc.ncg)}</strong></li>
               </ul>
