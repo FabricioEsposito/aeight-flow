@@ -75,7 +75,19 @@ async function fetchAll(table: 'contas_receber' | 'contas_pagar', select: string
 function diffDays(a: string, b: string): number {
   const da = new Date(a + 'T00:00:00').getTime();
   const db = new Date(b + 'T00:00:00').getTime();
-  return Math.max(0, (db - da) / 86400000);
+  return (db - da) / 86400000;
+}
+
+// Média aritmética com remoção de outliers (trimmed mean a 10%) para evitar distorções
+function trimmedMean(values: number[], trimPct = 0.1): number {
+  if (values.length === 0) return 0;
+  if (values.length < 5) {
+    return values.reduce((s, v) => s + v, 0) / values.length;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const cut = Math.floor(sorted.length * trimPct);
+  const trimmed = sorted.slice(cut, sorted.length - cut);
+  return trimmed.reduce((s, v) => s + v, 0) / trimmed.length;
 }
 
 export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
@@ -221,14 +233,10 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
          .lte('data_recebimento', dateRange.to));
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
         !isExcluded(r.plano_conta_id) && r.data_vencimento && r.data_recebimento)));
-      let pmrSum = 0, pmrW = 0;
-      recebidas.forEach((r: any) => {
-        const v = Number(r.valor) || 0;
-        const d = diffDays(r.data_vencimento, r.data_recebimento);
-        pmrSum += d * v;
-        pmrW += v;
-      });
-      const pmrReal = pmrW > 0 ? pmrSum / pmrW : 0;
+      const pmrDias = recebidas
+        .map((r: any) => diffDays(r.data_vencimento, r.data_recebimento))
+        .filter((d: number) => Number.isFinite(d));
+      const pmrReal = trimmedMean(pmrDias);
 
       // PMP real
       const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, data_pagamento, status', q =>
@@ -237,14 +245,10 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
         !isExcluded(r.plano_conta_id) && r.data_vencimento && r.data_pagamento)));
-      let pmpSum = 0, pmpW = 0;
-      pagas.forEach((r: any) => {
-        const v = Number(r.valor) || 0;
-        const d = diffDays(r.data_vencimento, r.data_pagamento);
-        pmpSum += d * v;
-        pmpW += v;
-      });
-      const pmpReal = pmpW > 0 ? pmpSum / pmpW : 0;
+      const pmpDias = pagas
+        .map((r: any) => diffDays(r.data_vencimento, r.data_pagamento))
+        .filter((d: number) => Number.isFinite(d));
+      const pmpReal = trimmedMean(pmpDias);
 
       setValues(v => ({
         ...v,
@@ -371,9 +375,9 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     autoTable(doc, {
       head: [["Memória de Cálculo"]],
       body: [
-        [`PMR = média ponderada(data_recebimento - data_vencimento) das contas recebidas no período = ${calc.pmr.toFixed(2)} dias`],
+        [`PMR = média (10% trimmed) de (data_recebimento - data_vencimento) = ${calc.pmr.toFixed(2)} dias`],
         [`PME = (Estoque / CMV) × Dias = ${calc.pme.toFixed(2)} dias`],
-        [`PMP = média ponderada(data_pagamento - data_vencimento) das contas pagas no período = ${calc.pmp.toFixed(2)} dias`],
+        [`PMP = média (10% trimmed) de (data_pagamento - data_vencimento) = ${calc.pmp.toFixed(2)} dias`],
         [`Ciclo Financeiro = PMR + PME - PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
         [`Custo Op. Diário = (CMV + Desp. Adm.) / Dias = ${formatCurrency(calc.custoOpDiario)}`],
         [`NCG = Custo Op. Diário × Ciclo Financeiro = ${formatCurrency(calc.ncg)}`],
@@ -578,9 +582,9 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
             <div className="space-y-2">
               <h4 className="font-semibold">Fórmulas</h4>
               <ul className="space-y-1 text-muted-foreground">
-                <li>PMR = média ponderada (data_recebimento − data_vencimento) ponderada por valor</li>
+                <li>PMR = média aritmética (com 10% de outliers removidos) das diferenças data_recebimento − data_vencimento</li>
                 <li>PME = (Estoque / CMV) × Dias</li>
-                <li>PMP = média ponderada (data_pagamento − data_vencimento) ponderada por valor</li>
+                <li>PMP = média aritmética (com 10% de outliers removidos) das diferenças data_pagamento − data_vencimento</li>
                 <li>Ciclo Financeiro = PMR + PME − PMP</li>
                 <li>Custo Op. Diário = (CMV + Desp. Adm.) / Dias</li>
                 <li className="font-semibold text-foreground">NCG = Custo Op. Diário × Ciclo Financeiro</li>
