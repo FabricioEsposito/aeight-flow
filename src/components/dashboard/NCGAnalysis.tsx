@@ -326,9 +326,9 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       ["Dias do Período", values.diasPeriodo],
       [],
       ["Indicadores", "Resultado"],
-      ["PMR real (vencimento → recebimento)", calc.pmr],
+      ["PMR real (competência → recebimento)", calc.pmr],
       ["PME (estoque/CMV × dias)", calc.pme],
-      ["PMP real (vencimento → pagamento)", calc.pmp],
+      ["PMP real (competência → pagamento)", calc.pmp],
       ["Ciclo Financeiro (dias)", calc.cicloFinanceiro],
       ["Custo Operacional Mensal", calc.custoOpMensal],
       ["Custo Operacional Diário", calc.custoOpDiario],
@@ -377,9 +377,9 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     autoTable(doc, {
       head: [["Memória de Cálculo"]],
       body: [
-        [`PMR = média (10% trimmed) de (data_recebimento - data_vencimento) = ${calc.pmr.toFixed(2)} dias`],
+        [`PMR = média (10% trimmed) de (data_recebimento − data_competência) = ${calc.pmr.toFixed(2)} dias`],
         [`PME = (Estoque / CMV) × Dias = ${calc.pme.toFixed(2)} dias`],
-        [`PMP = média (10% trimmed) de (data_pagamento - data_vencimento) = ${calc.pmp.toFixed(2)} dias`],
+        [`PMP = média (10% trimmed) de (data_pagamento − data_competência) = ${calc.pmp.toFixed(2)} dias`],
         [`Ciclo Financeiro = PMR + PME - PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
         [`Custo Op. Diário = (CMV + Desp. Adm.) / Dias = ${formatCurrency(calc.custoOpDiario)}`],
         [`NCG = Custo Op. Diário × Ciclo Financeiro = ${formatCurrency(calc.ncg)}`],
@@ -584,9 +584,9 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
             <div className="space-y-2">
               <h4 className="font-semibold">Fórmulas</h4>
               <ul className="space-y-1 text-muted-foreground">
-                <li>PMR = média aritmética (com 10% de outliers removidos) das diferenças data_recebimento − data_vencimento</li>
+                <li>PMR = média aritmética (com 10% de outliers removidos) das diferenças data_recebimento − data_competência</li>
                 <li>PME = (Estoque / CMV) × Dias</li>
-                <li>PMP = média aritmética (com 10% de outliers removidos) das diferenças data_pagamento − data_vencimento</li>
+                <li>PMP = média aritmética (com 10% de outliers removidos) das diferenças data_pagamento − data_competência</li>
                 <li>Ciclo Financeiro = PMR + PME − PMP</li>
                 <li>Custo Op. Diário = (CMV + Desp. Adm.) / Dias</li>
                 <li className="font-semibold text-foreground">NCG = Custo Op. Diário × Ciclo Financeiro</li>
