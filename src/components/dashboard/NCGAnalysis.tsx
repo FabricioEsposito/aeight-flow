@@ -284,12 +284,13 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
 
   const calc = useMemo(() => {
     const dias = values.diasPeriodo > 0 ? values.diasPeriodo : 30;
-    // PMR e PMP: usar valores reais (vencimento → recebimento/pagamento)
-    const pmr = values.pmrReal;
-    const pmp = values.pmpReal;
+    // PMR = (Contas a Receber / Receita) × dias — inclui atrasados e em dia
+    const pmr = values.receita > 0 ? (values.contasReceber / values.receita) * dias : 0;
+    // PMP = (Fornecedores / (CMV + Despesas Adm.)) × dias
+    const custoOpMensal = values.cmv + values.despesasAdm;
+    const pmp = custoOpMensal > 0 ? (values.fornecedores / custoOpMensal) * dias : 0;
     // Ciclo financeiro sem PME (empresa de serviços sem estoque)
     const cicloFinanceiro = pmr - pmp;
-    const custoOpMensal = values.cmv + values.despesasAdm;
     const custoOpDiario = custoOpMensal / dias;
     const ncg = custoOpDiario * cicloFinanceiro;
 
@@ -330,8 +331,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
       ["Dias do Período", values.diasPeriodo],
       [],
       ["Indicadores", "Resultado"],
-      ["PMR real (competência → recebimento)", calc.pmr],
-      ["PMP real (competência → pagamento)", calc.pmp],
+      ["PMR (Contas a Receber / Receita × Dias)", calc.pmr],
+      ["PMP (Fornecedores / Custo Op. × Dias)", calc.pmp],
       ["Ciclo Financeiro (dias)", calc.cicloFinanceiro],
       ["Custo Operacional Mensal", calc.custoOpMensal],
       ["Custo Operacional Diário", calc.custoOpDiario],
@@ -378,8 +379,8 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
     autoTable(doc, {
       head: [["Memória de Cálculo"]],
       body: [
-        [`PMR = média (10% trimmed) de (data_recebimento − data_competência) = ${calc.pmr.toFixed(2)} dias`],
-        [`PMP = média (10% trimmed) de (data_pagamento − data_competência) = ${calc.pmp.toFixed(2)} dias`],
+        [`PMR = (Contas a Receber / Receita) × Dias = (${formatCurrency(values.contasReceber)} / ${formatCurrency(values.receita)}) × ${values.diasPeriodo} = ${calc.pmr.toFixed(2)} dias`],
+        [`PMP = (Fornecedores / (CMV + Desp. Adm.)) × Dias = (${formatCurrency(values.fornecedores)} / ${formatCurrency(calc.custoOpMensal)}) × ${values.diasPeriodo} = ${calc.pmp.toFixed(2)} dias`],
         [`Ciclo Financeiro = PMR − PMP = ${calc.cicloFinanceiro.toFixed(2)} dias`],
         [`Custo Op. Diário = (CMV + Desp. Adm.) / Dias = ${formatCurrency(calc.custoOpDiario)}`],
         [`NCG = Custo Op. Diário × Ciclo Financeiro = ${formatCurrency(calc.ncg)}`],
