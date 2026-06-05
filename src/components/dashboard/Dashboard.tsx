@@ -979,34 +979,32 @@ export function Dashboard() {
         </div>
 
         {/* Filtros */}
-        {analiseAtiva !== 'ncg' && (
-          <div className="flex flex-wrap gap-4">
-            <DateRangeFilter
-              value={datePreset}
-              onChange={(preset, range) => {
-                setDatePreset(preset);
-                if (range) setCustomRange(range);
-              }}
-              customRange={customRange}
+        <div className="flex flex-wrap gap-4">
+          <DateRangeFilter
+            value={datePreset}
+            onChange={(preset, range) => {
+              setDatePreset(preset);
+              if (range) setCustomRange(range);
+            }}
+            customRange={customRange}
+          />
+
+          {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && analiseAtiva !== 'contratos' && (
+            <CentroCustoFilterSelect
+              value={selectedCentroCusto}
+              onValueChange={setSelectedCentroCusto}
+              className="w-[250px]"
             />
+          )}
 
-            {analiseAtiva !== 'caixa' && analiseAtiva !== 'simulacao' && analiseAtiva !== 'contratos' && (
-              <CentroCustoFilterSelect
-                value={selectedCentroCusto}
-                onValueChange={setSelectedCentroCusto}
-                className="w-[250px]"
-              />
-            )}
-
-            {analiseAtiva === 'caixa' && (
-              <ContaBancariaMultiSelect
-                contas={contasBancarias}
-                selectedIds={selectedContaBancaria}
-                onChange={setSelectedContaBancaria}
-              />
-            )}
-          </div>
-        )}
+          {analiseAtiva === 'caixa' && (
+            <ContaBancariaMultiSelect
+              contas={contasBancarias}
+              selectedIds={selectedContaBancaria}
+              onChange={setSelectedContaBancaria}
+            />
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -1504,7 +1502,12 @@ export function Dashboard() {
         )}
 
         {/* NCG */}
-        {analiseAtiva === 'ncg' && <NCGAnalysis />}
+        {analiseAtiva === 'ncg' && (
+          <NCGAnalysis
+            dateRange={getDateRange()}
+            centroCusto={selectedCentroCusto.length > 0 ? selectedCentroCusto : undefined}
+          />
+        )}
       </div>
     </div>
   );
