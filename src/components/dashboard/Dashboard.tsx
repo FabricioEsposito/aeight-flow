@@ -102,7 +102,7 @@ export function Dashboard() {
   const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco: string }>>([]);
   
   // Controle de visualização
-  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao' | 'contratos'>('faturamento');
+  const [analiseAtiva, setAnaliseAtiva] = useState<'faturamento' | 'caixa' | 'dre' | 'credito' | 'cobranca' | 'simulacao' | 'contratos' | 'ncg'>('faturamento');
   const [dreValoresParaSimulacao, setDreValoresParaSimulacao] = useState<DREValues>({
     receita: 0,
     cmv: 0,
