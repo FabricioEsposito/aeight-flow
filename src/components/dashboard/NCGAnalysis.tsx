@@ -233,14 +233,10 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
          .lte('data_recebimento', dateRange.to));
       const recebidas = (await passesCcReceber(recebidasRaw.filter((r: any) =>
         !isExcluded(r.plano_conta_id) && r.data_vencimento && r.data_recebimento)));
-      let pmrSum = 0, pmrW = 0;
-      recebidas.forEach((r: any) => {
-        const v = Number(r.valor) || 0;
-        const d = diffDays(r.data_vencimento, r.data_recebimento);
-        pmrSum += d * v;
-        pmrW += v;
-      });
-      const pmrReal = pmrW > 0 ? pmrSum / pmrW : 0;
+      const pmrDias = recebidas
+        .map((r: any) => diffDays(r.data_vencimento, r.data_recebimento))
+        .filter((d: number) => Number.isFinite(d));
+      const pmrReal = trimmedMean(pmrDias);
 
       // PMP real
       const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_vencimento, data_pagamento, status', q =>
@@ -249,14 +245,10 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
         !isExcluded(r.plano_conta_id) && r.data_vencimento && r.data_pagamento)));
-      let pmpSum = 0, pmpW = 0;
-      pagas.forEach((r: any) => {
-        const v = Number(r.valor) || 0;
-        const d = diffDays(r.data_vencimento, r.data_pagamento);
-        pmpSum += d * v;
-        pmpW += v;
-      });
-      const pmpReal = pmpW > 0 ? pmpSum / pmpW : 0;
+      const pmpDias = pagas
+        .map((r: any) => diffDays(r.data_vencimento, r.data_pagamento))
+        .filter((d: number) => Number.isFinite(d));
+      const pmpReal = trimmedMean(pmpDias);
 
       setValues(v => ({
         ...v,
