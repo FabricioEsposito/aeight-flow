@@ -27,6 +27,7 @@ import { DREValues } from "@/lib/valuation-utils";
 import { AnaliseCreditoClientes } from "./AnaliseCreditoClientes";
 import { ReguaCobranca } from "./ReguaCobranca";
 import { GestaoContratosAnalysis } from "./GestaoContratosAnalysis";
+import { NCGAnalysis } from "./NCGAnalysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContaBancariaMultiSelect } from "@/components/financeiro/ContaBancariaMultiSelect";
 import { calcularFluxoCaixa, prepararMovimentacoes, formatDateLocal } from "@/lib/fluxo-caixa-utils";
