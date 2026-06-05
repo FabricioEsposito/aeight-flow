@@ -959,6 +959,17 @@ export function Dashboard() {
                 <FileText className="w-4 h-4" />
                 Contratos
               </button>
+              <button
+                onClick={() => { setAnaliseAtiva('ncg'); }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  analiseAtiva === 'ncg'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Banknote className="w-4 h-4" />
+                NCG
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4" />
