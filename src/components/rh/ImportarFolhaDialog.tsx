@@ -73,7 +73,7 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
 
     const templateData = records.map(r => {
       const vencDate = new Date(r.data_vencimento + 'T00:00:00');
-      const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
+      const competencia = getCompetenciaFolha(vencDate).label;
 
       const ccMap: Record<string, number> = {};
       r.centros_custo.forEach(cc => { ccMap[cc.codigo] = cc.percentual; });
