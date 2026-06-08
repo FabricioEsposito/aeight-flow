@@ -244,10 +244,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         const matched = records.find(r => {
           const rCnpj = r.fornecedor_cnpj.replace(/\D/g, '');
           const rVencDate = new Date(r.data_vencimento + 'T00:00:00');
-          const rMes = rVencDate.getMonth() + 1;
-          const rAno = rVencDate.getFullYear();
+          const rComp = getCompetenciaFolha(rVencDate);
           const rCat = r.plano_contas_descricao;
-          return rCnpj === cnpj && rMes === compMes && rAno === compAno && rCat === categoriaRaw;
+          return rCnpj === cnpj && rComp.mes === compMes && rComp.ano === compAno && rCat === categoriaRaw;
         });
 
         if (!matched) {
