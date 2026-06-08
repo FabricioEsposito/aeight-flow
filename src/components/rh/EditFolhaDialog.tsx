@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { getCompetenciaFolha } from '@/lib/competencia-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,8 +94,9 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         : record.data_vencimento;
 
       const vencDate = new Date(newDataVencimento + 'T00:00:00');
-      const mesRef = vencDate.getMonth() + 1;
-      const anoRef = vencDate.getFullYear();
+      const comp = getCompetenciaFolha(vencDate);
+      const mesRef = comp.mes;
+      const anoRef = comp.ano;
 
       const valorLiquido = valorParcela;
 

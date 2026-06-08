@@ -12,6 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import * as XLSX from 'xlsx-js-style';
 import { format, parse, isValid } from 'date-fns';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
+import { getCompetenciaFolha } from '@/lib/competencia-utils';
 
 interface ImportarFolhaDialogProps {
   open: boolean;
@@ -72,7 +73,7 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
 
     const templateData = records.map(r => {
       const vencDate = new Date(r.data_vencimento + 'T00:00:00');
-      const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
+      const competencia = getCompetenciaFolha(vencDate).label;
 
       const ccMap: Record<string, number> = {};
       r.centros_custo.forEach(cc => { ccMap[cc.codigo] = cc.percentual; });
@@ -243,10 +244,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         const matched = records.find(r => {
           const rCnpj = r.fornecedor_cnpj.replace(/\D/g, '');
           const rVencDate = new Date(r.data_vencimento + 'T00:00:00');
-          const rMes = rVencDate.getMonth() + 1;
-          const rAno = rVencDate.getFullYear();
+          const rComp = getCompetenciaFolha(rVencDate);
           const rCat = r.plano_contas_descricao;
-          return rCnpj === cnpj && rMes === compMes && rAno === compAno && rCat === categoriaRaw;
+          return rCnpj === cnpj && rComp.mes === compMes && rComp.ano === compAno && rCat === categoriaRaw;
         });
 
         if (!matched) {
@@ -327,8 +327,8 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
           tipo: 'importacao',
           descricao: `Importação de ${rowsToImport.length} registro(s) via planilha`,
           detalhes: detalhesJson as any,
-          mes_referencia: vd.getMonth() + 1,
-          ano_referencia: vd.getFullYear(),
+          mes_referencia: getCompetenciaFolha(vd).mes,
+          ano_referencia: getCompetenciaFolha(vd).ano,
         } as any)
         .select('id')
         .single();
@@ -349,8 +349,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         const valorLiquido = row.newValorLiquido ?? rec.valor_liquido;
         const dataVencimento = row.newDataVencimento ?? rec.data_vencimento;
         const vencDate = new Date(dataVencimento + 'T00:00:00');
-        const mesRef = vencDate.getMonth() + 1;
-        const anoRef = vencDate.getFullYear();
+        const compFolha = getCompetenciaFolha(vencDate);
+        const mesRef = compFolha.mes;
+        const anoRef = compFolha.ano;
 
         const folhaPayload: any = {
           salario_base: salarioBase,

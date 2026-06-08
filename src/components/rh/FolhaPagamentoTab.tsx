@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { CategoriaFilterSelect } from '@/components/financeiro/CategoriaFilterSelect';
+import { getCompetenciaFolha } from '@/lib/competencia-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -338,8 +339,9 @@ export function FolhaPagamentoTab() {
         }
         const folhaRecords = filteredRecords.filter(r => selectedIds.includes(r.parcela_id) && r.folha_id);
         const newDateObj = new Date(data.newDate + 'T00:00:00');
+        const compNew = getCompetenciaFolha(newDateObj);
         for (const r of folhaRecords) {
-          await supabase.from('folha_pagamento').update({ mes_referencia: newDateObj.getMonth() + 1, ano_referencia: newDateObj.getFullYear() }).eq('id', r.folha_id!);
+          await supabase.from('folha_pagamento').update({ mes_referencia: compNew.mes, ano_referencia: compNew.ano }).eq('id', r.folha_id!);
         }
         toast({ title: 'Sucesso', description: `Data de vencimento alterada para ${selectedIds.length} registro(s).` });
       } else if (batchActionType === 'change-status' && batchNewStatus) {
@@ -349,12 +351,13 @@ export function FolhaPagamentoTab() {
           } else {
             // Create folha_pagamento record if it doesn't exist
             const vencDate = new Date(r.data_vencimento + 'T00:00:00');
+            const comp = getCompetenciaFolha(vencDate);
             await supabase.from('folha_pagamento').insert({
               parcela_id: r.parcela_id,
               contrato_id: r.contrato_id,
               fornecedor_id: r.fornecedor_id,
-              mes_referencia: vencDate.getMonth() + 1,
-              ano_referencia: vencDate.getFullYear(),
+              mes_referencia: comp.mes,
+              ano_referencia: comp.ano,
               salario_base: r.salario_base,
               valor_liquido: r.valor_liquido,
               tipo_vinculo: r.tipo_vinculo,
@@ -560,7 +563,7 @@ export function FolhaPagamentoTab() {
             ) : (
               paginatedRecords.map((r) => {
                 const vencDate = new Date(r.data_vencimento + 'T00:00:00');
-                const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
+                const competencia = getCompetenciaFolha(vencDate).label;
                 return (
                   <TableRow key={r.parcela_id}>
                     <TableCell>
@@ -708,7 +711,7 @@ export function FolhaPagamentoTab() {
               fornecedor_razao_social: r.fornecedor_razao_social,
               fornecedor_nome_fantasia: r.fornecedor_nome_fantasia,
               valor_liquido: r.valor_liquido,
-              competencia: `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`,
+              competencia: getCompetenciaFolha(vencDate).label,
               holerite_url: r.holerite_url!,
               fornecedor_emails: r.fornecedor_emails || [],
             };
