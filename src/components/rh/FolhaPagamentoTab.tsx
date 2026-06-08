@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { CompanyTagWithPercent } from '@/components/centro-custos/CompanyBadge';
 import { DateRangeFilter, DateRangePreset } from '@/components/financeiro/DateRangeFilter';
 import { CategoriaFilterSelect } from '@/components/financeiro/CategoriaFilterSelect';
+import { getCompetenciaFolha } from '@/lib/competencia-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
