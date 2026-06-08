@@ -563,7 +563,7 @@ export function FolhaPagamentoTab() {
             ) : (
               paginatedRecords.map((r) => {
                 const vencDate = new Date(r.data_vencimento + 'T00:00:00');
-                const competencia = `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`;
+                const competencia = getCompetenciaFolha(vencDate).label;
                 return (
                   <TableRow key={r.parcela_id}>
                     <TableCell>
