@@ -711,7 +711,7 @@ export function FolhaPagamentoTab() {
               fornecedor_razao_social: r.fornecedor_razao_social,
               fornecedor_nome_fantasia: r.fornecedor_nome_fantasia,
               valor_liquido: r.valor_liquido,
-              competencia: `${String(vencDate.getMonth() + 1).padStart(2, '0')}/${vencDate.getFullYear()}`,
+              competencia: getCompetenciaFolha(vencDate).label,
               holerite_url: r.holerite_url!,
               fornecedor_emails: r.fornecedor_emails || [],
             };
