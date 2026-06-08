@@ -268,6 +268,7 @@ serve(async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "RH Aeight <rh@financeiro.aeight.global>",
       to: emails,
+      cc: ["hello.people@b8one.com"],
       subject,
       html: htmlContent,
       attachments: [
