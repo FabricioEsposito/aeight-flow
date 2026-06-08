@@ -94,8 +94,9 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
         : record.data_vencimento;
 
       const vencDate = new Date(newDataVencimento + 'T00:00:00');
-      const mesRef = vencDate.getMonth() + 1;
-      const anoRef = vencDate.getFullYear();
+      const comp = getCompetenciaFolha(vencDate);
+      const mesRef = comp.mes;
+      const anoRef = comp.ano;
 
       const valorLiquido = valorParcela;
 
