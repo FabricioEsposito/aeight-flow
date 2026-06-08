@@ -87,7 +87,7 @@ function buildHoleriteEmailHtml(
         <!-- Contact -->
         <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; text-align: center;">
           <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Dúvidas? Entre em contato:</p>
-          <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">rh@aeight.global</p>
+          <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">hello.people@b8one.com</p>
         </div>
       </div>
       
