@@ -351,12 +351,13 @@ export function FolhaPagamentoTab() {
           } else {
             // Create folha_pagamento record if it doesn't exist
             const vencDate = new Date(r.data_vencimento + 'T00:00:00');
+            const comp = getCompetenciaFolha(vencDate);
             await supabase.from('folha_pagamento').insert({
               parcela_id: r.parcela_id,
               contrato_id: r.contrato_id,
               fornecedor_id: r.fornecedor_id,
-              mes_referencia: vencDate.getMonth() + 1,
-              ano_referencia: vencDate.getFullYear(),
+              mes_referencia: comp.mes,
+              ano_referencia: comp.ano,
               salario_base: r.salario_base,
               valor_liquido: r.valor_liquido,
               tipo_vinculo: r.tipo_vinculo,
