@@ -327,8 +327,8 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
           tipo: 'importacao',
           descricao: `Importação de ${rowsToImport.length} registro(s) via planilha`,
           detalhes: detalhesJson as any,
-          mes_referencia: vd.getMonth() + 1,
-          ano_referencia: vd.getFullYear(),
+          mes_referencia: getCompetenciaFolha(vd).mes,
+          ano_referencia: getCompetenciaFolha(vd).ano,
         } as any)
         .select('id')
         .single();
