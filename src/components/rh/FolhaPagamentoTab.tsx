@@ -339,8 +339,9 @@ export function FolhaPagamentoTab() {
         }
         const folhaRecords = filteredRecords.filter(r => selectedIds.includes(r.parcela_id) && r.folha_id);
         const newDateObj = new Date(data.newDate + 'T00:00:00');
+        const compNew = getCompetenciaFolha(newDateObj);
         for (const r of folhaRecords) {
-          await supabase.from('folha_pagamento').update({ mes_referencia: newDateObj.getMonth() + 1, ano_referencia: newDateObj.getFullYear() }).eq('id', r.folha_id!);
+          await supabase.from('folha_pagamento').update({ mes_referencia: compNew.mes, ano_referencia: compNew.ano }).eq('id', r.folha_id!);
         }
         toast({ title: 'Sucesso', description: `Data de vencimento alterada para ${selectedIds.length} registro(s).` });
       } else if (batchActionType === 'change-status' && batchNewStatus) {
