@@ -12,6 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import * as XLSX from 'xlsx-js-style';
 import { format, parse, isValid } from 'date-fns';
 import type { FolhaParcelaRecord } from './FolhaPagamentoTab';
+import { getCompetenciaFolha } from '@/lib/competencia-utils';
 
 interface ImportarFolhaDialogProps {
   open: boolean;
