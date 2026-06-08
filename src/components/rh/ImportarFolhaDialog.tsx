@@ -349,8 +349,9 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         const valorLiquido = row.newValorLiquido ?? rec.valor_liquido;
         const dataVencimento = row.newDataVencimento ?? rec.data_vencimento;
         const vencDate = new Date(dataVencimento + 'T00:00:00');
-        const mesRef = vencDate.getMonth() + 1;
-        const anoRef = vencDate.getFullYear();
+        const compFolha = getCompetenciaFolha(vencDate);
+        const mesRef = compFolha.mes;
+        const anoRef = compFolha.ano;
 
         const folhaPayload: any = {
           salario_base: salarioBase,
