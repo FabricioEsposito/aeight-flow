@@ -1129,6 +1129,7 @@ export function Dashboard() {
             variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
             companyTheme={companyTheme}
+            tooltip={inadimplentesTooltip}
           />
           <StatsCard
             title="Saldo Final"
