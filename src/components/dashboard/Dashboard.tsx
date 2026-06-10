@@ -489,6 +489,22 @@ export function Dashboard() {
 
       const contasReceberFluxo = await fetchAllPagesGeneric<any>(buildContasReceberFluxoQuery);
 
+      // Fetch TODOS os inadimplentes (sem filtro de período) — impacta diretamente no fluxo de caixa
+      const buildInadimplentesQuery = () => {
+        let q = supabase
+          .from('contas_receber')
+          .select('valor, data_vencimento, status, centro_custo')
+          .neq('status', 'cancelado')
+          .neq('status', 'pago')
+          .lt('data_vencimento', today)
+          .order('id', { ascending: true });
+        if (selectedCentroCusto.length > 0) {
+          q = q.in('centro_custo', selectedCentroCusto);
+        }
+        return q;
+      };
+      const inadimplentesAll = await fetchAllPagesGeneric<any>(buildInadimplentesQuery);
+
 
       // Fetch Contas a Pagar para estatísticas (pela data de competência)
       let contasPagarQuery = supabase
@@ -570,12 +586,7 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
-      const inadimplentes = contasReceber
-        ?.filter(c => {
-          const todayDate = new Date(today + 'T00:00:00');
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
-          return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
-        })
+      const inadimplentes = inadimplentesAll
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasPagarTotal = contasPagar
