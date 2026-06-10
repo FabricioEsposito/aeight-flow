@@ -89,6 +89,10 @@ export default function ComissionamentoParceiros() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
 
+  // Edição inline de percentual de comissão
+  const [editingComissaoId, setEditingComissaoId] = useState<string | null>(null);
+  const [editingComissaoValue, setEditingComissaoValue] = useState<string>("");
+
   const { user } = useAuth();
   const { permissions } = useUserRole();
   const { toast } = useToast();
