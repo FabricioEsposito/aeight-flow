@@ -459,6 +459,7 @@ export default function Extrato() {
           'Agência Origem': cb?.agencia || '',
           'Conta Origem': cb?.conta || '',
           'Linha Digitável': linhaDigitavelMap.get(l.id) || '',
+          'Chave PIX': forn?.chave_pix || '',
         };
       });
 
@@ -467,7 +468,7 @@ export default function Extrato() {
       ws['!cols'] = [
         { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 18 },
         { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
-        { wch: 12 }, { wch: 15 }, { wch: 55 },
+        { wch: 12 }, { wch: 15 }, { wch: 55 }, { wch: 30 },
       ];
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
       for (let R = range.s.r + 1; R <= range.e.r; R++) {
