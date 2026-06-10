@@ -88,6 +88,7 @@ export function Dashboard() {
     valorPago: 0,
   });
   const [inadimplentesTooltip, setInadimplentesTooltip] = useState<React.ReactNode>(null);
+  const [pagarAtrasadoTooltip, setPagarAtrasadoTooltip] = useState<React.ReactNode>(null);
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [faturamentoClienteData, setFaturamentoClienteData] = useState<FaturamentoClienteData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
@@ -511,7 +512,7 @@ export function Dashboard() {
       const buildPagarAtrasadoQuery = () => {
         let q = supabase
           .from('contas_pagar')
-          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo')
+          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo, fornecedor_id, fornecedores(razao_social, nome_fantasia)')
           .neq('status', 'cancelado')
           .neq('status', 'pago')
           .order('id', { ascending: true });
@@ -652,6 +653,40 @@ export function Dashboard() {
           return refDate && new Date(refDate + 'T00:00:00') < todayDate;
         })
         .reduce((sum: number, c: any) => sum + Number(c.valor), 0) || 0;
+
+      // Tooltip de À Pagar Atrasado (maior → menor)
+      const todayDateForTooltip = new Date(today + 'T00:00:00');
+      const pagarTooltipItems = pagarAtrasadoAll
+        .filter((c: any) => {
+          const refDate = c.data_vencimento_original || c.data_vencimento;
+          return refDate && new Date(refDate + 'T00:00:00') < todayDateForTooltip;
+        })
+        .map((c: any) => {
+          const forn = c.fornecedores;
+          const nome = forn?.nome_fantasia || forn?.razao_social || 'Sem Fornecedor';
+          return { nome, valor: Number(c.valor) || 0 };
+        })
+        .filter((item: { valor: number }) => item.valor > 0)
+        .sort((a: { valor: number }, b: { valor: number }) => b.valor - a.valor);
+
+      setPagarAtrasadoTooltip(
+        <div className="space-y-2">
+          <p className="font-semibold text-sm">À Pagar Atrasado (maior → menor)</p>
+          <div className="space-y-1">
+            {pagarTooltipItems.slice(0, 20).map((item: { nome: string; valor: number }, idx: number) => (
+              <div key={idx} className="flex justify-between gap-4 text-xs">
+                <span className="truncate max-w-[200px]">{item.nome}</span>
+                <span className="tabular-nums whitespace-nowrap">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}
+                </span>
+              </div>
+            ))}
+          </div>
+          {pagarTooltipItems.length > 20 && (
+            <p className="text-xs text-muted-foreground italic">...e mais {pagarTooltipItems.length - 20} itens</p>
+          )}
+        </div>
+      );
 
       // Faturamento por mês (Receita de Serviços)
       const faturamentoReceitaServicos = contasReceber
@@ -1130,6 +1165,7 @@ export function Dashboard() {
             variant="destructive"
             changeType={stats.pagarAtrasado > 0 ? "negative" : "neutral"}
             companyTheme={companyTheme}
+            tooltip={pagarAtrasadoTooltip}
           />
           <StatsCard
             title="Contas a Receber"
