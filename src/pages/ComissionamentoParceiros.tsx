@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Check, X, Send, Eye, RotateCcw } from "lucide-react";
+import { Check, X, Send, Eye, RotateCcw, Pencil } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
