@@ -1450,6 +1450,7 @@ export type Database = {
       }
       historico_baixas: {
         Row: {
+          conta_bancaria_id: string | null
           created_at: string
           created_by: string | null
           data_baixa: string
@@ -1462,6 +1463,7 @@ export type Database = {
           valor_restante: number
         }
         Insert: {
+          conta_bancaria_id?: string | null
           created_at?: string
           created_by?: string | null
           data_baixa: string
@@ -1474,6 +1476,7 @@ export type Database = {
           valor_restante: number
         }
         Update: {
+          conta_bancaria_id?: string | null
           created_at?: string
           created_by?: string | null
           data_baixa?: string
@@ -1485,7 +1488,15 @@ export type Database = {
           valor_baixa?: number
           valor_restante?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "historico_baixas_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lancamentos_centros_custo: {
         Row: {
