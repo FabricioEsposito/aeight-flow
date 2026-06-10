@@ -212,7 +212,7 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Valor Baixado</p>
                           <p className="text-sm font-semibold text-emerald-600">
@@ -226,7 +226,15 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Valor Residual</p>
+                          <p className="text-xs text-muted-foreground">Conta Bancária</p>
+                          <p className="text-sm font-medium">
+                            {baixa.conta_bancaria
+                              ? `${baixa.conta_bancaria.banco || '-'}${baixa.conta_bancaria.agencia ? ` · Ag ${baixa.conta_bancaria.agencia}` : ''}${baixa.conta_bancaria.conta ? ` · Cc ${baixa.conta_bancaria.conta}` : ''}`
+                              : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Saldo Residual</p>
                           <p className="text-sm font-semibold text-amber-600">
                             {formatCurrency(baixa.valor_restante)}
                           </p>
