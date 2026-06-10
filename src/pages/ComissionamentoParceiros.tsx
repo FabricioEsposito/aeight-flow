@@ -588,7 +588,41 @@ export default function ComissionamentoParceiros() {
                         <TableCell>{p.contrato_numero}</TableCell>
                         <TableCell>{format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
                         <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
-                        <TableCell className="text-right">{p.percentual_comissao.toFixed(2)}%</TableCell>
+                        <TableCell className="text-right">
+                          {editingComissaoId === p.id ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <Input
+                                className="w-[70px] h-7 text-right text-sm"
+                                value={editingComissaoValue}
+                                onChange={(e) => setEditingComissaoValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveComissaoPercentual(p);
+                                  if (e.key === 'Escape') setEditingComissaoId(null);
+                                }}
+                                autoFocus
+                              />
+                              <span className="text-xs">%</span>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveComissaoPercentual(p)}>
+                                <Check className="h-3 w-3 text-green-600" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingComissaoId(null)}>
+                                <X className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              className="inline-flex items-center gap-1 hover:underline cursor-pointer"
+                              onClick={() => {
+                                setEditingComissaoId(p.id);
+                                setEditingComissaoValue(p.percentual_comissao.toFixed(2));
+                              }}
+                              title="Clique para editar o percentual desta venda"
+                            >
+                              {p.percentual_comissao.toFixed(2)}%
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium text-primary">{formatCurrency(p.valor_comissao)}</TableCell>
                       </TableRow>
                     ))}
