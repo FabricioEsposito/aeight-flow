@@ -145,7 +145,7 @@ export function StatsCard({
       <TooltipProvider delayDuration={150}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="cursor-help">
+            <div className="cursor-help h-full w-full">
               <CardContentInner {...props} />
             </div>
           </TooltipTrigger>
