@@ -231,6 +231,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
             conta: submitData.conta,
             tipo_conta_bancaria: submitData.tipo_conta_bancaria,
             tipo_transferencia: submitData.tipo_transferencia,
+            chave_pix: submitData.chave_pix,
           })
           .select('id')
           .single();
