@@ -491,11 +491,11 @@ export function Dashboard() {
 
       const contasReceberFluxo = await fetchAllPagesGeneric<any>(buildContasReceberFluxoQuery);
 
-      // Inadimplentes — respeita filtros de centro de custo e período (vencimento dentro do range)
+      // Inadimplentes — todo período; respeita centro de custo e conta bancária
       const buildInadimplentesQuery = () => {
         let q = supabase
           .from('contas_receber')
-          .select('valor, data_vencimento, status, centro_custo, cliente_id, clientes(razao_social, nome_fantasia)')
+          .select('valor, data_vencimento, status, centro_custo, conta_bancaria_id, cliente_id, clientes(razao_social, nome_fantasia)')
           .neq('status', 'cancelado')
           .neq('status', 'pago')
           .lt('data_vencimento', today)
@@ -503,37 +503,30 @@ export function Dashboard() {
         if (selectedCentroCusto.length > 0) {
           q = q.in('centro_custo', selectedCentroCusto);
         }
-        if (dateRange) {
-          q = q.gte('data_vencimento', dateRange.from).lte('data_vencimento', dateRange.to);
+        if (selectedContaBancaria.length > 0) {
+          q = q.in('conta_bancaria_id', selectedContaBancaria);
         }
         return q;
       };
       const inadimplentesAll = await fetchAllPagesGeneric<any>(buildInadimplentesQuery);
 
-      // À Pagar Atrasado — respeita filtros de centro de custo e período (vencimento original dentro do range)
+      // À Pagar Atrasado — todo período; respeita centro de custo e conta bancária
       const buildPagarAtrasadoQuery = () => {
         let q = supabase
           .from('contas_pagar')
-          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo, fornecedor_id, fornecedores(razao_social, nome_fantasia)')
+          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo, conta_bancaria_id, fornecedor_id, fornecedores(razao_social, nome_fantasia)')
           .neq('status', 'cancelado')
           .neq('status', 'pago')
           .order('id', { ascending: true });
         if (selectedCentroCusto.length > 0) {
           q = q.in('centro_custo', selectedCentroCusto);
         }
-        if (dateRange) {
-          // filtra por data_vencimento (banco) — refinado abaixo no client por data_vencimento_original
-          q = q.gte('data_vencimento', dateRange.from).lte('data_vencimento', dateRange.to);
+        if (selectedContaBancaria.length > 0) {
+          q = q.in('conta_bancaria_id', selectedContaBancaria);
         }
         return q;
       };
-      const pagarAtrasadoAllRaw = await fetchAllPagesGeneric<any>(buildPagarAtrasadoQuery);
-      const pagarAtrasadoAll = dateRange
-        ? pagarAtrasadoAllRaw.filter((c: any) => {
-            const refDate = c.data_vencimento_original || c.data_vencimento;
-            return refDate && refDate >= dateRange.from && refDate <= dateRange.to;
-          })
-        : pagarAtrasadoAllRaw;
+      const pagarAtrasadoAll = await fetchAllPagesGeneric<any>(buildPagarAtrasadoQuery);
 
       // Montar tooltip com lista de inadimplentes ordenada decrescente por valor
       const tooltipItems = inadimplentesAll
