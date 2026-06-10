@@ -506,6 +506,22 @@ export function Dashboard() {
       };
       const inadimplentesAll = await fetchAllPagesGeneric<any>(buildInadimplentesQuery);
 
+      // Fetch TODOS os pagamentos atrasados (sem filtro de período) — usa data_vencimento_original
+      // para refletir a real necessidade de caixa, mesmo que o vencimento tenha sido postergado.
+      const buildPagarAtrasadoQuery = () => {
+        let q = supabase
+          .from('contas_pagar')
+          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo')
+          .neq('status', 'cancelado')
+          .neq('status', 'pago')
+          .order('id', { ascending: true });
+        if (selectedCentroCusto.length > 0) {
+          q = q.in('centro_custo', selectedCentroCusto);
+        }
+        return q;
+      };
+      const pagarAtrasadoAll = await fetchAllPagesGeneric<any>(buildPagarAtrasadoQuery);
+
       // Montar tooltip com lista de inadimplentes ordenada decrescente por valor
       const tooltipItems = inadimplentesAll
         .map((c: any) => {
