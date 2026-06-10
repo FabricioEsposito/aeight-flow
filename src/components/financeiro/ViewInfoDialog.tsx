@@ -45,27 +45,29 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
     
     setLoadingHistorico(true);
     try {
-      // Buscar histórico de baixas para este lançamento
+      const selectClause = '*, conta_bancaria:conta_bancaria_id(banco, agencia, conta)';
+
+      // Buscar histórico de baixas para este lançamento (como originador)
       const { data: historico, error } = await supabase
         .from('historico_baixas')
-        .select('*')
+        .select(selectClause)
         .eq('lancamento_id', data.id)
         .order('created_at', { ascending: true });
 
-      if (!error && historico) {
-        setHistoricoBaixas(historico as HistoricoBaixa[]);
-      }
-
-      // Se não encontrou histórico, verificar se este lançamento é residual de outro
-      if (!historico || historico.length === 0) {
-        const { data: historicoResidual, error: errorResidual } = await supabase
+      if (!error && historico && historico.length > 0) {
+        setHistoricoBaixas(historico as unknown as HistoricoBaixa[]);
+      } else {
+        // Verificar se este lançamento é residual de outro
+        const { data: historicoResidual } = await supabase
           .from('historico_baixas')
-          .select('*')
+          .select(selectClause)
           .eq('lancamento_residual_id', data.id)
           .order('created_at', { ascending: true });
 
-        if (!errorResidual && historicoResidual && historicoResidual.length > 0) {
-          setHistoricoBaixas(historicoResidual as HistoricoBaixa[]);
+        if (historicoResidual && historicoResidual.length > 0) {
+          setHistoricoBaixas(historicoResidual as unknown as HistoricoBaixa[]);
+        } else {
+          setHistoricoBaixas([]);
         }
       }
     } catch (error) {
