@@ -87,6 +87,7 @@ export function Dashboard() {
     valorRecebido: 0,
     valorPago: 0,
   });
+  const [inadimplentesTooltip, setInadimplentesTooltip] = useState<React.ReactNode>(null);
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [faturamentoClienteData, setFaturamentoClienteData] = useState<FaturamentoClienteData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
