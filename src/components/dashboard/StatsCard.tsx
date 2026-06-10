@@ -20,6 +20,7 @@ interface StatsCardProps {
   subtitle?: string;
   variant?: CardVariant;
   companyTheme?: CompanyThemeColors | null;
+  tooltip?: React.ReactNode;
 }
 
 const variantStyles: Record<CardVariant, {
