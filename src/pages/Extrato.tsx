@@ -396,7 +396,7 @@ export default function Extrato() {
       const fornecedorIds = [...new Set(pendentesParaPagar.map(l => l.fornecedor_id).filter(Boolean))] as string[];
       const { data: fornecedores } = await supabase
         .from('fornecedores')
-        .select('id, razao_social, cnpj_cpf, banco_codigo, agencia, conta, tipo_conta_bancaria, tipo_transferencia')
+        .select('id, razao_social, cnpj_cpf, banco_codigo, agencia, conta, tipo_conta_bancaria, tipo_transferencia, chave_pix')
         .in('id', fornecedorIds);
 
       const fornecedorMap = new Map<string, any>();
