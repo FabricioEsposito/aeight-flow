@@ -396,7 +396,7 @@ export default function Extrato() {
       const fornecedorIds = [...new Set(pendentesParaPagar.map(l => l.fornecedor_id).filter(Boolean))] as string[];
       const { data: fornecedores } = await supabase
         .from('fornecedores')
-        .select('id, razao_social, cnpj_cpf, banco_codigo, agencia, conta, tipo_conta_bancaria, tipo_transferencia')
+        .select('id, razao_social, cnpj_cpf, banco_codigo, agencia, conta, tipo_conta_bancaria, tipo_transferencia, chave_pix')
         .in('id', fornecedorIds);
 
       const fornecedorMap = new Map<string, any>();
@@ -459,6 +459,7 @@ export default function Extrato() {
           'Agência Origem': cb?.agencia || '',
           'Conta Origem': cb?.conta || '',
           'Linha Digitável': linhaDigitavelMap.get(l.id) || '',
+          'Chave PIX': forn?.chave_pix || '',
         };
       });
 
@@ -467,7 +468,7 @@ export default function Extrato() {
       ws['!cols'] = [
         { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 18 },
         { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
-        { wch: 12 }, { wch: 15 }, { wch: 55 },
+        { wch: 12 }, { wch: 15 }, { wch: 55 }, { wch: 30 },
       ];
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
       for (let R = range.s.r + 1; R <= range.e.r; R++) {
