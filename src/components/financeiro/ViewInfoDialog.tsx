@@ -19,6 +19,8 @@ interface HistoricoBaixa {
   lancamento_residual_id: string | null;
   observacao: string | null;
   created_at: string;
+  conta_bancaria_id: string | null;
+  conta_bancaria?: { banco?: string | null; agencia?: string | null; conta?: string | null } | null;
 }
 
 interface ViewInfoDialogProps {
