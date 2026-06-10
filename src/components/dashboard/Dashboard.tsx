@@ -1244,7 +1244,7 @@ export function Dashboard() {
                       color: "hsl(47, 96%, 53%)",
                     },
                   }}
-                  className="h-80"
+                  className="h-full w-full min-h-[320px]"
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={fluxoCaixaData}>
