@@ -193,6 +193,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
       if (!submitData.conta) submitData.conta = null;
       if (!submitData.tipo_conta_bancaria) submitData.tipo_conta_bancaria = null;
       if (!submitData.tipo_transferencia) submitData.tipo_transferencia = null;
+      if (!submitData.chave_pix) submitData.chave_pix = null;
 
       if (fornecedor?.id) {
         const { error } = await supabase
