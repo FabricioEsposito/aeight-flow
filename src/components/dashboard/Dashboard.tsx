@@ -87,6 +87,7 @@ export function Dashboard() {
     valorRecebido: 0,
     valorPago: 0,
   });
+  const [inadimplentesTooltip, setInadimplentesTooltip] = useState<React.ReactNode>(null);
   const [faturamentoData, setFaturamentoData] = useState<FaturamentoData[]>([]);
   const [faturamentoClienteData, setFaturamentoClienteData] = useState<FaturamentoClienteData[]>([]);
   const [fluxoCaixaData, setFluxoCaixaData] = useState<FluxoCaixaData[]>([]);
@@ -493,7 +494,7 @@ export function Dashboard() {
       const buildInadimplentesQuery = () => {
         let q = supabase
           .from('contas_receber')
-          .select('valor, data_vencimento, status, centro_custo')
+          .select('valor, data_vencimento, status, centro_custo, cliente_id, clientes(razao_social, nome_fantasia)')
           .neq('status', 'cancelado')
           .neq('status', 'pago')
           .lt('data_vencimento', today)
@@ -504,6 +505,35 @@ export function Dashboard() {
         return q;
       };
       const inadimplentesAll = await fetchAllPagesGeneric<any>(buildInadimplentesQuery);
+
+      // Montar tooltip com lista de inadimplentes ordenada decrescente por valor
+      const tooltipItems = inadimplentesAll
+        .map((c: any) => {
+          const cliente = c.clientes;
+          const nome = cliente?.nome_fantasia || cliente?.razao_social || 'Sem Cliente';
+          return { nome, valor: Number(c.valor) || 0 };
+        })
+        .filter((item: { valor: number }) => item.valor > 0)
+        .sort((a: { valor: number }, b: { valor: number }) => b.valor - a.valor);
+
+      setInadimplentesTooltip(
+        <div className="space-y-2">
+          <p className="font-semibold text-sm">Inadimplentes (maior → menor)</p>
+          <div className="space-y-1">
+            {tooltipItems.map((item: { nome: string; valor: number }, idx: number) => (
+              <div key={idx} className="flex justify-between gap-4 text-xs">
+                <span className="truncate max-w-[200px]">{item.nome}</span>
+                <span className="tabular-nums whitespace-nowrap">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}
+                </span>
+              </div>
+            ))}
+          </div>
+          {tooltipItems.length > 20 && (
+            <p className="text-xs text-muted-foreground italic">...e mais {tooltipItems.length - 20} itens</p>
+          )}
+        </div>
+      );
 
 
       // Fetch Contas a Pagar para estatísticas (pela data de competência)
@@ -1045,6 +1075,7 @@ export function Dashboard() {
             variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
             companyTheme={companyTheme}
+            tooltip={inadimplentesTooltip}
           />
           <StatsCard
             title="% Inadimplentes"
@@ -1098,6 +1129,7 @@ export function Dashboard() {
             variant="destructive"
             changeType={stats.inadimplentes > 0 ? "negative" : "neutral"}
             companyTheme={companyTheme}
+            tooltip={inadimplentesTooltip}
           />
           <StatsCard
             title="Saldo Final"

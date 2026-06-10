@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ interface StatsCardProps {
   subtitle?: string;
   variant?: CardVariant;
   companyTheme?: CompanyThemeColors | null;
+  tooltip?: React.ReactNode;
 }
 
 const variantStyles: Record<CardVariant, {
@@ -65,24 +67,12 @@ const variantStyles: Record<CardVariant, {
   },
 };
 
-export function StatsCard({ 
-  title, 
-  value, 
-  change, 
-  changeType = "neutral", 
-  icon: Icon, 
-  className, 
-  subtitle,
-  variant = "default",
-  companyTheme
-}: StatsCardProps) {
+function CardContentInner({ title, value, change, changeType = "neutral", icon: Icon, className, subtitle, variant = "default", companyTheme }: Omit<StatsCardProps, 'tooltip'>) {
   const styles = variantStyles[variant];
-  
-  // Se temos um tema de empresa, usamos as cores dele
   const hasCompanyTheme = companyTheme && companyTheme.primaryColor;
-  
+
   return (
-    <Card 
+    <Card
       className={cn(
         "relative overflow-hidden transition-all duration-300 border-l-4",
         !hasCompanyTheme && styles.borderColor,
@@ -93,13 +83,12 @@ export function StatsCard({
         borderLeftColor: companyTheme.primaryColor
       } : undefined}
     >
-      {/* Subtle gradient accent */}
       {hasCompanyTheme ? (
-        <div 
+        <div
           className="absolute inset-0 opacity-10"
-          style={{ 
-            background: `linear-gradient(to bottom right, ${companyTheme.primaryColor}, transparent)` 
-          }} 
+          style={{
+            background: `linear-gradient(to bottom right, ${companyTheme.primaryColor}, transparent)`
+          }}
         />
       ) : variant !== "default" ? (
         <div className={cn(
@@ -107,10 +96,10 @@ export function StatsCard({
           styles.accentGradient
         )} />
       ) : null}
-      
+
       <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div 
+        <div
           className={cn(
             "p-2 rounded-lg transition-transform duration-300 hover:scale-110",
             !hasCompanyTheme && styles.iconBg
@@ -119,8 +108,8 @@ export function StatsCard({
             backgroundColor: `${companyTheme.primaryColor}15`
           } : undefined}
         >
-          <Icon 
-            className={cn("h-4 w-4", !hasCompanyTheme && styles.iconColor)} 
+          <Icon
+            className={cn("h-4 w-4", !hasCompanyTheme && styles.iconColor)}
             style={hasCompanyTheme ? { color: companyTheme.primaryColor } : undefined}
           />
         </div>
@@ -136,7 +125,7 @@ export function StatsCard({
           <p className={cn(
             "text-xs mt-1 font-medium",
             changeType === "positive" && "text-success",
-            changeType === "negative" && "text-destructive", 
+            changeType === "negative" && "text-destructive",
             changeType === "neutral" && "text-muted-foreground"
           )}>
             {change}
@@ -145,4 +134,28 @@ export function StatsCard({
       </CardContent>
     </Card>
   );
+}
+
+export function StatsCard({
+  tooltip,
+  ...props
+}: StatsCardProps) {
+  if (tooltip) {
+    return (
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="cursor-help">
+              <CardContentInner {...props} />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-sm max-h-72 overflow-auto">
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return <CardContentInner {...props} />;
 }
