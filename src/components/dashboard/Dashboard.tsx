@@ -643,13 +643,15 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
-      const pagarAtrasado = contasPagar
-        ?.filter(c => {
+      // À Pagar Atrasado: usa data_vencimento_original (fallback p/ data_vencimento) para refletir
+      // o real atraso, ignorando postergações de vencimento. Considera TODOS os atrasados.
+      const pagarAtrasado = pagarAtrasadoAll
+        .filter((c: any) => {
           const todayDate = new Date(today + 'T00:00:00');
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
-          return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
+          const refDate = c.data_vencimento_original || c.data_vencimento;
+          return refDate && new Date(refDate + 'T00:00:00') < todayDate;
         })
-        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
+        .reduce((sum: number, c: any) => sum + Number(c.valor), 0) || 0;
 
       // Faturamento por mês (Receita de Serviços)
       const faturamentoReceitaServicos = contasReceber
