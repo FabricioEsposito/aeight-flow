@@ -1165,6 +1165,7 @@ export function Dashboard() {
             variant="destructive"
             changeType={stats.pagarAtrasado > 0 ? "negative" : "neutral"}
             companyTheme={companyTheme}
+            tooltip={pagarAtrasadoTooltip}
           />
           <StatsCard
             title="Contas a Receber"
