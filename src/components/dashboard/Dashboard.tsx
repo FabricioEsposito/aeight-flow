@@ -586,12 +586,7 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
-      const inadimplentes = contasReceber
-        ?.filter(c => {
-          const todayDate = new Date(today + 'T00:00:00');
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
-          return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
-        })
+      const inadimplentes = inadimplentesAll
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
       const contasPagarTotal = contasPagar
