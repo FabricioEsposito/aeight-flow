@@ -45,6 +45,7 @@ const fornecedorSchema = z.object({
   conta: z.string().optional(),
   tipo_conta_bancaria: z.string().optional(),
   tipo_transferencia: z.string().optional(),
+  chave_pix: z.string().optional(),
 });
 
 type FornecedorFormData = z.infer<typeof fornecedorSchema>;
@@ -95,6 +96,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
       conta: fornecedor?.conta || "",
       tipo_conta_bancaria: fornecedor?.tipo_conta_bancaria || "",
       tipo_transferencia: fornecedor?.tipo_transferencia || "",
+      chave_pix: fornecedor?.chave_pix || "",
     },
   });
 
@@ -191,6 +193,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
       if (!submitData.conta) submitData.conta = null;
       if (!submitData.tipo_conta_bancaria) submitData.tipo_conta_bancaria = null;
       if (!submitData.tipo_transferencia) submitData.tipo_transferencia = null;
+      if (!submitData.chave_pix) submitData.chave_pix = null;
 
       if (fornecedor?.id) {
         const { error } = await supabase
@@ -228,6 +231,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
             conta: submitData.conta,
             tipo_conta_bancaria: submitData.tipo_conta_bancaria,
             tipo_transferencia: submitData.tipo_transferencia,
+            chave_pix: submitData.chave_pix,
           })
           .select('id')
           .single();
@@ -571,6 +575,15 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Chave PIX</Label>
+                <Input
+                  {...register("chave_pix")}
+                  placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"
+                  className="h-8 text-sm"
+                />
               </div>
             </div>
           </div>

@@ -1294,6 +1294,7 @@ export type Database = {
           banco_codigo: string | null
           banco_nome: string | null
           cep: string | null
+          chave_pix: string | null
           cidade: string | null
           cnpj_cpf: string
           complemento: string | null
@@ -1319,6 +1320,7 @@ export type Database = {
           banco_codigo?: string | null
           banco_nome?: string | null
           cep?: string | null
+          chave_pix?: string | null
           cidade?: string | null
           cnpj_cpf: string
           complemento?: string | null
@@ -1344,6 +1346,7 @@ export type Database = {
           banco_codigo?: string | null
           banco_nome?: string | null
           cep?: string | null
+          chave_pix?: string | null
           cidade?: string | null
           cnpj_cpf?: string
           complemento?: string | null
