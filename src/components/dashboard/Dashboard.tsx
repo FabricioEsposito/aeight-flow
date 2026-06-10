@@ -1212,11 +1212,11 @@ export function Dashboard() {
         {/* Fluxo de Caixa Chart - Apenas em Análise de Caixa */}
         {analiseAtiva === 'caixa' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 flex flex-col">
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Fluxo de Caixa Diário</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 min-h-[320px]">
+              <CardContent>
                 <ChartContainer
                   config={{
                     receitaRealizada: {
@@ -1244,7 +1244,7 @@ export function Dashboard() {
                       color: "hsl(47, 96%, 53%)",
                     },
                   }}
-                  className="h-full w-full min-h-[320px]"
+                  className="h-[420px] w-full"
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={fluxoCaixaData}>
