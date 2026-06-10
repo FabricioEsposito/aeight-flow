@@ -576,6 +576,15 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
                   </Select>
                 </div>
               </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Chave PIX</Label>
+                <Input
+                  {...register("chave_pix")}
+                  placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"
+                  className="h-8 text-sm"
+                />
+              </div>
             </div>
           </div>
 
