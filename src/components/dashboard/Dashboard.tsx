@@ -506,6 +506,22 @@ export function Dashboard() {
       };
       const inadimplentesAll = await fetchAllPagesGeneric<any>(buildInadimplentesQuery);
 
+      // Fetch TODOS os pagamentos atrasados (sem filtro de período) — usa data_vencimento_original
+      // para refletir a real necessidade de caixa, mesmo que o vencimento tenha sido postergado.
+      const buildPagarAtrasadoQuery = () => {
+        let q = supabase
+          .from('contas_pagar')
+          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo')
+          .neq('status', 'cancelado')
+          .neq('status', 'pago')
+          .order('id', { ascending: true });
+        if (selectedCentroCusto.length > 0) {
+          q = q.in('centro_custo', selectedCentroCusto);
+        }
+        return q;
+      };
+      const pagarAtrasadoAll = await fetchAllPagesGeneric<any>(buildPagarAtrasadoQuery);
+
       // Montar tooltip com lista de inadimplentes ordenada decrescente por valor
       const tooltipItems = inadimplentesAll
         .map((c: any) => {
@@ -627,13 +643,15 @@ export function Dashboard() {
         })
         .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
 
-      const pagarAtrasado = contasPagar
-        ?.filter(c => {
+      // À Pagar Atrasado: usa data_vencimento_original (fallback p/ data_vencimento) para refletir
+      // o real atraso, ignorando postergações de vencimento. Considera TODOS os atrasados.
+      const pagarAtrasado = pagarAtrasadoAll
+        .filter((c: any) => {
           const todayDate = new Date(today + 'T00:00:00');
-          const isOverdue = c.data_vencimento && new Date(c.data_vencimento + 'T00:00:00') < todayDate;
-          return c.status === 'vencido' || (c.status === 'pendente' && isOverdue);
+          const refDate = c.data_vencimento_original || c.data_vencimento;
+          return refDate && new Date(refDate + 'T00:00:00') < todayDate;
         })
-        .reduce((sum, c) => sum + Number(c.valor), 0) || 0;
+        .reduce((sum: number, c: any) => sum + Number(c.valor), 0) || 0;
 
       // Faturamento por mês (Receita de Serviços)
       const faturamentoReceitaServicos = contasReceber

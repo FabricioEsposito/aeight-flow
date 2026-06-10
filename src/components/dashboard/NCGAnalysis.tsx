@@ -261,16 +261,17 @@ export function NCGAnalysis({ dateRange, centroCusto }: NCGProps) {
         .filter((d: number) => Number.isFinite(d));
       const pmrReal = trimmedMean(pmrDias);
 
-      // PMP real: média de (data_pagamento - data_competencia) com janela mínima de 90 dias
-      const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_competencia, data_pagamento, status', q =>
+      // PMP real: usa data_vencimento_original (fallback data_competencia) como âncora,
+      // refletindo a real necessidade de caixa mesmo quando vencimentos foram postergados.
+      const pagasRaw = await fetchAll('contas_pagar', 'id, valor, plano_conta_id, data_competencia, data_vencimento_original, data_pagamento, status', q =>
         q.eq('status', 'pago')
          .not('data_pagamento', 'is', null)
          .gte('data_pagamento', pmrFrom)
          .lte('data_pagamento', dateRange.to));
       const pagas = (await passesCcPagar(pagasRaw.filter((r: any) =>
-        !isExcluded(r.plano_conta_id) && r.data_competencia && r.data_pagamento)));
+        !isExcluded(r.plano_conta_id) && r.data_pagamento && (r.data_vencimento_original || r.data_competencia))));
       const pmpDias = pagas
-        .map((r: any) => diffDays(r.data_competencia, r.data_pagamento))
+        .map((r: any) => diffDays(r.data_vencimento_original || r.data_competencia, r.data_pagamento))
         .filter((d: number) => Number.isFinite(d));
       const pmpReal = trimmedMean(pmpDias);
 
