@@ -74,7 +74,7 @@ function CardContentInner({ title, value, change, changeType = "neutral", icon: 
   return (
     <Card
       className={cn(
-        "relative overflow-hidden transition-all duration-300 border-l-4",
+        "relative overflow-hidden transition-all duration-300 border-l-4 h-full w-full",
         !hasCompanyTheme && styles.borderColor,
         styles.hoverShadow,
         className
@@ -145,7 +145,7 @@ export function StatsCard({
       <TooltipProvider delayDuration={150}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="cursor-help">
+            <div className="cursor-help h-full w-full">
               <CardContentInner {...props} />
             </div>
           </TooltipTrigger>
