@@ -491,7 +491,7 @@ export function Dashboard() {
 
       const contasReceberFluxo = await fetchAllPagesGeneric<any>(buildContasReceberFluxoQuery);
 
-      // Fetch TODOS os inadimplentes (sem filtro de período) — impacta diretamente no fluxo de caixa
+      // Inadimplentes — respeita filtros de centro de custo e período (vencimento dentro do range)
       const buildInadimplentesQuery = () => {
         let q = supabase
           .from('contas_receber')
@@ -503,12 +503,14 @@ export function Dashboard() {
         if (selectedCentroCusto.length > 0) {
           q = q.in('centro_custo', selectedCentroCusto);
         }
+        if (dateRange) {
+          q = q.gte('data_vencimento', dateRange.from).lte('data_vencimento', dateRange.to);
+        }
         return q;
       };
       const inadimplentesAll = await fetchAllPagesGeneric<any>(buildInadimplentesQuery);
 
-      // Fetch TODOS os pagamentos atrasados (sem filtro de período) — usa data_vencimento_original
-      // para refletir a real necessidade de caixa, mesmo que o vencimento tenha sido postergado.
+      // À Pagar Atrasado — respeita filtros de centro de custo e período (vencimento original dentro do range)
       const buildPagarAtrasadoQuery = () => {
         let q = supabase
           .from('contas_pagar')
@@ -519,9 +521,19 @@ export function Dashboard() {
         if (selectedCentroCusto.length > 0) {
           q = q.in('centro_custo', selectedCentroCusto);
         }
+        if (dateRange) {
+          // filtra por data_vencimento (banco) — refinado abaixo no client por data_vencimento_original
+          q = q.gte('data_vencimento', dateRange.from).lte('data_vencimento', dateRange.to);
+        }
         return q;
       };
-      const pagarAtrasadoAll = await fetchAllPagesGeneric<any>(buildPagarAtrasadoQuery);
+      const pagarAtrasadoAllRaw = await fetchAllPagesGeneric<any>(buildPagarAtrasadoQuery);
+      const pagarAtrasadoAll = dateRange
+        ? pagarAtrasadoAllRaw.filter((c: any) => {
+            const refDate = c.data_vencimento_original || c.data_vencimento;
+            return refDate && refDate >= dateRange.from && refDate <= dateRange.to;
+          })
+        : pagarAtrasadoAllRaw;
 
       // Montar tooltip com lista de inadimplentes ordenada decrescente por valor
       const tooltipItems = inadimplentesAll
