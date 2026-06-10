@@ -19,6 +19,8 @@ interface HistoricoBaixa {
   lancamento_residual_id: string | null;
   observacao: string | null;
   created_at: string;
+  conta_bancaria_id: string | null;
+  conta_bancaria?: { banco?: string | null; agencia?: string | null; conta?: string | null } | null;
 }
 
 interface ViewInfoDialogProps {
@@ -43,27 +45,29 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
     
     setLoadingHistorico(true);
     try {
-      // Buscar histórico de baixas para este lançamento
+      const selectClause = '*, conta_bancaria:conta_bancaria_id(banco, agencia, conta)';
+
+      // Buscar histórico de baixas para este lançamento (como originador)
       const { data: historico, error } = await supabase
         .from('historico_baixas')
-        .select('*')
+        .select(selectClause)
         .eq('lancamento_id', data.id)
         .order('created_at', { ascending: true });
 
-      if (!error && historico) {
-        setHistoricoBaixas(historico as HistoricoBaixa[]);
-      }
-
-      // Se não encontrou histórico, verificar se este lançamento é residual de outro
-      if (!historico || historico.length === 0) {
-        const { data: historicoResidual, error: errorResidual } = await supabase
+      if (!error && historico && historico.length > 0) {
+        setHistoricoBaixas(historico as unknown as HistoricoBaixa[]);
+      } else {
+        // Verificar se este lançamento é residual de outro
+        const { data: historicoResidual } = await supabase
           .from('historico_baixas')
-          .select('*')
+          .select(selectClause)
           .eq('lancamento_residual_id', data.id)
           .order('created_at', { ascending: true });
 
-        if (!errorResidual && historicoResidual && historicoResidual.length > 0) {
-          setHistoricoBaixas(historicoResidual as HistoricoBaixa[]);
+        if (historicoResidual && historicoResidual.length > 0) {
+          setHistoricoBaixas(historicoResidual as unknown as HistoricoBaixa[]);
+        } else {
+          setHistoricoBaixas([]);
         }
       }
     } catch (error) {
@@ -208,7 +212,7 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Valor Baixado</p>
                           <p className="text-sm font-semibold text-emerald-600">
@@ -222,7 +226,15 @@ export function ViewInfoDialog({ open, onOpenChange, data, type }: ViewInfoDialo
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Valor Residual</p>
+                          <p className="text-xs text-muted-foreground">Conta Bancária</p>
+                          <p className="text-sm font-medium">
+                            {baixa.conta_bancaria
+                              ? `${baixa.conta_bancaria.banco || '-'}${baixa.conta_bancaria.agencia ? ` · Ag ${baixa.conta_bancaria.agencia}` : ''}${baixa.conta_bancaria.conta ? ` · Cc ${baixa.conta_bancaria.conta}` : ''}`
+                              : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Saldo Residual</p>
                           <p className="text-sm font-semibold text-amber-600">
                             {formatCurrency(baixa.valor_restante)}
                           </p>

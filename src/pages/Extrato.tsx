@@ -1136,6 +1136,7 @@ export default function Extrato() {
             data_baixa: data.paymentDate,
             valor_restante: remainingAmount,
             lancamento_residual_id: newRecord?.id || null,
+            conta_bancaria_id: lancOriginal.conta_bancaria_id,
             observacao: `Baixa parcial de ${formatCurrencyExport(data.paidAmount)} - saldo residual: ${formatCurrencyExport(remainingAmount)} com vencimento em ${data.remainingDueDate}`,
             created_by: userData?.user?.id,
           });
@@ -1181,142 +1182,25 @@ export default function Extrato() {
 
     try {
       const { lancamento } = statusChangeData;
-      const table = lancamento.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
-      const dateField = lancamento.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
-      
-      // CASO 1: Este registro É uma "Baixa Parcial" (é o lancamento_residual_id no histórico)
-      // Nesse caso, devemos devolver o valor ao lançamento original e excluir este registro
-      const { data: baixaComoResidual } = await supabase
-        .from('historico_baixas')
-        .select('*')
-        .eq('lancamento_residual_id', lancamento.id)
-        .eq('tipo_lancamento', lancamento.origem);
+      const { revertBaixa } = await import('@/lib/baixa-utils');
+      const result = await revertBaixa(lancamento.id, lancamento.origem as 'pagar' | 'receber');
 
-      if (baixaComoResidual && baixaComoResidual.length > 0) {
-        const baixa = baixaComoResidual[0];
-        const originalId = baixa.lancamento_id;
-
-        // Buscar o lançamento original para somar o valor de volta
-        const { data: lancOriginal } = await supabase
-          .from(table)
-          .select('valor')
-          .eq('id', originalId)
-          .single();
-
-        if (lancOriginal) {
-          const valorRecomposto = Number(lancOriginal.valor) + Number(baixa.valor_baixa);
-
-          // Atualizar o lançamento original somando o valor de volta
-          await supabase
-            .from(table)
-            .update({ valor: valorRecomposto })
-            .eq('id', originalId);
-
-          // Atualizar parcela do contrato com valor recomposto
-          const { data: lancOriginalFull } = await supabase
-            .from(table)
-            .select('parcela_id')
-            .eq('id', originalId)
-            .maybeSingle();
-          if (lancOriginalFull?.parcela_id) {
-            await supabase.from('parcelas_contrato').update({ valor: valorRecomposto }).eq('id', lancOriginalFull.parcela_id);
-          }
-
-          // Excluir o registro de histórico desta baixa
-          await supabase
-            .from('historico_baixas')
-            .delete()
-            .eq('id', baixa.id);
-
-          // Excluir este registro de baixa parcial (o "pago")
-          await supabase
-            .from(table)
-            .delete()
-            .eq('id', lancamento.id);
-
-          toast({
-            title: "Sucesso",
-            description: `Baixa parcial revertida! Valor de ${formatCurrencyExport(Number(baixa.valor_baixa))} devolvido ao lançamento original (novo saldo: ${formatCurrencyExport(valorRecomposto)}).`,
-          });
-          fetchLancamentos();
-          return;
-        }
+      if (result.blocked) {
+        toast({
+          title: "Reversão bloqueada",
+          description: result.blockedMessage,
+          variant: "destructive",
+        });
+        return;
       }
 
-      // CASO 2: Este é o lançamento ORIGINAL que teve baixas parciais
-      const { data: baixas } = await supabase
-        .from('historico_baixas')
-        .select('valor_baixa, data_baixa, lancamento_residual_id, id')
-        .eq('lancamento_id', lancamento.id)
-        .eq('tipo_lancamento', lancamento.origem);
-
-      let valorRestaurado = lancamento.valor;
-      let dataVencimentoOriginal: string | undefined;
-
-      if (baixas && baixas.length > 0) {
-        const totalBaixado = baixas.reduce((sum, b) => sum + Number(b.valor_baixa), 0);
-        valorRestaurado = lancamento.valor + totalBaixado;
-
-        const { data: lancOriginal } = await supabase
-          .from(table)
-          .select('data_vencimento_original')
-          .eq('id', lancamento.id)
-          .single();
-
-        if (lancOriginal?.data_vencimento_original) {
-          dataVencimentoOriginal = lancOriginal.data_vencimento_original;
-        }
-
-        // Excluir os registros "pago" criados pelas baixas parciais
-        const residualIds = baixas
-          .map(b => b.lancamento_residual_id)
-          .filter((id): id is string => !!id);
-        
-        if (residualIds.length > 0) {
-          await supabase
-            .from(table)
-            .delete()
-            .in('id', residualIds);
-        }
-
-        await supabase
-          .from('historico_baixas')
-          .delete()
-          .eq('lancamento_id', lancamento.id)
-          .eq('tipo_lancamento', lancamento.origem);
-      }
-      
-      const updateData: any = { 
-        status: 'pendente',
-        [dateField]: null,
-        valor: valorRestaurado,
-      };
-
-      if (dataVencimentoOriginal) {
-        updateData.data_vencimento = dataVencimentoOriginal;
-        updateData.data_vencimento_original = null;
-      }
-
-      const { error } = await supabase
-        .from(table)
-        .update(updateData)
-        .eq('id', lancamento.id);
-
-      if (error) throw error;
-
-      // Atualizar parcela do contrato com valor e vencimento restaurados
-      if (lancamento.parcela_id) {
-        const parcelaUpdate: any = { status: 'pendente' };
-        if (valorRestaurado !== lancamento.valor) parcelaUpdate.valor = valorRestaurado;
-        if (dataVencimentoOriginal) parcelaUpdate.data_vencimento = dataVencimentoOriginal;
-        await supabase.from('parcelas_contrato').update(parcelaUpdate).eq('id', lancamento.parcela_id);
+      if (!result.success) {
+        throw new Error(result.message || 'Falha ao reverter baixa');
       }
 
       toast({
         title: "Sucesso",
-        description: baixas && baixas.length > 0 
-          ? `Voltado para em aberto! Valor recomposto para ${formatCurrencyExport(valorRestaurado)}.`
-          : "Voltado para em aberto!",
+        description: result.message,
       });
       fetchLancamentos();
     } catch (error) {
@@ -1667,96 +1551,19 @@ export default function Extrato() {
         const allPaid = selectedLancamentos.every(l => l.status === 'pago');
         const paymentDate = data?.paymentDate || format(new Date(), 'yyyy-MM-dd');
         
+        const { revertBaixa } = await import('@/lib/baixa-utils');
+        let blockedCount = 0;
+        let firstBlockedMsg = '';
+
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';
           const dateField = lanc.origem === 'receber' ? 'data_recebimento' : 'data_pagamento';
           
           if (allPaid) {
-            // CASO 1: Este registro É uma "Baixa Parcial" (é o lancamento_residual_id no histórico)
-            const { data: baixaComoResidual } = await supabase
-              .from('historico_baixas')
-              .select('*')
-              .eq('lancamento_residual_id', lanc.id)
-              .eq('tipo_lancamento', lanc.origem);
-
-            if (baixaComoResidual && baixaComoResidual.length > 0) {
-              const baixa = baixaComoResidual[0];
-              const originalId = baixa.lancamento_id;
-
-              const { data: lancOriginal } = await supabase
-                .from(table)
-                .select('valor')
-                .eq('id', originalId)
-                .maybeSingle();
-
-              if (lancOriginal) {
-                const valorRecomposto = Number(lancOriginal.valor) + Number(baixa.valor_baixa);
-                await supabase.from(table).update({ valor: valorRecomposto }).eq('id', originalId);
-
-                // Atualizar parcela do contrato com valor recomposto
-                const { data: lancOriginalFull } = await supabase
-                  .from(table)
-                  .select('parcela_id')
-                  .eq('id', originalId)
-                  .maybeSingle();
-                if (lancOriginalFull?.parcela_id) {
-                  await supabase.from('parcelas_contrato').update({ valor: valorRecomposto }).eq('id', lancOriginalFull.parcela_id);
-                }
-              }
-
-              await supabase.from('historico_baixas').delete().eq('id', baixa.id);
-              await supabase.from(table).delete().eq('id', lanc.id);
-              continue; // Pula para o próximo lançamento
-            }
-
-            // CASO 2: Este é o lançamento ORIGINAL que teve baixas parciais
-            const { data: baixas } = await supabase
-              .from('historico_baixas')
-              .select('valor_baixa, lancamento_residual_id, id')
-              .eq('lancamento_id', lanc.id)
-              .eq('tipo_lancamento', lanc.origem);
-
-            const updateData: any = {
-              status: 'pendente',
-              [dateField]: null,
-            };
-
-            if (baixas && baixas.length > 0) {
-              const { data: lancOriginalData } = await supabase
-                .from(table)
-                .select('valor, data_vencimento_original')
-                .eq('id', lanc.id)
-                .maybeSingle();
-
-              if (lancOriginalData) {
-                const totalBaixado = baixas.reduce((sum, b) => sum + Number(b.valor_baixa), 0);
-                updateData.valor = Number(lancOriginalData.valor) + totalBaixado;
-
-                if (lancOriginalData.data_vencimento_original) {
-                  updateData.data_vencimento = lancOriginalData.data_vencimento_original;
-                  updateData.data_vencimento_original = null;
-                }
-
-                const residualIds = baixas
-                  .map(b => b.lancamento_residual_id)
-                  .filter((rid): rid is string => !!rid);
-                
-                if (residualIds.length > 0) {
-                  await supabase.from(table).delete().in('id', residualIds);
-                }
-
-                await supabase.from('historico_baixas').delete().eq('lancamento_id', lanc.id).eq('tipo_lancamento', lanc.origem);
-              }
-            }
-
-            await supabase.from(table).update(updateData).eq('id', lanc.id);
-            
-            // Se tiver parcela_id, atualiza também a parcela do contrato
-            if (lanc.parcela_id) {
-              const parcelaUpdate: any = { status: 'pendente' };
-              // NÃO propaga valor para a parcela (valor bruto é imutável).
-              if (updateData.data_vencimento) parcelaUpdate.data_vencimento = updateData.data_vencimento;
-              await supabase.from('parcelas_contrato').update(parcelaUpdate).eq('id', lanc.parcela_id);
+            const result = await revertBaixa(lanc.id, lanc.origem as 'pagar' | 'receber');
+            if (result.blocked) {
+              blockedCount++;
+              if (!firstBlockedMsg) firstBlockedMsg = result.blockedMessage || '';
             }
           } else {
             // Marca como pago usando a data fornecida
@@ -1777,12 +1584,20 @@ export default function Extrato() {
             }
           }
         }
-        toast({
-          title: "Sucesso",
-          description: allPaid 
-            ? `${selectedLancamentos.length} lançamento(s) voltado(s) para em aberto!`
-            : `${selectedLancamentos.length} lançamento(s) marcado(s) como pago/recebido!`,
-        });
+        if (blockedCount > 0) {
+          toast({
+            title: `${blockedCount} reversão(ões) bloqueada(s)`,
+            description: firstBlockedMsg,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Sucesso",
+            description: allPaid 
+              ? `${selectedLancamentos.length} lançamento(s) voltado(s) para em aberto!`
+              : `${selectedLancamentos.length} lançamento(s) marcado(s) como pago/recebido!`,
+          });
+        }
       } else if (batchActionType === 'clone') {
         for (const lanc of selectedLancamentos) {
           const table = lanc.origem === 'receber' ? 'contas_receber' : 'contas_pagar';

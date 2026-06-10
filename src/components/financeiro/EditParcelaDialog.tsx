@@ -85,6 +85,8 @@ export function EditParcelaDialog({
   const [descricao, setDescricao] = useState('');
   const [planoContaId, setPlanoContaId] = useState<string>('');
   const [rateioItems, setRateioItems] = useState<RateioItem[]>([]);
+  const [rateioSource, setRateioSource] = useState<'override' | 'contract' | 'legacy' | 'none'>('none');
+  const [initialRateioSignature, setInitialRateioSignature] = useState<string>('');
   const [contaBancariaId, setContaBancariaId] = useState<string>('');
   const [juros, setJuros] = useState<number>(0);
   const [multa, setMulta] = useState<number>(0);
@@ -97,6 +99,12 @@ export function EditParcelaDialog({
   const [splitAfiliado, setSplitAfiliado] = useState<number>(0);
   const [originalFornecedorId, setOriginalFornecedorId] = useState<string>('');
   const [originalClienteId, setOriginalClienteId] = useState<string>('');
+
+  const computeRateioSignature = (items: RateioItem[]) =>
+    items
+      .map(i => `${i.centro_custo_id}:${Number(i.percentual).toFixed(4)}`)
+      .sort()
+      .join('|');
 
   useEffect(() => {
     if (initialData && open) {
@@ -117,40 +125,83 @@ export function EditParcelaDialog({
       setOriginalFornecedorId(initialData.fornecedor_id || '');
       setOriginalClienteId(initialData.cliente_id || '');
 
-      // Load existing rateio
+      // Load existing rateio with proper fallback chain:
+      // 1) lancamentos_centros_custo (override individual)
+      // 2) contratos_centros_custo (rateio do contrato, quando vinculado)
+      // 3) centro_custo legacy field
       const loadRateio = async () => {
         const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
-        const { data } = await supabase
+
+        // 1) Override individual
+        const { data: override } = await supabase
           .from('lancamentos_centros_custo')
           .select('centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
           .eq(field, initialData.id);
 
-        if (data && data.length > 0) {
-          setRateioItems(data.map((r: any) => ({
+        if (override && override.length > 0) {
+          const items: RateioItem[] = override.map((r: any) => ({
             centro_custo_id: r.centro_custo_id,
             codigo: r.centros_custo?.codigo || '',
             descricao: r.centros_custo?.descricao || '',
             percentual: r.percentual,
-          })));
-        } else if (initialData.centro_custo) {
+          }));
+          setRateioItems(items);
+          setRateioSource('override');
+          setInitialRateioSignature(computeRateioSignature(items));
+          return;
+        }
+
+        // 2) Rateio herdado do contrato (via parcela_id)
+        if (initialData.parcela_id) {
+          const { data: parcela } = await supabase
+            .from('parcelas_contrato')
+            .select('contrato_id')
+            .eq('id', initialData.parcela_id)
+            .maybeSingle();
+          if (parcela?.contrato_id) {
+            const { data: contractRateio } = await supabase
+              .from('contratos_centros_custo')
+              .select('centro_custo_id, percentual, centros_custo:centro_custo_id(id, codigo, descricao)')
+              .eq('contrato_id', parcela.contrato_id);
+            if (contractRateio && contractRateio.length > 0) {
+              const items: RateioItem[] = contractRateio.map((r: any) => ({
+                centro_custo_id: r.centro_custo_id,
+                codigo: r.centros_custo?.codigo || '',
+                descricao: r.centros_custo?.descricao || '',
+                percentual: r.percentual,
+              }));
+              setRateioItems(items);
+              setRateioSource('contract');
+              setInitialRateioSignature(computeRateioSignature(items));
+              return;
+            }
+          }
+        }
+
+        // 3) Fallback legacy
+        if (initialData.centro_custo) {
           const { data: cc } = await supabase
             .from('centros_custo')
             .select('id, codigo, descricao')
             .eq('id', initialData.centro_custo)
             .single();
           if (cc) {
-            setRateioItems([{
+            const items: RateioItem[] = [{
               centro_custo_id: cc.id,
               codigo: cc.codigo,
               descricao: cc.descricao,
               percentual: 100,
-            }]);
-          } else {
-            setRateioItems([]);
+            }];
+            setRateioItems(items);
+            setRateioSource('legacy');
+            setInitialRateioSignature(computeRateioSignature(items));
+            return;
           }
-        } else {
-          setRateioItems([]);
         }
+
+        setRateioItems([]);
+        setRateioSource('none');
+        setInitialRateioSignature('');
       };
       loadRateio();
     }
@@ -199,18 +250,28 @@ export function EditParcelaDialog({
       split_afiliado: tipo === 'entrada' && servicoId === MARKETING_AFILIADOS_SERVICE_ID ? splitAfiliado : null,
     };
 
-    // Save rateio
-    const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
-    await supabase.from('lancamentos_centros_custo').delete().eq(field, initialData.id);
-    if (rateioItems.length > 0) {
-      await supabase.from('lancamentos_centros_custo').insert(
-        rateioItems.map(item => ({
-          [field]: initialData.id,
-          centro_custo_id: item.centro_custo_id,
-          percentual: item.percentual,
-        }))
-      );
+    // Save rateio — only write override if user effectively changed it.
+    // If rateio is unchanged AND came from the contract, leave the inheritance untouched.
+    const currentSignature = computeRateioSignature(rateioItems);
+    const rateioChanged = currentSignature !== initialRateioSignature;
+
+    if (rateioChanged) {
+      const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
+      await supabase.from('lancamentos_centros_custo').delete().eq(field, initialData.id);
+      if (rateioItems.length > 0) {
+        await supabase.from('lancamentos_centros_custo').insert(
+          rateioItems.map(item => ({
+            [field]: initialData.id,
+            centro_custo_id: item.centro_custo_id,
+            percentual: item.percentual,
+          }))
+        );
+      }
+    } else if (rateioSource === 'override') {
+      // Preserve existing override exactly as-is (no-op).
     }
+    // For 'contract', 'legacy', or 'none' with no change, we don't write
+    // anything — the inherited/legacy rateio remains the source of truth.
 
     console.log('[EditParcelaDialog] onSave data:', JSON.stringify(data, null, 2));
     onSave(data);
