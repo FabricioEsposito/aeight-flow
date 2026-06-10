@@ -1212,11 +1212,11 @@ export function Dashboard() {
         {/* Fluxo de Caixa Chart - Apenas em Análise de Caixa */}
         {analiseAtiva === 'caixa' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 flex flex-col">
               <CardHeader>
                 <CardTitle>Fluxo de Caixa Diário</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 min-h-[320px]">
                 <ChartContainer
                   config={{
                     receitaRealizada: {
