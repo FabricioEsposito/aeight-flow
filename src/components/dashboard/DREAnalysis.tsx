@@ -227,10 +227,11 @@ export function DREAnalysis({ dateRange, centroCusto }: DREAnalysisProps) {
         dateRange
       );
 
-      // Excluir categoria 5.1.4 (Aplicações) do DRE
+      // Excluir categorias 5.1.3 (Desconto de Duplicatas) e 5.1.4 (Aplicações) do DRE
+      const DRE_EXCLUDED_CODES = ['5.1.3', '5.1.4'];
       const isExcludedFromDRE = (planoCodigo?: string | null) => {
         if (!planoCodigo) return false;
-        return planoCodigo === '5.1.4' || planoCodigo.startsWith('5.1.4.');
+        return DRE_EXCLUDED_CODES.some(c => planoCodigo === c || planoCodigo.startsWith(c + '.'));
       };
       const receitas = (receitasRaw || []).filter((r: any) => !isExcludedFromDRE(r?.plano_contas?.codigo));
       const despesas = (despesasRaw || []).filter((r: any) => !isExcludedFromDRE(r?.plano_contas?.codigo));
