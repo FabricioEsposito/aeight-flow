@@ -233,17 +233,32 @@ export default function ComissionamentoParceiros() {
         .lte("data_recebimento", format(dateRange.end, "yyyy-MM-dd"));
       if (crErr) throw crErr;
 
+      // Buscar overrides individuais de percentual por parcela (conta_receber)
+      const crIds = (contasReceber || []).map((cr: any) => cr.id);
+      const overrideMap = new Map<string, number>();
+      if (crIds.length > 0) {
+        const { data: overrides } = await (supabase as any)
+          .from("comissao_percentual_override")
+          .select("conta_receber_id, percentual_comissao")
+          .eq("vendedor_id", selectedParceiro)
+          .in("conta_receber_id", crIds);
+        overrides?.forEach((o: any) => {
+          overrideMap.set(o.conta_receber_id, Number(o.percentual_comissao));
+        });
+      }
+
       const result: ParcelaPaga[] = (contasReceber || []).map((cr: any) => {
         const parcela = parcelas?.find((p) => p.id === cr.parcela_id);
         const contrato = contratos?.find((c: any) => c.id === parcela?.contrato_id);
-        const valorComissao = Number(cr.valor) * (percentual / 100);
+        const pctEfetivo = overrideMap.has(cr.id) ? overrideMap.get(cr.id)! : percentual;
+        const valorComissao = Number(cr.valor) * (pctEfetivo / 100);
         return {
           id: cr.id,
           valor: Number(cr.valor),
           data_recebimento: cr.data_recebimento || "",
           cliente: cr.clientes?.nome_fantasia || cr.clientes?.razao_social || "N/A",
           contrato_numero: contrato?.numero_contrato || "N/A",
-          percentual_comissao: percentual,
+          percentual_comissao: pctEfetivo,
           valor_comissao: valorComissao,
         };
       });
