@@ -279,6 +279,34 @@ export default function ComissionamentoParceiros() {
 
   const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+  const handleSaveComissaoPercentual = async (parcela: ParcelaPaga) => {
+    const novoPercentual = parseFloat(editingComissaoValue.replace(',', '.'));
+    if (isNaN(novoPercentual) || novoPercentual < 0 || novoPercentual > 100) {
+      toast({ title: "Valor inválido", description: "O percentual deve ser entre 0 e 100.", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await (supabase as any)
+        .from("comissao_percentual_override")
+        .upsert(
+          {
+            conta_receber_id: parcela.id,
+            vendedor_id: selectedParceiro,
+            percentual_comissao: novoPercentual,
+            created_by: user?.id,
+          },
+          { onConflict: "conta_receber_id,vendedor_id" }
+        );
+      if (error) throw error;
+      toast({ title: "Sucesso", description: `Percentual desta venda atualizado para ${novoPercentual}%.` });
+      setEditingComissaoId(null);
+      fetchParcelasPagas();
+    } catch (e) {
+      console.error("Erro ao atualizar percentual:", e);
+      toast({ title: "Erro", description: "Não foi possível atualizar o percentual.", variant: "destructive" });
+    }
+  };
+
   const handleSolicitarAprovacao = async () => {
     if (!selectedParceiro || !user) return;
     const { mes, ano } = getReferencePeriod();
