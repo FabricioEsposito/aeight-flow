@@ -203,11 +203,14 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
     
     const saldoInicialDia = saldoAcumuladoRealizado;
     
-    // Saldo final realizado = saldo inicial + entradas pagas - saídas pagas
+    // Saldo final realizado = saldo inicial realizado + entradas pagas - saídas pagas
     const saldoFinalRealizadoDia = saldoAcumuladoRealizado + mov.entradaRealizada - mov.saidaRealizada;
     
-    // Saldo final previsto = saldo realizado + pendentes em dia
-    const saldoFinalPrevistoDia = saldoFinalRealizadoDia + mov.entradaPrevista - mov.saidaPrevista;
+    // Saldo final previsto = saldo previsto acumulado + TODAS as movimentações do dia
+    // (realizadas + previstas), garantindo acúmulo cumulativo da previsão
+    const saldoFinalPrevistoDia = saldoAcumuladoPrevisto
+      + mov.entradaRealizada + mov.entradaPrevista
+      - mov.saidaRealizada - mov.saidaPrevista;
 
     fluxoDiario.push({
       date: dia,
@@ -221,8 +224,7 @@ export function calcularFluxoCaixa(params: FluxoCaixaParams): FluxoCaixaResult {
       saldoFinalPrevisto: saldoFinalPrevistoDia
     });
 
-    // Atualizar saldo acumulado para o próximo dia
-    // O saldo inicial do próximo dia = saldo final realizado deste dia
+    // Acumular ambos saldos de forma independente para o próximo dia
     saldoAcumuladoRealizado = saldoFinalRealizadoDia;
     saldoAcumuladoPrevisto = saldoFinalPrevistoDia;
 
