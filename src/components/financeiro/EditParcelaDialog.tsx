@@ -250,18 +250,28 @@ export function EditParcelaDialog({
       split_afiliado: tipo === 'entrada' && servicoId === MARKETING_AFILIADOS_SERVICE_ID ? splitAfiliado : null,
     };
 
-    // Save rateio
-    const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
-    await supabase.from('lancamentos_centros_custo').delete().eq(field, initialData.id);
-    if (rateioItems.length > 0) {
-      await supabase.from('lancamentos_centros_custo').insert(
-        rateioItems.map(item => ({
-          [field]: initialData.id,
-          centro_custo_id: item.centro_custo_id,
-          percentual: item.percentual,
-        }))
-      );
+    // Save rateio — only write override if user effectively changed it.
+    // If rateio is unchanged AND came from the contract, leave the inheritance untouched.
+    const currentSignature = computeRateioSignature(rateioItems);
+    const rateioChanged = currentSignature !== initialRateioSignature;
+
+    if (rateioChanged) {
+      const field = tipo === 'entrada' ? 'conta_receber_id' : 'conta_pagar_id';
+      await supabase.from('lancamentos_centros_custo').delete().eq(field, initialData.id);
+      if (rateioItems.length > 0) {
+        await supabase.from('lancamentos_centros_custo').insert(
+          rateioItems.map(item => ({
+            [field]: initialData.id,
+            centro_custo_id: item.centro_custo_id,
+            percentual: item.percentual,
+          }))
+        );
+      }
+    } else if (rateioSource === 'override') {
+      // Preserve existing override exactly as-is (no-op).
     }
+    // For 'contract', 'legacy', or 'none' with no change, we don't write
+    // anything — the inherited/legacy rateio remains the source of truth.
 
     console.log('[EditParcelaDialog] onSave data:', JSON.stringify(data, null, 2));
     onSave(data);
