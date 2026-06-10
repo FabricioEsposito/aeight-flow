@@ -45,6 +45,7 @@ const fornecedorSchema = z.object({
   conta: z.string().optional(),
   tipo_conta_bancaria: z.string().optional(),
   tipo_transferencia: z.string().optional(),
+  chave_pix: z.string().optional(),
 });
 
 type FornecedorFormData = z.infer<typeof fornecedorSchema>;
