@@ -418,26 +418,43 @@ export default function Extrato() {
         setOcrProgress({ current: 0, total: boletosToProcess.length });
         toast({ title: 'Processando boletos...', description: `Lendo ${boletosToProcess.length} boleto(s) via OCR. Aguarde...` });
 
-        const ocrPromises = boletosToProcess.map(async (l, idx) => {
+        const OCR_TIMEOUT_MS = 30000;
+        const CONCURRENCY = 3;
+
+        const runOcr = async (l: typeof boletosToProcess[number]) => {
           try {
             const filePath = extractFilePathFromUrl(l.link_boleto!, 'faturamento-docs');
-            if (!filePath) return;
+            if (!filePath) {
+              console.warn('OCR skip - file path inválido:', l.id, l.link_boleto);
+              return;
+            }
 
-            const { data, error } = await supabase.functions.invoke('ocr-boleto', {
+            const invokePromise = supabase.functions.invoke('ocr-boleto', {
               body: { file_path: filePath, bucket: 'faturamento-docs' },
             });
+            const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+              setTimeout(() => resolve({ data: null, error: new Error('OCR timeout') }), OCR_TIMEOUT_MS)
+            );
 
-            if (!error && data?.linha_digitavel) {
+            const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as any;
+
+            if (error) {
+              console.error('OCR error for', l.id, error);
+            } else if (data?.linha_digitavel) {
               linhaDigitavelMap.set(l.id, data.linha_digitavel);
             }
           } catch (e) {
-            console.error('OCR error for', l.id, e);
+            console.error('OCR exception for', l.id, e);
           } finally {
             setOcrProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
           }
-        });
+        };
 
-        await Promise.allSettled(ocrPromises);
+        // Processa em lotes para limitar concorrência
+        for (let i = 0; i < boletosToProcess.length; i += CONCURRENCY) {
+          const batch = boletosToProcess.slice(i, i + CONCURRENCY);
+          await Promise.allSettled(batch.map(runOcr));
+        }
         setOcrProgress(null);
       }
 
