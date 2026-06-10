@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Check, X, Send, Eye, RotateCcw } from "lucide-react";
+import { Check, X, Send, Eye, RotateCcw, Pencil } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -88,6 +88,10 @@ export default function ComissionamentoParceiros() {
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+
+  // Edição inline de percentual de comissão
+  const [editingComissaoId, setEditingComissaoId] = useState<string | null>(null);
+  const [editingComissaoValue, setEditingComissaoValue] = useState<string>("");
 
   const { user } = useAuth();
   const { permissions } = useUserRole();
@@ -229,17 +233,32 @@ export default function ComissionamentoParceiros() {
         .lte("data_recebimento", format(dateRange.end, "yyyy-MM-dd"));
       if (crErr) throw crErr;
 
+      // Buscar overrides individuais de percentual por parcela (conta_receber)
+      const crIds = (contasReceber || []).map((cr: any) => cr.id);
+      const overrideMap = new Map<string, number>();
+      if (crIds.length > 0) {
+        const { data: overrides } = await (supabase as any)
+          .from("comissao_percentual_override")
+          .select("conta_receber_id, percentual_comissao")
+          .eq("vendedor_id", selectedParceiro)
+          .in("conta_receber_id", crIds);
+        overrides?.forEach((o: any) => {
+          overrideMap.set(o.conta_receber_id, Number(o.percentual_comissao));
+        });
+      }
+
       const result: ParcelaPaga[] = (contasReceber || []).map((cr: any) => {
         const parcela = parcelas?.find((p) => p.id === cr.parcela_id);
         const contrato = contratos?.find((c: any) => c.id === parcela?.contrato_id);
-        const valorComissao = Number(cr.valor) * (percentual / 100);
+        const pctEfetivo = overrideMap.has(cr.id) ? overrideMap.get(cr.id)! : percentual;
+        const valorComissao = Number(cr.valor) * (pctEfetivo / 100);
         return {
           id: cr.id,
           valor: Number(cr.valor),
           data_recebimento: cr.data_recebimento || "",
           cliente: cr.clientes?.nome_fantasia || cr.clientes?.razao_social || "N/A",
           contrato_numero: contrato?.numero_contrato || "N/A",
-          percentual_comissao: percentual,
+          percentual_comissao: pctEfetivo,
           valor_comissao: valorComissao,
         };
       });
@@ -259,6 +278,34 @@ export default function ComissionamentoParceiros() {
   }, [parcelasPagas, selectedParceiro, parceiros]);
 
   const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+  const handleSaveComissaoPercentual = async (parcela: ParcelaPaga) => {
+    const novoPercentual = parseFloat(editingComissaoValue.replace(',', '.'));
+    if (isNaN(novoPercentual) || novoPercentual < 0 || novoPercentual > 100) {
+      toast({ title: "Valor inválido", description: "O percentual deve ser entre 0 e 100.", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await (supabase as any)
+        .from("comissao_percentual_override")
+        .upsert(
+          {
+            conta_receber_id: parcela.id,
+            vendedor_id: selectedParceiro,
+            percentual_comissao: novoPercentual,
+            created_by: user?.id,
+          },
+          { onConflict: "conta_receber_id,vendedor_id" }
+        );
+      if (error) throw error;
+      toast({ title: "Sucesso", description: `Percentual desta venda atualizado para ${novoPercentual}%.` });
+      setEditingComissaoId(null);
+      fetchParcelasPagas();
+    } catch (e) {
+      console.error("Erro ao atualizar percentual:", e);
+      toast({ title: "Erro", description: "Não foi possível atualizar o percentual.", variant: "destructive" });
+    }
+  };
 
   const handleSolicitarAprovacao = async () => {
     if (!selectedParceiro || !user) return;
@@ -541,7 +588,41 @@ export default function ComissionamentoParceiros() {
                         <TableCell>{p.contrato_numero}</TableCell>
                         <TableCell>{format(new Date(p.data_recebimento + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
                         <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
-                        <TableCell className="text-right">{p.percentual_comissao.toFixed(2)}%</TableCell>
+                        <TableCell className="text-right">
+                          {editingComissaoId === p.id ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <Input
+                                className="w-[70px] h-7 text-right text-sm"
+                                value={editingComissaoValue}
+                                onChange={(e) => setEditingComissaoValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveComissaoPercentual(p);
+                                  if (e.key === 'Escape') setEditingComissaoId(null);
+                                }}
+                                autoFocus
+                              />
+                              <span className="text-xs">%</span>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveComissaoPercentual(p)}>
+                                <Check className="h-3 w-3 text-green-600" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingComissaoId(null)}>
+                                <X className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              className="inline-flex items-center gap-1 hover:underline cursor-pointer"
+                              onClick={() => {
+                                setEditingComissaoId(p.id);
+                                setEditingComissaoValue(p.percentual_comissao.toFixed(2));
+                              }}
+                              title="Clique para editar o percentual desta venda"
+                            >
+                              {p.percentual_comissao.toFixed(2)}%
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium text-primary">{formatCurrency(p.valor_comissao)}</TableCell>
                       </TableRow>
                     ))}
