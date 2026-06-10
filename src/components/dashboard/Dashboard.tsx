@@ -512,7 +512,7 @@ export function Dashboard() {
       const buildPagarAtrasadoQuery = () => {
         let q = supabase
           .from('contas_pagar')
-          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo')
+          .select('valor, data_vencimento, data_vencimento_original, status, centro_custo, fornecedor_id, fornecedores(razao_social, nome_fantasia)')
           .neq('status', 'cancelado')
           .neq('status', 'pago')
           .order('id', { ascending: true });
