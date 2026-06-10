@@ -477,6 +477,7 @@ export default function ContasPagar() {
           data_baixa: data.paymentDate,
           valor_restante: remainingAmount,
           lancamento_residual_id: newRecord?.id || null,
+          conta_bancaria_id: lancOriginal.conta_bancaria_id,
           observacao: `Baixa parcial de ${formatCurrencyValue(data.paidAmount)} - saldo residual: ${formatCurrencyValue(remainingAmount)}`,
           created_by: userData?.user?.id,
         });
