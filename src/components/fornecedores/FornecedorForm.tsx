@@ -96,7 +96,7 @@ export function FornecedorForm({ fornecedor, onClose, onSuccess }: FornecedorFor
       conta: fornecedor?.conta || "",
       tipo_conta_bancaria: fornecedor?.tipo_conta_bancaria || "",
       tipo_transferencia: fornecedor?.tipo_transferencia || "",
-    },
+      chave_pix: fornecedor?.chave_pix || "",
   });
 
   const cnpjValue = watch("cnpj_cpf");
