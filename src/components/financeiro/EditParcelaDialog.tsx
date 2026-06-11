@@ -515,29 +515,18 @@ export function EditParcelaDialog({
             <div className="space-y-2">
               <Label>Valor Líquido — {tipo === 'entrada' ? 'recebido' : 'pago'} (R$)</Label>
               <CurrencyInput
-                value={valorTotal}
-                onChange={(novo) => {
-                  const diff = novo - valorOriginal;
-                  if (diff >= 0) {
-                    setJuros(diff);
-                    setMulta(0);
-                    setDesconto(0);
-                  } else {
-                    setJuros(0);
-                    setMulta(0);
-                    setDesconto(-diff);
-                  }
-                }}
+                value={valorLiquido}
+                onChange={setValorLiquido}
                 placeholder="0,00"
               />
               <p className="text-xs text-muted-foreground">
-                Editar este valor recalcula Juros/Desconto automaticamente para bater com o líquido informado.
+                Valor efetivamente {tipo === 'entrada' ? 'recebido' : 'pago'} (líquido de retenções). Ajuste aqui sem alterar o bruto.
               </p>
             </div>
 
             <div className="bg-muted p-4 rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Valor Original:</span>
+                <span>Valor Bruto (Original):</span>
                 <span className="font-medium">{formatCurrency(valorOriginal)}</span>
               </div>
               {juros > 0 && (
