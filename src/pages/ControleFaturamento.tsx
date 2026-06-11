@@ -256,7 +256,14 @@ export default function ControleFaturamento() {
         const valorLiquidoCalculado = taxaImpostos > 0 && taxaImpostos < 1
           ? round2(valorBruto * (1 - taxaImpostos))
           : valorBruto;
-        const valorLiquido = valorLiquidoLancado > 0 ? valorLiquidoLancado : valorLiquidoCalculado;
+
+        // Para pendentes/vencidos: sempre exibir líquido recalculado a partir do bruto
+        // (evita mostrar bruto como se fosse líquido quando o lançamento ficou sem retenção aplicada).
+        // Para pagos/recebidos: respeitar o líquido efetivamente lançado.
+        const isPagoStatus = item.status === 'pago' || item.status === 'recebido';
+        const valorLiquido = isPagoStatus && valorLiquidoLancado > 0
+          ? valorLiquidoLancado
+          : valorLiquidoCalculado;
 
         return {
           id: item.id,
