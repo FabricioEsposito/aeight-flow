@@ -35,6 +35,7 @@ interface EditParcelaDialogProps {
     centro_custo?: string;
     conta_bancaria_id?: string;
     valor_original: number;
+    valor?: number;
     juros?: number;
     multa?: number;
     desconto?: number;
