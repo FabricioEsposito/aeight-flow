@@ -35,6 +35,7 @@ interface EditParcelaDialogProps {
     centro_custo?: string;
     conta_bancaria_id?: string;
     valor_original: number;
+    valor?: number;
     juros?: number;
     multa?: number;
     desconto?: number;
@@ -208,14 +209,27 @@ export function EditParcelaDialog({
   }, [initialData, open, tipo]);
 
   const [valorOriginal, setValorOriginal] = useState<number>(0);
+  const [valorLiquido, setValorLiquido] = useState<number>(0);
 
   useEffect(() => {
     if (initialData && open) {
       setValorOriginal(initialData.valor_original ?? 0);
+      // O líquido recebido/pago vem do `valor` do lançamento (já com retenções aplicadas).
+      // Se não houver, cai para o bruto +/- ajustes.
+      const liquidoSalvo = initialData.valor;
+      setValorLiquido(
+        liquidoSalvo !== undefined && liquidoSalvo !== null
+          ? Number(liquidoSalvo)
+          : Number(initialData.valor_original ?? 0)
+            + Number(initialData.juros || 0)
+            + Number(initialData.multa || 0)
+            - Number(initialData.desconto || 0)
+      );
     }
   }, [initialData, open]);
 
-  const valorTotal = valorOriginal + juros + multa - desconto;
+  // Valor total efetivamente lançado = líquido recebido/pago (independente do bruto).
+  const valorTotal = valorLiquido;
 
   const fornecedorChanged = tipo === 'saida' && fornecedorId !== originalFornecedorId && originalFornecedorId !== '';
   const clienteChanged = tipo === 'entrada' && clienteId !== originalClienteId && originalClienteId !== '';
@@ -501,29 +515,18 @@ export function EditParcelaDialog({
             <div className="space-y-2">
               <Label>Valor Líquido — {tipo === 'entrada' ? 'recebido' : 'pago'} (R$)</Label>
               <CurrencyInput
-                value={valorTotal}
-                onChange={(novo) => {
-                  const diff = novo - valorOriginal;
-                  if (diff >= 0) {
-                    setJuros(diff);
-                    setMulta(0);
-                    setDesconto(0);
-                  } else {
-                    setJuros(0);
-                    setMulta(0);
-                    setDesconto(-diff);
-                  }
-                }}
+                value={valorLiquido}
+                onChange={setValorLiquido}
                 placeholder="0,00"
               />
               <p className="text-xs text-muted-foreground">
-                Editar este valor recalcula Juros/Desconto automaticamente para bater com o líquido informado.
+                Valor efetivamente {tipo === 'entrada' ? 'recebido' : 'pago'} (líquido de retenções). Ajuste aqui sem alterar o bruto.
               </p>
             </div>
 
             <div className="bg-muted p-4 rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Valor Original:</span>
+                <span>Valor Bruto (Original):</span>
                 <span className="font-medium">{formatCurrency(valorOriginal)}</span>
               </div>
               {juros > 0 && (
