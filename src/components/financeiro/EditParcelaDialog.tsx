@@ -209,14 +209,27 @@ export function EditParcelaDialog({
   }, [initialData, open, tipo]);
 
   const [valorOriginal, setValorOriginal] = useState<number>(0);
+  const [valorLiquido, setValorLiquido] = useState<number>(0);
 
   useEffect(() => {
     if (initialData && open) {
       setValorOriginal(initialData.valor_original ?? 0);
+      // O líquido recebido/pago vem do `valor` do lançamento (já com retenções aplicadas).
+      // Se não houver, cai para o bruto +/- ajustes.
+      const liquidoSalvo = initialData.valor;
+      setValorLiquido(
+        liquidoSalvo !== undefined && liquidoSalvo !== null
+          ? Number(liquidoSalvo)
+          : Number(initialData.valor_original ?? 0)
+            + Number(initialData.juros || 0)
+            + Number(initialData.multa || 0)
+            - Number(initialData.desconto || 0)
+      );
     }
   }, [initialData, open]);
 
-  const valorTotal = valorOriginal + juros + multa - desconto;
+  // Valor total efetivamente lançado = líquido recebido/pago (independente do bruto).
+  const valorTotal = valorLiquido;
 
   const fornecedorChanged = tipo === 'saida' && fornecedorId !== originalFornecedorId && originalFornecedorId !== '';
   const clienteChanged = tipo === 'entrada' && clienteId !== originalClienteId && originalClienteId !== '';
