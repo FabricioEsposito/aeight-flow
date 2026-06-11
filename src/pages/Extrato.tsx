@@ -1322,20 +1322,40 @@ export default function Extrato() {
       
       const dateField = selectedLancamento.cliente_id ? 'data_recebimento' : 'data_pagamento';
       
+      // Detecta se o usuário realmente alterou o bruto ou os ajustes (juros/multa/desconto).
+      // Se nada disso mudou (ex.: só alterou data de vencimento/conta/descrição),
+      // PRESERVAMOS o valor líquido atual — caso contrário sobrescreveríamos
+      // o líquido com o bruto recomputado pelo diálogo.
+      const grossAtual = Number(selectedLancamento.valor_original ?? selectedLancamento.valor ?? 0);
+      const grossNovo = Number(data.valor_original ?? 0);
+      const jurosAtual = Number(selectedLancamento.juros || 0);
+      const multaAtual = Number(selectedLancamento.multa || 0);
+      const descontoAtual = Number(selectedLancamento.desconto || 0);
+      const grossChanged = Math.abs(grossNovo - grossAtual) > 0.01;
+      const ajustesChanged =
+        Math.abs(Number(data.juros || 0) - jurosAtual) > 0.01 ||
+        Math.abs(Number(data.multa || 0) - multaAtual) > 0.01 ||
+        Math.abs(Number(data.desconto || 0) - descontoAtual) > 0.01;
+      const valorMudou = grossChanged || ajustesChanged;
+
       const updateData: any = {
         data_vencimento: data.data_vencimento,
         descricao: data.descricao,
         plano_conta_id: data.plano_conta_id,
         centro_custo: data.centro_custo,
         conta_bancaria_id: data.conta_bancaria_id,
-        juros: data.juros,
-        multa: data.multa,
-        desconto: data.desconto,
-        valor: data.valor_total,
-        valor_original: data.valor_original,
         servico_id: data.servico_id || null,
         [dateField]: data.data_movimentacao || null,
       };
+
+      if (valorMudou) {
+        updateData.juros = data.juros;
+        updateData.multa = data.multa;
+        updateData.desconto = data.desconto;
+        updateData.valor = data.valor_total;
+        updateData.valor_original = data.valor_original;
+      }
+
 
       // Split afiliado apenas em contas a receber
       if (selectedLancamento.cliente_id) {
