@@ -114,6 +114,7 @@ export default function NovoContrato() {
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
+  const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState('');
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
 
   // Serviços disponíveis
