@@ -102,6 +102,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         ano_referencia: ano,
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
         arquivo_path: arquivoPath,
+        xml_path: tipo === 'nf_mensal' ? xmlPath : null,
         status: initialStatus,
       }).select('id').single();
       if (error) throw error;
