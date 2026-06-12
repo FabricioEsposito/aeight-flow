@@ -561,6 +561,7 @@ export type Database = {
           is_beneficio_funcionario: boolean | null
           is_folha_funcionario: boolean | null
           link_contrato: string | null
+          link_planilha_rateio: string | null
           numero_contrato: string
           observacoes_faturamento: string | null
           parceiro_id: string | null
@@ -607,6 +608,7 @@ export type Database = {
           is_beneficio_funcionario?: boolean | null
           is_folha_funcionario?: boolean | null
           link_contrato?: string | null
+          link_planilha_rateio?: string | null
           numero_contrato: string
           observacoes_faturamento?: string | null
           parceiro_id?: string | null
@@ -653,6 +655,7 @@ export type Database = {
           is_beneficio_funcionario?: boolean | null
           is_folha_funcionario?: boolean | null
           link_contrato?: string | null
+          link_planilha_rateio?: string | null
           numero_contrato?: string
           observacoes_faturamento?: string | null
           parceiro_id?: string | null
