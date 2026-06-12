@@ -88,6 +88,7 @@ export default function EditarContratoCompleto() {
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
+  const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState('');
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
   const [parcelas, setParcelas] = useState<any[]>([]);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
