@@ -85,31 +85,12 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
 
       setSubmitting(true);
 
-      // Determine initial status:
-      // - Reembolso: if has leader → pendente_lider; else skip to analyst
-      // - NF Mensal: always skip leader approval, go directly to analyst
-      let initialStatus = 'aprovado_lider';
-      if (tipo === 'reembolso') {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('grupo_id')
-          .eq('id', user!.id)
-          .maybeSingle();
-        const grupoId = (prof as any)?.grupo_id;
-        if (grupoId) {
-          const { data: grupo } = await supabase
-            .from('grupos_area')
-            .select('lider_user_id')
-            .eq('id', grupoId)
-            .maybeSingle();
-          const liderId = (grupo as any)?.lider_user_id;
-          if (liderId && liderId !== user!.id) {
-            initialStatus = 'pendente_lider';
-          }
-        }
-      }
+      // Initial status:
+      // - Reembolso: SEMPRE vai para análise do RH analista PRIMEIRO (fluxo novo)
+      // - NF Mensal: vai direto para o analista de RH (aprovado_lider permite que RH analista veja)
+      const initialStatus = tipo === 'reembolso' ? 'pendente_rh_analista' : 'aprovado_lider';
 
-      const { error } = await supabase.from('solicitacoes_prestador' as any).insert({
+      const { data: inserted, error } = await supabase.from('solicitacoes_prestador' as any).insert({
         solicitante_id: user!.id,
         fornecedor_id: fornecedorId,
         tipo,
@@ -120,13 +101,30 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
         arquivo_path: arquivoPath,
         status: initialStatus,
-      });
+      }).select('id').single();
       if (error) throw error;
 
-      toast({ title: 'Enviado!', description: initialStatus === 'pendente_lider' ? 'Sua solicitação foi enviada para aprovação do seu líder de área.' : 'Sua solicitação foi enviada para validação do analista de RH.' });
+      // E-mail de confirmação ao solicitante (apenas reembolso)
+      if (tipo === 'reembolso' && (inserted as any)?.id) {
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: (inserted as any).id, evento: 'criado' },
+          });
+        } catch (err) {
+          console.error('Erro ao enviar email de confirmação:', err);
+        }
+      }
+
+      toast({
+        title: 'Enviado!',
+        description: tipo === 'reembolso'
+          ? 'Recebemos sua solicitação. Você receberá um e-mail de confirmação e atualizações sobre o andamento.'
+          : 'Sua NF foi enviada para validação do analista de RH.',
+      });
       queryClient.invalidateQueries({ queryKey: ['portal-solicitacoes'] });
       queryClient.invalidateQueries({ queryKey: ['portal-list'] });
       onOpenChange(false);
+
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message || String(e), variant: 'destructive' });
     } finally {
