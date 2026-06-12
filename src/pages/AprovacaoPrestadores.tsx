@@ -149,11 +149,13 @@ function PainelStep({ step }: { step: Step }) {
   const [motivoLote, setMotivoLote] = useState('');
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
-  const statusFiltro =
-    step === 'lider' ? 'pendente_lider'
-    : step === 'rh_analista' ? 'aprovado_lider'
-    : step === 'rh_gerente' ? 'pendente_rh'
-    : 'aprovado_rh';
+  // rh_analista vê NF mensal (vinda direto do solicitante como 'aprovado_lider')
+  // E também reembolsos novos ('pendente_rh_analista') — primeira parada no fluxo novo de reembolso.
+  const statusFiltros: string[] =
+    step === 'lider' ? ['pendente_lider']
+    : step === 'rh_analista' ? ['aprovado_lider', 'pendente_rh_analista']
+    : step === 'rh_gerente' ? ['pendente_rh']
+    : ['aprovado_rh'];
 
   const { data: items = [] } = useQuery({
     queryKey: ['aprov-prestador', step, user?.id],
@@ -161,7 +163,7 @@ function PainelStep({ step }: { step: Step }) {
       let query = supabase
         .from('solicitacoes_prestador' as any)
         .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf)')
-        .eq('status', statusFiltro)
+        .in('status', statusFiltros)
         .order('created_at');
 
       // Líder: apenas solicitações de membros do(s) grupo(s) que ele lidera
@@ -187,6 +189,7 @@ function PainelStep({ step }: { step: Step }) {
       return enrichSolicitacoes(rows);
     },
   });
+
 
   // Filtros
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
