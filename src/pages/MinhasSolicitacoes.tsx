@@ -49,7 +49,7 @@ export default function MinhasSolicitacoes() {
         </p>
       </div>
 
-      <Tabs defaultValue={canSendNF ? "nf" : "reemb"}>
+      <Tabs key={canSendNF ? "nf" : "reemb"} defaultValue={canSendNF ? "nf" : "reemb"}>
         <TabsList>
           {canSendNF && <TabsTrigger value="nf">Notas Fiscais</TabsTrigger>}
           <TabsTrigger value="reemb">Reembolsos</TabsTrigger>
