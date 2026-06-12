@@ -1,44 +1,59 @@
-# Comissionamento de Parceiros
+## Objetivo
 
-## Visão geral
-Parceiros são indicadores externos (não-staff) que recebem percentual fixo sobre os recebimentos do contrato indicado. Vão reaproveitar a tabela `vendedores` com um marcador `tipo`, mas **não** participam de meta batida, override por contrato nem comissão extraordinária — apenas o `percentual_comissao` cadastrado no parceiro, aplicado sobre cada parcela recebida do(s) contrato(s) em que ele foi indicado.
+Alterar o fluxo de **reembolso** (sem mexer em NF mensal) para a ordem **Solicitante → RH Analista → Líder → Financeiro**, com e-mails automáticos em cada transição.
 
-## Banco de dados (1 migration)
+## Fluxo novo (reembolso)
 
-1. **`vendedores.tipo`** (`text`, default `'interno'`, check em `'interno' | 'parceiro'`).
-2. **`contratos.parceiro_id`** (`uuid`, nullable) — referência ao vendedor com `tipo='parceiro'`.
-3. Sem novas tabelas — `solicitacoes_comissao` e `comissao_percentual_override` continuam servindo (override fica desabilitado na UI para parceiros).
+```text
+Envio → confirmação ao solicitante
+      → pendente_rh_analista
+        ├─ Rejeita → e-mail rejeição c/ motivo ao solicitante (fim)
+        └─ Aprova  → e-mail "aprovado pelo RH" ao solicitante
+                   → pendente_lider
+                     → e-mail ao líder (notificação + link plataforma)
+                     ├─ Rejeita → e-mail rejeição c/ motivo ao solicitante (fim)
+                     └─ Aprova  → e-mail "aprovado, encaminhado ao financeiro" ao solicitante
+                               → aprovado_lider (financeiro processa como hoje)
+```
 
-## Cadastro de parceiros (`/vendedores`)
+NF mensal continua como hoje (não há líder).
 
-- Nova aba **"Parceiros"** ao lado de "Vendedores" usando o mesmo componente, com `tipo='parceiro'` fixo.
-- Formulário simplificado: nome, % de comissão, fornecedor vinculado (obrigatório, para gerar contas a pagar), status. Sem meta, sem centro de custo (parceiro não tem meta).
-- Listagem filtra por `tipo`. Vínculo `vendedores_centros_custo` não é usado para parceiros.
+## Alterações de código
 
-## Contratos
+### 1. `src/components/portal/NovaSolicitacaoDialog.tsx`
+- Para `tipo === 'reembolso'`: status inicial sempre **`pendente_rh_analista`** (remover a lógica que pulava direto para `aprovado_lider` quando não havia líder).
+- Após `insert`, chamar `notify-solicitacao-prestador` com `evento: 'criado'` para disparar o e-mail de confirmação ao solicitante.
 
-- Em `NovoContrato.tsx` e `EditarContratoCompleto.tsx`: adicionar campo **"Parceiro da venda"** (opcional, só em contratos de venda), usando um `ParceiroSelect` análogo ao `VendedorSelect`, mas filtrando `tipo='parceiro'`.
-- Persistir em `contratos.parceiro_id`.
+### 2. `src/pages/AprovacaoPrestadores.tsx`
+- Mudar a ordem das abas/steps para reembolso: **rh_analista → lider → financeiro** (hoje é lider → rh_analista → rh_gerente → financeiro).
+- Ao aprovar no step `rh_analista` (reembolso): definir `status = 'pendente_lider'`, gravar `aprovador_rh_analista_id` + data, disparar:
+  - `notify-solicitacao-prestador` evento `aprovado_rh` (e-mail ao solicitante);
+  - `notify-solicitacao-prestador` evento `pendente_lider` (e-mail ao líder, buscando `grupos_area.lider_user_id` → `profiles.email` do solicitante);
+  - notificação in-app para o líder.
+- Ao aprovar no step `lider` (reembolso): `status = 'aprovado_lider'`, disparar `notify-solicitacao-prestador` evento `aprovado_lider` (e-mail ao solicitante: "encaminhado ao financeiro").
+- Rejeições em qualquer step (lider/rh_analista): manter caixa de motivo, disparar `notify-solicitacao-prestador` evento `rejeitado` com o motivo (já existe — só garantir copy correto por etapa).
+- NF mensal: comportamento atual preservado.
 
-## Área de Comissionamento de Parceiros (`/comissionamento-parceiros`)
+### 3. `supabase/functions/notify-solicitacao-prestador/index.ts`
+Expandir os eventos suportados e os templates HTML:
 
-Nova página espelhando `Comissionamento.tsx`, mas com regras enxutas:
+| evento | destinatário | copy |
+|---|---|---|
+| `criado` (reembolso) | solicitante | "Recebemos sua solicitação de reembolso..." |
+| `aprovado_rh` (reembolso) | solicitante | "Seu reembolso foi aprovado pelo RH..." |
+| `pendente_lider` (reembolso) | líder de área | "Líder, o colaborador X enviou uma solicitação..." com critérios e prazo dia 20 |
+| `aprovado_lider` (reembolso) | solicitante | "Aprovado e encaminhado ao financeiro, pagamento dia 20..." |
+| `rejeitado` (qualquer step) | solicitante | mantém atual com motivo |
+| `aprovado` (NF) | mantém atual | — |
 
-- **Seleção**: dropdown de parceiros (vendedores com `tipo='parceiro'`).
-- **Cálculo**: para o mês/ano de referência, soma `contas_receber` com `status='recebido'` cujo `parcela_id` pertence a contrato com `parceiro_id = parceiro selecionado` (filtrar por `data_recebimento` no mês de referência). Aplica `percentual_comissao` do parceiro.
-- **Sem** meta batida, **sem** extraordinária, **sem** override por contrato (botões/abas removidos).
-- **Fluxo de solicitação/aprovação**: mesmo de vendedores (`solicitacoes_comissao` → admin/finance_manager aprovam → gera `contas_pagar` vinculada ao `fornecedor_id` do parceiro). Adicionar coluna implícita no filtro: `vendedor.tipo='parceiro'` separa as filas.
-- **Sidebar**: novo item "Comissão Parceiros" no grupo Comercial.
+- Para `pendente_lider`: a função buscará `solicitante_id → profiles.grupo_id → grupos_area.lider_user_id → profiles.email` para resolver o destinatário e o nome do solicitante.
+- Para `criado / aprovado_rh / aprovado_lider`: destinatário é o e-mail profissional do solicitante (`profiles.email`), não o do fornecedor.
+- Manter `cc: hello.people@b8one.com` e remetente `Aeight RH <rh@financeiro.aeight.global>`.
 
-## Frontend — arquivos afetados
+### 4. Banco
+- Nenhuma mudança de schema necessária. Os status `pendente_rh_analista`, `pendente_lider`, `aprovado_lider`, `aprovado_rh`, `rejeitado_lider`, `rejeitado_rh` já existem e são usados pela tela de aprovações.
 
-- `src/pages/Vendedores.tsx` — abas Vendedores / Parceiros.
-- `src/components/contratos/ParceiroSelect.tsx` — novo (clone enxuto de `VendedorSelect`).
-- `src/pages/NovoContrato.tsx`, `src/pages/EditarContratoCompleto.tsx` — campo parceiro + persistência.
-- `src/pages/ComissionamentoParceiros.tsx` — nova página (versão reduzida de `Comissionamento.tsx`).
-- `src/App.tsx` — rota nova.
-- `src/components/layout/AppSidebar.tsx` — item novo.
-- `Comissionamento.tsx` existente — filtrar dropdown para `tipo='interno'` para não misturar.
-
-## Fora do escopo
-- Edição em massa de parceiros, dashboard próprio, exportação dedicada (podemos fazer depois se precisar).
+## Fora de escopo
+- Fluxo de NF mensal (mantido).
+- Telas de listagem em `MinhasSolicitacoes`/`PortalReembolsos` (apenas seguirão exibindo os novos status já mapeados pelo `StatusBadge`).
+- Cronograma de pagamento dia 20 — apenas mencionado nos e-mails, sem automação de data.
