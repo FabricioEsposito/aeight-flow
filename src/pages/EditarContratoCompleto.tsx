@@ -1080,6 +1080,18 @@ export default function EditarContratoCompleto() {
                   Benefício para Funcionários (aparece na aba Benefícios do RH)
                 </Label>
               </div>
+              {isBeneficioFuncionario && (
+                <div className="ml-6 space-y-1">
+                  <Label htmlFor="edit-link-planilha-rateio">Link da Planilha de Rateio</Label>
+                  <Input
+                    id="edit-link-planilha-rateio"
+                    type="url"
+                    placeholder="https://..."
+                    value={linkPlanilhaRateio}
+                    onChange={(e) => setLinkPlanilhaRateio(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           )}
 
