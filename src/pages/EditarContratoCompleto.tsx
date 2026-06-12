@@ -654,6 +654,7 @@ export default function EditarContratoCompleto() {
           renovacao_automatica: renovacaoAutomatica,
           ajuste_ipca: ajusteIpca,
           is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
+          link_planilha_rateio: tipoContrato === 'compra' && isBeneficioFuncionario ? (linkPlanilhaRateio || null) : null,
           is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
           updated_at: new Date().toISOString(),
         })
