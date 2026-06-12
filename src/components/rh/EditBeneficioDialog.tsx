@@ -43,6 +43,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   const [centroCustoRateio, setCentroCustoRateio] = useState<RateioItem[]>([]);
   const [linkNf, setLinkNf] = useState<string | null>(null);
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
+  const [linkContrato, setLinkContrato] = useState<string | null>(null);
+  const [numeroContrato, setNumeroContrato] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
