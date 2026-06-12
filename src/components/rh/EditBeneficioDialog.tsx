@@ -56,6 +56,8 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       setObservacoes('');
       setLinkNf(record.link_nf || null);
       setLinkBoleto(record.link_boleto || null);
+      setLinkContrato(null);
+      setNumeroContrato('');
       setCentroCustoRateio(
         record.centros_custo.map(cc => ({
           centro_custo_id: cc.centro_custo_id,
@@ -64,6 +66,19 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
           percentual: cc.percentual,
         }))
       );
+
+      // Fetch contract link
+      supabase
+        .from('contratos')
+        .select('numero_contrato, link_contrato')
+        .eq('id', record.contrato_id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setLinkContrato(data.link_contrato || null);
+            setNumeroContrato(data.numero_contrato || '');
+          }
+        });
     }
   }, [record, open]);
 
