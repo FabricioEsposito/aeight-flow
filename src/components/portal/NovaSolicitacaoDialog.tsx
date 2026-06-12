@@ -63,6 +63,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
     setValor(0);
     setDescricao('');
     setArquivoPath(null);
+    setXmlPath(null);
     setNumeroNF('');
   }, [open, user]);
 
