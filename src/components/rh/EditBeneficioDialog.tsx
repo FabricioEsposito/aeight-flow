@@ -235,6 +235,26 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
                 </span>
               )}
             </div>
+            <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
+              <span className="text-xs text-muted-foreground">Planilha de Rateio</span>
+              {linkPlanilhaRateio ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(linkPlanilhaRateio, '_blank', 'noopener,noreferrer')}
+                >
+                  <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                  Abrir Planilha
+                  <ExternalLink className="w-3 h-3 ml-2" />
+                </Button>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <FileX className="w-4 h-4" />
+                  Planilha não informada
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
