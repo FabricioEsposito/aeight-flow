@@ -184,6 +184,9 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
           {tipo === 'nf_mensal' && (
             <div>
               <Label>Arquivo XML (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                Se você for MEI, o anexo do XML da nota fiscal é obrigatório.
+              </p>
               <FileUpload
                 bucket="prestador-docs"
                 path={`${user?.id}/nf-${Date.now()}.xml`}
