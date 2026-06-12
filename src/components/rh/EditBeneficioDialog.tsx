@@ -45,6 +45,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   const [linkBoleto, setLinkBoleto] = useState<string | null>(null);
   const [linkContrato, setLinkContrato] = useState<string | null>(null);
   const [numeroContrato, setNumeroContrato] = useState<string>('');
+  const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -58,6 +59,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       setLinkBoleto(record.link_boleto || null);
       setLinkContrato(null);
       setNumeroContrato('');
+      setLinkPlanilhaRateio(null);
       setCentroCustoRateio(
         record.centros_custo.map(cc => ({
           centro_custo_id: cc.centro_custo_id,
@@ -70,13 +72,14 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       // Fetch contract link
       supabase
         .from('contratos')
-        .select('numero_contrato, link_contrato')
+        .select('numero_contrato, link_contrato, link_planilha_rateio')
         .eq('id', record.contrato_id)
         .maybeSingle()
         .then(({ data }) => {
           if (data) {
             setLinkContrato(data.link_contrato || null);
             setNumeroContrato(data.numero_contrato || '');
+            setLinkPlanilhaRateio((data as any).link_planilha_rateio || null);
           }
         });
     }
@@ -229,6 +232,26 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <FileX className="w-4 h-4" />
                   Contrato não anexado
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
+              <span className="text-xs text-muted-foreground">Planilha de Rateio</span>
+              {linkPlanilhaRateio ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(linkPlanilhaRateio, '_blank', 'noopener,noreferrer')}
+                >
+                  <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                  Abrir Planilha
+                  <ExternalLink className="w-3 h-3 ml-2" />
+                </Button>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <FileX className="w-4 h-4" />
+                  Planilha não informada
                 </span>
               )}
             </div>

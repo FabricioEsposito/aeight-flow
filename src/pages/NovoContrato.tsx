@@ -114,6 +114,7 @@ export default function NovoContrato() {
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
+  const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState('');
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
 
   // Serviços disponíveis
@@ -212,6 +213,7 @@ export default function NovoContrato() {
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
+      setLinkPlanilhaRateio((data as any).link_planilha_rateio || '');
       setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
@@ -484,6 +486,7 @@ export default function NovoContrato() {
         renovacao_automatica: renovacaoAutomatica,
         ajuste_ipca: ajusteIpca,
         is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
+        link_planilha_rateio: tipoContrato === 'compra' && isBeneficioFuncionario ? (linkPlanilhaRateio || null) : null,
         is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
       };
 
@@ -1312,6 +1315,18 @@ export default function NovoContrato() {
                       Benefício para Funcionários (aparece na aba Benefícios do RH)
                     </Label>
                   </div>
+                  {isBeneficioFuncionario && (
+                    <div className="ml-6 space-y-1">
+                      <Label htmlFor="link-planilha-rateio">Link da Planilha de Rateio</Label>
+                      <Input
+                        id="link-planilha-rateio"
+                        type="url"
+                        placeholder="https://..."
+                        value={linkPlanilhaRateio}
+                        onChange={(e) => setLinkPlanilhaRateio(e.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

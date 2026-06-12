@@ -88,6 +88,7 @@ export default function EditarContratoCompleto() {
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
+  const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState('');
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
   const [parcelas, setParcelas] = useState<any[]>([]);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -183,6 +184,7 @@ export default function EditarContratoCompleto() {
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
+      setLinkPlanilhaRateio((data as any).link_planilha_rateio || '');
       setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
 
       // Calculate dia vencimento from first parcela
@@ -652,6 +654,7 @@ export default function EditarContratoCompleto() {
           renovacao_automatica: renovacaoAutomatica,
           ajuste_ipca: ajusteIpca,
           is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
+          link_planilha_rateio: tipoContrato === 'compra' && isBeneficioFuncionario ? (linkPlanilhaRateio || null) : null,
           is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
           updated_at: new Date().toISOString(),
         })
@@ -1077,6 +1080,18 @@ export default function EditarContratoCompleto() {
                   Benefício para Funcionários (aparece na aba Benefícios do RH)
                 </Label>
               </div>
+              {isBeneficioFuncionario && (
+                <div className="ml-6 space-y-1">
+                  <Label htmlFor="edit-link-planilha-rateio">Link da Planilha de Rateio</Label>
+                  <Input
+                    id="edit-link-planilha-rateio"
+                    type="url"
+                    placeholder="https://..."
+                    value={linkPlanilhaRateio}
+                    onChange={(e) => setLinkPlanilhaRateio(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           )}
 
