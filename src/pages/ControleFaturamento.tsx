@@ -246,14 +246,22 @@ export default function ControleFaturamento() {
 
         const round2 = (v: number) => Math.round(v * 100) / 100;
 
-        // Regra (modelo atual):
-        // `parcelas_contrato.valor` / `contas_receber.valor_original` guardam o BRUTO.
-        // `contas_receber.valor` guarda o LÍQUIDO lançado/ajustável.
-        const valorBruto = valorParcelaContrato && valorParcelaContrato > 0
+        // Regra: a coluna "Valor Bruto" deve refletir o valor bruto do CONTRATO
+        // (somatório dos serviços imputado em `contratos.valor_bruto`), proporcional
+        // à parcela atual. `parcelas_contrato.valor` armazena o líquido da parcela
+        // (após descontos do contrato); usamos a razão bruto/líquido do contrato
+        // para reconstituir o bruto correspondente a cada parcela.
+        const contratoBruto = Number(contrato?.valor_bruto || 0);
+        const contratoLiquido = Number(contrato?.valor_total || 0);
+        const ratioBruto = contratoLiquido > 0 && contratoBruto > 0
+          ? contratoBruto / contratoLiquido
+          : 1;
+        const baseParcela = valorParcelaContrato && valorParcelaContrato > 0
           ? valorParcelaContrato
           : valorOriginal && valorOriginal > 0
             ? valorOriginal
             : valorLiquidoLancado;
+        const valorBruto = round2(baseParcela * ratioBruto);
         const valorLiquidoCalculado = taxaImpostos > 0 && taxaImpostos < 1
           ? round2(valorBruto * (1 - taxaImpostos))
           : valorBruto;
