@@ -214,6 +214,45 @@ export default function ControleFaturamento() {
         return true;
       });
 
+      // Calcular soma das parcelas por contrato para detectar se parcela.valor
+      // está armazenando o BRUTO ou o LÍQUIDO da parcela (varia entre contratos).
+      const contratoIds = Array.from(new Set(
+        dataFiltrado
+          .map((i: any) => i.parcelas_contrato?.contratos?.id)
+          .filter(Boolean)
+      ));
+      const parcelaStorageByContrato = new Map<string, 'bruto' | 'liquido'>();
+      if (contratoIds.length > 0) {
+        const { data: todasParcelas } = await supabase
+          .from('parcelas_contrato')
+          .select('contrato_id, valor')
+          .in('contrato_id', contratoIds as string[]);
+        const sumByContrato = new Map<string, number>();
+        (todasParcelas || []).forEach((p: any) => {
+          sumByContrato.set(
+            p.contrato_id,
+            (sumByContrato.get(p.contrato_id) || 0) + Number(p.valor || 0)
+          );
+        });
+        dataFiltrado.forEach((item: any) => {
+          const c = item.parcelas_contrato?.contratos;
+          if (!c?.id || parcelaStorageByContrato.has(c.id)) return;
+          const soma = sumByContrato.get(c.id) || 0;
+          const bruto = Number(c.valor_bruto || 0);
+          const liquido = Number(c.valor_total || 0);
+          if (bruto <= 0 && liquido <= 0) return;
+          const deltaB = Math.abs(soma - bruto);
+          const deltaL = Math.abs(soma - liquido);
+          // Para contratos recorrentes a soma costuma ser múltipla; comparamos a razão
+          // soma/valor para identificar qual base é múltipla inteira mais próxima.
+          const ratioB = bruto > 0 ? soma / bruto : 0;
+          const ratioL = liquido > 0 ? soma / liquido : 0;
+          const distB = Math.min(deltaB, Math.abs(ratioB - Math.round(ratioB)) * bruto);
+          const distL = Math.min(deltaL, Math.abs(ratioL - Math.round(ratioL)) * liquido);
+          parcelaStorageByContrato.set(c.id, distB <= distL ? 'bruto' : 'liquido');
+        });
+      }
+
       // Buscar detalhes dos serviços
       const faturamentosFormatados = await Promise.all(dataFiltrado.map(async (item: any) => {
         const contrato = item.parcelas_contrato?.contratos;
@@ -246,22 +285,30 @@ export default function ControleFaturamento() {
 
         const round2 = (v: number) => Math.round(v * 100) / 100;
 
-        // Regra: a coluna "Valor Bruto" deve refletir o valor bruto do CONTRATO
-        // (somatório dos serviços imputado em `contratos.valor_bruto`), proporcional
-        // à parcela atual. `parcelas_contrato.valor` armazena o líquido da parcela
-        // (após descontos do contrato); usamos a razão bruto/líquido do contrato
-        // para reconstituir o bruto correspondente a cada parcela.
+        // Regra: a coluna "Valor Bruto" deve refletir o valor bruto do CONTRATO.
+        // Alguns contratos armazenam o BRUTO em `parcelas_contrato.valor`, outros
+        // armazenam o LÍQUIDO. Detectamos isso comparando a soma das parcelas com
+        // `valor_bruto` e `valor_total` do contrato (acima).
         const contratoBruto = Number(contrato?.valor_bruto || 0);
         const contratoLiquido = Number(contrato?.valor_total || 0);
-        const ratioBruto = contratoLiquido > 0 && contratoBruto > 0
-          ? contratoBruto / contratoLiquido
-          : 1;
+        const storage = contrato?.id
+          ? parcelaStorageByContrato.get(contrato.id)
+          : undefined;
         const baseParcela = valorParcelaContrato && valorParcelaContrato > 0
           ? valorParcelaContrato
           : valorOriginal && valorOriginal > 0
             ? valorOriginal
             : valorLiquidoLancado;
-        const valorBruto = round2(baseParcela * ratioBruto);
+        let valorBruto: number;
+        if (storage === 'bruto') {
+          // parcela.valor já é o bruto da parcela
+          valorBruto = round2(baseParcela);
+        } else if (storage === 'liquido' && contratoLiquido > 0 && contratoBruto > 0) {
+          // parcela.valor é líquido — reconstitui o bruto pela razão do contrato
+          valorBruto = round2(baseParcela * (contratoBruto / contratoLiquido));
+        } else {
+          valorBruto = round2(baseParcela);
+        }
         const valorLiquidoCalculado = taxaImpostos > 0 && taxaImpostos < 1
           ? round2(valorBruto * (1 - taxaImpostos))
           : valorBruto;
