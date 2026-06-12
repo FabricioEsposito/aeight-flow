@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { CentroCustoRateio, RateioItem } from '@/components/contratos/CentroCustoRateio';
 import { FileUpload } from '@/components/ui/file-upload';
+import { ExternalLink, FileCheck, FileX } from 'lucide-react';
+import { openStorageFile } from '@/lib/storage-utils';
 
 const tiposBeneficio = ['VR', 'VA', 'VT', 'Plano de Saude', 'Plano Odontologico', 'Seguro de Vida', 'Outros'];
 
