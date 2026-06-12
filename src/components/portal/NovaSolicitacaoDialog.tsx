@@ -170,7 +170,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
             <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descreva brevemente..." rows={3} maxLength={500} />
           </div>
           <div>
-            <Label>Arquivo (PDF)</Label>
+            <Label>Nota Fiscal (PDF) <span className="text-destructive">*</span></Label>
             <FileUpload
               bucket="prestador-docs"
               path={`${user?.id}/${tipo}-${Date.now()}.pdf`}
@@ -180,6 +180,19 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
               maxSizeMB={10}
             />
           </div>
+          {tipo === 'nf_mensal' && (
+            <div>
+              <Label>Arquivo XML (opcional)</Label>
+              <FileUpload
+                bucket="prestador-docs"
+                path={`${user?.id}/nf-${Date.now()}.xml`}
+                value={xmlPath}
+                onChange={setXmlPath}
+                accept="application/xml,text/xml,.xml"
+                maxSizeMB={10}
+              />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
