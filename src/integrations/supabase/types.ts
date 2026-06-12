@@ -2088,6 +2088,7 @@ export type Database = {
           tipo: string
           updated_at: string
           valor: number
+          xml_path: string | null
         }
         Insert: {
           ano_referencia?: number | null
@@ -2123,6 +2124,7 @@ export type Database = {
           tipo: string
           updated_at?: string
           valor?: number
+          xml_path?: string | null
         }
         Update: {
           ano_referencia?: number | null
@@ -2158,6 +2160,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           valor?: number
+          xml_path?: string | null
         }
         Relationships: [
           {
