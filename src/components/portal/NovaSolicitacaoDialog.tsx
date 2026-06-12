@@ -32,6 +32,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
   const [valor, setValor] = useState(0);
   const [descricao, setDescricao] = useState('');
   const [arquivoPath, setArquivoPath] = useState<string | null>(null);
+  const [xmlPath, setXmlPath] = useState<string | null>(null);
   const [numeroNF, setNumeroNF] = useState('');
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
@@ -62,6 +63,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
     setValor(0);
     setDescricao('');
     setArquivoPath(null);
+    setXmlPath(null);
     setNumeroNF('');
   }, [open, user]);
 
@@ -100,6 +102,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         ano_referencia: ano,
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
         arquivo_path: arquivoPath,
+        xml_path: tipo === 'nf_mensal' ? xmlPath : null,
         status: initialStatus,
       }).select('id').single();
       if (error) throw error;
@@ -168,7 +171,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
             <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descreva brevemente..." rows={3} maxLength={500} />
           </div>
           <div>
-            <Label>Arquivo (PDF)</Label>
+            <Label>Nota Fiscal (PDF) <span className="text-destructive">*</span></Label>
             <FileUpload
               bucket="prestador-docs"
               path={`${user?.id}/${tipo}-${Date.now()}.pdf`}
@@ -178,6 +181,19 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
               maxSizeMB={10}
             />
           </div>
+          {tipo === 'nf_mensal' && (
+            <div>
+              <Label>Arquivo XML (opcional)</Label>
+              <FileUpload
+                bucket="prestador-docs"
+                path={`${user?.id}/nf-${Date.now()}.xml`}
+                value={xmlPath}
+                onChange={setXmlPath}
+                accept="application/xml,text/xml,.xml"
+                maxSizeMB={10}
+              />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
