@@ -208,6 +208,32 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="rounded-lg border bg-muted/40 p-3">
+            <Label className="text-xs text-muted-foreground">Contrato do Fornecedor</Label>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">
+                {numeroContrato ? `Nº ${numeroContrato}` : 'Contrato'}
+              </span>
+              {linkContrato ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openStorageFile(linkContrato)}
+                >
+                  <FileCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                  Visualizar Contrato
+                  <ExternalLink className="w-3 h-3 ml-2" />
+                </Button>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <FileX className="w-4 h-4" />
+                  Contrato não anexado
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tipo de Benefício</Label>
