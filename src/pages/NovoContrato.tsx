@@ -213,6 +213,7 @@ export default function NovoContrato() {
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
+      setLinkPlanilhaRateio((data as any).link_planilha_rateio || '');
       setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
     } catch (error) {
       console.error('Erro ao buscar contrato:', error);
