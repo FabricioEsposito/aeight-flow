@@ -149,11 +149,13 @@ function PainelStep({ step }: { step: Step }) {
   const [motivoLote, setMotivoLote] = useState('');
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
-  const statusFiltro =
-    step === 'lider' ? 'pendente_lider'
-    : step === 'rh_analista' ? 'aprovado_lider'
-    : step === 'rh_gerente' ? 'pendente_rh'
-    : 'aprovado_rh';
+  // rh_analista vê NF mensal (vinda direto do solicitante como 'aprovado_lider')
+  // E também reembolsos novos ('pendente_rh_analista') — primeira parada no fluxo novo de reembolso.
+  const statusFiltros: string[] =
+    step === 'lider' ? ['pendente_lider']
+    : step === 'rh_analista' ? ['aprovado_lider', 'pendente_rh_analista']
+    : step === 'rh_gerente' ? ['pendente_rh']
+    : ['aprovado_rh'];
 
   const { data: items = [] } = useQuery({
     queryKey: ['aprov-prestador', step, user?.id],
@@ -161,7 +163,7 @@ function PainelStep({ step }: { step: Step }) {
       let query = supabase
         .from('solicitacoes_prestador' as any)
         .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf)')
-        .eq('status', statusFiltro)
+        .in('status', statusFiltros)
         .order('created_at');
 
       // Líder: apenas solicitações de membros do(s) grupo(s) que ele lidera
@@ -187,6 +189,7 @@ function PainelStep({ step }: { step: Step }) {
       return enrichSolicitacoes(rows);
     },
   });
+
 
   // Filtros
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
@@ -261,19 +264,64 @@ function PainelStep({ step }: { step: Step }) {
     opts: { parcelaId?: string; dataVenc?: string; contaBanc?: string } = {},
   ) => {
     if (step === 'lider') {
+      // Reembolso aprovado pelo líder → vai DIRETO para o financeiro (pula rh_gerente)
+      const novoStatus = item.tipo === 'reembolso' ? 'aprovado_rh' : 'aprovado_lider';
       const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-        status: 'aprovado_lider',
+        status: novoStatus,
         aprovador_lider_id: user!.id,
         data_aprovacao_lider: new Date().toISOString(),
       }).eq('id', item.id);
       if (error) throw error;
+      if (item.tipo === 'reembolso') {
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: item.id, evento: 'aprovado_lider' },
+          });
+        } catch (err) { console.error('Erro email aprovado_lider:', err); }
+      }
     } else if (step === 'rh_analista') {
+      // Reembolso aprovado pelo RH → vai para o líder. NF → mantém fluxo (pendente_rh).
+      const novoStatus = item.tipo === 'reembolso' ? 'pendente_lider' : 'pendente_rh';
       const { error } = await supabase.from('solicitacoes_prestador' as any).update({
-        status: 'pendente_rh',
+        status: novoStatus,
         aprovador_rh_analista_id: user!.id,
         data_aprovacao_rh_analista: new Date().toISOString(),
       }).eq('id', item.id);
       if (error) throw error;
+      if (item.tipo === 'reembolso') {
+        // Notifica o solicitante (aprovado pelo RH) e o líder (nova pendência)
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: item.id, evento: 'aprovado_rh' },
+          });
+        } catch (err) { console.error('Erro email aprovado_rh:', err); }
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: item.id, evento: 'pendente_lider' },
+          });
+        } catch (err) { console.error('Erro email pendente_lider:', err); }
+        // Notificação in-app para o líder
+        try {
+          const { data: prof } = await supabase
+            .from('profiles').select('grupo_id, nome').eq('id', item.solicitante_id).maybeSingle();
+          const grupoId = (prof as any)?.grupo_id;
+          if (grupoId) {
+            const { data: grupo } = await supabase
+              .from('grupos_area').select('lider_user_id').eq('id', grupoId).maybeSingle();
+            const liderId = (grupo as any)?.lider_user_id;
+            if (liderId) {
+              await supabase.from('notificacoes').insert({
+                user_id: liderId,
+                titulo: 'Reembolso aguardando sua aprovação',
+                mensagem: `${(prof as any)?.nome || 'Um colaborador'} enviou uma solicitação de reembolso que precisa da sua aprovação.`,
+                tipo: 'info',
+                referencia_tipo: 'solicitacao_prestador',
+                referencia_id: item.id,
+              });
+            }
+          }
+        } catch (err) { console.error('Erro notificação in-app líder:', err); }
+      }
     } else if (step === 'rh_gerente') {
       const update: any = {
         status: 'aprovado_rh',
@@ -339,6 +387,7 @@ function PainelStep({ step }: { step: Step }) {
       }
     }
   };
+
 
   const rejeitarUmItem = async (item: any, motivoRej: string) => {
     const now = new Date().toISOString();
