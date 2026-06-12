@@ -173,6 +173,7 @@ export default function ControleFaturamento() {
               desconto_valor,
               periodo_recorrencia,
               valor_bruto,
+              valor_total,
               centro_custo,
               observacoes_faturamento,
               status,
