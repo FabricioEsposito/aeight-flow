@@ -192,6 +192,7 @@ export function BeneficiosTab() {
           plano_contas_descricao: contrato?.plano_contas ? `${contrato.plano_contas.codigo} - ${contrato.plano_contas.descricao}` : '-',
           link_nf: cp?.link_nf || null,
           link_boleto: cp?.link_boleto || null,
+          data_vencimento_sugerida: beneficio?.data_vencimento_sugerida || null,
         };
       });
 
