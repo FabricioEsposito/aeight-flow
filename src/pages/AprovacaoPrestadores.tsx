@@ -156,6 +156,8 @@ function isBatchEligible(step: Step, item: any) {
 
 function PainelStep({ step }: { step: Step }) {
   const { user } = useAuth();
+  const { isAdmin, isRHAnalyst, isRHManager } = useUserRole();
+  const canExport = isAdmin || isRHAnalyst || isRHManager;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [aprovarItem, setAprovarItem] = useState<any>(null);
