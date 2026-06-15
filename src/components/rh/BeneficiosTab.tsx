@@ -364,6 +364,7 @@ export function BeneficiosTab() {
                   <TableRow key={r.parcela_id}>
                     <TableCell>{competencia}</TableCell>
                     <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
+                    <TableCell className="text-sm">{r.data_vencimento_sugerida ? formatDate(r.data_vencimento_sugerida) : '-'}</TableCell>
                     <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
                     <TableCell className="text-sm">{r.fornecedor_nome_fantasia || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
