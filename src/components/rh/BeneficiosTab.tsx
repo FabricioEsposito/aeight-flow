@@ -341,6 +341,12 @@ export function BeneficiosTab() {
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Centro de Custo</TableHead>
+              <TableHead className="min-w-[80px]">Anexos</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead>Nome Fantasia</TableHead>
+              <TableHead>CNPJ/CPF</TableHead>
+              <TableHead>Categoria</TableHead>
+              <TableHead>Centro de Custo</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
