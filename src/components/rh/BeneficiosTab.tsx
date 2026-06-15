@@ -350,11 +350,11 @@ export function BeneficiosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                   Nenhum benefício encontrado. Marque contratos de compra como "Benefício para Funcionários" para que suas parcelas apareçam aqui.
                 </TableCell>
               </TableRow>
