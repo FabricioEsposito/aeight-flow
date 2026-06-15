@@ -172,7 +172,68 @@ serve(async (req) => {
         <p>Lembramos que os reembolsos são pagos no <strong>dia 20 do mês subsequente</strong> à solicitação ou, caso a data coincida com um feriado ou final de semana, no próximo dia útil.</p>
         <p>Você pode acompanhar o status da solicitação pela plataforma.</p>`;
       html = wrap("Reembolso Aprovado pelo Líder", "#16a34a", body);
+    } else if (evento === "pendente_financeiro") {
+      // Notifica o time financeiro que existe um reembolso aguardando aprovação
+      to = ["financeiro@aeight.global"];
+      subject = `[Pendente Financeiro] Reembolso de ${solicitanteNome} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
+
+      // Buscar nomes/datas dos aprovadores e líder
+      const fmtDateTime = (d?: string | null) => {
+        if (!d) return null;
+        try { return new Date(d).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }); } catch { return null; }
+      };
+
+      const aprovadorRhId = (sol as any).aprovador_rh_analista_id;
+      const aprovadorLiderId = (sol as any).aprovador_lider_id;
+      const ids = [aprovadorRhId, aprovadorLiderId].filter(Boolean);
+      let nomePorId: Record<string, string> = {};
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from("profiles").select("id, nome, email").in("id", ids);
+        (profs || []).forEach((p: any) => { nomePorId[p.id] = p.nome || p.email || "—"; });
+      }
+
+      // Líder atual do solicitante
+      const grupoId = (solicitanteProfile as any)?.grupo_id;
+      let liderNome: string | null = null;
+      let liderEmail: string | null = null;
+      if (grupoId) {
+        const { data: grupo } = await supabase
+          .from("grupos_area").select("lider_user_id, nome").eq("id", grupoId).maybeSingle();
+        const liderId = (grupo as any)?.lider_user_id;
+        if (liderId) {
+          const { data: lp } = await supabase
+            .from("profiles").select("nome, email").eq("id", liderId).maybeSingle();
+          liderNome = (lp as any)?.nome || null;
+          liderEmail = (lp as any)?.email || null;
+        }
+      }
+
+      const aprovacoesBlock = `<div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:8px;padding:14px;margin:10px 0">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.5px">Aprovações realizadas</p>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;color:#1e3a8a">
+            <tr><td style="padding:3px 0;color:#475569">RH</td><td style="padding:3px 0;text-align:right;font-weight:600">${aprovadorRhId ? (nomePorId[aprovadorRhId] || "—") : "—"}${fmtDateTime((sol as any).data_aprovacao_rh_analista) ? ` <span style="color:#64748b;font-weight:400">(${fmtDateTime((sol as any).data_aprovacao_rh_analista)})</span>` : ""}</td></tr>
+            <tr><td style="padding:3px 0;color:#475569">Líder</td><td style="padding:3px 0;text-align:right;font-weight:600">${aprovadorLiderId ? (nomePorId[aprovadorLiderId] || "—") : "—"}${fmtDateTime((sol as any).data_aprovacao_lider) ? ` <span style="color:#64748b;font-weight:400">(${fmtDateTime((sol as any).data_aprovacao_lider)})</span>` : ""}</td></tr>
+          </table>
+        </div>`;
+
+      const pessoasBlock = `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin:10px 0">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px">Envolvidos</p>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;color:#1f2937">
+            <tr><td style="padding:3px 0;color:#6b7280">Solicitante / Beneficiário</td><td style="padding:3px 0;text-align:right;font-weight:600">${solicitanteNome}${solicitanteEmail ? ` <span style="color:#64748b;font-weight:400">(${solicitanteEmail})</span>` : ""}</td></tr>
+            <tr><td style="padding:3px 0;color:#6b7280">Líder responsável</td><td style="padding:3px 0;text-align:right;font-weight:600">${liderNome || "—"}${liderEmail ? ` <span style="color:#64748b;font-weight:400">(${liderEmail})</span>` : ""}</td></tr>
+          </table>
+        </div>`;
+
+      const body = `<p>Olá time Financeiro,</p>
+        <p>Um novo <strong>reembolso</strong> foi aprovado pelo RH e pela liderança e está <strong>pendente da sua aprovação</strong> na plataforma.</p>
+        ${summaryBlock({ tipoLabel, valor, mes: sol.mes_referencia, ano: sol.ano_referencia, descricao: sol.descricao, numeroNf: sol.numero_nf, accent: "#2563eb", accentSoft: "#dbeafe" })}
+        ${pessoasBlock}
+        ${aprovacoesBlock}
+        <p>Acesse a plataforma para revisar e lançar o pagamento.</p>`;
+      html = wrap("Reembolso pendente do Financeiro", "#2563eb", body);
     } else if (evento === "aprovado") {
+
       // Aprovação final do financeiro (fluxo NF mensal e/ou fallback)
       if (solicitanteEmail) to = [solicitanteEmail];
       if (fornEmails.length) to = Array.from(new Set([...to, ...fornEmails]));
