@@ -1,0 +1,1 @@
+ALTER TABLE public.solicitacoes_prestador ADD COLUMN IF NOT EXISTS comprovante_pagamento_path text;

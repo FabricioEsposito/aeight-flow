@@ -2062,6 +2062,7 @@ export type Database = {
           aprovador_rh_gerente_id: string | null
           aprovador_rh_id: string | null
           arquivo_path: string
+          comprovante_pagamento_path: string | null
           conta_bancaria_id: string | null
           conta_pagar_id: string | null
           created_at: string
@@ -2098,6 +2099,7 @@ export type Database = {
           aprovador_rh_gerente_id?: string | null
           aprovador_rh_id?: string | null
           arquivo_path: string
+          comprovante_pagamento_path?: string | null
           conta_bancaria_id?: string | null
           conta_pagar_id?: string | null
           created_at?: string
@@ -2134,6 +2136,7 @@ export type Database = {
           aprovador_rh_gerente_id?: string | null
           aprovador_rh_id?: string | null
           arquivo_path?: string
+          comprovante_pagamento_path?: string | null
           conta_bancaria_id?: string | null
           conta_pagar_id?: string | null
           created_at?: string
