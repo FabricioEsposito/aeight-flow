@@ -31,6 +31,7 @@ function wrap(title: string, accentColor: string, bodyHtml: string) {
   return `<!DOCTYPE html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f3f4f6;margin:0;padding:0;color:#1f2937">
 <div style="max-width:620px;margin:0 auto;padding:24px">
   <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.08)">
+    <div style="background:#000000;padding:18px;text-align:center"><img src="https://aeight-flow.lovable.app/__l5e/assets-v1/8247fcee-a153-4eb0-a1fc-2aea05a49bfb/logo-grupo-aeight.png" alt="Grupo A&amp;EIGHT" style="max-width:280px;width:100%;height:auto;display:inline-block;border:0" /></div>
     <div style="background:${accentColor};padding:24px;text-align:center;color:#fff">
       <h1 style="margin:0;font-size:20px;font-weight:700">${title}</h1>
       <p style="margin:6px 0 0;font-size:12px;opacity:.9">Aeight • Recursos Humanos</p>
