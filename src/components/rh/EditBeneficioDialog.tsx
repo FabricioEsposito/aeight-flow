@@ -279,6 +279,19 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
           </div>
 
           <div>
+            <Label>Data de Vencimento Sugerida (RH)</Label>
+            <Input
+              type="date"
+              value={dataVencimentoSugerida}
+              onChange={(e) => setDataVencimentoSugerida(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Apenas controle interno do RH (vencimento do boleto). Não altera o vencimento financeiro do extrato.
+            </p>
+          </div>
+
+          <div>
+
             <CentroCustoRateio
               value={centroCustoRateio}
               onChange={setCentroCustoRateio}
