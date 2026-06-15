@@ -56,7 +56,7 @@ function summaryBlock(opts: { tipoLabel: string; valor: number; mes: number; ano
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { solicitacao_id, evento, motivo } = await req.json() as { solicitacao_id?: string; evento?: Evento; motivo?: string };
+    const { solicitacao_id, evento, motivo, etapa } = await req.json() as { solicitacao_id?: string; evento?: Evento; motivo?: string; etapa?: 'rh' | 'lider' | 'financeiro' };
     if (!solicitacao_id || !evento) {
       return new Response(JSON.stringify({ error: "solicitacao_id e evento são obrigatórios" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
