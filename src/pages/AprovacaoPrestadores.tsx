@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ExternalLink, Check, X, Loader2, Eye, Crown, AlertCircle } from 'lucide-react';
+import { ExternalLink, Check, X, Loader2, Eye, Crown, AlertCircle, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import { DateRangeFilter, type DateRangePreset } from '@/components/financeiro/DateRangeFilter';
@@ -22,6 +22,29 @@ import { ptBR } from 'date-fns/locale';
 import { openStorageFile } from '@/lib/storage-utils';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+
+const exportSolicitacoesToExcel = (rows: any[], centrosCusto: any[], filename: string) => {
+  const data = rows.map((s) => {
+    const cc = centrosCusto.find((c: any) => c.id === s._centro_custo);
+    const cidadeEstado = [s.fornecedor?.cidade, s.fornecedor?.uf].filter(Boolean).join('/');
+    return {
+      'Nome (Razão Social)': s.fornecedor?.razao_social || '',
+      'Nome Fantasia': s.fornecedor?.nome_fantasia || '',
+      'Centro de Custo': cc ? `${cc.codigo} - ${cc.descricao}` : '',
+      'CNPJ': s.fornecedor?.cnpj_cpf || '',
+      'Razão Social': s.fornecedor?.razao_social || '',
+      'Data de Emissão': s.created_at ? format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Número da NF': s.numero_nf || '',
+      'Cidade/Estado': cidadeEstado,
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 35 }, { wch: 30 }, { wch: 28 }, { wch: 20 }, { wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 20 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+};
 
 type Step = 'lider' | 'rh_analista' | 'rh_gerente' | 'financeiro';
 
@@ -133,6 +156,8 @@ function isBatchEligible(step: Step, item: any) {
 
 function PainelStep({ step }: { step: Step }) {
   const { user } = useAuth();
+  const { isAdmin, isRHAnalyst, isRHManager } = useUserRole();
+  const canExport = isAdmin || isRHAnalyst || isRHManager;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [aprovarItem, setAprovarItem] = useState<any>(null);
@@ -162,7 +187,7 @@ function PainelStep({ step }: { step: Step }) {
     queryFn: async () => {
       let query = supabase
         .from('solicitacoes_prestador' as any)
-        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf)')
+        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf, cidade, uf)')
         .in('status', statusFiltros)
         .order('created_at');
 
@@ -539,6 +564,18 @@ function PainelStep({ step }: { step: Step }) {
               </SelectContent>
             </Select>
           </div>
+          {canExport && (
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportSolicitacoesToExcel(itemsFiltrados, centrosCusto, `aprovacoes-prestadores-${step}-${format(new Date(), 'yyyy-MM-dd')}`)}
+                disabled={itemsFiltrados.length === 0}
+              >
+                <Download className="h-4 w-4 mr-1" /> Exportar Excel
+              </Button>
+            </div>
+          )}
         </div>
 
         {itemsFiltrados.length === 0 ? (
@@ -805,6 +842,8 @@ function getDataDecisao(s: any): string | null {
 
 function HistoricoPanel() {
   const { user } = useAuth();
+  const { isAdmin, isRHAnalyst, isRHManager } = useUserRole();
+  const canExport = isAdmin || isRHAnalyst || isRHManager;
   const [detalheItem, setDetalheItem] = useState<any>(null);
 
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
@@ -847,7 +886,7 @@ function HistoricoPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('solicitacoes_prestador' as any)
-        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia)')
+        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf, cidade, uf)')
         .in('status', [
           'aprovado_lider',
           'aprovado_rh',
@@ -924,6 +963,18 @@ function HistoricoPanel() {
               </SelectContent>
             </Select>
           </div>
+          {canExport && (
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportSolicitacoesToExcel(itemsFiltrados, centrosCusto, `historico-prestadores-${format(new Date(), 'yyyy-MM-dd')}`)}
+                disabled={itemsFiltrados.length === 0}
+              >
+                <Download className="h-4 w-4 mr-1" /> Exportar Excel
+              </Button>
+            </div>
+          )}
         </div>
 
         {itemsFiltrados.length === 0 ? (
