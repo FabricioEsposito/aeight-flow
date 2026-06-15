@@ -493,7 +493,12 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f3f4f6;">
   <div style="max-width: 650px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-      
+
+      <!-- Logo Grupo -->
+      <div style="background:#000000;padding:20px;text-align:center;">
+        <img src="https://aeight-flow.lovable.app/__l5e/assets-v1/8247fcee-a153-4eb0-a1fc-2aea05a49bfb/logo-grupo-aeight.png" alt="Grupo A&amp;EIGHT" style="max-width:320px;width:100%;height:auto;display:inline-block;border:0;" />
+      </div>
+
       <!-- Header -->
       <div style="background: ${template.headerGradient}; padding: 32px; text-align: center;">
         <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">${template.title}</h1>
