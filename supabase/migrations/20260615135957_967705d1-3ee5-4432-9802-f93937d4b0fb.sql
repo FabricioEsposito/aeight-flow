@@ -1,0 +1,1 @@
+ALTER TABLE public.controle_beneficios ADD COLUMN IF NOT EXISTS data_vencimento_sugerida date;

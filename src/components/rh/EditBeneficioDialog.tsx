@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +28,7 @@ interface BeneficioParcelaRecord {
   beneficio_id: string | null;
   link_nf?: string | null;
   link_boleto?: string | null;
+  data_vencimento_sugerida?: string | null;
 }
 
 interface EditBeneficioDialogProps {
@@ -46,6 +48,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
   const [linkContrato, setLinkContrato] = useState<string | null>(null);
   const [numeroContrato, setNumeroContrato] = useState<string>('');
   const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState<string | null>(null);
+  const [dataVencimentoSugerida, setDataVencimentoSugerida] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -60,6 +63,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       setLinkContrato(null);
       setNumeroContrato('');
       setLinkPlanilhaRateio(null);
+      setDataVencimentoSugerida(record.data_vencimento_sugerida || '');
       setCentroCustoRateio(
         record.centros_custo.map(cc => ({
           centro_custo_id: cc.centro_custo_id,
@@ -153,6 +157,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
         observacoes: observacoes || null,
         mes_referencia: vencDate.getMonth() + 1,
         ano_referencia: vencDate.getFullYear(),
+        data_vencimento_sugerida: dataVencimentoSugerida || null,
       };
 
       if (record.beneficio_id) {
@@ -274,6 +279,19 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
           </div>
 
           <div>
+            <Label>Data de Vencimento Sugerida (RH)</Label>
+            <Input
+              type="date"
+              value={dataVencimentoSugerida}
+              onChange={(e) => setDataVencimentoSugerida(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Apenas controle interno do RH (vencimento do boleto). Não altera o vencimento financeiro do extrato.
+            </p>
+          </div>
+
+          <div>
+
             <CentroCustoRateio
               value={centroCustoRateio}
               onChange={setCentroCustoRateio}

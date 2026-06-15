@@ -40,6 +40,7 @@ interface BeneficioParcelaRecord {
   plano_contas_descricao: string;
   link_nf: string | null;
   link_boleto: string | null;
+  data_vencimento_sugerida: string | null;
 }
 
 
@@ -133,7 +134,7 @@ export function BeneficiosTab() {
       // 4. Fetch controle_beneficios for tipo_beneficio
       const { data: beneficios } = await supabase
         .from('controle_beneficios')
-        .select('id, parcela_id, tipo_beneficio')
+        .select('id, parcela_id, tipo_beneficio, data_vencimento_sugerida')
         .in('parcela_id', parcelaIds);
 
       const rateioMap = new Map<string, Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>>();
@@ -191,6 +192,7 @@ export function BeneficiosTab() {
           plano_contas_descricao: contrato?.plano_contas ? `${contrato.plano_contas.codigo} - ${contrato.plano_contas.descricao}` : '-',
           link_nf: cp?.link_nf || null,
           link_boleto: cp?.link_boleto || null,
+          data_vencimento_sugerida: beneficio?.data_vencimento_sugerida || null,
         };
       });
 
@@ -332,6 +334,7 @@ export function BeneficiosTab() {
             <TableRow>
               <TableHead>Competência</TableHead>
               <TableHead>Data Vencimento</TableHead>
+              <TableHead>Venc. Sugerida (RH)</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead>Nome Fantasia</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
@@ -345,11 +348,11 @@ export function BeneficiosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                   Nenhum benefício encontrado. Marque contratos de compra como "Benefício para Funcionários" para que suas parcelas apareçam aqui.
                 </TableCell>
               </TableRow>
@@ -361,6 +364,7 @@ export function BeneficiosTab() {
                   <TableRow key={r.parcela_id}>
                     <TableCell>{competencia}</TableCell>
                     <TableCell className="text-sm">{formatDate(r.data_vencimento)}</TableCell>
+                    <TableCell className="text-sm">{r.data_vencimento_sugerida ? formatDate(r.data_vencimento_sugerida) : '-'}</TableCell>
                     <TableCell className="font-medium">{r.fornecedor_razao_social}</TableCell>
                     <TableCell className="text-sm">{r.fornecedor_nome_fantasia || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCnpj(r.fornecedor_cnpj)}</TableCell>
