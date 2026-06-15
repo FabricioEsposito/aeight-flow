@@ -33,6 +33,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
   const [descricao, setDescricao] = useState('');
   const [arquivoPath, setArquivoPath] = useState<string | null>(null);
   const [xmlPath, setXmlPath] = useState<string | null>(null);
+  const [comprovantePath, setComprovantePath] = useState<string | null>(null);
   const [numeroNF, setNumeroNF] = useState('');
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
@@ -64,6 +65,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
     setDescricao('');
     setArquivoPath(null);
     setXmlPath(null);
+    setComprovantePath(null);
     setNumeroNF('');
   }, [open, user]);
 
@@ -103,6 +105,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
         arquivo_path: arquivoPath,
         xml_path: tipo === 'nf_mensal' ? xmlPath : null,
+        comprovante_pagamento_path: tipo === 'reembolso' ? comprovantePath : null,
         status: initialStatus,
       }).select('id').single();
       if (error) throw error;
@@ -193,6 +196,22 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
                 value={xmlPath}
                 onChange={setXmlPath}
                 accept="application/xml,text/xml,.xml"
+                maxSizeMB={10}
+              />
+            </div>
+          )}
+          {tipo === 'reembolso' && (
+            <div>
+              <Label>Comprovante de pagamento do cupom fiscal (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                Anexe o comprovante (PDF ou imagem) caso queira incluí-lo junto com a solicitação.
+              </p>
+              <FileUpload
+                bucket="prestador-docs"
+                path={`${user?.id}/comprovante-${Date.now()}`}
+                value={comprovantePath}
+                onChange={setComprovantePath}
+                accept="application/pdf,image/png,image/jpeg"
                 maxSizeMB={10}
               />
             </div>

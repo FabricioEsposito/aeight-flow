@@ -56,7 +56,7 @@ function summaryBlock(opts: { tipoLabel: string; valor: number; mes: number; ano
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { solicitacao_id, evento, motivo } = await req.json() as { solicitacao_id?: string; evento?: Evento; motivo?: string };
+    const { solicitacao_id, evento, motivo, etapa } = await req.json() as { solicitacao_id?: string; evento?: Evento; motivo?: string; etapa?: 'rh' | 'lider' | 'financeiro' };
     if (!solicitacao_id || !evento) {
       return new Response(JSON.stringify({ error: "solicitacao_id e evento são obrigatórios" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -163,36 +163,51 @@ serve(async (req) => {
     } else if (evento === "aprovado_lider") {
       if (solicitanteEmail) to = [solicitanteEmail];
       else if (fornEmails.length) to = fornEmails;
-      subject = `[Aprovado] Reembolso - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
+      subject = `[Aprovado pelo Líder] Reembolso - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
       const body = `<p>Olá <strong>${solicitanteNome}</strong>,</p>
-        <p>Seu reembolso foi <strong>aprovado</strong> e a solicitação já foi encaminhada ao Financeiro para pagamento.</p>
+        <p>Seu reembolso foi <strong>aprovado pela sua liderança</strong> e a solicitação já foi encaminhada ao Financeiro para pagamento.</p>
         ${summaryBlock({ tipoLabel, valor, mes: sol.mes_referencia, ano: sol.ano_referencia, descricao: sol.descricao, numeroNf: sol.numero_nf, accent: "#16a34a", accentSoft: "#dcfce7" })}
         <p>Lembramos que os reembolsos são pagos no <strong>dia 20 do mês subsequente</strong> à solicitação ou, caso a data coincida com um feriado ou final de semana, no próximo dia útil.</p>
         <p>Você pode acompanhar o status da solicitação pela plataforma.</p>`;
-      html = wrap("Reembolso Aprovado", "#16a34a", body);
+      html = wrap("Reembolso Aprovado pelo Líder", "#16a34a", body);
     } else if (evento === "aprovado") {
       // Aprovação final do financeiro (fluxo NF mensal e/ou fallback)
       if (solicitanteEmail) to = [solicitanteEmail];
       if (fornEmails.length) to = Array.from(new Set([...to, ...fornEmails]));
-      subject = `[Aprovada] ${tipoLabel} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
+      subject = `[Aprovado pelo Financeiro] ${tipoLabel} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
+      const fmtDate = (d?: string | null) => {
+        if (!d) return null;
+        try { return new Date(d).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }); } catch { return null; }
+      };
+      const dataLancamento = fmtDate((sol as any).data_aprovacao_financeiro) || fmtDate(new Date().toISOString());
+      const dataPagamento = fmtDate((sol as any).data_vencimento_pagamento);
+      const datasBlock = `<div style="background:#f0fdf4;border-left:4px solid #16a34a;border-radius:8px;padding:14px;margin:10px 0">
+        <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px">Pagamento</p>
+        ${dataLancamento ? `<p style="margin:2px 0;font-size:13px;color:#166534"><strong>Lançado em:</strong> ${dataLancamento}</p>` : ""}
+        ${dataPagamento ? `<p style="margin:2px 0;font-size:13px;color:#166534"><strong>Previsão de pagamento:</strong> ${dataPagamento}</p>` : ""}
+      </div>`;
       const body = `<p>Olá <strong>${solicitanteNome}</strong>,</p>
         <p>Sua solicitação de <strong>${tipoLabel}</strong> foi aprovada em todas as etapas e seguirá para pagamento conforme cronograma do financeiro.</p>
-        ${summaryBlock({ tipoLabel, valor, mes: sol.mes_referencia, ano: sol.ano_referencia, descricao: sol.descricao, numeroNf: sol.numero_nf, accent: "#16a34a", accentSoft: "#dcfce7" })}`;
-      html = wrap(`${tipoLabel} Aprovada`, "#16a34a", body);
+        ${summaryBlock({ tipoLabel, valor, mes: sol.mes_referencia, ano: sol.ano_referencia, descricao: sol.descricao, numeroNf: sol.numero_nf, accent: "#16a34a", accentSoft: "#dcfce7" })}
+        ${datasBlock}`;
+      html = wrap(`${tipoLabel} Aprovada pelo Financeiro`, "#16a34a", body);
     } else if (evento === "rejeitado") {
       if (solicitanteEmail) to = [solicitanteEmail];
       if (fornEmails.length) to = Array.from(new Set([...to, ...fornEmails]));
-      subject = `[Rejeitada] ${tipoLabel} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
+      const etapaLabel = etapa === "rh" ? "RH" : etapa === "lider" ? "Líder" : etapa === "financeiro" ? "Financeiro" : null;
+      subject = etapaLabel
+        ? `[Rejeitado pelo ${etapaLabel}] ${tipoLabel} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`
+        : `[Rejeitada] ${tipoLabel} - ${String(sol.mes_referencia).padStart(2, "0")}/${sol.ano_referencia}`;
       const motivoFinal = motivo || (sol as any).motivo_rejeicao_financeiro || (sol as any).motivo_rejeicao_rh || (sol as any).motivo_rejeicao_lider || "Não informado";
       const body = `<p>Olá <strong>${solicitanteNome}</strong>,</p>
-        <p>Sua solicitação de <strong>${tipoLabel}</strong> foi <strong>rejeitada</strong>.</p>
+        <p>Sua solicitação de <strong>${tipoLabel}</strong> foi <strong>rejeitada${etapaLabel ? ` pelo ${etapaLabel}` : ""}</strong>.</p>
         ${summaryBlock({ tipoLabel, valor, mes: sol.mes_referencia, ano: sol.ano_referencia, descricao: sol.descricao, numeroNf: sol.numero_nf, accent: "#dc2626", accentSoft: "#fee2e2" })}
         <div style="background:#fff;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:8px;padding:14px;margin:0 0 12px">
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.5px">Motivo</p>
           <p style="margin:0;color:#7f1d1d;font-size:14px;white-space:pre-wrap">${motivoFinal}</p>
         </div>
         <p>Caso queira corrigir e reenviar a solicitação, acesse o Portal.</p>`;
-      html = wrap(`${tipoLabel} Rejeitada`, "#dc2626", body);
+      html = wrap(`${tipoLabel} Rejeitada${etapaLabel ? ` pelo ${etapaLabel}` : ""}`, "#dc2626", body);
     } else {
       return new Response(JSON.stringify({ error: `evento desconhecido: ${evento}` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
