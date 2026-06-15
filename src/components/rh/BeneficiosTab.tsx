@@ -334,6 +334,7 @@ export function BeneficiosTab() {
             <TableRow>
               <TableHead>Competência</TableHead>
               <TableHead>Data Vencimento</TableHead>
+              <TableHead>Venc. Sugerida (RH)</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead>Nome Fantasia</TableHead>
               <TableHead>CNPJ/CPF</TableHead>
