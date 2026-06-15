@@ -157,6 +157,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
         observacoes: observacoes || null,
         mes_referencia: vencDate.getMonth() + 1,
         ano_referencia: vencDate.getFullYear(),
+        data_vencimento_sugerida: dataVencimentoSugerida || null,
       };
 
       if (record.beneficio_id) {
