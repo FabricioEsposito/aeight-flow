@@ -382,6 +382,40 @@ export function BeneficiosTab() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {r.link_nf ? (
+                          <button
+                            onClick={() => openStorageFile(r.link_nf!)}
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                            title="Ver NF"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span className="text-xs">NF</span>
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground" title="NF não anexada">
+                            <FileX className="w-4 h-4" />
+                            <span className="text-xs">NF</span>
+                          </span>
+                        )}
+                        {r.link_boleto ? (
+                          <button
+                            onClick={() => openStorageFile(r.link_boleto!)}
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                            title="Ver Boleto"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span className="text-xs">Bol</span>
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground" title="Boleto não anexado">
+                            <FileX className="w-4 h-4" />
+                            <span className="text-xs">Bol</span>
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
                     <TableCell className="text-right">
