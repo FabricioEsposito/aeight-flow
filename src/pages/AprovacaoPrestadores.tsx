@@ -870,7 +870,7 @@ function HistoricoPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('solicitacoes_prestador' as any)
-        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia)')
+        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf, cidade, uf)')
         .in('status', [
           'aprovado_lider',
           'aprovado_rh',
