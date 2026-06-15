@@ -185,7 +185,7 @@ function PainelStep({ step }: { step: Step }) {
     queryFn: async () => {
       let query = supabase
         .from('solicitacoes_prestador' as any)
-        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf)')
+        .select('*, fornecedor:fornecedores(razao_social, nome_fantasia, cnpj_cpf, cidade, uf)')
         .in('status', statusFiltros)
         .order('created_at');
 
