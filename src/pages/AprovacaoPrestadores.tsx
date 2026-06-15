@@ -399,8 +399,11 @@ function PainelStep({ step }: { step: Step }) {
     const { error } = await supabase.from('solicitacoes_prestador' as any).update(update).eq('id', item.id);
     if (error) throw error;
     try {
+      const etapa = step === 'lider' ? 'lider'
+        : (step === 'rh_analista' || step === 'rh_gerente') ? 'rh'
+        : 'financeiro';
       await supabase.functions.invoke('notify-solicitacao-prestador', {
-        body: { solicitacao_id: item.id, evento: 'rejeitado', motivo: motivoRej },
+        body: { solicitacao_id: item.id, evento: 'rejeitado', motivo: motivoRej, etapa },
       });
     } catch (err) {
       console.error('Erro ao enviar email de rejeição:', err);
