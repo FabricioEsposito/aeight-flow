@@ -105,6 +105,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
         arquivo_path: arquivoPath,
         xml_path: tipo === 'nf_mensal' ? xmlPath : null,
+        comprovante_pagamento_path: tipo === 'reembolso' ? comprovantePath : null,
         status: initialStatus,
       }).select('id').single();
       if (error) throw error;
