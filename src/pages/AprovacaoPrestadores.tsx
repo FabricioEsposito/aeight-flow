@@ -564,6 +564,18 @@ function PainelStep({ step }: { step: Step }) {
               </SelectContent>
             </Select>
           </div>
+          {canExport && (
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportSolicitacoesToExcel(itemsFiltrados, centrosCusto, `aprovacoes-prestadores-${step}-${format(new Date(), 'yyyy-MM-dd')}`)}
+                disabled={itemsFiltrados.length === 0}
+              >
+                <Download className="h-4 w-4 mr-1" /> Exportar Excel
+              </Button>
+            </div>
+          )}
         </div>
 
         {itemsFiltrados.length === 0 ? (
