@@ -28,6 +28,7 @@ interface BeneficioParcelaRecord {
   beneficio_id: string | null;
   link_nf?: string | null;
   link_boleto?: string | null;
+  data_vencimento_sugerida?: string | null;
 }
 
 interface EditBeneficioDialogProps {
