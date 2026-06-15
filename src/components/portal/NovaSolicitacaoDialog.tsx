@@ -33,6 +33,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
   const [descricao, setDescricao] = useState('');
   const [arquivoPath, setArquivoPath] = useState<string | null>(null);
   const [xmlPath, setXmlPath] = useState<string | null>(null);
+  const [comprovantePath, setComprovantePath] = useState<string | null>(null);
   const [numeroNF, setNumeroNF] = useState('');
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
