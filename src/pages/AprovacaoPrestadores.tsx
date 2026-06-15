@@ -842,6 +842,8 @@ function getDataDecisao(s: any): string | null {
 
 function HistoricoPanel() {
   const { user } = useAuth();
+  const { isAdmin, isRHAnalyst, isRHManager } = useUserRole();
+  const canExport = isAdmin || isRHAnalyst || isRHManager;
   const [detalheItem, setDetalheItem] = useState<any>(null);
 
   const [datePreset, setDatePreset] = useState<DateRangePreset>('todo-periodo');
