@@ -134,7 +134,7 @@ export function BeneficiosTab() {
       // 4. Fetch controle_beneficios for tipo_beneficio
       const { data: beneficios } = await supabase
         .from('controle_beneficios')
-        .select('id, parcela_id, tipo_beneficio')
+        .select('id, parcela_id, tipo_beneficio, data_vencimento_sugerida')
         .in('parcela_id', parcelaIds);
 
       const rateioMap = new Map<string, Array<{ centro_custo_id: string; codigo: string; descricao: string; percentual: number }>>();
