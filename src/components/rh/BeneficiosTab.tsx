@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit } from 'lucide-react';
+import { Search, Edit, FileCheck, FileX } from 'lucide-react';
+import { openStorageFile } from '@/lib/storage-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
