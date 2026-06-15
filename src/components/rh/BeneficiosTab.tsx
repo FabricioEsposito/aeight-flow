@@ -255,6 +255,28 @@ export function BeneficiosTab() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
 
+  const subtotals = filteredRecords.reduce(
+    (acc, r) => {
+      acc[r.status].total += r.valor;
+      acc[r.status].count += 1;
+      acc.TOTAL.total += r.valor;
+      acc.TOTAL.count += 1;
+      return acc;
+    },
+    {
+      pago: { total: 0, count: 0 },
+      vencido: { total: 0, count: 0 },
+      em_aberto: { total: 0, count: 0 },
+      TOTAL: { total: 0, count: 0 },
+    } as Record<string, { total: number; count: number }>
+  );
+
+  const subtotalCards: Array<{ key: string; label: string; color: string }> = [
+    { key: 'pago', label: 'Pago', color: 'border-l-green-500' },
+    { key: 'vencido', label: 'Vencido', color: 'border-l-red-500' },
+    { key: 'em_aberto', label: 'Em Aberto', color: 'border-l-amber-500' },
+    { key: 'TOTAL', label: 'Total', color: 'border-l-primary' },
+  ];
 
   return (
     <div className="space-y-4">
