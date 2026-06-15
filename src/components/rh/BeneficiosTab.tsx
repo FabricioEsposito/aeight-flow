@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit } from 'lucide-react';
+import { Search, Edit, FileCheck, FileX } from 'lucide-react';
+import { openStorageFile } from '@/lib/storage-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -340,6 +341,7 @@ export function BeneficiosTab() {
               <TableHead>CNPJ/CPF</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Centro de Custo</TableHead>
+              <TableHead className="min-w-[80px]">Anexos</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -348,11 +350,11 @@ export function BeneficiosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                   Nenhum benefício encontrado. Marque contratos de compra como "Benefício para Funcionários" para que suas parcelas apareçam aqui.
                 </TableCell>
               </TableRow>
@@ -379,6 +381,40 @@ export function BeneficiosTab() {
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {r.link_nf ? (
+                          <button
+                            onClick={() => openStorageFile(r.link_nf!)}
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                            title="Ver NF"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span className="text-xs">NF</span>
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground" title="NF não anexada">
+                            <FileX className="w-4 h-4" />
+                            <span className="text-xs">NF</span>
+                          </span>
+                        )}
+                        {r.link_boleto ? (
+                          <button
+                            onClick={() => openStorageFile(r.link_boleto!)}
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                            title="Ver Boleto"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span className="text-xs">Bol</span>
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground" title="Boleto não anexado">
+                            <FileX className="w-4 h-4" />
+                            <span className="text-xs">Bol</span>
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(r.valor)}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
