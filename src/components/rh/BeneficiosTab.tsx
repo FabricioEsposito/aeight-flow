@@ -255,9 +255,45 @@ export function BeneficiosTab() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
 
+  const subtotals = filteredRecords.reduce(
+    (acc, r) => {
+      acc[r.status].total += r.valor;
+      acc[r.status].count += 1;
+      acc.TOTAL.total += r.valor;
+      acc.TOTAL.count += 1;
+      return acc;
+    },
+    {
+      pago: { total: 0, count: 0 },
+      vencido: { total: 0, count: 0 },
+      em_aberto: { total: 0, count: 0 },
+      TOTAL: { total: 0, count: 0 },
+    } as Record<string, { total: number; count: number }>
+  );
+
+  const subtotalCards: Array<{ key: string; label: string; color: string }> = [
+    { key: 'pago', label: 'Pago', color: 'border-l-green-500' },
+    { key: 'vencido', label: 'Vencido', color: 'border-l-red-500' },
+    { key: 'em_aberto', label: 'Em Aberto', color: 'border-l-amber-500' },
+    { key: 'TOTAL', label: 'Total', color: 'border-l-primary' },
+  ];
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {subtotalCards.map(c => (
+          <Card key={c.key} className={`p-4 border-l-4 ${c.color}`}>
+            <div className="text-xs text-muted-foreground font-medium">{c.label}</div>
+            <div className="text-xl font-bold text-foreground tabular-nums mt-1">
+              {formatCurrency(subtotals[c.key].total)}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {subtotals[c.key].count} registro(s)
+            </div>
+          </Card>
+        ))}
+      </div>
+
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
