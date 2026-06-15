@@ -200,6 +200,22 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
               />
             </div>
           )}
+          {tipo === 'reembolso' && (
+            <div>
+              <Label>Comprovante de pagamento do cupom fiscal (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                Anexe o comprovante (PDF ou imagem) caso queira incluí-lo junto com a solicitação.
+              </p>
+              <FileUpload
+                bucket="prestador-docs"
+                path={`${user?.id}/comprovante-${Date.now()}`}
+                value={comprovantePath}
+                onChange={setComprovantePath}
+                accept="application/pdf,image/png,image/jpeg"
+                maxSizeMB={10}
+              />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
