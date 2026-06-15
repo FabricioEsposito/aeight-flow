@@ -280,6 +280,20 @@ export function BeneficiosTab() {
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {subtotalCards.map(c => (
+          <Card key={c.key} className={`p-4 border-l-4 ${c.color}`}>
+            <div className="text-xs text-muted-foreground font-medium">{c.label}</div>
+            <div className="text-xl font-bold text-foreground tabular-nums mt-1">
+              {formatCurrency(subtotals[c.key].total)}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {subtotals[c.key].count} registro(s)
+            </div>
+          </Card>
+        ))}
+      </div>
+
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
