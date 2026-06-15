@@ -278,7 +278,13 @@ function PainelStep({ step }: { step: Step }) {
             body: { solicitacao_id: item.id, evento: 'aprovado_lider' },
           });
         } catch (err) { console.error('Erro email aprovado_lider:', err); }
+        try {
+          await supabase.functions.invoke('notify-solicitacao-prestador', {
+            body: { solicitacao_id: item.id, evento: 'pendente_financeiro' },
+          });
+        } catch (err) { console.error('Erro email pendente_financeiro:', err); }
       }
+
     } else if (step === 'rh_analista') {
       // Reembolso aprovado pelo RH → vai para o líder. NF → mantém fluxo (pendente_rh).
       const novoStatus = item.tipo === 'reembolso' ? 'pendente_lider' : 'pendente_rh';
