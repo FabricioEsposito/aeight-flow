@@ -530,18 +530,6 @@ function PainelStep({ step }: { step: Step }) {
               customRange={{ from: dateRange.from, to: dateRange.to }}
             />
           </div>
-          {canExport && (
-            <div className="ml-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportSolicitacoesToExcel(itemsFiltrados, centrosCusto, `aprovacoes-prestadores-${step}-${format(new Date(), 'yyyy-MM-dd')}`)}
-                disabled={itemsFiltrados.length === 0}
-              >
-                <Download className="h-4 w-4 mr-1" /> Exportar Excel
-              </Button>
-            </div>
-          )}
           <div>
             <Label className="text-xs">Centro de custo</Label>
             <Select value={filtroCC} onValueChange={setFiltroCC}>
