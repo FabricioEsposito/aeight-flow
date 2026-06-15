@@ -18,8 +18,10 @@ type Evento =
   | "aprovado_rh"
   | "pendente_lider"
   | "aprovado_lider"
+  | "pendente_financeiro"
   | "aprovado"
   | "rejeitado";
+
 
 function fmtBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
