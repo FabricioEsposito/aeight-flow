@@ -40,6 +40,7 @@ interface BeneficioParcelaRecord {
   plano_contas_descricao: string;
   link_nf: string | null;
   link_boleto: string | null;
+  data_vencimento_sugerida: string | null;
 }
 
 
