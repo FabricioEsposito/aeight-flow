@@ -63,6 +63,7 @@ export function EditBeneficioDialog({ open, onOpenChange, record, onSaved }: Edi
       setLinkContrato(null);
       setNumeroContrato('');
       setLinkPlanilhaRateio(null);
+      setDataVencimentoSugerida(record.data_vencimento_sugerida || '');
       setCentroCustoRateio(
         record.centros_custo.map(cc => ({
           centro_custo_id: cc.centro_custo_id,
