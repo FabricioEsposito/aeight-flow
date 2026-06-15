@@ -188,7 +188,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
             <div>
               <Label>Arquivo XML (opcional)</Label>
               <p className="text-xs text-muted-foreground mb-1">
-                Se você for MEI, o anexo do XML da nota fiscal é obrigatório.
+                Se você for MEI, o anexo do XML da nota fiscal é obrigatório. Se você emitir a NF pelo Portal de Gestão NFS-e - Contribuinte, também é necessário incluir o XML.
               </p>
               <FileUpload
                 bucket="prestador-docs"
