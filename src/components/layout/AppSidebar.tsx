@@ -1,4 +1,5 @@
 import { 
+  type LucideIcon,
   Building2, 
   Users, 
   Truck, 
@@ -32,14 +33,14 @@ import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 
 interface NavItem {
   title: string;
   url: string;
-  icon: any;
+  icon: LucideIcon;
   adminOnly?: boolean;
 }
 
@@ -125,6 +126,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     "Financeiro": false,
     "Contabilidade": false,
   });
+
+  useEffect(() => {
+    if (isRHUser) {
+      setOpenGroups(prev => ({ ...prev, RH: true }));
+    }
+  }, [isRHUser]);
 
   // Filter navigation based on role permissions
   const filteredNavigationGroups = useMemo(() => {
