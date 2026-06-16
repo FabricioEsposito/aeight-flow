@@ -117,10 +117,11 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const { role, permissions, getRoleLabel } = useUserRole();
   const { getCountForRoute } = useNotificationCounts();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const isRHUser = role === 'rh_manager' || role === 'rh_analyst';
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "Cadastro": false,
     "Comercial": false,
-    "RH": false,
+    "RH": isRHUser,
     "Financeiro": false,
     "Contabilidade": false,
   });
