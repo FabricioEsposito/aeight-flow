@@ -1,4 +1,5 @@
 import { 
+  type LucideIcon,
   Building2, 
   Users, 
   Truck, 
@@ -39,7 +40,7 @@ import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 interface NavItem {
   title: string;
   url: string;
-  icon: any;
+  icon: LucideIcon;
   adminOnly?: boolean;
 }
 
