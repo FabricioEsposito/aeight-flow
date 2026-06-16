@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 
@@ -125,6 +125,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     "Financeiro": false,
     "Contabilidade": false,
   });
+
+  useEffect(() => {
+    if (isRHUser) {
+      setOpenGroups(prev => ({ ...prev, RH: true }));
+    }
+  }, [isRHUser]);
 
   // Filter navigation based on role permissions
   const filteredNavigationGroups = useMemo(() => {
