@@ -326,6 +326,7 @@ const dadosB8one: DadosBancarios = {
   conta: "21551-3",
   tipo_conta: "corrente",
   descricao: "Banco Itaú - Matriz b8one",
+  chave_pix: "31.044.681/0001-13",
 };
 
 const dadosLomadee: DadosBancarios = {
