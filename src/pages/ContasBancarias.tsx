@@ -28,6 +28,7 @@ interface ContaBancaria {
   descricao: string;
   agencia: string | null;
   conta: string | null;
+  chave_pix: string | null;
   saldo_inicial: number;
   saldo_atual: number;
   data_inicio: string;
@@ -53,6 +54,7 @@ export default function ContasBancarias() {
       descricao: '',
       agencia: '',
       conta: '',
+      chave_pix: '',
       saldo_inicial: 0,
       saldo_atual: 0,
       data_inicio: new Date().toISOString().split('T')[0],
@@ -139,6 +141,7 @@ export default function ContasBancarias() {
       descricao: conta.descricao,
       agencia: conta.agencia || '',
       conta: conta.conta || '',
+      chave_pix: conta.chave_pix || '',
       saldo_inicial: conta.saldo_inicial,
       saldo_atual: conta.saldo_atual,
       data_inicio: conta.data_inicio,
@@ -351,6 +354,20 @@ export default function ContasBancarias() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="chave_pix"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chave PIX</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CNPJ, e-mail, telefone ou chave aleatória" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField

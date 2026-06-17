@@ -260,6 +260,7 @@ export type Database = {
         Row: {
           agencia: string | null
           banco: string
+          chave_pix: string | null
           conta: string | null
           created_at: string
           data_inicio: string
@@ -274,6 +275,7 @@ export type Database = {
         Insert: {
           agencia?: string | null
           banco: string
+          chave_pix?: string | null
           conta?: string | null
           created_at?: string
           data_inicio: string
@@ -288,6 +290,7 @@ export type Database = {
         Update: {
           agencia?: string | null
           banco?: string
+          chave_pix?: string | null
           conta?: string | null
           created_at?: string
           data_inicio?: string

@@ -15,6 +15,7 @@ interface DadosBancarios {
   conta: string | null;
   tipo_conta: string | null;
   descricao: string;
+  chave_pix: string | null;
 }
 
 interface ParcelaFaturamento {
@@ -126,6 +127,11 @@ function buildDadosBancariosHtml(tipoPagamento: string | null, dados: DadosBanca
             <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Conta:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${contaCompleta}</td>
           </tr>
+          ${dados.chave_pix ? `
+          <tr>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Chave PIX:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${dados.chave_pix}</td>
+          </tr>` : ""}
         </tbody>
       </table>
       <p style="margin: 16px 0 0 0; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;">
@@ -378,7 +384,7 @@ serve(async (req: Request): Promise<Response> => {
             csll_percentual,
             tipo_pagamento,
             conta_bancaria_id,
-            contas_bancarias(banco, agencia, conta, tipo_conta, descricao)
+            contas_bancarias(banco, agencia, conta, tipo_conta, descricao, chave_pix)
           )
         )
       `)
@@ -454,6 +460,7 @@ serve(async (req: Request): Promise<Response> => {
         conta: contaBancaria.conta || null,
         tipo_conta: contaBancaria.tipo_conta || null,
         descricao: contaBancaria.descricao || "",
+        chave_pix: contaBancaria.chave_pix || null,
       } : null;
 
       const parcela: ParcelaFaturamento = {

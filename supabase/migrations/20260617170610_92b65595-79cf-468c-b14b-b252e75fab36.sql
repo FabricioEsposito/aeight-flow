@@ -1,0 +1,1 @@
+ALTER TABLE public.contas_bancarias ADD COLUMN IF NOT EXISTS chave_pix text;
