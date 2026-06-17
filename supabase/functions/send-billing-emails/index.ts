@@ -15,6 +15,7 @@ interface DadosBancarios {
   conta: string | null;
   tipo_conta: string | null;
   descricao: string;
+  chave_pix: string | null;
 }
 
 interface ParcelaFaturamento {
