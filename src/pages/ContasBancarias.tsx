@@ -54,6 +54,7 @@ export default function ContasBancarias() {
       descricao: '',
       agencia: '',
       conta: '',
+      chave_pix: '',
       saldo_inicial: 0,
       saldo_atual: 0,
       data_inicio: new Date().toISOString().split('T')[0],
