@@ -141,6 +141,7 @@ export default function ContasBancarias() {
       descricao: conta.descricao,
       agencia: conta.agencia || '',
       conta: conta.conta || '',
+      chave_pix: conta.chave_pix || '',
       saldo_inicial: conta.saldo_inicial,
       saldo_atual: conta.saldo_atual,
       data_inicio: conta.data_inicio,
