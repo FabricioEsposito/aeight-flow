@@ -19,6 +19,7 @@ interface DadosBancarios {
   conta: string | null;
   tipo_conta: string | null;
   descricao: string;
+  chave_pix?: string | null;
 }
 
 // =================== Helpers compartilhados (réplica da produção) ===================
@@ -106,6 +107,11 @@ function buildDadosBancariosHtml(tipoPagamento: string | null, dados: DadosBanca
             <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Conta:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${contaCompleta}</td>
           </tr>
+          ${dados.chave_pix ? `
+          <tr>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Chave PIX:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${dados.chave_pix}</td>
+          </tr>` : ""}
         </tbody>
       </table>
       <p style="margin: 16px 0 0 0; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;">
@@ -320,6 +326,7 @@ const dadosB8one: DadosBancarios = {
   conta: "21551-3",
   tipo_conta: "corrente",
   descricao: "Banco Itaú - Matriz b8one",
+  chave_pix: "31.044.681/0001-13",
 };
 
 const dadosLomadee: DadosBancarios = {
