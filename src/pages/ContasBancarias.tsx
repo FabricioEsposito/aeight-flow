@@ -28,6 +28,7 @@ interface ContaBancaria {
   descricao: string;
   agencia: string | null;
   conta: string | null;
+  chave_pix: string | null;
   saldo_inicial: number;
   saldo_atual: number;
   data_inicio: string;
