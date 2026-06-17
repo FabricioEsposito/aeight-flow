@@ -460,6 +460,7 @@ serve(async (req: Request): Promise<Response> => {
         conta: contaBancaria.conta || null,
         tipo_conta: contaBancaria.tipo_conta || null,
         descricao: contaBancaria.descricao || "",
+        chave_pix: contaBancaria.chave_pix || null,
       } : null;
 
       const parcela: ParcelaFaturamento = {
