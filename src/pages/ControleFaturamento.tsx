@@ -90,6 +90,7 @@ export default function ControleFaturamento() {
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [centrosCustoMap, setCentrosCustoMap] = useState<Map<string, string>>(new Map());
   const { toast } = useToast();
   const { exportToExcel } = useExportReport();
   const { sendBillingEmails, isLoading: isSendingEmails } = useBillingEmails();
