@@ -90,6 +90,7 @@ export default function ControleFaturamento() {
   const [showImpostosDetalhados, setShowImpostosDetalhados] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [centrosCustoMap, setCentrosCustoMap] = useState<Map<string, string>>(new Map());
   const { toast } = useToast();
   const { exportToExcel } = useExportReport();
   const { sendBillingEmails, isLoading: isSendingEmails } = useBillingEmails();
@@ -376,6 +377,24 @@ export default function ControleFaturamento() {
     fetchFaturamentos();
   }, [datePreset, customDateRange]);
 
+  useEffect(() => {
+    const fetchCentrosCusto = async () => {
+      const { data, error } = await supabase
+        .from('centros_custo')
+        .select('id, codigo, descricao');
+      if (error) {
+        console.error('Erro ao buscar centros de custo:', error);
+        return;
+      }
+      const map = new Map<string, string>();
+      (data || []).forEach((cc: any) => {
+        map.set(cc.id, `${cc.codigo} - ${cc.descricao}`);
+      });
+      setCentrosCustoMap(map);
+    };
+    fetchCentrosCusto();
+  }, []);
+
   const handleUpdateNF = async (id: string, numero_nf: string, link_nf: string) => {
     try {
       const { error } = await supabase
@@ -569,7 +588,7 @@ export default function ControleFaturamento() {
       { header: 'Link NF', accessor: (row: Faturamento) => row.link_nf || '-', type: 'text' as const },
       { header: 'Contrato', accessor: (row: Faturamento) => row.numero_contrato || '-', type: 'text' as const },
       { header: 'Vendedor', accessor: (row: Faturamento) => row.vendedor || '-', type: 'text' as const },
-      { header: 'Centro de Custo', accessor: (row: Faturamento) => row.centro_custo || '-', type: 'text' as const },
+      { header: 'Centro de Custo', accessor: (row: Faturamento) => centrosCustoMap.get(row.centro_custo || '') || row.centro_custo || '-', type: 'text' as const },
     ];
 
     exportToExcel({
