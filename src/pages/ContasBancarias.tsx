@@ -355,6 +355,20 @@ export default function ContasBancarias() {
                   />
                 </div>
 
+                <FormField
+                  control={form.control}
+                  name="chave_pix"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chave PIX</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CNPJ, e-mail, telefone ou chave aleatória" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
