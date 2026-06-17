@@ -19,6 +19,7 @@ interface DadosBancarios {
   conta: string | null;
   tipo_conta: string | null;
   descricao: string;
+  chave_pix?: string | null;
 }
 
 // =================== Helpers compartilhados (réplica da produção) ===================
