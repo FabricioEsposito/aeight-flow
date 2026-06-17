@@ -384,7 +384,7 @@ serve(async (req: Request): Promise<Response> => {
             csll_percentual,
             tipo_pagamento,
             conta_bancaria_id,
-            contas_bancarias(banco, agencia, conta, tipo_conta, descricao)
+            contas_bancarias(banco, agencia, conta, tipo_conta, descricao, chave_pix)
           )
         )
       `)
