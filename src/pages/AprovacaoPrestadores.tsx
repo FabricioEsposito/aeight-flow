@@ -673,6 +673,7 @@ function PainelStep({ step }: { step: Step }) {
                               </TooltipProvider>
                             </TableCell>
                             <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                            <TableCell className="text-xs">{s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className="gap-1">
                                 {s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}
