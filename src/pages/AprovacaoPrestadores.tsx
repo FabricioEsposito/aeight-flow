@@ -629,8 +629,9 @@ function PainelStep({ step }: { step: Step }) {
                             }}
                           />
                         </TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Tipo</TableHead>
+                       <TableHead>Data solicitação</TableHead>
+                       <TableHead>Data emissão NF</TableHead>
+                       <TableHead>Tipo</TableHead>
                         <TableHead>Fornecedor</TableHead>
                         <TableHead>CC</TableHead>
                         <TableHead>Regime</TableHead>
