@@ -35,6 +35,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
   const [xmlPath, setXmlPath] = useState<string | null>(null);
   const [comprovantePath, setComprovantePath] = useState<string | null>(null);
   const [numeroNF, setNumeroNF] = useState('');
+  const [dataEmissaoNF, setDataEmissaoNF] = useState('');
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [fornecedorId, setFornecedorId] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
     setXmlPath(null);
     setComprovantePath(null);
     setNumeroNF('');
+    setDataEmissaoNF('');
   }, [open, user]);
 
   const handleSubmit = async () => {
@@ -86,6 +88,10 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         toast({ title: 'Número da NF obrigatório', variant: 'destructive' });
         return;
       }
+      if (tipo === 'nf_mensal' && !dataEmissaoNF) {
+        toast({ title: 'Data de emissão da NF obrigatória', variant: 'destructive' });
+        return;
+      }
 
       setSubmitting(true);
 
@@ -103,6 +109,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         mes_referencia: mes,
         ano_referencia: ano,
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
+        data_emissao_nf: tipo === 'nf_mensal' ? dataEmissaoNF : null,
         arquivo_path: arquivoPath,
         xml_path: tipo === 'nf_mensal' ? xmlPath : null,
         comprovante_pagamento_path: tipo === 'reembolso' ? comprovantePath : null,
@@ -160,9 +167,15 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
             </div>
           </div>
           {tipo === 'nf_mensal' && (
-            <div>
-              <Label>Número da NF</Label>
-              <Input value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} placeholder="Ex: 12345" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Número da NF</Label>
+                <Input value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} placeholder="Ex: 12345" />
+              </div>
+              <div>
+                <Label>Data de emissão da NF</Label>
+                <Input type="date" value={dataEmissaoNF} onChange={(e) => setDataEmissaoNF(e.target.value)} />
+              </div>
             </div>
           )}
           <div>

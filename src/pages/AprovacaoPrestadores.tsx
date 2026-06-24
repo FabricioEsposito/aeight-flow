@@ -29,18 +29,18 @@ const exportSolicitacoesToExcel = (rows: any[], centrosCusto: any[], filename: s
     const cc = centrosCusto.find((c: any) => c.id === s._centro_custo);
     const cidadeEstado = [s.fornecedor?.cidade, s.fornecedor?.uf].filter(Boolean).join('/');
     return {
-      'Nome (Razão Social)': s.fornecedor?.razao_social || '',
+      'Razão Social': s.fornecedor?.razao_social || '',
       'Nome Fantasia': s.fornecedor?.nome_fantasia || '',
       'Centro de Custo': cc ? `${cc.codigo} - ${cc.descricao}` : '',
       'CNPJ': s.fornecedor?.cnpj_cpf || '',
-      'Razão Social': s.fornecedor?.razao_social || '',
-      'Data de Emissão': s.created_at ? format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Data de Solicitação': s.created_at ? format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Data de Emissão da NF': s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '',
       'Número da NF': s.numero_nf || '',
       'Cidade/Estado': cidadeEstado,
     };
   });
   const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = [{ wch: 35 }, { wch: 30 }, { wch: 28 }, { wch: 20 }, { wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 20 }];
+  ws['!cols'] = [{ wch: 35 }, { wch: 30 }, { wch: 28 }, { wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 20 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
   XLSX.writeFile(wb, `${filename}.xlsx`);
@@ -629,8 +629,9 @@ function PainelStep({ step }: { step: Step }) {
                             }}
                           />
                         </TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Tipo</TableHead>
+                       <TableHead>Data solicitação</TableHead>
+                       <TableHead>Data emissão NF</TableHead>
+                       <TableHead>Tipo</TableHead>
                         <TableHead>Fornecedor</TableHead>
                         <TableHead>CC</TableHead>
                         <TableHead>Regime</TableHead>
@@ -672,6 +673,7 @@ function PainelStep({ step }: { step: Step }) {
                               </TooltipProvider>
                             </TableCell>
                             <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                            <TableCell className="text-xs">{s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className="gap-1">
                                 {s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}
@@ -984,6 +986,7 @@ function HistoricoPanel() {
             <TableHeader>
               <TableRow>
                 <TableHead>Data solicitação</TableHead>
+                <TableHead>Data emissão NF</TableHead>
                 <TableHead>Data decisão</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Fornecedor</TableHead>
@@ -1004,6 +1007,7 @@ function HistoricoPanel() {
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                    <TableCell className="text-xs">{s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
                     <TableCell className="text-xs">{dataDecisao ? format(new Date(dataDecisao), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
                     <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                     <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>

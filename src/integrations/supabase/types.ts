@@ -2077,6 +2077,7 @@ export type Database = {
           data_aprovacao_rh: string | null
           data_aprovacao_rh_analista: string | null
           data_aprovacao_rh_gerente: string | null
+          data_emissao_nf: string | null
           data_vencimento_pagamento: string | null
           descricao: string | null
           folha_pagamento_id: string | null
@@ -2114,6 +2115,7 @@ export type Database = {
           data_aprovacao_rh?: string | null
           data_aprovacao_rh_analista?: string | null
           data_aprovacao_rh_gerente?: string | null
+          data_emissao_nf?: string | null
           data_vencimento_pagamento?: string | null
           descricao?: string | null
           folha_pagamento_id?: string | null
@@ -2151,6 +2153,7 @@ export type Database = {
           data_aprovacao_rh?: string | null
           data_aprovacao_rh_analista?: string | null
           data_aprovacao_rh_gerente?: string | null
+          data_emissao_nf?: string | null
           data_vencimento_pagamento?: string | null
           descricao?: string | null
           folha_pagamento_id?: string | null
