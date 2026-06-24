@@ -109,6 +109,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         mes_referencia: mes,
         ano_referencia: ano,
         numero_nf: tipo === 'nf_mensal' ? numeroNF : null,
+        data_emissao_nf: tipo === 'nf_mensal' ? dataEmissaoNF : null,
         arquivo_path: arquivoPath,
         xml_path: tipo === 'nf_mensal' ? xmlPath : null,
         comprovante_pagamento_path: tipo === 'reembolso' ? comprovantePath : null,
