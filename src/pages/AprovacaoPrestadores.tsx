@@ -27,20 +27,24 @@ import * as XLSX from 'xlsx';
 const exportSolicitacoesToExcel = (rows: any[], centrosCusto: any[], filename: string) => {
   const data = rows.map((s) => {
     const cc = centrosCusto.find((c: any) => c.id === s._centro_custo);
-    const cidadeEstado = [s.fornecedor?.cidade, s.fornecedor?.uf].filter(Boolean).join('/');
+    const st = statusLabel(s.status);
+    const dataDecisao = getDataDecisao(s);
     return {
-      'Razão Social': s.fornecedor?.razao_social || '',
-      'Nome Fantasia': s.fornecedor?.nome_fantasia || '',
-      'Centro de Custo': cc ? `${cc.codigo} - ${cc.descricao}` : '',
-      'CNPJ': s.fornecedor?.cnpj_cpf || '',
-      'Data de Solicitação': s.created_at ? format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '',
-      'Data de Emissão da NF': s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '',
-      'Número da NF': s.numero_nf || '',
-      'Cidade/Estado': cidadeEstado,
+      'Data solicitação': s.created_at ? format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Data emissão NF': s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Data decisão': dataDecisao ? format(new Date(dataDecisao), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Tipo': s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso',
+      'Fornecedor': s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social || '',
+      'CC': cc ? `${cc.codigo} - ${cc.descricao}` : '',
+      'Regime': s._regime === 'funcionario' ? 'Funcionário' : 'Prestador',
+      'Mês ref.': s.mes_referencia && s.ano_referencia ? `${String(s.mes_referencia).padStart(2, '0')}/${s.ano_referencia}` : '',
+      'Descrição': s.descricao || '',
+      'Valor': s.valor ? Number(s.valor) : 0,
+      'Status': st.label,
     };
   });
   const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = [{ wch: 35 }, { wch: 30 }, { wch: 28 }, { wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 20 }];
+  ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 30 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 14 }, { wch: 20 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
   XLSX.writeFile(wb, `${filename}.xlsx`);
