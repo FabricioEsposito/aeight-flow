@@ -29,13 +29,18 @@ const exportSolicitacoesToExcel = (rows: any[], centrosCusto: any[], filename: s
     const cc = centrosCusto.find((c: any) => c.id === s._centro_custo);
     const st = statusLabel(s.status);
     const dataDecisao = getDataDecisao(s);
+    const cidadeEstado = [s.fornecedor?.cidade, s.fornecedor?.uf].filter(Boolean).join('/');
     return {
       'Data solicitação': s.created_at ? format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '',
       'Data emissão NF': s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '',
       'Data decisão': dataDecisao ? format(new Date(dataDecisao), 'dd/MM/yyyy', { locale: ptBR }) : '',
+      'Razão Social': s.fornecedor?.razao_social || '',
+      'Nome Fantasia': s.fornecedor?.nome_fantasia || '',
+      'CNPJ': s.fornecedor?.cnpj_cpf || '',
+      'Centro de Custo': cc ? `${cc.codigo} - ${cc.descricao}` : '',
+      'Número da NF': s.numero_nf || '',
+      'Cidade/Estado': cidadeEstado,
       'Tipo': s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso',
-      'Fornecedor': s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social || '',
-      'CC': cc ? `${cc.codigo} - ${cc.descricao}` : '',
       'Regime': s._regime === 'funcionario' ? 'Funcionário' : 'Prestador',
       'Mês ref.': s.mes_referencia && s.ano_referencia ? `${String(s.mes_referencia).padStart(2, '0')}/${s.ano_referencia}` : '',
       'Descrição': s.descricao || '',
@@ -44,7 +49,11 @@ const exportSolicitacoesToExcel = (rows: any[], centrosCusto: any[], filename: s
     };
   });
   const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 30 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 14 }, { wch: 20 }];
+  ws['!cols'] = [
+    { wch: 16 }, { wch: 16 }, { wch: 16 },
+    { wch: 35 }, { wch: 30 }, { wch: 20 }, { wch: 28 }, { wch: 14 }, { wch: 20 },
+    { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 14 }, { wch: 20 }
+  ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
   XLSX.writeFile(wb, `${filename}.xlsx`);
