@@ -986,6 +986,7 @@ function HistoricoPanel() {
             <TableHeader>
               <TableRow>
                 <TableHead>Data solicitação</TableHead>
+                <TableHead>Data emissão NF</TableHead>
                 <TableHead>Data decisão</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Fornecedor</TableHead>
