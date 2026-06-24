@@ -167,9 +167,15 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
             </div>
           </div>
           {tipo === 'nf_mensal' && (
-            <div>
-              <Label>Número da NF</Label>
-              <Input value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} placeholder="Ex: 12345" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Número da NF</Label>
+                <Input value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} placeholder="Ex: 12345" />
+              </div>
+              <div>
+                <Label>Data de emissão da NF</Label>
+                <Input type="date" value={dataEmissaoNF} onChange={(e) => setDataEmissaoNF(e.target.value)} />
+              </div>
             </div>
           )}
           <div>
