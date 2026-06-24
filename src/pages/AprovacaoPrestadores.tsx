@@ -1007,6 +1007,7 @@ function HistoricoPanel() {
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                    <TableCell className="text-xs">{s.data_emissao_nf ? format(new Date(`${s.data_emissao_nf}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
                     <TableCell className="text-xs">{dataDecisao ? format(new Date(dataDecisao), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</TableCell>
                     <TableCell><Badge variant="outline">{s.tipo === 'nf_mensal' ? 'NF' : 'Reembolso'}</Badge></TableCell>
                     <TableCell className="text-sm">{s.fornecedor?.nome_fantasia || s.fornecedor?.razao_social}</TableCell>
