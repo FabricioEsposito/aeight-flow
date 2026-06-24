@@ -68,6 +68,7 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
     setXmlPath(null);
     setComprovantePath(null);
     setNumeroNF('');
+    setDataEmissaoNF('');
   }, [open, user]);
 
   const handleSubmit = async () => {
