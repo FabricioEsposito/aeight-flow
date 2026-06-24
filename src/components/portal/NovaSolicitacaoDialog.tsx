@@ -88,6 +88,10 @@ export function NovaSolicitacaoDialog({ open, onOpenChange, tipo }: Props) {
         toast({ title: 'Número da NF obrigatório', variant: 'destructive' });
         return;
       }
+      if (tipo === 'nf_mensal' && !dataEmissaoNF) {
+        toast({ title: 'Data de emissão da NF obrigatória', variant: 'destructive' });
+        return;
+      }
 
       setSubmitting(true);
 
