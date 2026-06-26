@@ -74,8 +74,7 @@ const allNavigationGroups: NavGroup[] = [
       { title: "Dashboard RH", url: "/rh", icon: BarChart3 },
       { title: "Folha de Pagamento", url: "/rh/folha", icon: FileText },
       { title: "Benefícios", url: "/rh/beneficios", icon: Briefcase },
-      { title: "Aprovações RH", url: "/rh/aprovacoes", icon: ClipboardList },
-      { title: "Confirmação Financeiro", url: "/rh/confirmacao", icon: DollarSign },
+      { title: "Aprovações Folha", url: "/rh/confirmacao", icon: DollarSign },
       { title: "Aprovações Prestadores", url: "/aprovacao-prestadores", icon: UserCheck },
     ]
   },
