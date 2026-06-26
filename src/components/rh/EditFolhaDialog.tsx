@@ -136,7 +136,24 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
           .select('id')
           .single();
 
-        if (solData?.id) payload.solicitacao_rh_id = solData.id;
+        if (solData?.id) {
+          payload.solicitacao_rh_id = solData.id;
+          // Notify admin + finance_manager that a new request is pending
+          const { data: approverRoles } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .in('role', ['admin', 'finance_manager'] as any[]);
+          for (const r of (approverRoles || [])) {
+            await supabase.from('notificacoes').insert({
+              user_id: r.user_id,
+              titulo: 'Nova solicitação de folha pendente',
+              mensagem: `${record.fornecedor_razao_social} — competência ${String(mesRef).padStart(2, '0')}/${anoRef}. Acesse "Aprovações Folha" para revisar.`,
+              tipo: 'info',
+              referencia_tipo: 'aprovacao_rh',
+              referencia_id: solData.id,
+            });
+          }
+        }
       }
 
       if (record.folha_id) {
