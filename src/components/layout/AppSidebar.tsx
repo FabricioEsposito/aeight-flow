@@ -161,7 +161,6 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
             ...group,
             items: group.items.filter(item => {
               if (isLiderOnly) return item.url === '/aprovacao-prestadores';
-              if (item.url === '/rh/aprovacoes') return permissions.canApproveRH;
               if (item.url === '/rh/confirmacao') return isAdminOrFinanceManager;
               if (item.url === '/aprovacao-prestadores') return permissions.canApproveRH || permissions.canApproveReembolsoFinanceiro || permissions.canApproveLider;
               return true;
