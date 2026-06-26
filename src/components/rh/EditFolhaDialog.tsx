@@ -200,7 +200,7 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
 
       toast({ 
         title: needsApproval ? 'Enviado para aprovação' : 'Sucesso', 
-        description: needsApproval ? 'Alteração enviada para aprovação do Gerente de RH.' : 'Folha de pagamento salva com sucesso.' 
+        description: needsApproval ? 'Alteração enviada para aprovação do Financeiro.' : 'Folha de pagamento salva com sucesso.' 
       });
       onSaved();
       onOpenChange(false);
