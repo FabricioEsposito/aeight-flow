@@ -36,7 +36,6 @@ import ComissionamentoParceiros from "./pages/ComissionamentoParceiros";
 import RHDashboardPage from "./pages/RHDashboardPage";
 import RHFolhaPagamento from "./pages/RHFolhaPagamento";
 import RHBeneficios from "./pages/RHBeneficios";
-import RHAprovacoes from "./pages/RHAprovacoes";
 import RHConfirmacaoFinanceiro from "./pages/RHConfirmacaoFinanceiro";
 import FerramentasSoftware from "./pages/FerramentasSoftware";
 import AreaContador from "./pages/AreaContador";
