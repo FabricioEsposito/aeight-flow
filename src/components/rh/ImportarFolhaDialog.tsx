@@ -338,6 +338,25 @@ export function ImportarFolhaDialog({ open, onOpenChange, onSuccess, records }: 
         return;
       }
       solicitacaoId = solData?.id || null;
+
+      // Notify admin + finance_manager
+      if (solicitacaoId) {
+        const { data: approverRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('role', ['admin', 'finance_manager'] as any[]);
+        const compStr = `${String(getCompetenciaFolha(vd).mes).padStart(2, '0')}/${getCompetenciaFolha(vd).ano}`;
+        for (const r of (approverRoles || [])) {
+          await supabase.from('notificacoes').insert({
+            user_id: r.user_id,
+            titulo: 'Nova solicitação de folha pendente',
+            mensagem: `Importação de ${rowsToImport.length} registro(s) — competência ${compStr}. Acesse "Aprovações Folha" para revisar.`,
+            tipo: 'info',
+            referencia_tipo: 'aprovacao_rh',
+            referencia_id: solicitacaoId,
+          });
+        }
+      }
     }
 
     for (let i = 0; i < rowsToImport.length; i++) {

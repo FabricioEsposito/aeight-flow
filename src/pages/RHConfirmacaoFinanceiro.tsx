@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
-import { AprovacaoRHPanel } from '@/components/rh/AprovacaoRHPanel';
-import { ConfirmacaoFinanceiroRHDialog } from '@/components/rh/ConfirmacaoFinanceiroRHDialog';
+import React from 'react';
+import { AprovacaoFolhaPanel } from '@/components/rh/AprovacaoFolhaPanel';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
 
 export default function RHConfirmacaoFinanceiro() {
   const { isAdmin, isFinanceManager, loading } = useUserRole();
-  const [confirmacaoDialogOpen, setConfirmacaoDialogOpen] = useState(false);
-  const [confirmacaoSolicitacaoId, setConfirmacaoSolicitacaoId] = useState<string | null>(null);
 
   if (loading) return null;
 
@@ -18,21 +15,12 @@ export default function RHConfirmacaoFinanceiro() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Confirmação Financeiro</h1>
+        <h1 className="text-3xl font-bold text-foreground">Aprovações Folha</h1>
         <p className="text-muted-foreground mt-1">
-          Confirme as solicitações de RH aprovadas
+          Aprove ou rejeite as solicitações de folha enviadas pela Analista de RH. Ao aprovar, o extrato é atualizado automaticamente.
         </p>
       </div>
-      <AprovacaoRHPanel />
-      <ConfirmacaoFinanceiroRHDialog
-        open={confirmacaoDialogOpen}
-        onOpenChange={setConfirmacaoDialogOpen}
-        solicitacaoId={confirmacaoSolicitacaoId}
-        onSuccess={() => {
-          setConfirmacaoDialogOpen(false);
-          setConfirmacaoSolicitacaoId(null);
-        }}
-      />
+      <AprovacaoFolhaPanel />
     </div>
   );
 }
