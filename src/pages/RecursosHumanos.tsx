@@ -3,8 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolhaPagamentoTab } from '@/components/rh/FolhaPagamentoTab';
 import { BeneficiosTab } from '@/components/rh/BeneficiosTab';
 import { RHDashboard } from '@/components/rh/RHDashboard';
-import { AprovacaoRHPanel } from '@/components/rh/AprovacaoRHPanel';
-import { ConfirmacaoFinanceiroRHDialog } from '@/components/rh/ConfirmacaoFinanceiroRHDialog';
+import { AprovacaoFolhaPanel } from '@/components/rh/AprovacaoFolhaPanel';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useContextualTutorial } from '@/hooks/useContextualTutorial';
@@ -12,12 +11,9 @@ import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 export default function RecursosHumanos() {
   useContextualTutorial('rh');
   const [activeTab, setActiveTab] = useSessionState<string>('rh', 'activeTab', 'dashboard');
-  const { permissions, isAdmin, isFinanceManager } = useUserRole();
-  const [confirmacaoDialogOpen, setConfirmacaoDialogOpen] = useState(false);
-  const [confirmacaoSolicitacaoId, setConfirmacaoSolicitacaoId] = useState<string | null>(null);
+  const { isAdmin, isFinanceManager } = useUserRole();
 
-  const showAprovacaoTab = permissions.canApproveRH;
-  const showConfirmacaoTab = isAdmin || isFinanceManager;
+  const showAprovacaoTab = isAdmin || isFinanceManager;
 
   return (
     <div className="space-y-6">
@@ -33,44 +29,16 @@ export default function RecursosHumanos() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="folha">Folha de Pagamento</TabsTrigger>
           <TabsTrigger value="beneficios">Benefícios</TabsTrigger>
-          {showAprovacaoTab && <TabsTrigger value="aprovacoes">Aprovações RH</TabsTrigger>}
-          {showConfirmacaoTab && <TabsTrigger value="confirmacao">Confirmação Financeiro</TabsTrigger>}
+          {showAprovacaoTab && <TabsTrigger value="aprovacoes">Aprovações Folha</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="dashboard">
-          <RHDashboard />
-        </TabsContent>
-
-        <TabsContent value="folha">
-          <FolhaPagamentoTab />
-        </TabsContent>
-
-        <TabsContent value="beneficios">
-          <BeneficiosTab />
-        </TabsContent>
-
+        <TabsContent value="dashboard"><RHDashboard /></TabsContent>
+        <TabsContent value="folha"><FolhaPagamentoTab /></TabsContent>
+        <TabsContent value="beneficios"><BeneficiosTab /></TabsContent>
         {showAprovacaoTab && (
-          <TabsContent value="aprovacoes">
-            <AprovacaoRHPanel />
-          </TabsContent>
-        )}
-
-        {showConfirmacaoTab && (
-          <TabsContent value="confirmacao">
-            <AprovacaoRHPanel />
-          </TabsContent>
+          <TabsContent value="aprovacoes"><AprovacaoFolhaPanel /></TabsContent>
         )}
       </Tabs>
-
-      <ConfirmacaoFinanceiroRHDialog
-        open={confirmacaoDialogOpen}
-        onOpenChange={setConfirmacaoDialogOpen}
-        solicitacaoId={confirmacaoSolicitacaoId}
-        onSuccess={() => {
-          setConfirmacaoDialogOpen(false);
-          setConfirmacaoSolicitacaoId(null);
-        }}
-      />
     </div>
   );
 }
