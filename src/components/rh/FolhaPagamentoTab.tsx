@@ -457,9 +457,10 @@ export function FolhaPagamentoTab() {
   const subtotals = sortedRecords.reduce(
     (acc, r) => {
       const k = normalizeVinculo(r.tipo_vinculo);
-      acc[k].total += r.valor;
+      const v = Number(r.valor_liquido ?? r.valor) || 0;
+      acc[k].total += v;
       acc[k].count += 1;
-      acc.TOTAL.total += r.valor;
+      acc.TOTAL.total += v;
       acc.TOTAL.count += 1;
       return acc;
     },
