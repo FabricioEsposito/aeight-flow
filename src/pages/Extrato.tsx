@@ -1332,12 +1332,14 @@ export default function Extrato() {
       const jurosAtual = Number(selectedLancamento.juros || 0);
       const multaAtual = Number(selectedLancamento.multa || 0);
       const descontoAtual = Number(selectedLancamento.desconto || 0);
-      const grossChanged = Math.abs(grossNovo - grossAtual) > 0.01;
-      const liquidoChanged = Math.abs(liquidoNovo - liquidoAtual) > 0.01;
+      // Threshold de meio centavo — diferenças de 1 centavo (ex.: arredondamento
+      // de retenção) DEVEM ser consideradas alterações.
+      const grossChanged = Math.abs(grossNovo - grossAtual) >= 0.005;
+      const liquidoChanged = Math.abs(liquidoNovo - liquidoAtual) >= 0.005;
       const ajustesChanged =
-        Math.abs(Number(data.juros || 0) - jurosAtual) > 0.01 ||
-        Math.abs(Number(data.multa || 0) - multaAtual) > 0.01 ||
-        Math.abs(Number(data.desconto || 0) - descontoAtual) > 0.01;
+        Math.abs(Number(data.juros || 0) - jurosAtual) >= 0.005 ||
+        Math.abs(Number(data.multa || 0) - multaAtual) >= 0.005 ||
+        Math.abs(Number(data.desconto || 0) - descontoAtual) >= 0.005;
       const valorMudou = grossChanged || liquidoChanged || ajustesChanged;
 
       const updateData: any = {
