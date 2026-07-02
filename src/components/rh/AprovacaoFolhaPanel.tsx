@@ -40,7 +40,14 @@ export function AprovacaoFolhaPanel() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isAdmin, isFinanceManager, isRHManager } = useUserRole();
   const queryClient = useQueryClient();
+
+  // Estágio da aprovação conforme o papel do usuário:
+  // - RH Manager (ou admin): aprova o primeiro nível (pendente_aprovacao_rh → aprovado_rh)
+  // - Financeiro (admin/finance_manager): aprova o segundo nível (aprovado_rh → aprovado_financeiro)
+  const canApproveRHStage = isAdmin || isRHManager;
+  const canApproveFinanceStage = isAdmin || isFinanceManager;
 
   const { data: solicitacoes = [], isLoading } = useQuery({
     queryKey: ['solicitacoes-aprovacao-folha'],
