@@ -267,8 +267,9 @@ export function AprovacaoFolhaPanel() {
     switch (status) {
       case 'pendente':
       case 'pendente_aprovacao_rh':
-      case 'aprovado_rh':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100"><Clock className="w-3 h-3 mr-1" />Pendente</Badge>;
+      case 'aprovado_rh':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100"><Loader2 className="w-3 h-3 mr-1" />Processando</Badge>;
       case 'aprovado_financeiro':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />Aprovada</Badge>;
       case 'rejeitado':
