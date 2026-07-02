@@ -123,6 +123,13 @@ export function AprovacaoFolhaPanel() {
     // Stage 2: Financeiro aprova (item já em "aprovado_rh") → status "aprovado_financeiro" e propaga ao extrato.
     const isFinanceStage = solicitacao.status === 'aprovado_rh';
 
+    if (isFinanceStage && !canApproveFinanceStage) {
+      throw new Error('Você não tem permissão para aprovar como Financeiro.');
+    }
+    if (!isFinanceStage && !canApproveRHStage) {
+      throw new Error('Somente o Gerente de RH pode fazer a primeira aprovação.');
+    }
+
     if (!isFinanceStage) {
       await supabase
         .from('solicitacoes_aprovacao_rh')
