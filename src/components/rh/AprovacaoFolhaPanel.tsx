@@ -67,10 +67,10 @@ export function AprovacaoFolhaPanel() {
         list.flatMap(s => (Array.isArray(s.detalhes) ? s.detalhes : []).map((d: any) => d.cnpj).filter(Boolean))
       ));
       if (cnpjs.length) {
-        const { data: forns } = await supabase
+        const { data: forns } = await (supabase
           .from('fornecedores')
-          .select('cnpj, nome_fantasia, razao_social')
-          .in('cnpj', cnpjs);
+          .select('cnpj, nome_fantasia, razao_social') as any)
+          .in('cnpj', cnpjs as string[]);
         const fmap: Record<string, { nome_fantasia: string; cnpj: string }> = {};
         (forns || []).forEach((f: any) => {
           fmap[f.cnpj] = { nome_fantasia: f.nome_fantasia || f.razao_social || '-', cnpj: f.cnpj };
