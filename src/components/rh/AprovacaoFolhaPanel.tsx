@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CheckCircle2, XCircle, Clock, Eye, Loader2, DollarSign, FileCheck2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +35,8 @@ export function AprovacaoFolhaPanel() {
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [processing, setProcessing] = useState(false);
   const [solicitanteNomes, setSolicitanteNomes] = useState<Record<string, string>>({});
+  const [fornecedoresMap, setFornecedoresMap] = useState<Record<string, { nome_fantasia: string; cnpj: string }>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -57,6 +60,22 @@ export function AprovacaoFolhaPanel() {
         const map: Record<string, string> = {};
         (profs || []).forEach((p: any) => { map[p.id] = p.nome || p.email || '-'; });
         setSolicitanteNomes(map);
+      }
+
+      // Collect all CNPJs from detalhes to fetch fornecedor nome_fantasia
+      const cnpjs = Array.from(new Set(
+        list.flatMap(s => (Array.isArray(s.detalhes) ? s.detalhes : []).map((d: any) => d.cnpj).filter(Boolean))
+      ));
+      if (cnpjs.length) {
+        const { data: forns } = await (supabase
+          .from('fornecedores')
+          .select('cnpj, nome_fantasia, razao_social') as any)
+          .in('cnpj', cnpjs as string[]);
+        const fmap: Record<string, { nome_fantasia: string; cnpj: string }> = {};
+        (forns || []).forEach((f: any) => {
+          fmap[f.cnpj] = { nome_fantasia: f.nome_fantasia || f.razao_social || '-', cnpj: f.cnpj };
+        });
+        setFornecedoresMap(fmap);
       }
       return list;
     },
@@ -86,57 +105,59 @@ export function AprovacaoFolhaPanel() {
     return { pendentes: pendentes.length, valorPendente, aprovadasMes, rejeitadas };
   }, [pendentes, historico]);
 
+  const approveOne = async (solicitacao: SolicitacaoRH) => {
+    const { data: folhas, error: folhaError } = await (supabase
+      .from('folha_pagamento')
+      .select('id, parcela_id, conta_pagar_id, valor_liquido') as any)
+      .eq('solicitacao_rh_id', solicitacao.id);
+    if (folhaError) throw folhaError;
+
+    const detalhes = Array.isArray(solicitacao.detalhes) ? solicitacao.detalhes : [];
+
+    for (const folha of (folhas || [])) {
+      const detalhe = detalhes.find((d: any) => d.parcela_id === folha.parcela_id);
+      const updateData: any = { valor: folha.valor_liquido };
+      if (detalhe?.data_vencimento) updateData.data_vencimento = detalhe.data_vencimento;
+
+      if (folha.parcela_id) {
+        await supabase.from('parcelas_contrato').update(updateData).eq('id', folha.parcela_id);
+      }
+      const cp: any = { valor: folha.valor_liquido };
+      if (detalhe?.data_vencimento) {
+        cp.data_vencimento = detalhe.data_vencimento;
+        cp.data_competencia = detalhe.data_vencimento;
+      }
+      if (folha.conta_pagar_id) {
+        await supabase.from('contas_pagar').update(cp).eq('id', folha.conta_pagar_id);
+      } else if (folha.parcela_id) {
+        await supabase.from('contas_pagar').update(cp).eq('parcela_id', folha.parcela_id);
+      }
+      await supabase.from('folha_pagamento').update({ status: 'processado' }).eq('id', folha.id);
+    }
+
+    await supabase
+      .from('solicitacoes_aprovacao_rh')
+      .update({
+        status: 'aprovado_financeiro',
+        aprovador_financeiro_id: user?.id,
+        data_aprovacao_financeiro: new Date().toISOString(),
+      } as any)
+      .eq('id', solicitacao.id);
+
+    await supabase.from('notificacoes').insert({
+      user_id: solicitacao.solicitante_id,
+      titulo: 'Solicitação de Folha Aprovada',
+      mensagem: `Sua solicitação de ${String(solicitacao.mes_referencia).padStart(2, '0')}/${solicitacao.ano_referencia} foi aprovada pelo Financeiro e o extrato foi atualizado.`,
+      tipo: 'success',
+      referencia_tipo: 'aprovacao_rh',
+      referencia_id: solicitacao.id,
+    });
+  };
+
   const handleAprovar = async (solicitacao: SolicitacaoRH) => {
     setProcessing(true);
     try {
-      const { data: folhas, error: folhaError } = await (supabase
-        .from('folha_pagamento')
-        .select('id, parcela_id, conta_pagar_id, valor_liquido') as any)
-        .eq('solicitacao_rh_id', solicitacao.id);
-      if (folhaError) throw folhaError;
-
-      const detalhes = Array.isArray(solicitacao.detalhes) ? solicitacao.detalhes : [];
-
-      for (const folha of (folhas || [])) {
-        const detalhe = detalhes.find((d: any) => d.parcela_id === folha.parcela_id);
-        const updateData: any = { valor: folha.valor_liquido };
-        if (detalhe?.data_vencimento) updateData.data_vencimento = detalhe.data_vencimento;
-
-        if (folha.parcela_id) {
-          await supabase.from('parcelas_contrato').update(updateData).eq('id', folha.parcela_id);
-        }
-        const cp: any = { valor: folha.valor_liquido };
-        if (detalhe?.data_vencimento) {
-          cp.data_vencimento = detalhe.data_vencimento;
-          cp.data_competencia = detalhe.data_vencimento;
-        }
-        if (folha.conta_pagar_id) {
-          await supabase.from('contas_pagar').update(cp).eq('id', folha.conta_pagar_id);
-        } else if (folha.parcela_id) {
-          // Fallback: locate contas_pagar via parcela_id link
-          await supabase.from('contas_pagar').update(cp).eq('parcela_id', folha.parcela_id);
-        }
-        await supabase.from('folha_pagamento').update({ status: 'processado' }).eq('id', folha.id);
-      }
-
-      await supabase
-        .from('solicitacoes_aprovacao_rh')
-        .update({
-          status: 'aprovado_financeiro',
-          aprovador_financeiro_id: user?.id,
-          data_aprovacao_financeiro: new Date().toISOString(),
-        } as any)
-        .eq('id', solicitacao.id);
-
-      await supabase.from('notificacoes').insert({
-        user_id: solicitacao.solicitante_id,
-        titulo: 'Solicitação de Folha Aprovada',
-        mensagem: `Sua solicitação de ${String(solicitacao.mes_referencia).padStart(2, '0')}/${solicitacao.ano_referencia} foi aprovada pelo Financeiro e o extrato foi atualizado.`,
-        tipo: 'success',
-        referencia_tipo: 'aprovacao_rh',
-        referencia_id: solicitacao.id,
-      });
-
+      await approveOne(solicitacao);
       toast({ title: 'Aprovado', description: 'Valores propagados para o extrato.' });
       queryClient.invalidateQueries({ queryKey: ['solicitacoes-aprovacao-folha'] });
     } catch (error: any) {
@@ -145,6 +166,30 @@ export function AprovacaoFolhaPanel() {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleAprovarLote = async () => {
+    const toApprove = pendentes.filter(s => selectedIds.includes(s.id));
+    if (toApprove.length === 0) return;
+    setProcessing(true);
+    let ok = 0, fail = 0;
+    for (const s of toApprove) {
+      try {
+        await approveOne(s);
+        ok++;
+      } catch (e: any) {
+        console.error('Erro ao aprovar', s.id, e);
+        fail++;
+      }
+    }
+    toast({
+      title: 'Aprovação em lote concluída',
+      description: `${ok} aprovada(s)${fail ? `, ${fail} com erro` : ''}.`,
+      variant: fail ? 'destructive' : 'default',
+    });
+    setSelectedIds([]);
+    queryClient.invalidateQueries({ queryKey: ['solicitacoes-aprovacao-folha'] });
+    setProcessing(false);
   };
 
   const handleRejeitar = async () => {
@@ -205,15 +250,52 @@ export function AprovacaoFolhaPanel() {
     return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const renderTable = (rows: SolicitacaoRH[], showActions: boolean) => (
+  const formatCnpj = (v?: string) => {
+    if (!v) return '-';
+    const d = v.replace(/\D/g, '');
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    return v;
+  };
+
+  const describeFornecedor = (s: SolicitacaoRH) => {
+    const detalhes = Array.isArray(s.detalhes) ? s.detalhes : [];
+    if (detalhes.length === 0) return { nome: '-', cnpj: '-' };
+    if (detalhes.length === 1) {
+      const d = detalhes[0];
+      const nome = fornecedoresMap[d.cnpj]?.nome_fantasia || d.razao_social || '-';
+      return { nome, cnpj: formatCnpj(d.cnpj) };
+    }
+    return { nome: `${detalhes.length} funcionários`, cnpj: '—' };
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleSelectAll = (rows: SolicitacaoRH[]) => {
+    const ids = rows.map(r => r.id);
+    const allSelected = ids.every(id => selectedIds.includes(id));
+    setSelectedIds(allSelected ? selectedIds.filter(id => !ids.includes(id)) : Array.from(new Set([...selectedIds, ...ids])));
+  };
+
+  const renderTable = (rows: SolicitacaoRH[], showActions: boolean) => {
+    const allSelected = showActions && rows.length > 0 && rows.every(r => selectedIds.includes(r.id));
+    return (
     <Table>
       <TableHeader>
         <TableRow>
+          {showActions && (
+            <TableHead className="w-10">
+              <Checkbox checked={allSelected} onCheckedChange={() => toggleSelectAll(rows)} />
+            </TableHead>
+          )}
           <TableHead>Data</TableHead>
           <TableHead>Solicitante</TableHead>
+          <TableHead>Fornecedor</TableHead>
+          <TableHead>CNPJ/CPF</TableHead>
           <TableHead>Competência</TableHead>
           <TableHead>Tipo</TableHead>
-          <TableHead className="text-right">Lançamentos</TableHead>
+          <TableHead className="text-right">Lanç.</TableHead>
           <TableHead className="text-right">Valor Total</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Ações</TableHead>
@@ -223,10 +305,18 @@ export function AprovacaoFolhaPanel() {
         {rows.map((s) => {
           const detalhes = Array.isArray(s.detalhes) ? s.detalhes : [];
           const totalValor = detalhes.reduce((sum: number, d: any) => sum + (d.valor_liquido || 0), 0);
+          const forn = describeFornecedor(s);
           return (
-            <TableRow key={s.id}>
+            <TableRow key={s.id} data-state={selectedIds.includes(s.id) ? 'selected' : undefined}>
+              {showActions && (
+                <TableCell>
+                  <Checkbox checked={selectedIds.includes(s.id)} onCheckedChange={() => toggleSelect(s.id)} />
+                </TableCell>
+              )}
               <TableCell className="text-sm">{new Date(s.created_at).toLocaleDateString('pt-BR')}</TableCell>
               <TableCell className="text-sm">{solicitanteNomes[s.solicitante_id] || '-'}</TableCell>
+              <TableCell className="text-sm font-medium">{forn.nome}</TableCell>
+              <TableCell className="text-sm">{forn.cnpj}</TableCell>
               <TableCell>{String(s.mes_referencia).padStart(2, '0')}/{s.ano_referencia}</TableCell>
               <TableCell><Badge variant="outline">{s.tipo === 'importacao' ? 'Importação' : 'Edição'}</Badge></TableCell>
               <TableCell className="text-right">{detalhes.length}</TableCell>
@@ -254,7 +344,8 @@ export function AprovacaoFolhaPanel() {
         })}
       </TableBody>
     </Table>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -306,11 +397,17 @@ export function AprovacaoFolhaPanel() {
 
         <TabsContent value="pendentes">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="w-4 h-4 text-yellow-500" />
                 Solicitações Pendentes de Aprovação
               </CardTitle>
+              {selectedIds.length > 0 && (
+                <Button size="sm" className="gap-1" onClick={handleAprovarLote} disabled={processing}>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovar Selecionados ({selectedIds.length})
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {pendentes.length === 0 ? (
