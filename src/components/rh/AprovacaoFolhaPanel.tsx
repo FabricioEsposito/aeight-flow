@@ -127,7 +127,7 @@ export function AprovacaoFolhaPanel() {
       throw new Error('Você não tem permissão para aprovar como Financeiro.');
     }
     if (!isFinanceStage && !canApproveRHStage) {
-      throw new Error('Somente o Gerente de RH pode fazer a primeira aprovação.');
+      throw new Error('Somente o RH pode fazer a primeira aprovação.');
     }
 
     if (!isFinanceStage) {
