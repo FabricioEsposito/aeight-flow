@@ -11,6 +11,7 @@ import { CheckCircle2, XCircle, Clock, Eye, Loader2, DollarSign, FileCheck2, Ale
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface SolicitacaoRH {
@@ -39,7 +40,14 @@ export function AprovacaoFolhaPanel() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isAdmin, isFinanceManager, isRHManager } = useUserRole();
   const queryClient = useQueryClient();
+
+  // Estágio da aprovação conforme o papel do usuário:
+  // - RH Manager (ou admin): aprova o primeiro nível (pendente_aprovacao_rh → aprovado_rh)
+  // - Financeiro (admin/finance_manager): aprova o segundo nível (aprovado_rh → aprovado_financeiro)
+  const canApproveRHStage = isAdmin || isRHManager;
+  const canApproveFinanceStage = isAdmin || isFinanceManager;
 
   const { data: solicitacoes = [], isLoading } = useQuery({
     queryKey: ['solicitacoes-aprovacao-folha'],
@@ -81,10 +89,15 @@ export function AprovacaoFolhaPanel() {
     },
   });
 
-  const pendentes = useMemo(
-    () => solicitacoes.filter(s => s.status === 'aprovado_rh'),
-    [solicitacoes]
-  );
+  const pendentes = useMemo(() => {
+    // RH Manager vê itens aguardando 1ª aprovação; Financeiro vê itens já aprovados pelo RH.
+    // Admin vê ambos os estágios.
+    return solicitacoes.filter(s => {
+      if (s.status === 'aprovado_rh') return canApproveFinanceStage;
+      if (s.status === 'pendente' || s.status === 'pendente_aprovacao_rh') return canApproveRHStage;
+      return false;
+    });
+  }, [solicitacoes, canApproveFinanceStage, canApproveRHStage]);
   const historico = useMemo(
     () => solicitacoes.filter(s => s.status === 'aprovado_financeiro' || s.status === 'rejeitado'),
     [solicitacoes]
@@ -109,6 +122,13 @@ export function AprovacaoFolhaPanel() {
     // Stage 1: RH aprova → status "aprovado_rh" (Processando). Não propaga ao extrato.
     // Stage 2: Financeiro aprova (item já em "aprovado_rh") → status "aprovado_financeiro" e propaga ao extrato.
     const isFinanceStage = solicitacao.status === 'aprovado_rh';
+
+    if (isFinanceStage && !canApproveFinanceStage) {
+      throw new Error('Você não tem permissão para aprovar como Financeiro.');
+    }
+    if (!isFinanceStage && !canApproveRHStage) {
+      throw new Error('Somente o Gerente de RH pode fazer a primeira aprovação.');
+    }
 
     if (!isFinanceStage) {
       await supabase

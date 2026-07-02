@@ -11,9 +11,9 @@ import { useContextualTutorial } from '@/hooks/useContextualTutorial';
 export default function RecursosHumanos() {
   useContextualTutorial('rh');
   const [activeTab, setActiveTab] = useSessionState<string>('rh', 'activeTab', 'dashboard');
-  const { isAdmin, isFinanceManager } = useUserRole();
+  const { isAdmin, isFinanceManager, isRHManager } = useUserRole();
 
-  const showAprovacaoTab = isAdmin || isFinanceManager;
+  const showAprovacaoTab = isAdmin || isFinanceManager || isRHManager;
 
   return (
     <div className="space-y-6">
