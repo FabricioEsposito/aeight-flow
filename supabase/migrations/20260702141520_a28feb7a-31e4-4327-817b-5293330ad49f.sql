@@ -1,0 +1,3 @@
+UPDATE public.folha_pagamento SET solicitacao_rh_id = NULL WHERE solicitacao_rh_id IN (SELECT id FROM public.solicitacoes_aprovacao_rh WHERE status IN ('pendente','pendente_aprovacao_rh','aprovado_rh'));
+DELETE FROM public.notificacoes WHERE referencia_tipo = 'aprovacao_rh' AND referencia_id IN (SELECT id FROM public.solicitacoes_aprovacao_rh WHERE status IN ('pendente','pendente_aprovacao_rh','aprovado_rh'));
+DELETE FROM public.solicitacoes_aprovacao_rh WHERE status IN ('pendente','pendente_aprovacao_rh','aprovado_rh');
