@@ -61,6 +61,22 @@ export function AprovacaoFolhaPanel() {
         (profs || []).forEach((p: any) => { map[p.id] = p.nome || p.email || '-'; });
         setSolicitanteNomes(map);
       }
+
+      // Collect all CNPJs from detalhes to fetch fornecedor nome_fantasia
+      const cnpjs = Array.from(new Set(
+        list.flatMap(s => (Array.isArray(s.detalhes) ? s.detalhes : []).map((d: any) => d.cnpj).filter(Boolean))
+      ));
+      if (cnpjs.length) {
+        const { data: forns } = await supabase
+          .from('fornecedores')
+          .select('cnpj, nome_fantasia, razao_social')
+          .in('cnpj', cnpjs);
+        const fmap: Record<string, { nome_fantasia: string; cnpj: string }> = {};
+        (forns || []).forEach((f: any) => {
+          fmap[f.cnpj] = { nome_fantasia: f.nome_fantasia || f.razao_social || '-', cnpj: f.cnpj };
+        });
+        setFornecedoresMap(fmap);
+      }
       return list;
     },
   });
