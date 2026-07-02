@@ -40,13 +40,13 @@ export function AprovacaoFolhaPanel() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { isAdmin, isFinanceManager, isRHManager } = useUserRole();
+  const { isAdmin, isFinanceManager, isRHManager, isRHAnalyst } = useUserRole();
   const queryClient = useQueryClient();
 
   // Estágio da aprovação conforme o papel do usuário:
-  // - RH Manager (ou admin): aprova o primeiro nível (pendente_aprovacao_rh → aprovado_rh)
-  // - Financeiro (admin/finance_manager): aprova o segundo nível (aprovado_rh → aprovado_financeiro)
-  const canApproveRHStage = isAdmin || isRHManager;
+  // - RH (analista ou gerente) + admin: primeiro nível (pendente_aprovacao_rh → aprovado_rh)
+  // - Financeiro (admin/finance_manager): segundo nível (aprovado_rh → aprovado_financeiro)
+  const canApproveRHStage = isAdmin || isRHManager || isRHAnalyst;
   const canApproveFinanceStage = isAdmin || isFinanceManager;
 
   const { data: solicitacoes = [], isLoading } = useQuery({
@@ -127,7 +127,7 @@ export function AprovacaoFolhaPanel() {
       throw new Error('Você não tem permissão para aprovar como Financeiro.');
     }
     if (!isFinanceStage && !canApproveRHStage) {
-      throw new Error('Somente o Gerente de RH pode fazer a primeira aprovação.');
+      throw new Error('Somente o RH pode fazer a primeira aprovação.');
     }
 
     if (!isFinanceStage) {
