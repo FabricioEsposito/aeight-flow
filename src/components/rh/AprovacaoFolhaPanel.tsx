@@ -89,10 +89,15 @@ export function AprovacaoFolhaPanel() {
     },
   });
 
-  const pendentes = useMemo(
-    () => solicitacoes.filter(s => s.status === 'aprovado_rh'),
-    [solicitacoes]
-  );
+  const pendentes = useMemo(() => {
+    // RH Manager vê itens aguardando 1ª aprovação; Financeiro vê itens já aprovados pelo RH.
+    // Admin vê ambos os estágios.
+    return solicitacoes.filter(s => {
+      if (s.status === 'aprovado_rh') return canApproveFinanceStage;
+      if (s.status === 'pendente' || s.status === 'pendente_aprovacao_rh') return canApproveRHStage;
+      return false;
+    });
+  }, [solicitacoes, canApproveFinanceStage, canApproveRHStage]);
   const historico = useMemo(
     () => solicitacoes.filter(s => s.status === 'aprovado_financeiro' || s.status === 'rejeitado'),
     [solicitacoes]
