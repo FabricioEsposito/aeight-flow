@@ -184,7 +184,13 @@ export function AprovacaoFolhaPanel() {
     setProcessing(true);
     try {
       await approveOne(solicitacao);
-      toast({ title: 'Aprovado', description: 'Valores propagados para o extrato.' });
+      const isFinanceStage = solicitacao.status === 'aprovado_rh';
+      toast({
+        title: isFinanceStage ? 'Aprovado pelo Financeiro' : 'Aprovado pelo RH',
+        description: isFinanceStage
+          ? 'Valores propagados para o extrato.'
+          : 'Solicitação em processamento, aguardando aprovação do Financeiro.',
+      });
       queryClient.invalidateQueries({ queryKey: ['solicitacoes-aprovacao-folha'] });
     } catch (error: any) {
       console.error('Erro ao aprovar:', error);
