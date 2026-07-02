@@ -250,15 +250,52 @@ export function AprovacaoFolhaPanel() {
     return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const renderTable = (rows: SolicitacaoRH[], showActions: boolean) => (
+  const formatCnpj = (v?: string) => {
+    if (!v) return '-';
+    const d = v.replace(/\D/g, '');
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    return v;
+  };
+
+  const describeFornecedor = (s: SolicitacaoRH) => {
+    const detalhes = Array.isArray(s.detalhes) ? s.detalhes : [];
+    if (detalhes.length === 0) return { nome: '-', cnpj: '-' };
+    if (detalhes.length === 1) {
+      const d = detalhes[0];
+      const nome = fornecedoresMap[d.cnpj]?.nome_fantasia || d.razao_social || '-';
+      return { nome, cnpj: formatCnpj(d.cnpj) };
+    }
+    return { nome: `${detalhes.length} funcionários`, cnpj: '—' };
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleSelectAll = (rows: SolicitacaoRH[]) => {
+    const ids = rows.map(r => r.id);
+    const allSelected = ids.every(id => selectedIds.includes(id));
+    setSelectedIds(allSelected ? selectedIds.filter(id => !ids.includes(id)) : Array.from(new Set([...selectedIds, ...ids])));
+  };
+
+  const renderTable = (rows: SolicitacaoRH[], showActions: boolean) => {
+    const allSelected = showActions && rows.length > 0 && rows.every(r => selectedIds.includes(r.id));
+    return (
     <Table>
       <TableHeader>
         <TableRow>
+          {showActions && (
+            <TableHead className="w-10">
+              <Checkbox checked={allSelected} onCheckedChange={() => toggleSelectAll(rows)} />
+            </TableHead>
+          )}
           <TableHead>Data</TableHead>
           <TableHead>Solicitante</TableHead>
+          <TableHead>Fornecedor</TableHead>
+          <TableHead>CNPJ/CPF</TableHead>
           <TableHead>Competência</TableHead>
           <TableHead>Tipo</TableHead>
-          <TableHead className="text-right">Lançamentos</TableHead>
+          <TableHead className="text-right">Lanç.</TableHead>
           <TableHead className="text-right">Valor Total</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Ações</TableHead>
@@ -268,10 +305,18 @@ export function AprovacaoFolhaPanel() {
         {rows.map((s) => {
           const detalhes = Array.isArray(s.detalhes) ? s.detalhes : [];
           const totalValor = detalhes.reduce((sum: number, d: any) => sum + (d.valor_liquido || 0), 0);
+          const forn = describeFornecedor(s);
           return (
-            <TableRow key={s.id}>
+            <TableRow key={s.id} data-state={selectedIds.includes(s.id) ? 'selected' : undefined}>
+              {showActions && (
+                <TableCell>
+                  <Checkbox checked={selectedIds.includes(s.id)} onCheckedChange={() => toggleSelect(s.id)} />
+                </TableCell>
+              )}
               <TableCell className="text-sm">{new Date(s.created_at).toLocaleDateString('pt-BR')}</TableCell>
               <TableCell className="text-sm">{solicitanteNomes[s.solicitante_id] || '-'}</TableCell>
+              <TableCell className="text-sm font-medium">{forn.nome}</TableCell>
+              <TableCell className="text-sm">{forn.cnpj}</TableCell>
               <TableCell>{String(s.mes_referencia).padStart(2, '0')}/{s.ano_referencia}</TableCell>
               <TableCell><Badge variant="outline">{s.tipo === 'importacao' ? 'Importação' : 'Edição'}</Badge></TableCell>
               <TableCell className="text-right">{detalhes.length}</TableCell>
@@ -299,7 +344,8 @@ export function AprovacaoFolhaPanel() {
         })}
       </TableBody>
     </Table>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
