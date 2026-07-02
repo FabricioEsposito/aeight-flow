@@ -35,6 +35,8 @@ export function AprovacaoFolhaPanel() {
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [processing, setProcessing] = useState(false);
   const [solicitanteNomes, setSolicitanteNomes] = useState<Record<string, string>>({});
+  const [fornecedoresMap, setFornecedoresMap] = useState<Record<string, { nome_fantasia: string; cnpj: string }>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
