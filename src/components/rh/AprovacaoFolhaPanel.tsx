@@ -105,57 +105,59 @@ export function AprovacaoFolhaPanel() {
     return { pendentes: pendentes.length, valorPendente, aprovadasMes, rejeitadas };
   }, [pendentes, historico]);
 
+  const approveOne = async (solicitacao: SolicitacaoRH) => {
+    const { data: folhas, error: folhaError } = await (supabase
+      .from('folha_pagamento')
+      .select('id, parcela_id, conta_pagar_id, valor_liquido') as any)
+      .eq('solicitacao_rh_id', solicitacao.id);
+    if (folhaError) throw folhaError;
+
+    const detalhes = Array.isArray(solicitacao.detalhes) ? solicitacao.detalhes : [];
+
+    for (const folha of (folhas || [])) {
+      const detalhe = detalhes.find((d: any) => d.parcela_id === folha.parcela_id);
+      const updateData: any = { valor: folha.valor_liquido };
+      if (detalhe?.data_vencimento) updateData.data_vencimento = detalhe.data_vencimento;
+
+      if (folha.parcela_id) {
+        await supabase.from('parcelas_contrato').update(updateData).eq('id', folha.parcela_id);
+      }
+      const cp: any = { valor: folha.valor_liquido };
+      if (detalhe?.data_vencimento) {
+        cp.data_vencimento = detalhe.data_vencimento;
+        cp.data_competencia = detalhe.data_vencimento;
+      }
+      if (folha.conta_pagar_id) {
+        await supabase.from('contas_pagar').update(cp).eq('id', folha.conta_pagar_id);
+      } else if (folha.parcela_id) {
+        await supabase.from('contas_pagar').update(cp).eq('parcela_id', folha.parcela_id);
+      }
+      await supabase.from('folha_pagamento').update({ status: 'processado' }).eq('id', folha.id);
+    }
+
+    await supabase
+      .from('solicitacoes_aprovacao_rh')
+      .update({
+        status: 'aprovado_financeiro',
+        aprovador_financeiro_id: user?.id,
+        data_aprovacao_financeiro: new Date().toISOString(),
+      } as any)
+      .eq('id', solicitacao.id);
+
+    await supabase.from('notificacoes').insert({
+      user_id: solicitacao.solicitante_id,
+      titulo: 'Solicitação de Folha Aprovada',
+      mensagem: `Sua solicitação de ${String(solicitacao.mes_referencia).padStart(2, '0')}/${solicitacao.ano_referencia} foi aprovada pelo Financeiro e o extrato foi atualizado.`,
+      tipo: 'success',
+      referencia_tipo: 'aprovacao_rh',
+      referencia_id: solicitacao.id,
+    });
+  };
+
   const handleAprovar = async (solicitacao: SolicitacaoRH) => {
     setProcessing(true);
     try {
-      const { data: folhas, error: folhaError } = await (supabase
-        .from('folha_pagamento')
-        .select('id, parcela_id, conta_pagar_id, valor_liquido') as any)
-        .eq('solicitacao_rh_id', solicitacao.id);
-      if (folhaError) throw folhaError;
-
-      const detalhes = Array.isArray(solicitacao.detalhes) ? solicitacao.detalhes : [];
-
-      for (const folha of (folhas || [])) {
-        const detalhe = detalhes.find((d: any) => d.parcela_id === folha.parcela_id);
-        const updateData: any = { valor: folha.valor_liquido };
-        if (detalhe?.data_vencimento) updateData.data_vencimento = detalhe.data_vencimento;
-
-        if (folha.parcela_id) {
-          await supabase.from('parcelas_contrato').update(updateData).eq('id', folha.parcela_id);
-        }
-        const cp: any = { valor: folha.valor_liquido };
-        if (detalhe?.data_vencimento) {
-          cp.data_vencimento = detalhe.data_vencimento;
-          cp.data_competencia = detalhe.data_vencimento;
-        }
-        if (folha.conta_pagar_id) {
-          await supabase.from('contas_pagar').update(cp).eq('id', folha.conta_pagar_id);
-        } else if (folha.parcela_id) {
-          // Fallback: locate contas_pagar via parcela_id link
-          await supabase.from('contas_pagar').update(cp).eq('parcela_id', folha.parcela_id);
-        }
-        await supabase.from('folha_pagamento').update({ status: 'processado' }).eq('id', folha.id);
-      }
-
-      await supabase
-        .from('solicitacoes_aprovacao_rh')
-        .update({
-          status: 'aprovado_financeiro',
-          aprovador_financeiro_id: user?.id,
-          data_aprovacao_financeiro: new Date().toISOString(),
-        } as any)
-        .eq('id', solicitacao.id);
-
-      await supabase.from('notificacoes').insert({
-        user_id: solicitacao.solicitante_id,
-        titulo: 'Solicitação de Folha Aprovada',
-        mensagem: `Sua solicitação de ${String(solicitacao.mes_referencia).padStart(2, '0')}/${solicitacao.ano_referencia} foi aprovada pelo Financeiro e o extrato foi atualizado.`,
-        tipo: 'success',
-        referencia_tipo: 'aprovacao_rh',
-        referencia_id: solicitacao.id,
-      });
-
+      await approveOne(solicitacao);
       toast({ title: 'Aprovado', description: 'Valores propagados para o extrato.' });
       queryClient.invalidateQueries({ queryKey: ['solicitacoes-aprovacao-folha'] });
     } catch (error: any) {
@@ -164,6 +166,30 @@ export function AprovacaoFolhaPanel() {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleAprovarLote = async () => {
+    const toApprove = pendentes.filter(s => selectedIds.includes(s.id));
+    if (toApprove.length === 0) return;
+    setProcessing(true);
+    let ok = 0, fail = 0;
+    for (const s of toApprove) {
+      try {
+        await approveOne(s);
+        ok++;
+      } catch (e: any) {
+        console.error('Erro ao aprovar', s.id, e);
+        fail++;
+      }
+    }
+    toast({
+      title: 'Aprovação em lote concluída',
+      description: `${ok} aprovada(s)${fail ? `, ${fail} com erro` : ''}.`,
+      variant: fail ? 'destructive' : 'default',
+    });
+    setSelectedIds([]);
+    queryClient.invalidateQueries({ queryKey: ['solicitacoes-aprovacao-folha'] });
+    setProcessing(false);
   };
 
   const handleRejeitar = async () => {
