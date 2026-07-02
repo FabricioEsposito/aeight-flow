@@ -105,13 +105,16 @@ export function AprovacaoFolhaPanel() {
         if (folha.parcela_id) {
           await supabase.from('parcelas_contrato').update(updateData).eq('id', folha.parcela_id);
         }
+        const cp: any = { valor: folha.valor_liquido };
+        if (detalhe?.data_vencimento) {
+          cp.data_vencimento = detalhe.data_vencimento;
+          cp.data_competencia = detalhe.data_vencimento;
+        }
         if (folha.conta_pagar_id) {
-          const cp: any = { valor: folha.valor_liquido };
-          if (detalhe?.data_vencimento) {
-            cp.data_vencimento = detalhe.data_vencimento;
-            cp.data_competencia = detalhe.data_vencimento;
-          }
           await supabase.from('contas_pagar').update(cp).eq('id', folha.conta_pagar_id);
+        } else if (folha.parcela_id) {
+          // Fallback: locate contas_pagar via parcela_id link
+          await supabase.from('contas_pagar').update(cp).eq('parcela_id', folha.parcela_id);
         }
         await supabase.from('folha_pagamento').update({ status: 'processado' }).eq('id', folha.id);
       }
