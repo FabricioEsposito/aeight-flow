@@ -106,6 +106,32 @@ export function AprovacaoFolhaPanel() {
   }, [pendentes, historico]);
 
   const approveOne = async (solicitacao: SolicitacaoRH) => {
+    // Stage 1: RH aprova → status "aprovado_rh" (Processando). Não propaga ao extrato.
+    // Stage 2: Financeiro aprova (item já em "aprovado_rh") → status "aprovado_financeiro" e propaga ao extrato.
+    const isFinanceStage = solicitacao.status === 'aprovado_rh';
+
+    if (!isFinanceStage) {
+      await supabase
+        .from('solicitacoes_aprovacao_rh')
+        .update({
+          status: 'aprovado_rh',
+          aprovador_rh_id: user?.id,
+          data_aprovacao_rh: new Date().toISOString(),
+        } as any)
+        .eq('id', solicitacao.id);
+
+      await supabase.from('notificacoes').insert({
+        user_id: solicitacao.solicitante_id,
+        titulo: 'Solicitação de Folha em Processamento',
+        mensagem: `Sua solicitação de ${String(solicitacao.mes_referencia).padStart(2, '0')}/${solicitacao.ano_referencia} foi aprovada pelo RH e está aguardando aprovação do Financeiro.`,
+        tipo: 'info',
+        referencia_tipo: 'aprovacao_rh',
+        referencia_id: solicitacao.id,
+      });
+      return;
+    }
+
+    // Stage 2 — Financeiro: propaga valores/datas ao extrato e finaliza
     const { data: folhas, error: folhaError } = await (supabase
       .from('folha_pagamento')
       .select('id, parcela_id, conta_pagar_id, valor_liquido') as any)
