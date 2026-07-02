@@ -397,11 +397,17 @@ export function AprovacaoFolhaPanel() {
 
         <TabsContent value="pendentes">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="w-4 h-4 text-yellow-500" />
                 Solicitações Pendentes de Aprovação
               </CardTitle>
+              {selectedIds.length > 0 && (
+                <Button size="sm" className="gap-1" onClick={handleAprovarLote} disabled={processing}>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovar Selecionados ({selectedIds.length})
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {pendentes.length === 0 ? (
