@@ -11,6 +11,7 @@ import { CheckCircle2, XCircle, Clock, Eye, Loader2, DollarSign, FileCheck2, Ale
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface SolicitacaoRH {
