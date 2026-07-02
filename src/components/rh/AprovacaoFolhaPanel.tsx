@@ -82,7 +82,7 @@ export function AprovacaoFolhaPanel() {
   });
 
   const pendentes = useMemo(
-    () => solicitacoes.filter(s => s.status === 'pendente' || s.status === 'pendente_aprovacao_rh' || s.status === 'aprovado_rh'),
+    () => solicitacoes.filter(s => s.status === 'aprovado_rh'),
     [solicitacoes]
   );
   const historico = useMemo(
