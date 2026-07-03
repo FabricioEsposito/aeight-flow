@@ -251,33 +251,18 @@ export default function ControleFaturamento() {
 
         const round2 = (v: number) => Math.round(v * 100) / 100;
 
-        // Regra: a coluna "Valor Bruto" deve refletir o valor bruto do CONTRATO.
-        // Alguns contratos armazenam o BRUTO em `parcelas_contrato.valor`, outros
-        // armazenam o LÍQUIDO. Detectamos isso comparando a soma das parcelas com
-        // `valor_bruto` e `valor_total` do contrato (acima).
-        const contratoBruto = Number(contrato?.valor_bruto || 0);
-        const contratoLiquido = Number(contrato?.valor_total || 0);
-        const storage = contrato?.id
-          ? parcelaStorageByContrato.get(contrato.id)
-          : undefined;
+        // `parcelas_contrato.valor` sempre representa o BRUTO da parcela.
+        // Fallback: valor_original em contas_receber, e por último o valor lançado.
         const baseParcela = valorParcelaContrato && valorParcelaContrato > 0
           ? valorParcelaContrato
           : valorOriginal && valorOriginal > 0
             ? valorOriginal
             : valorLiquidoLancado;
-        let valorBruto: number;
-        if (storage === 'bruto') {
-          // parcela.valor já é o bruto da parcela
-          valorBruto = round2(baseParcela);
-        } else if (storage === 'liquido' && contratoLiquido > 0 && contratoBruto > 0) {
-          // parcela.valor é líquido — reconstitui o bruto pela razão do contrato
-          valorBruto = round2(baseParcela * (contratoBruto / contratoLiquido));
-        } else {
-          valorBruto = round2(baseParcela);
-        }
+        const valorBruto = round2(baseParcela);
         const valorLiquidoCalculado = taxaImpostos > 0 && taxaImpostos < 1
           ? round2(valorBruto * (1 - taxaImpostos))
           : valorBruto;
+
 
         // Líquido sempre derivado do bruto do contrato menos as retenções (IRRF+PIS+COFINS+CSLL).
         const valorLiquido = valorLiquidoCalculado;
