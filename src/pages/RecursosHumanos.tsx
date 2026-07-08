@@ -3,6 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolhaPagamentoTab } from '@/components/rh/FolhaPagamentoTab';
 import { BeneficiosTab } from '@/components/rh/BeneficiosTab';
 import { RHDashboard } from '@/components/rh/RHDashboard';
+import { ContratosRHTab } from '@/components/rh/ContratosRHTab';
+
 import { AprovacaoFolhaPanel } from '@/components/rh/AprovacaoFolhaPanel';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useUserRole } from '@/hooks/useUserRole';
