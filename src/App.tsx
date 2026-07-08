@@ -37,6 +37,8 @@ import RHDashboardPage from "./pages/RHDashboardPage";
 import RHFolhaPagamento from "./pages/RHFolhaPagamento";
 import RHBeneficios from "./pages/RHBeneficios";
 import RHConfirmacaoFinanceiro from "./pages/RHConfirmacaoFinanceiro";
+import RHContratos from "./pages/RHContratos";
+
 import FerramentasSoftware from "./pages/FerramentasSoftware";
 import AreaContador from "./pages/AreaContador";
 import Tutoriais from "./pages/Tutoriais";
