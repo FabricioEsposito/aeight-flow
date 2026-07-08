@@ -215,9 +215,25 @@ export default function ControleFaturamento() {
         return true;
       });
 
-      // `parcelas_contrato.valor` sempre representa o BRUTO da parcela.
-      // O líquido é derivado aplicando as retenções (IRRF+PIS+COFINS+CSLL) do contrato.
-
+      // Buscar contagem total de parcelas por contrato (para calcular bruto por parcela em contratos não recorrentes)
+      const contratoIds = Array.from(new Set(
+        dataFiltrado
+          .map((i: any) => i.parcelas_contrato?.contratos?.id)
+          .filter(Boolean)
+      ));
+      const parcelaCountsPorContrato = new Map<string, number>();
+      if (contratoIds.length > 0) {
+        const { data: allParcelas } = await supabase
+          .from('parcelas_contrato')
+          .select('contrato_id')
+          .in('contrato_id', contratoIds);
+        (allParcelas || []).forEach((p: any) => {
+          parcelaCountsPorContrato.set(
+            p.contrato_id,
+            (parcelaCountsPorContrato.get(p.contrato_id) || 0) + 1
+          );
+        });
+      }
 
       // Buscar detalhes dos serviços
       const faturamentosFormatados = await Promise.all(dataFiltrado.map(async (item: any) => {
