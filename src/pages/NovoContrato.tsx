@@ -418,6 +418,11 @@ export default function NovoContrato() {
         toast({ title: "Erro", description: "Selecione um fornecedor", variant: "destructive" });
         return;
       }
+      if (rhMode && !isFolhaFuncionario && !isBeneficioFuncionario) {
+        toast({ title: "Erro", description: "Contratos de RH devem ser marcados como Folha ou Benefício de funcionário", variant: "destructive" });
+        return;
+      }
+
       if (!planoContasId || !tipoPagamento || !contaBancariaId) {
         toast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" });
         return;
