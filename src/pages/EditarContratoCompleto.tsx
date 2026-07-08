@@ -530,9 +530,8 @@ export default function EditarContratoCompleto() {
         : (contrato.desconto_valor || 0);
       const valorBruto = valorBase - desconto;
 
-      const totalImpostosPct = (contrato.irrf_percentual || 0) + (contrato.pis_percentual || 0) +
-                               (contrato.cofins_percentual || 0) + (contrato.csll_percentual || 0);
-      const valorLiquido = valorBruto * (1 - totalImpostosPct / 100);
+      // Valor da parcela = bruto (retenções não deduzem parcela)
+      const valorLiquido = valorBruto;
 
       const { data: parcelasData, error: parcelasError } = await supabase
         .from('parcelas_contrato')
@@ -543,7 +542,7 @@ export default function EditarContratoCompleto() {
       if (parcelasError) throw parcelasError;
 
       const numeroParcelas = parcelasData?.length || 1;
-      const valorPorParcela = Math.round((valorLiquido / numeroParcelas) * 100) / 100;
+      const valorPorParcela = Math.round((valorBruto / numeroParcelas) * 100) / 100;
 
       for (const parcela of (parcelasData || [])) {
         // Só atualizar parcelas que NÃO estão pagas
