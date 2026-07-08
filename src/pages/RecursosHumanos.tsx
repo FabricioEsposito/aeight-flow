@@ -3,6 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolhaPagamentoTab } from '@/components/rh/FolhaPagamentoTab';
 import { BeneficiosTab } from '@/components/rh/BeneficiosTab';
 import { RHDashboard } from '@/components/rh/RHDashboard';
+import { ContratosRHTab } from '@/components/rh/ContratosRHTab';
+
 import { AprovacaoFolhaPanel } from '@/components/rh/AprovacaoFolhaPanel';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -29,15 +31,18 @@ export default function RecursosHumanos() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="folha">Folha de Pagamento</TabsTrigger>
           <TabsTrigger value="beneficios">Benefícios</TabsTrigger>
+          <TabsTrigger value="contratos">Contratos</TabsTrigger>
           {showAprovacaoTab && <TabsTrigger value="aprovacoes">Aprovações Folha</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="dashboard"><RHDashboard /></TabsContent>
         <TabsContent value="folha"><FolhaPagamentoTab /></TabsContent>
         <TabsContent value="beneficios"><BeneficiosTab /></TabsContent>
+        <TabsContent value="contratos"><ContratosRHTab /></TabsContent>
         {showAprovacaoTab && (
           <TabsContent value="aprovacoes"><AprovacaoFolhaPanel /></TabsContent>
         )}
+
       </Tabs>
     </div>
   );
