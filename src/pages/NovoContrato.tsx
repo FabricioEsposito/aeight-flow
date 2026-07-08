@@ -670,9 +670,10 @@ export default function NovoContrato() {
                     setTipoContrato(value as 'venda' | 'compra');
                     setNumeroContrato(gerarNumeroContrato());
                   }}
-                  disabled={!!id}
+                  disabled={!!id || rhMode}
                   className="flex gap-4"
                 >
+
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="venda" id="venda" />
                     <Label htmlFor="venda">Contrato de Venda</Label>
