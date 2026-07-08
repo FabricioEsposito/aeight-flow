@@ -37,6 +37,8 @@ import RHDashboardPage from "./pages/RHDashboardPage";
 import RHFolhaPagamento from "./pages/RHFolhaPagamento";
 import RHBeneficios from "./pages/RHBeneficios";
 import RHConfirmacaoFinanceiro from "./pages/RHConfirmacaoFinanceiro";
+import RHContratos from "./pages/RHContratos";
+
 import FerramentasSoftware from "./pages/FerramentasSoftware";
 import AreaContador from "./pages/AreaContador";
 import Tutoriais from "./pages/Tutoriais";
@@ -89,7 +91,9 @@ const App = () => (
                 <Route path="/rh" element={<ProtectedRoute><RHDashboardPage /></ProtectedRoute>} />
                 <Route path="/rh/folha" element={<ProtectedRoute><RHFolhaPagamento /></ProtectedRoute>} />
                 <Route path="/rh/beneficios" element={<ProtectedRoute><RHBeneficios /></ProtectedRoute>} />
+                <Route path="/rh/contratos" element={<ProtectedRoute><RHContratos /></ProtectedRoute>} />
                 <Route path="/rh/confirmacao" element={<ProtectedRoute><RHConfirmacaoFinanceiro /></ProtectedRoute>} />
+
                 <Route path="/ferramentas-software" element={<ProtectedRoute><FerramentasSoftware /></ProtectedRoute>} />
                 <Route path="/area-contador" element={<ProtectedRoute><AreaContador /></ProtectedRoute>} />
                 <Route path="/tutoriais" element={<ProtectedRoute><Tutoriais /></ProtectedRoute>} />
