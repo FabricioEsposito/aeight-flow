@@ -152,7 +152,7 @@ export function ContratosRHTab() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(c.centros_custo_multi || []).map((cc, i) => (
-                          <CompanyTag key={i} codigo={cc.codigo} descricao={cc.descricao} />
+                          <CompanyTag key={i} codigo={cc.codigo} />
                         ))}
                       </div>
                     </TableCell>
