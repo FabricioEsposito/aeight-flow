@@ -39,15 +39,10 @@ export default function RecursosHumanos() {
         <TabsContent value="folha"><FolhaPagamentoTab /></TabsContent>
         <TabsContent value="beneficios"><BeneficiosTab /></TabsContent>
         <TabsContent value="contratos"><ContratosRHTab /></TabsContent>
-
-        </TabsList>
-
-        <TabsContent value="dashboard"><RHDashboard /></TabsContent>
-        <TabsContent value="folha"><FolhaPagamentoTab /></TabsContent>
-        <TabsContent value="beneficios"><BeneficiosTab /></TabsContent>
         {showAprovacaoTab && (
           <TabsContent value="aprovacoes"><AprovacaoFolhaPanel /></TabsContent>
         )}
+
       </Tabs>
     </div>
   );
