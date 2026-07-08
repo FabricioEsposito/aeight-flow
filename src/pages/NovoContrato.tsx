@@ -41,11 +41,14 @@ export default function NovoContrato() {
   useContextualTutorial('contratos-venda');
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const rhMode = searchParams.get('rh') === '1';
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   // Tipo de contrato e venda
-  const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>('venda');
+  const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>(rhMode ? 'compra' : 'venda');
+
   const [tipoVenda, setTipoVenda] = useState<'avulsa' | 'recorrente'>('avulsa');
 
   // Dados básicos
