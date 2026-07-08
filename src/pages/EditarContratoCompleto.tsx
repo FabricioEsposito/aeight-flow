@@ -243,14 +243,13 @@ export default function EditarContratoCompleto() {
   };
 
   const calcularValorTotal = () => {
+    // Valor da parcela/contrato = VALOR BRUTO (unitário × qtd − desconto).
+    // Retenções são informativas e aplicadas apenas em Controle de Faturamento.
     const valorBase = quantidade * valorUnitario;
     const desconto = descontoTipo === 'percentual'
       ? valorBase * (descontoPercentual / 100)
       : descontoValor;
-    const valorComDesconto = valorBase - desconto;
-    const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-    const valorImpostos = valorComDesconto * totalImpostos;
-    return valorComDesconto - valorImpostos;
+    return valorBase - desconto;
   };
 
   const recalcularParcelas = () => {
@@ -260,13 +259,8 @@ export default function EditarContratoCompleto() {
     let valorPorParcela: number;
 
     if (recorrente) {
-      const valorBase = quantidade * valorUnitario;
-      const desconto = descontoTipo === 'percentual'
-        ? valorBase * (descontoPercentual / 100)
-        : descontoValor;
-      const valorComDesconto = valorBase - desconto;
-      const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-      valorPorParcela = valorComDesconto - (valorComDesconto * totalImpostos);
+      // Recorrentes: cada parcela = valor bruto unitário
+      valorPorParcela = calcularValorTotal();
     } else {
       const novoValorTotal = calcularValorTotal();
       valorPorParcela = novoValorTotal / numeroParcelas;
