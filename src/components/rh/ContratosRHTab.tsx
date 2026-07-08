@@ -114,6 +114,10 @@ export function ContratosRHTab() {
           <Button size="sm" variant={tipoFilter === 'folha' ? 'default' : 'outline'} onClick={() => setTipoFilter('folha')}>Folha</Button>
           <Button size="sm" variant={tipoFilter === 'beneficio' ? 'default' : 'outline'} onClick={() => setTipoFilter('beneficio')}>Benefícios</Button>
         </div>
+        <Button size="sm" onClick={() => navigate('/contratos/novo?rh=1')} className="ml-auto">
+          <Plus className="h-4 w-4 mr-1" /> Novo Contrato
+        </Button>
+
       </div>
 
       <Card>
