@@ -296,21 +296,19 @@ export default function NovoContrato() {
   };
 
   const calcularValorTotal = () => {
+    // Valor da parcela/contrato = VALOR BRUTO (unitário × qtd − desconto).
+    // As retenções (IRRF/PIS/COFINS/CSLL) NÃO reduzem o valor da parcela;
+    // elas são informativas e usadas em Controle de Faturamento para gerar o líquido.
     const valorBase = calcularSubtotal();
     let desconto = 0;
-    
+
     if (descontoTipo === 'percentual') {
       desconto = valorBase * (descontoPercentual / 100);
     } else {
       desconto = descontoValor;
     }
 
-    const valorComDesconto = valorBase - desconto;
-    const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-    const valorImpostos = valorComDesconto * totalImpostos;
-    const valorFinal = valorComDesconto - valorImpostos;
-
-    return valorFinal;
+    return valorBase - desconto;
   };
 
   const calcularDataVencimento = (dataGeracao: Date) => {
