@@ -172,6 +172,7 @@ export default function ControleFaturamento() {
               pis_cofins_percentual,
               desconto_percentual,
               desconto_valor,
+              recorrente,
               periodo_recorrencia,
               valor_bruto,
               valor_total,
