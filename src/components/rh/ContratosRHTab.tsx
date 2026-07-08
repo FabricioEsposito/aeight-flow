@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Search } from 'lucide-react';
+import { Loader2, Eye, Search, Plus } from 'lucide-react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { useNavigate } from 'react-router-dom';
