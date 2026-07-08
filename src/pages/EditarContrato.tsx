@@ -305,38 +305,29 @@ export default function EditarContrato() {
   };
 
   const calcularValorTotal = () => {
+    // Valor da parcela/contrato = VALOR BRUTO (unitário × qtd − desconto).
+    // Retenções são informativas e aplicadas apenas em Controle de Faturamento.
     const valorBase = quantidade * valorUnitario;
-    const desconto = descontoTipo === 'percentual' 
+    const desconto = descontoTipo === 'percentual'
       ? valorBase * (descontoPercentual / 100)
       : descontoValor;
-    const valorComDesconto = valorBase - desconto;
-    const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-    const valorImpostos = valorComDesconto * totalImpostos;
-    return valorComDesconto - valorImpostos;
+    return valorBase - desconto;
   };
 
   const recalcularParcelas = () => {
     const numeroParcelas = parcelas.length;
-    
+
     if (numeroParcelas === 0) return;
 
-    // Para contratos recorrentes, cada parcela tem o valor unitário (líquido de impostos)
-    // Para vendas avulsas/parceladas, o valor total é dividido pelo número de parcelas
+    // Valor da parcela = valor bruto (sem deduzir retenções).
     let valorPorParcela: number;
-    
+
     if (recorrente) {
-      // Contratos recorrentes: cada parcela = valor unitário - impostos
-      const valorBase = quantidade * valorUnitario;
-      const desconto = descontoTipo === 'percentual' 
-        ? valorBase * (descontoPercentual / 100)
-        : descontoValor;
-      const valorComDesconto = valorBase - desconto;
-      const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-      valorPorParcela = valorComDesconto - (valorComDesconto * totalImpostos);
+      // Recorrentes: cada parcela = valor bruto unitário
+      valorPorParcela = calcularValorTotal();
     } else {
-      // Vendas avulsas/parceladas: valor total dividido pelo número de parcelas
-      const novoValorTotal = calcularValorTotal();
-      valorPorParcela = novoValorTotal / numeroParcelas;
+      // Avulsas/parceladas: valor bruto dividido pelo número de parcelas
+      valorPorParcela = calcularValorTotal() / numeroParcelas;
     }
 
     const parcelasAtualizadas = parcelas.map((parcela) => ({
@@ -454,16 +445,12 @@ export default function EditarContrato() {
 
       if (contratoError) throw contratoError;
 
-      // Calcular valor bruto e líquido
+      // Valor da parcela = VALOR BRUTO (sem deduzir retenções).
       const valorBase = contrato.quantidade * contrato.valor_unitario;
       const desconto = contrato.desconto_tipo === 'percentual'
         ? valorBase * ((contrato.desconto_percentual || 0) / 100)
         : (contrato.desconto_valor || 0);
       const valorBruto = valorBase - desconto;
-      
-      const totalImpostosPct = (contrato.irrf_percentual || 0) + (contrato.pis_percentual || 0) +
-                               (contrato.cofins_percentual || 0) + (contrato.csll_percentual || 0);
-      const valorLiquido = valorBruto * (1 - totalImpostosPct / 100);
 
       // Buscar parcelas do contrato
       const { data: parcelasData, error: parcelasError } = await supabase
@@ -475,7 +462,7 @@ export default function EditarContrato() {
       if (parcelasError) throw parcelasError;
 
       const numeroParcelas = parcelasData?.length || 1;
-      const valorPorParcela = Math.round((valorLiquido / numeroParcelas) * 100) / 100;
+      const valorPorParcela = Math.round((valorBruto / numeroParcelas) * 100) / 100;
 
       // Atualizar cada parcela e sua conta correspondente (apenas pendentes)
       for (const parcela of (parcelasData || [])) {
@@ -511,12 +498,12 @@ export default function EditarContrato() {
         }
       }
 
-      // Atualizar valor_total e valor_bruto do contrato
+      // Atualizar valor_total e valor_bruto do contrato (ambos = bruto)
       const { error: updateContratoError } = await supabase
         .from('contratos')
         .update({
           valor_bruto: valorBruto,
-          valor_total: valorLiquido,
+          valor_total: valorBruto,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
