@@ -267,15 +267,14 @@ export default function ControleFaturamento() {
 
         const round2 = (v: number) => Math.round(v * 100) / 100;
 
-        // Bruto de referência do contrato:
-        //  - Recorrente: contrato.valor_bruto é o bruto por parcela
-        //  - Não recorrente: contrato.valor_bruto / número de parcelas
-        // Se o contrato não tiver esse dado, cai para parcela.valor / valor_original / valor lançado
-        // e, quando esse valor parecer ser o líquido (bug antigo), recompõe o bruto revertendo as retenções.
+        // Bruto de referência por parcela:
+        //  - Recorrente: contrato.valor_bruto é o bruto de UMA parcela
+        //  - Não recorrente: contrato.valor_bruto / (nº total de parcelas)
         const contratoBruto = Number(contrato?.valor_bruto || 0);
+        const numParcelas = parcelaCountsPorContrato.get(contrato?.id) || 1;
         const brutoDoContrato = contrato?.recorrente
           ? contratoBruto
-          : contratoBruto; // valor_bruto no contrato já reflete o bruto por parcela quando recorrente; para parcelados usamos o mesmo valor por parcela quando persistido corretamente
+          : (numParcelas > 0 ? contratoBruto / numParcelas : contratoBruto);
 
         const baseFallback = valorParcelaContrato && valorParcelaContrato > 0
           ? valorParcelaContrato
@@ -283,13 +282,9 @@ export default function ControleFaturamento() {
             ? valorOriginal
             : valorLancado;
 
-        // Se o contrato tem bruto definido e o fallback for próximo do líquido (bruto*(1-tax)),
-        // preferimos o bruto do contrato para exibição.
+        // Se o bruto de referência do contrato existe, usá-lo. Caso contrário, cai para o valor persistido.
         let valorBruto: number;
-        if (brutoDoContrato > 0 && taxaImpostos > 0 && taxaImpostos < 1
-            && Math.abs(baseFallback - brutoDoContrato * (1 - taxaImpostos)) < 0.05) {
-          valorBruto = round2(brutoDoContrato);
-        } else if (brutoDoContrato > 0 && Math.abs(baseFallback - brutoDoContrato) < 0.05) {
+        if (brutoDoContrato > 0) {
           valorBruto = round2(brutoDoContrato);
         } else {
           valorBruto = round2(baseFallback);
