@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Search } from 'lucide-react';
+import { Loader2, Eye, Search, Plus } from 'lucide-react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { useNavigate } from 'react-router-dom';
@@ -113,6 +114,10 @@ export function ContratosRHTab() {
           <Button size="sm" variant={tipoFilter === 'folha' ? 'default' : 'outline'} onClick={() => setTipoFilter('folha')}>Folha</Button>
           <Button size="sm" variant={tipoFilter === 'beneficio' ? 'default' : 'outline'} onClick={() => setTipoFilter('beneficio')}>Benefícios</Button>
         </div>
+        <Button size="sm" onClick={() => navigate('/contratos/novo?rh=1')} className="ml-auto">
+          <Plus className="h-4 w-4 mr-1" /> Novo Contrato
+        </Button>
+
       </div>
 
       <Card>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+
 import { ArrowLeft, Plus, X, TrendingUp } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -40,11 +41,14 @@ export default function NovoContrato() {
   useContextualTutorial('contratos-venda');
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const rhMode = searchParams.get('rh') === '1';
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   // Tipo de contrato e venda
-  const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>('venda');
+  const [tipoContrato, setTipoContrato] = useState<'venda' | 'compra'>(rhMode ? 'compra' : 'venda');
+
   const [tipoVenda, setTipoVenda] = useState<'avulsa' | 'recorrente'>('avulsa');
 
   // Dados básicos
@@ -414,6 +418,11 @@ export default function NovoContrato() {
         toast({ title: "Erro", description: "Selecione um fornecedor", variant: "destructive" });
         return;
       }
+      if (rhMode && !isFolhaFuncionario && !isBeneficioFuncionario) {
+        toast({ title: "Erro", description: "Contratos de RH devem ser marcados como Folha ou Benefício de funcionário", variant: "destructive" });
+        return;
+      }
+
       if (!planoContasId || !tipoPagamento || !contaBancariaId) {
         toast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" });
         return;
@@ -619,7 +628,7 @@ export default function NovoContrato() {
         description: id ? "Contrato atualizado com sucesso!" : "Contrato criado com sucesso!",
       });
 
-      navigate('/contratos');
+      navigate(rhMode ? '/rh/contratos' : '/contratos');
     } catch (error) {
       console.error('Erro ao salvar contrato:', error);
       toast({
@@ -635,7 +644,7 @@ export default function NovoContrato() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/contratos')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(rhMode ? '/rh/contratos' : '/contratos')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
@@ -666,9 +675,10 @@ export default function NovoContrato() {
                     setTipoContrato(value as 'venda' | 'compra');
                     setNumeroContrato(gerarNumeroContrato());
                   }}
-                  disabled={!!id}
+                  disabled={!!id || rhMode}
                   className="flex gap-4"
                 >
+
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="venda" id="venda" />
                     <Label htmlFor="venda">Contrato de Venda</Label>
@@ -1334,7 +1344,7 @@ export default function NovoContrato() {
             <Button onClick={handleSalvar} disabled={loading} className="flex-1">
               {loading ? 'Salvando...' : id ? 'Atualizar Contrato' : 'Salvar Contrato'}
             </Button>
-            <Button variant="outline" onClick={() => navigate('/contratos')}>
+            <Button variant="outline" onClick={() => navigate(rhMode ? '/rh/contratos' : '/contratos')}>
               Cancelar
             </Button>
           </div>
