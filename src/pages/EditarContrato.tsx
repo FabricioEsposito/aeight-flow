@@ -445,16 +445,12 @@ export default function EditarContrato() {
 
       if (contratoError) throw contratoError;
 
-      // Calcular valor bruto e líquido
+      // Valor da parcela = VALOR BRUTO (sem deduzir retenções).
       const valorBase = contrato.quantidade * contrato.valor_unitario;
       const desconto = contrato.desconto_tipo === 'percentual'
         ? valorBase * ((contrato.desconto_percentual || 0) / 100)
         : (contrato.desconto_valor || 0);
       const valorBruto = valorBase - desconto;
-      
-      const totalImpostosPct = (contrato.irrf_percentual || 0) + (contrato.pis_percentual || 0) +
-                               (contrato.cofins_percentual || 0) + (contrato.csll_percentual || 0);
-      const valorLiquido = valorBruto * (1 - totalImpostosPct / 100);
 
       // Buscar parcelas do contrato
       const { data: parcelasData, error: parcelasError } = await supabase
@@ -466,7 +462,7 @@ export default function EditarContrato() {
       if (parcelasError) throw parcelasError;
 
       const numeroParcelas = parcelasData?.length || 1;
-      const valorPorParcela = Math.round((valorLiquido / numeroParcelas) * 100) / 100;
+      const valorPorParcela = Math.round((valorBruto / numeroParcelas) * 100) / 100;
 
       // Atualizar cada parcela e sua conta correspondente (apenas pendentes)
       for (const parcela of (parcelasData || [])) {
@@ -502,12 +498,12 @@ export default function EditarContrato() {
         }
       }
 
-      // Atualizar valor_total e valor_bruto do contrato
+      // Atualizar valor_total e valor_bruto do contrato (ambos = bruto)
       const { error: updateContratoError } = await supabase
         .from('contratos')
         .update({
           valor_bruto: valorBruto,
-          valor_total: valorLiquido,
+          valor_total: valorBruto,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
