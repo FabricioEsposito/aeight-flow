@@ -305,38 +305,29 @@ export default function EditarContrato() {
   };
 
   const calcularValorTotal = () => {
+    // Valor da parcela/contrato = VALOR BRUTO (unitário × qtd − desconto).
+    // Retenções são informativas e aplicadas apenas em Controle de Faturamento.
     const valorBase = quantidade * valorUnitario;
-    const desconto = descontoTipo === 'percentual' 
+    const desconto = descontoTipo === 'percentual'
       ? valorBase * (descontoPercentual / 100)
       : descontoValor;
-    const valorComDesconto = valorBase - desconto;
-    const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-    const valorImpostos = valorComDesconto * totalImpostos;
-    return valorComDesconto - valorImpostos;
+    return valorBase - desconto;
   };
 
   const recalcularParcelas = () => {
     const numeroParcelas = parcelas.length;
-    
+
     if (numeroParcelas === 0) return;
 
-    // Para contratos recorrentes, cada parcela tem o valor unitário (líquido de impostos)
-    // Para vendas avulsas/parceladas, o valor total é dividido pelo número de parcelas
+    // Valor da parcela = valor bruto (sem deduzir retenções).
     let valorPorParcela: number;
-    
+
     if (recorrente) {
-      // Contratos recorrentes: cada parcela = valor unitário - impostos
-      const valorBase = quantidade * valorUnitario;
-      const desconto = descontoTipo === 'percentual' 
-        ? valorBase * (descontoPercentual / 100)
-        : descontoValor;
-      const valorComDesconto = valorBase - desconto;
-      const totalImpostos = (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100;
-      valorPorParcela = valorComDesconto - (valorComDesconto * totalImpostos);
+      // Recorrentes: cada parcela = valor bruto unitário
+      valorPorParcela = calcularValorTotal();
     } else {
-      // Vendas avulsas/parceladas: valor total dividido pelo número de parcelas
-      const novoValorTotal = calcularValorTotal();
-      valorPorParcela = novoValorTotal / numeroParcelas;
+      // Avulsas/parceladas: valor bruto dividido pelo número de parcelas
+      valorPorParcela = calcularValorTotal() / numeroParcelas;
     }
 
     const parcelasAtualizadas = parcelas.map((parcela) => ({
