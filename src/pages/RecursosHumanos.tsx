@@ -31,7 +31,15 @@ export default function RecursosHumanos() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="folha">Folha de Pagamento</TabsTrigger>
           <TabsTrigger value="beneficios">Benefícios</TabsTrigger>
+          <TabsTrigger value="contratos">Contratos</TabsTrigger>
           {showAprovacaoTab && <TabsTrigger value="aprovacoes">Aprovações Folha</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="dashboard"><RHDashboard /></TabsContent>
+        <TabsContent value="folha"><FolhaPagamentoTab /></TabsContent>
+        <TabsContent value="beneficios"><BeneficiosTab /></TabsContent>
+        <TabsContent value="contratos"><ContratosRHTab /></TabsContent>
+
         </TabsList>
 
         <TabsContent value="dashboard"><RHDashboard /></TabsContent>
