@@ -283,9 +283,11 @@ export default function ControleFaturamento() {
             ? valorOriginal
             : valorLancado;
 
-        // Se o bruto de referência do contrato existe, usá-lo. Caso contrário, cai para o valor persistido.
+        // Prioridade: valor da parcela (permite overrides por parcela) > bruto do contrato > fallback.
         let valorBruto: number;
-        if (brutoDoContrato > 0) {
+        if (valorParcelaContrato && valorParcelaContrato > 0) {
+          valorBruto = round2(valorParcelaContrato);
+        } else if (brutoDoContrato > 0) {
           valorBruto = round2(brutoDoContrato);
         } else {
           valorBruto = round2(baseFallback);
