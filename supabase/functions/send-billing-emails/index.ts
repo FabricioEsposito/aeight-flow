@@ -175,29 +175,40 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
       const cofinsValor = p.valor_bruto * (p.cofins_percentual / 100);
       const csllValor = p.valor_bruto * (p.csll_percentual / 100);
       const totalRetencoes = irrfValor + pisValor + cofinsValor + csllValor;
-      
+
+      const nfHtml = p.link_nf && p.link_nf.trim() !== ''
+        ? `<a href="${p.link_nf}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">📄 Visualizar NF ${p.numero_nf}</a>`
+        : `<span style="display: inline-block; padding: 6px 12px; background-color: #9ca3af; color: #ffffff; border-radius: 4px; font-size: 12px; font-weight: 500;">NF ${p.numero_nf}</span>`;
+
+      const boletoHtml = p.link_boleto && p.link_boleto.trim() !== ''
+        ? `<a href="${p.link_boleto}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">🧾 Visualizar Boleto</a>`
+        : '';
+
+      const row = (label: string, value: string, extraStyle = '') => `
+        <tr>
+          <td style="padding: 6px 10px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; width: 42%; vertical-align: top;">${label}</td>
+          <td style="padding: 6px 10px; font-size: 14px; color: #1f2937; text-align: right; ${extraStyle}">${value}</td>
+        </tr>`;
+
       return `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.contrato_numero || "-"}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.servico_nome || "-"}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${formatCompetencia(p.data_competencia)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${formatDate(p.data_vencimento)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right;">${formatCurrency(p.valor_bruto)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right; color: #dc2626;">${totalRetencoes > 0 ? formatCurrency(totalRetencoes) : '-'}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right; font-weight: 600;">${formatCurrency(p.valor)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: center;">
-          ${p.link_nf && p.link_nf.trim() !== '' 
-            ? `<a href="${p.link_nf}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 600;">📄 Visualizar NF ${p.numero_nf}</a>`
-            : `<span style="display: inline-block; padding: 6px 12px; background-color: #9ca3af; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">NF ${p.numero_nf}</span>`
-          }
-        </td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: center;">
-          ${p.link_boleto && p.link_boleto.trim() !== '' 
-            ? `<a href="${p.link_boleto}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 600;">🧾 Visualizar Boleto</a>`
-            : `<span style="display: inline-block; padding: 6px 12px; background-color: #d1d5db; color: #6b7280; border-radius: 4px; font-size: 12px; font-weight: 500;">-</span>`
-          }
-        </td>
-      </tr>
+      <div style="border: 1px solid #e5e7eb; border-radius: 8px; margin: 0 0 14px 0; overflow: hidden; background-color: #ffffff;">
+        <div style="background-color: #f9fafb; padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">
+          <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600;">Contrato ${p.contrato_numero || "-"}</p>
+          <p style="margin: 2px 0 0 0; font-size: 15px; color: #111827; font-weight: 700;">${p.servico_nome || "-"}</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tbody>
+            ${row('Competência', formatCompetencia(p.data_competencia))}
+            ${row('Vencimento', formatDate(p.data_vencimento))}
+            ${row('Valor Bruto', formatCurrency(p.valor_bruto))}
+            ${row('Retenções', totalRetencoes > 0 ? formatCurrency(totalRetencoes) : '-', 'color:#dc2626;')}
+            ${row('Valor Líquido', formatCurrency(p.valor), 'font-weight:700;color:#166534;')}
+          </tbody>
+        </table>
+        <div style="padding: 12px 14px; border-top: 1px solid #e5e7eb; text-align: center;">
+          ${nfHtml} ${boletoHtml}
+        </div>
+      </div>
     `;
     })
     .join("");
@@ -216,7 +227,7 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f3f4f6;">
-  <div style="max-width: 700px; margin: 0 auto; padding: 20px;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
 
       <!-- Logo Grupo -->
@@ -240,27 +251,11 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
           Segue abaixo o detalhamento do faturamento referente aos serviços prestados:
         </p>
         
-        <!-- Table -->
-        <div style="overflow-x: auto; margin: 0 0 24px 0;">
-          <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
-            <thead>
-              <tr style="background-color: #f9fafb;">
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Contrato</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Serviço</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Competência</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Vencimento</th>
-                <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Valor Bruto</th>
-                <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Retenções</th>
-                <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Valor Líquido</th>
-                <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Nota Fiscal</th>
-                <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Boleto</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${parcelasRows}
-            </tbody>
-          </table>
+        <!-- Parcelas (cards) -->
+        <div style="margin: 0 0 24px 0;">
+          ${parcelasRows}
         </div>
+
 
 
         ${buildDadosBancariosHtml(primeiraParcelaCliente.tipo_pagamento, primeiraParcelaCliente.dados_bancarios)}
