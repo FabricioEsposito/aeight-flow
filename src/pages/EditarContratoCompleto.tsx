@@ -302,21 +302,8 @@ export default function EditarContratoCompleto() {
       dataVencimento.setDate(dataVencimento.getDate() + diaVencimento);
 
       const contrato = parcela.contratos;
-      const dataInicioDate = new Date(contrato.data_inicio + 'T00:00:00');
-      let dataCompetencia = new Date(dataInicioDate);
-
-      if (contrato.recorrente && contrato.periodo_recorrencia) {
-        const mesesParaAdicionar = {
-          'mensal': (parcela.numero_parcela - 1),
-          'trimestral': (parcela.numero_parcela - 1) * 3,
-          'semestral': (parcela.numero_parcela - 1) * 6,
-          'anual': (parcela.numero_parcela - 1) * 12
-        }[contrato.periodo_recorrencia] || (parcela.numero_parcela - 1);
-
-        dataCompetencia.setMonth(dataCompetencia.getMonth() + mesesParaAdicionar);
-      } else {
-        dataCompetencia.setMonth(dataCompetencia.getMonth() + (parcela.numero_parcela - 1));
-      }
+      // Para parcelas Go Live, a competência é a mesma da data de conclusão
+      const dataCompetencia = new Date(dataGoLive);
 
       const { error: updateError } = await supabase
         .from('parcelas_contrato')

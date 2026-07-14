@@ -171,24 +171,9 @@ export default function EditarContrato() {
       const dataVencimento = new Date(dataGoLive);
       dataVencimento.setDate(dataVencimento.getDate() + diaVencimento);
 
-      // Calcular data de competência baseada no número da parcela e recorrência
+      // Para parcelas Go Live, a competência é a mesma da data de conclusão
       const contrato = parcela.contratos;
-      const dataInicio = new Date(contrato.data_inicio + 'T00:00:00');
-      let dataCompetencia = new Date(dataInicio);
-      
-      if (contrato.recorrente && contrato.periodo_recorrencia) {
-        const mesesParaAdicionar = {
-          'mensal': (parcela.numero_parcela - 1),
-          'trimestral': (parcela.numero_parcela - 1) * 3,
-          'semestral': (parcela.numero_parcela - 1) * 6,
-          'anual': (parcela.numero_parcela - 1) * 12
-        }[contrato.periodo_recorrencia] || (parcela.numero_parcela - 1);
-        
-        dataCompetencia.setMonth(dataCompetencia.getMonth() + mesesParaAdicionar);
-      } else {
-        // Para vendas avulsas ou compras
-        dataCompetencia.setMonth(dataCompetencia.getMonth() + (parcela.numero_parcela - 1));
-      }
+      const dataCompetencia = new Date(dataGoLive);
 
       // Atualizar status da parcela para pendente e data de vencimento
       const { error: updateError } = await supabase
