@@ -1116,7 +1116,7 @@ export default function NovoContrato() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-lg font-bold">
-                  <span>Valor Total do Contrato:</span>
+                  <span>Valor Total do Contrato (Bruto):</span>
                   <span>
                     {new Intl.NumberFormat('pt-BR', {
                       style: 'currency',
@@ -1124,6 +1124,29 @@ export default function NovoContrato() {
                     }).format(calcularValorTotal())}
                   </span>
                 </div>
+                {(irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-sm text-muted-foreground">
+                      <span>(-) Retenções ({(irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual).toFixed(2)}%):</span>
+                      <span>
+                        - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          calcularValorTotal() * ((irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100)
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-base font-semibold text-primary">
+                      <span>Valor Líquido (após retenções):</span>
+                      <span>
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          calcularValorTotal() * (1 - (irrfPercentual + pisPercentual + cofinsPercentual + csllPercentual) / 100)
+                        )}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      As retenções são informativas — o bruto fica registrado no contrato/parcela. O líquido é calculado automaticamente em Controle de Faturamento e propagado ao extrato.
+                    </p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
