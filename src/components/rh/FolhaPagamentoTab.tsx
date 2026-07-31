@@ -821,7 +821,7 @@ export function FolhaPagamentoTab() {
                   <SelectContent>
                     <SelectItem value="pendente">Pendente</SelectItem>
                     <SelectItem value="aprovado">Aprovado</SelectItem>
-                    <SelectItem value="processado">Processado</SelectItem>
+                    
                   </SelectContent>
                 </Select>
               </div>
