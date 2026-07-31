@@ -292,8 +292,8 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="pendente_aprovacao_rh">Aguardando aprovação</SelectItem>
                 <SelectItem value="aprovado">Aprovado</SelectItem>
-                <SelectItem value="processado">Processado</SelectItem>
               </SelectContent>
             </Select>
           </div>
