@@ -1,0 +1,1 @@
+UPDATE public.folha_pagamento SET status = 'aprovado', updated_at = now() WHERE status = 'processado';
