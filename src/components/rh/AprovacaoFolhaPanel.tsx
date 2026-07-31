@@ -178,7 +178,7 @@ export function AprovacaoFolhaPanel() {
       } else if (folha.parcela_id) {
         await supabase.from('contas_pagar').update(cp).eq('parcela_id', folha.parcela_id);
       }
-      await supabase.from('folha_pagamento').update({ status: 'processado' }).eq('id', folha.id);
+      await supabase.from('folha_pagamento').update({ status: 'aprovado' }).eq('id', folha.id);
     }
 
     await supabase
