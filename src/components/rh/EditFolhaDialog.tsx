@@ -49,9 +49,9 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
     if (!open) return;
 
     if (record?.folha_id) {
-      loadFolhaData(record.folha_id);
       setDataVencimento(new Date(record.data_vencimento + 'T00:00:00'));
       setValorParcela(record.valor);
+      loadFolhaData(record.folha_id);
     } else {
       resetForm();
       if (record) {
@@ -72,8 +72,28 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
       setObservacoes(data.observacoes || '');
       setStatus(data.status);
       setHoleriteUrl((data as any).holerite_url || null);
+      // Mantém o valor já ajustado pelo RH (mesmo aguardando aprovação),
+      // em vez de voltar para o valor original da parcela.
+      const ajustado = Number((data as any).valor_liquido || 0);
+      if (ajustado > 0) setValorParcela(ajustado);
+
+      // Se houver solicitação em aberto, usa a data de vencimento solicitada
+      const solId = (data as any).solicitacao_rh_id;
+      if (solId) {
+        const { data: sol } = await supabase
+          .from('solicitacoes_aprovacao_rh')
+          .select('status, detalhes')
+          .eq('id', solId)
+          .maybeSingle();
+        const det: any = Array.isArray(sol?.detalhes) ? (sol!.detalhes as any[]) : [];
+        const item = det.find((d: any) => d.parcela_id === record?.parcela_id) || det[0];
+        if (sol?.status !== 'rejeitado' && item?.data_vencimento) {
+          setDataVencimento(new Date(item.data_vencimento + 'T00:00:00'));
+        }
+      }
     }
   };
+
 
   const resetForm = () => {
     setObservacoes('');
@@ -272,8 +292,8 @@ export function EditFolhaDialog({ open, onOpenChange, record, defaultMes, defaul
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="pendente_aprovacao_rh">Aguardando aprovação</SelectItem>
                 <SelectItem value="aprovado">Aprovado</SelectItem>
-                <SelectItem value="processado">Processado</SelectItem>
               </SelectContent>
             </Select>
           </div>
