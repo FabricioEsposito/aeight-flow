@@ -145,6 +145,11 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         if (group.name === "Financeiro" && !permissions.canAccessFinanceiro) return null;
         if (group.name === "Contabilidade" && !permissions.canAccessContador) return null;
 
+        // Usuários sem acesso completo a Cadastro (ex.: RH) veem apenas Fornecedores
+        if (group.name === "Cadastro" && !permissions.canAccessCadastro) {
+          return { ...group, items: group.items.filter(item => item.url === '/fornecedores') };
+        }
+
         // For salesperson, only show Dashboard Comercial and Comissionamento
         if (role === 'salesperson' && group.name === "Comercial") {
           return {
