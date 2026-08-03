@@ -121,7 +121,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const isRHUser = role === 'rh_manager' || role === 'rh_analyst';
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    "Cadastro": false,
+    "Cadastro": isRHUser,
     "Comercial": false,
     "RH": isRHUser,
     "Financeiro": false,
@@ -130,7 +130,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   useEffect(() => {
     if (isRHUser) {
-      setOpenGroups(prev => ({ ...prev, RH: true }));
+      setOpenGroups(prev => ({ ...prev, Cadastro: true, RH: true }));
     }
   }, [isRHUser]);
 
