@@ -139,7 +139,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     return allNavigationGroups
       .map(group => {
         // Filter group visibility
-        if (group.name === "Cadastro" && !permissions.canAccessCadastro) return null;
+        if (group.name === "Cadastro" && !permissions.canAccessCadastro && !permissions.canAccessFornecedores) return null;
         if (group.name === "Comercial" && !permissions.canAccessComercial) return null;
         if (group.name === "RH" && !permissions.canAccessRH && !permissions.canApproveLider) return null;
         if (group.name === "Financeiro" && !permissions.canAccessFinanceiro) return null;
