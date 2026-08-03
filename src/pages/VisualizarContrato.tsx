@@ -9,11 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CompanyTag } from '@/components/centro-custos/CompanyBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useContratosBackRoute } from '@/hooks/useContratosBackRoute';
 
 export default function VisualizarContrato() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const backRoute = useContratosBackRoute();
   const [loading, setLoading] = useState(true);
   const [contrato, setContrato] = useState<any>(null);
   const [parcelas, setParcelas] = useState<any[]>([]);
@@ -156,7 +158,7 @@ export default function VisualizarContrato() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/contratos')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(backRoute)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -483,7 +485,7 @@ export default function VisualizarContrato() {
       </Card>
 
       <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={() => navigate('/contratos')}>
+        <Button variant="outline" onClick={() => navigate(backRoute)}>
           Voltar
         </Button>
         <Button onClick={() => navigate(`/contratos/${id}/edit`)}>

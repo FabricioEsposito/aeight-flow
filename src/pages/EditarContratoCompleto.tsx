@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, MoreVertical, X, CheckCircle, Undo2, RefreshCw, Ban, RotateCcw } from 'lucide-react';
 import { CancelarParcelaDialog, CancelarParcelaInfo } from '@/components/financeiro/CancelarParcelaDialog';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
+import { useContratosBackRoute } from '@/hooks/useContratosBackRoute';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function EditarContratoCompleto() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const backRoute = useContratosBackRoute();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -705,7 +707,7 @@ export default function EditarContratoCompleto() {
         description: "Contrato atualizado com sucesso!",
       });
 
-      navigate(`/contratos/${id}`);
+      navigate(backRoute === '/contratos' ? `/contratos/${id}` : backRoute);
     } catch (error) {
       console.error('Erro ao salvar contrato:', error);
       toast({
@@ -735,7 +737,7 @@ export default function EditarContratoCompleto() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/contratos/${id}`)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(backRoute === '/contratos' ? `/contratos/${id}` : backRoute)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -1267,7 +1269,7 @@ export default function EditarContratoCompleto() {
 
       {/* Actions */}
       <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => navigate(`/contratos/${id}`)}>
+        <Button variant="outline" onClick={() => navigate(backRoute === '/contratos' ? `/contratos/${id}` : backRoute)}>
           Cancelar
         </Button>
         <Button onClick={handleSave} disabled={saving}>

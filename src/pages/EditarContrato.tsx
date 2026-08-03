@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useContratosBackRoute } from '@/hooks/useContratosBackRoute';
 import { ArrowLeft, Save, CheckCircle, Undo2, Edit, MoreVertical, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function EditarContrato() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const backRoute = useContratosBackRoute();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -405,7 +407,7 @@ export default function EditarContrato() {
         description: "Contrato atualizado com sucesso!",
       });
 
-      navigate(`/contratos/${id}`);
+      navigate(backRoute === '/contratos' ? `/contratos/${id}` : backRoute);
     } catch (error) {
       console.error('Erro ao salvar contrato:', error);
       toast({
@@ -542,7 +544,7 @@ export default function EditarContrato() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/contratos/${id}`)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(backRoute === '/contratos' ? `/contratos/${id}` : backRoute)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -708,7 +710,7 @@ export default function EditarContrato() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 bg-background z-50">
-            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}`)}>
+            <DropdownMenuItem onClick={() => navigate(backRoute === '/contratos' ? `/contratos/${id}` : backRoute)}>
               <X className="h-4 w-4 mr-2" />
               Cancelar
             </DropdownMenuItem>
