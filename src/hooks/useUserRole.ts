@@ -9,6 +9,7 @@ export type RegimeContrato = 'prestador_servico' | 'funcionario';
 export interface RolePermissions {
   canAccessDashboard: boolean;
   canAccessCadastro: boolean;
+  canAccessFornecedores: boolean;
   canAccessComercial: boolean;
   canAccessFinanceiro: boolean;
   canAccessRH: boolean;
@@ -51,6 +52,7 @@ const roleLabels: Record<AppRole, string> = {
 const defaultPermissions: RolePermissions = {
   canAccessDashboard: false,
   canAccessCadastro: false,
+  canAccessFornecedores: false,
   canAccessComercial: false,
   canAccessFinanceiro: false,
   canAccessRH: false,

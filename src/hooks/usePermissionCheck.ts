@@ -14,6 +14,7 @@ interface PermissionCheckResult {
 const permissionMessages: Record<PermissionKey, string> = {
   canAccessDashboard: 'Você não tem permissão para acessar o Dashboard.',
   canAccessCadastro: 'Você não tem permissão para acessar a área de Cadastros.',
+  canAccessFornecedores: 'Você não tem permissão para acessar a área de Fornecedores.',
   canAccessComercial: 'Você não tem permissão para acessar a área Comercial.',
   canAccessFinanceiro: 'Você não tem permissão para acessar a área Financeira.',
   canAccessRH: 'Você não tem permissão para acessar a área de RH.',
