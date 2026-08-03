@@ -488,7 +488,7 @@ export default function VisualizarContrato() {
         <Button variant="outline" onClick={() => navigate(backRoute)}>
           Voltar
         </Button>
-        <Button onClick={() => navigate(`/contratos/${id}/edit`)}>
+        <Button onClick={() => navigate(`/contratos/${id}/edit${backRoute === '/rh/contratos' ? '?rh=1' : ''}`)}>
           Editar Contrato
         </Button>
       </div>
