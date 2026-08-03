@@ -176,14 +176,24 @@ export function ContratosRHTab() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => navigate(`/contratos/${c.id}/visualizar`)}
-                        title="Visualizar contrato"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => navigate(`/contratos/${c.id}`)}
+                          title="Visualizar contrato"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => navigate(`/contratos/${c.id}/edit`)}
+                          title="Editar contrato"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
