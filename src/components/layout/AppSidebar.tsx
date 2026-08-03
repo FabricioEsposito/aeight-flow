@@ -139,11 +139,16 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
     return allNavigationGroups
       .map(group => {
         // Filter group visibility
-        if (group.name === "Cadastro" && !permissions.canAccessCadastro) return null;
+        if (group.name === "Cadastro" && !permissions.canAccessCadastro && !permissions.canAccessFornecedores) return null;
         if (group.name === "Comercial" && !permissions.canAccessComercial) return null;
         if (group.name === "RH" && !permissions.canAccessRH && !permissions.canApproveLider) return null;
         if (group.name === "Financeiro" && !permissions.canAccessFinanceiro) return null;
         if (group.name === "Contabilidade" && !permissions.canAccessContador) return null;
+
+        // Usuários sem acesso completo a Cadastro (ex.: RH) veem apenas Fornecedores
+        if (group.name === "Cadastro" && !permissions.canAccessCadastro) {
+          return { ...group, items: group.items.filter(item => item.url === '/fornecedores') };
+        }
 
         // For salesperson, only show Dashboard Comercial and Comissionamento
         if (role === 'salesperson' && group.name === "Comercial") {

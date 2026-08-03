@@ -9,6 +9,7 @@ export type RegimeContrato = 'prestador_servico' | 'funcionario';
 export interface RolePermissions {
   canAccessDashboard: boolean;
   canAccessCadastro: boolean;
+  canAccessFornecedores: boolean;
   canAccessComercial: boolean;
   canAccessFinanceiro: boolean;
   canAccessRH: boolean;
@@ -51,6 +52,7 @@ const roleLabels: Record<AppRole, string> = {
 const defaultPermissions: RolePermissions = {
   canAccessDashboard: false,
   canAccessCadastro: false,
+  canAccessFornecedores: false,
   canAccessComercial: false,
   canAccessFinanceiro: false,
   canAccessRH: false,
@@ -161,6 +163,8 @@ export function useUserRole() {
   const permissions = useMemo((): RolePermissions => {
     if (!role) return defaultPermissions;
     const base = { ...defaultPermissions, ...rolePermissionsMap[role] };
+    // RH também pode cadastrar/gerenciar fornecedores
+    base.canAccessFornecedores = base.canAccessCadastro || role === 'rh_manager' || role === 'rh_analyst';
     // Capacidades derivadas do perfil (regime + fornecedor + flag líder)
     const hasVinculo = !!regimeContrato && !!fornecedorId;
     if (hasVinculo) {
