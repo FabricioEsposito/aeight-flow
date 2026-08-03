@@ -714,7 +714,7 @@ export default function EditarContrato() {
               <X className="h-4 w-4 mr-2" />
               Cancelar
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}/edit-completo`)}>
+            <DropdownMenuItem onClick={() => navigate(`/contratos/${id}/edit-completo${backRoute === '/rh/contratos' ? '?rh=1' : ''}`)}>
               <Edit className="h-4 w-4 mr-2" />
               Editar contrato completo
             </DropdownMenuItem>

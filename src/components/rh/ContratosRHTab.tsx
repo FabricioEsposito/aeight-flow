@@ -180,7 +180,7 @@ export function ContratosRHTab() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => navigate(`/contratos/${c.id}`)}
+                          onClick={() => navigate(`/contratos/${c.id}?rh=1`)}
                           title="Visualizar contrato"
                         >
                           <Eye className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function ContratosRHTab() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => navigate(`/contratos/${c.id}/edit`)}
+                          onClick={() => navigate(`/contratos/${c.id}/edit?rh=1`)}
                           title="Editar contrato"
                         >
                           <Pencil className="h-4 w-4" />
