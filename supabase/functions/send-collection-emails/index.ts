@@ -609,21 +609,29 @@ serve(async (req: Request): Promise<Response> => {
 
     // Authenticate the request
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    const apiKeyHeader = req.headers.get("apikey");
+    const bearerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.replace("Bearer ", "")
+      : null;
 
-    const token = authHeader.replace("Bearer ", "");
+    // Allow anon/service key (used by pg_cron and internal schedulers) via either header
+    const isInternalKey =
+      bearerToken === supabaseAnonKey ||
+      bearerToken === supabaseServiceKey ||
+      apiKeyHeader === supabaseAnonKey ||
+      apiKeyHeader === supabaseServiceKey;
 
-    // Allow anon key (used by pg_cron) to bypass user JWT validation
-    if (token !== supabaseAnonKey) {
+    if (!isInternalKey) {
+      if (!bearerToken) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
       const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
+        global: { headers: { Authorization: `Bearer ${bearerToken}` } },
       });
-      const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+      const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(bearerToken);
       if (claimsError || !claimsData?.claims) {
         return new Response(
           JSON.stringify({ error: "Invalid token" }),
@@ -631,6 +639,7 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
     }
+
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
