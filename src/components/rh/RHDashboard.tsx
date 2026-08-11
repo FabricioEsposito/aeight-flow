@@ -294,6 +294,84 @@ export function RHDashboard() {
     };
   }, [filteredRecords]);
 
+  // Folha por dia de vencimento x centro de custo
+  const diaVencimentoData = useMemo(() => {
+    const dayMap = new Map<number, { totals: Map<string, number>; detalhes: Map<string, Array<{ nome: string; valor: number }>> }>();
+    const allCcCodes = new Set<string>();
+
+    for (const r of filteredRecords) {
+      if (r.tipo !== 'folha') continue;
+      const dia = parseISO(r.data_vencimento).getDate();
+      const entry = dayMap.get(dia) || { totals: new Map<string, number>(), detalhes: new Map<string, Array<{ nome: string; valor: number }>>() };
+
+      for (const cc of r.centros_custo) {
+        allCcCodes.add(cc.codigo);
+        const valor = r.valor * (cc.percentual / 100);
+        entry.totals.set(cc.codigo, (entry.totals.get(cc.codigo) || 0) + valor);
+        const lista = entry.detalhes.get(cc.codigo) || [];
+        const existente = lista.find(l => l.nome === r.fornecedor_nome);
+        if (existente) existente.valor += valor;
+        else lista.push({ nome: r.fornecedor_nome, valor });
+        entry.detalhes.set(cc.codigo, lista);
+      }
+      dayMap.set(dia, entry);
+    }
+
+    const codes = Array.from(allCcCodes);
+    const data = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([dia, entry]) => {
+        const row: Record<string, any> = {
+          dia: `Dia ${dia}`,
+          __detalhes: Object.fromEntries(
+            codes.map(code => [code, (entry.detalhes.get(code) || []).sort((a, b) => b.valor - a.valor)])
+          ),
+        };
+        for (const code of codes) row[code] = entry.totals.get(code) || 0;
+        return row;
+      });
+
+    return { data, ccCodes: codes };
+  }, [filteredRecords]);
+
+  const DiaVencimentoTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const detalhes = payload[0]?.payload?.__detalhes || {};
+    const total = payload.reduce((s: number, p: any) => s + (p.value || 0), 0);
+
+    return (
+      <div className="rounded-lg border bg-background p-3 shadow-md max-h-[320px] overflow-auto text-xs">
+        <p className="font-semibold text-sm mb-2">{label}</p>
+        {payload
+          .filter((p: any) => (p.value || 0) > 0)
+          .map((p: any) => (
+            <div key={p.dataKey} className="mb-2">
+              <div className="flex items-center justify-between gap-4 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill }} />
+                  {p.name}
+                </span>
+                <span>{formatCurrency(p.value)}</span>
+              </div>
+              <div className="pl-3.5 mt-0.5 space-y-0.5 text-muted-foreground">
+                {(detalhes[p.dataKey] || []).map((d: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between gap-4">
+                    <span className="truncate max-w-[180px]">{d.nome}</span>
+                    <span>{formatCurrency(d.valor)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        <div className="flex items-center justify-between gap-4 border-t pt-1.5 mt-1 font-semibold">
+          <span>Total</span>
+          <span>{formatCurrency(total)}</span>
+        </div>
+      </div>
+    );
+  };
+
+
   const handleDateChange = (preset: DateRangePreset, range?: { from?: Date; to?: Date }) => {
     setDatePreset(preset);
     if (preset === 'periodo-personalizado' && range?.from && range?.to) {
