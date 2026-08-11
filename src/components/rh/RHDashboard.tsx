@@ -521,6 +521,39 @@ export function RHDashboard() {
         </CardContent>
       </Card>
 
+      {/* Folha por Dia de Vencimento x Centro de Custo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Folha por Dia de Vencimento e Centro de Custo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {diaVencimentoData.data.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={diaVencimentoData.data}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
+                <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                <Tooltip content={<DiaVencimentoTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
+                <Legend />
+                {diaVencimentoData.ccCodes.map(code => (
+                  <Bar
+                    key={code}
+                    dataKey={code}
+                    name={getCompanyTheme(code).name}
+                    fill={getCompanyTheme(code).primaryColor}
+                    stackId="dia"
+                    radius={[2, 2, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-muted-foreground py-10">Nenhum dado de folha no período</p>
+          )}
+        </CardContent>
+      </Card>
+
+
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Cost Center Distribution */}
