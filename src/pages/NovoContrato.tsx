@@ -1323,6 +1323,22 @@ export default function NovoContrato() {
                       Ajuste pelo IPCA após 12 meses de contrato
                     </Label>
                   </div>
+
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="cliente-internacional"
+                      checked={clienteInternacional}
+                      onCheckedChange={(checked) => setClienteInternacional(checked === true)}
+                    />
+                    <div>
+                      <Label htmlFor="cliente-internacional" className="cursor-pointer">
+                        Cliente internacional
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        E-mails de faturamento e cobrança serão enviados em inglês
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
