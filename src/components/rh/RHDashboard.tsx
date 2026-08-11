@@ -18,6 +18,7 @@ interface ParcelaRecord {
   parcela_id: string;
   contrato_id: string;
   fornecedor_id: string;
+  fornecedor_nome: string;
   data_vencimento: string;
   valor: number;
   tipo: 'folha' | 'beneficio';
@@ -121,6 +122,19 @@ export function RHDashboard() {
         }
       }
 
+      // Fetch fornecedor names
+      const fornecedorIds = Array.from(new Set(contratos.map(c => c.fornecedor_id).filter(Boolean))) as string[];
+      const fornecedorMap = new Map<string, string>();
+      if (fornecedorIds.length > 0) {
+        const { data: fornecedores } = await supabase
+          .from('fornecedores')
+          .select('id, nome_fantasia, razao_social')
+          .in('id', fornecedorIds);
+        for (const f of fornecedores || []) {
+          fornecedorMap.set(f.id, f.nome_fantasia || f.razao_social || 'Sem nome');
+        }
+      }
+
       const result: ParcelaRecord[] = (parcelas || []).map(p => {
         const contrato = contratoMap.get(p.contrato_id!);
         const isFolha = contrato?.is_folha_funcionario;
@@ -128,6 +142,7 @@ export function RHDashboard() {
           parcela_id: p.id,
           contrato_id: p.contrato_id!,
           fornecedor_id: contrato?.fornecedor_id || '',
+          fornecedor_nome: fornecedorMap.get(contrato?.fornecedor_id || '') || 'Sem nome',
           data_vencimento: p.data_vencimento,
           valor: p.valor,
           tipo: isFolha ? 'folha' : 'beneficio',
@@ -279,6 +294,84 @@ export function RHDashboard() {
     };
   }, [filteredRecords]);
 
+  // Folha por dia de vencimento x centro de custo
+  const diaVencimentoData = useMemo(() => {
+    const dayMap = new Map<number, { totals: Map<string, number>; detalhes: Map<string, Array<{ nome: string; valor: number }>> }>();
+    const allCcCodes = new Set<string>();
+
+    for (const r of filteredRecords) {
+      if (r.tipo !== 'folha') continue;
+      const dia = parseISO(r.data_vencimento).getDate();
+      const entry = dayMap.get(dia) || { totals: new Map<string, number>(), detalhes: new Map<string, Array<{ nome: string; valor: number }>>() };
+
+      for (const cc of r.centros_custo) {
+        allCcCodes.add(cc.codigo);
+        const valor = r.valor * (cc.percentual / 100);
+        entry.totals.set(cc.codigo, (entry.totals.get(cc.codigo) || 0) + valor);
+        const lista = entry.detalhes.get(cc.codigo) || [];
+        const existente = lista.find(l => l.nome === r.fornecedor_nome);
+        if (existente) existente.valor += valor;
+        else lista.push({ nome: r.fornecedor_nome, valor });
+        entry.detalhes.set(cc.codigo, lista);
+      }
+      dayMap.set(dia, entry);
+    }
+
+    const codes = Array.from(allCcCodes);
+    const data = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([dia, entry]) => {
+        const row: Record<string, any> = {
+          dia: `Dia ${dia}`,
+          __detalhes: Object.fromEntries(
+            codes.map(code => [code, (entry.detalhes.get(code) || []).sort((a, b) => b.valor - a.valor)])
+          ),
+        };
+        for (const code of codes) row[code] = entry.totals.get(code) || 0;
+        return row;
+      });
+
+    return { data, ccCodes: codes };
+  }, [filteredRecords]);
+
+  const DiaVencimentoTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const detalhes = payload[0]?.payload?.__detalhes || {};
+    const total = payload.reduce((s: number, p: any) => s + (p.value || 0), 0);
+
+    return (
+      <div className="rounded-lg border bg-background p-3 shadow-md max-h-[320px] overflow-auto text-xs">
+        <p className="font-semibold text-sm mb-2">{label}</p>
+        {payload
+          .filter((p: any) => (p.value || 0) > 0)
+          .map((p: any) => (
+            <div key={p.dataKey} className="mb-2">
+              <div className="flex items-center justify-between gap-4 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill }} />
+                  {p.name}
+                </span>
+                <span>{formatCurrency(p.value)}</span>
+              </div>
+              <div className="pl-3.5 mt-0.5 space-y-0.5 text-muted-foreground">
+                {(detalhes[p.dataKey] || []).map((d: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between gap-4">
+                    <span className="truncate max-w-[180px]">{d.nome}</span>
+                    <span>{formatCurrency(d.valor)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        <div className="flex items-center justify-between gap-4 border-t pt-1.5 mt-1 font-semibold">
+          <span>Total</span>
+          <span>{formatCurrency(total)}</span>
+        </div>
+      </div>
+    );
+  };
+
+
   const handleDateChange = (preset: DateRangePreset, range?: { from?: Date; to?: Date }) => {
     setDatePreset(preset);
     if (preset === 'periodo-personalizado' && range?.from && range?.to) {
@@ -427,6 +520,39 @@ export function RHDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Folha por Dia de Vencimento x Centro de Custo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Folha por Dia de Vencimento e Centro de Custo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {diaVencimentoData.data.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={diaVencimentoData.data}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
+                <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                <Tooltip content={<DiaVencimentoTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
+                <Legend />
+                {diaVencimentoData.ccCodes.map(code => (
+                  <Bar
+                    key={code}
+                    dataKey={code}
+                    name={getCompanyTheme(code).name}
+                    fill={getCompanyTheme(code).primaryColor}
+                    stackId="dia"
+                    radius={[2, 2, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-muted-foreground py-10">Nenhum dado de folha no período</p>
+          )}
+        </CardContent>
+      </Card>
+
 
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
