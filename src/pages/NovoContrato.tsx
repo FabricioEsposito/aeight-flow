@@ -117,6 +117,7 @@ export default function NovoContrato() {
   const [avisoPrevioDias, setAvisoPrevioDias] = useState(0);
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
+  const [clienteInternacional, setClienteInternacional] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
   const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState('');
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
@@ -216,6 +217,7 @@ export default function NovoContrato() {
       setAvisoPrevioDias(data.aviso_previo_dias || 0);
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
+      setClienteInternacional((data as any).cliente_internacional || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
       setLinkPlanilhaRateio((data as any).link_planilha_rateio || '');
       setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
@@ -492,6 +494,7 @@ export default function NovoContrato() {
         aviso_previo_dias: avisoPrevioDias,
         renovacao_automatica: renovacaoAutomatica,
         ajuste_ipca: ajusteIpca,
+        cliente_internacional: clienteInternacional,
         is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
         link_planilha_rateio: tipoContrato === 'compra' && isBeneficioFuncionario ? (linkPlanilhaRateio || null) : null,
         is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
