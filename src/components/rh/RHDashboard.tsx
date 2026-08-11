@@ -533,7 +533,7 @@ export function RHDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
                 <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-                <Tooltip content={<DiaVencimentoTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
+                <Tooltip content={<DiaVencimentoTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} wrapperStyle={{ pointerEvents: 'auto', zIndex: 100 }} />
                 <Legend />
                 {diaVencimentoData.ccCodes.map(code => (
                   <Bar
