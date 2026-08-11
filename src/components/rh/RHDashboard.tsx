@@ -18,6 +18,7 @@ interface ParcelaRecord {
   parcela_id: string;
   contrato_id: string;
   fornecedor_id: string;
+  fornecedor_nome: string;
   data_vencimento: string;
   valor: number;
   tipo: 'folha' | 'beneficio';
