@@ -320,34 +320,8 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Authenticate the request
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { parcela_ids, test_mode, test_email, test_lang } = await req.json();
+    const body = await req.json();
+    const { test_mode, test_email, test_lang } = body;
 
     // TEST MODE: send a sample billing email (pt or en) to a given address
     if (test_mode && test_email) {
@@ -397,6 +371,36 @@ serve(async (req: Request): Promise<Response> => {
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+
+    // Authenticate the request
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { parcela_ids } = body;
 
     if (!parcela_ids || !Array.isArray(parcela_ids) || parcela_ids.length === 0) {
       return new Response(
