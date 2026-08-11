@@ -1,0 +1,1 @@
+ALTER TABLE public.contratos ADD COLUMN IF NOT EXISTS cliente_internacional boolean NOT NULL DEFAULT false;

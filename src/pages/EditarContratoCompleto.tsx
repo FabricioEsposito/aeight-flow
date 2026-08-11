@@ -89,6 +89,7 @@ export default function EditarContratoCompleto() {
   const [avisoPrevioDias, setAvisoPrevioDias] = useState(0);
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false);
   const [ajusteIpca, setAjusteIpca] = useState(false);
+  const [clienteInternacional, setClienteInternacional] = useState(false);
   const [isBeneficioFuncionario, setIsBeneficioFuncionario] = useState(false);
   const [linkPlanilhaRateio, setLinkPlanilhaRateio] = useState('');
   const [isFolhaFuncionario, setIsFolhaFuncionario] = useState(false);
@@ -185,6 +186,7 @@ export default function EditarContratoCompleto() {
       setAvisoPrevioDias(data.aviso_previo_dias || 0);
       setRenovacaoAutomatica(data.renovacao_automatica || false);
       setAjusteIpca(data.ajuste_ipca || false);
+      setClienteInternacional((data as any).cliente_internacional || false);
       setIsBeneficioFuncionario(data.is_beneficio_funcionario || false);
       setLinkPlanilhaRateio((data as any).link_planilha_rateio || '');
       setIsFolhaFuncionario((data as any).is_folha_funcionario || false);
@@ -635,6 +637,7 @@ export default function EditarContratoCompleto() {
           aviso_previo_dias: avisoPrevioDias,
           renovacao_automatica: renovacaoAutomatica,
           ajuste_ipca: ajusteIpca,
+          cliente_internacional: clienteInternacional,
           is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
           link_planilha_rateio: tipoContrato === 'compra' && isBeneficioFuncionario ? (linkPlanilhaRateio || null) : null,
           is_folha_funcionario: tipoContrato === 'compra' ? isFolhaFuncionario : false,
@@ -1035,6 +1038,22 @@ export default function EditarContratoCompleto() {
                 <Label htmlFor="edit-ajuste-ipca" className="cursor-pointer">
                   Ajuste pelo IPCA após 12 meses de contrato
                 </Label>
+              </div>
+
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="edit-cliente-internacional"
+                  checked={clienteInternacional}
+                  onCheckedChange={(checked) => setClienteInternacional(checked === true)}
+                />
+                <div>
+                  <Label htmlFor="edit-cliente-internacional" className="cursor-pointer">
+                    Cliente internacional
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    E-mails de faturamento e cobrança serão enviados em inglês
+                  </p>
+                </div>
               </div>
             </div>
           )}

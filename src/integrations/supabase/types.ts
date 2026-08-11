@@ -544,6 +544,7 @@ export type Database = {
           aviso_previo_dias: number | null
           centro_custo: string | null
           cliente_id: string | null
+          cliente_internacional: boolean
           cofins_percentual: number | null
           conta_bancaria_id: string
           created_at: string | null
@@ -591,6 +592,7 @@ export type Database = {
           aviso_previo_dias?: number | null
           centro_custo?: string | null
           cliente_id?: string | null
+          cliente_internacional?: boolean
           cofins_percentual?: number | null
           conta_bancaria_id: string
           created_at?: string | null
@@ -638,6 +640,7 @@ export type Database = {
           aviso_previo_dias?: number | null
           centro_custo?: string | null
           cliente_id?: string | null
+          cliente_internacional?: boolean
           cofins_percentual?: number | null
           conta_bancaria_id?: string
           created_at?: string | null

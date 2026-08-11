@@ -43,6 +43,7 @@ interface ClienteCobranca {
   parcelas: ParcelaVencida[];
   total_vencido: number;
   max_dias_atraso: number;
+  internacional?: boolean;
 }
 
 // Resolve titular PJ baseado no sufixo da descrição da conta bancária
@@ -140,7 +141,7 @@ function buildDadosBancariosHtml(tipoPagamento: string | null | undefined, dados
 }
 
 // Agrupa parcelas por (tipo_pagamento + conta_bancaria) para renderizar 1+ blocos bancários
-function buildAllDadosBancariosHtml(parcelas: ParcelaVencida[]): string {
+function buildAllDadosBancariosHtml(parcelas: ParcelaVencida[], en = false): string {
   const blocosMap = new Map<string, { tipo: string; dados: DadosBancarios }>();
   for (const p of parcelas) {
     const t = (p.tipo_pagamento || "").toLowerCase();
@@ -186,7 +187,48 @@ interface EmailAttachment {
 }
 
 // Get email template based on days overdue
-function getEmailTemplate(diasAtraso: number): EmailTemplate {
+function getEmailTemplate(diasAtraso: number, en = false): EmailTemplate {
+  if (en) {
+    if (diasAtraso <= 5) {
+      return {
+        headerColor: "#3b82f6",
+        headerGradient: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+        title: "Payment Reminder",
+        subtitle: "Finance Notice",
+        urgencyTag: "[Important]",
+        mainMessage: "We would like to remind you that there are outstanding invoices on your account. We understand that unexpected situations happen, and we are here to help you settle your balance.",
+        warningMessage: "We kindly ask you to settle the payment in order to avoid additional charges.",
+        footerMessage: "If you have already made the payment, please disregard this notice. Thank you for your attention and partnership.",
+        showFreezeWarning: false,
+        freezeWarningColor: "",
+      };
+    } else if (diasAtraso <= 7) {
+      return {
+        headerColor: "#f97316",
+        headerGradient: "linear-gradient(135deg, #c2410c 0%, #f97316 100%)",
+        title: "Payment Collection Notice",
+        subtitle: "Attention Required",
+        urgencyTag: "[Collection Notice]",
+        mainMessage: "We have identified that the invoices below remain unpaid, even after our previous contact attempts. This situation requires your immediate attention.",
+        warningMessage: "We request that the payment be settled as soon as possible. Failure to pay may result in additional measures and suspension of services.",
+        footerMessage: "Please contact us if there is any impediment to the payment. We are available to discuss alternatives.",
+        showFreezeWarning: false,
+        freezeWarningColor: "",
+      };
+    }
+    return {
+      headerColor: "#dc2626",
+      headerGradient: "linear-gradient(135deg, #991b1b 0%, #dc2626 100%)",
+      title: "Project Suspension Notice",
+      subtitle: "URGENT - Immediate Action Required",
+      urgencyTag: "[Project Suspension Notice]",
+      mainMessage: "This is an urgent notice regarding critically overdue balances on your account. Despite our previous contact attempts, we have not identified the settlement of the outstanding payments.",
+      warningMessage: "Failure to pay within 48 hours will result in the IMMEDIATE SUSPENSION of the project and of all related services.",
+      footerMessage: "Please contact us IMMEDIATELY to avoid service interruption. This is our final attempt at an amicable resolution.",
+      showFreezeWarning: true,
+      freezeWarningColor: "#dc2626",
+    };
+  }
   if (diasAtraso <= 5) {
     // Nível 1: Tom Tranquilo (1-5 dias)
     return {
@@ -303,16 +345,18 @@ function getCurrentSendSlot(): number {
   return 0;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
+function formatCurrency(value: number, en = false): string {
+  return new Intl.NumberFormat(en ? "en-US" : "pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(value);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, en = false): string {
   const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("pt-BR");
+  return en
+    ? date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
+    : date.toLocaleDateString("pt-BR");
 }
 
 function assertResendEmailSent(response: ResendSendResponse, context: string): string {
@@ -337,7 +381,11 @@ function buildEmailSubject(
 ): string {
   const nfDisplay = numeroNf || "N/A";
   const ccDisplay = centroCusto || "N/A";
-  
+  const en = cliente.internacional === true;
+
+  if (en) {
+    return `${template.urgencyTag} ${cliente.cliente_nome} - Invoice ${nfDisplay} - Payment Reminder - ${formatCurrency(cliente.total_vencido, true)} - ${ccDisplay}`;
+  }
   return `${template.urgencyTag} ${cliente.cliente_nome} - NF ${nfDisplay} - Aviso de Cobrança - ${formatCurrency(cliente.total_vencido)} - ${ccDisplay}`;
 }
 
@@ -442,6 +490,7 @@ async function buildAttachments(parcelas: ParcelaVencida[], supabase: any): Prom
 }
 
 function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): string {
+  const en = cliente.internacional === true;
   const parcelasRows = cliente.parcelas
     .map(
       (p) => `
@@ -449,9 +498,9 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.contrato_numero || "-"}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.servico_nome || "-"}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${p.numero_nf || "-"}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${formatDate(p.data_vencimento)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: ${template.headerColor}; font-weight: 600;">${p.dias_atraso} dias</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right; font-weight: 600;">${formatCurrency(p.valor)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${formatDate(p.data_vencimento, en)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: ${template.headerColor}; font-weight: 600;">${p.dias_atraso} ${en ? "days" : "dias"}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right; font-weight: 600;">${formatCurrency(p.valor, en)}</td>
       </tr>
     `
     )
@@ -459,10 +508,11 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
 
   const freezeWarningHtml = template.showFreezeWarning ? `
     <div style="background-color: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin: 0 0 24px 0; text-align: center;">
-      <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: #dc2626;">⚠️ AVISO DE CONGELAMENTO ⚠️</p>
+      <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: #dc2626;">${en ? "⚠️ SUSPENSION NOTICE ⚠️" : "⚠️ AVISO DE CONGELAMENTO ⚠️"}</p>
       <p style="margin: 0; font-size: 14px; color: #991b1b;">
-        O projeto será <strong>CONGELADO</strong> em até <strong>48 horas</strong> caso o pagamento não seja regularizado.
-        Todos os serviços serão suspensos até a quitação do débito.
+        ${en
+          ? "The project will be <strong>SUSPENDED</strong> within <strong>48 hours</strong> if the payment is not settled. All services will be put on hold until the debt is cleared."
+          : "O projeto será <strong>CONGELADO</strong> em até <strong>48 horas</strong> caso o pagamento não seja regularizado. Todos os serviços serão suspensos até a quitação do débito."}
       </p>
     </div>
   ` : "";
@@ -470,7 +520,9 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
   const attachmentNotice = `
     <div style="background-color: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; margin: 0 0 24px 0;">
       <p style="margin: 0; font-size: 14px; color: #166534;">
-        📎 <strong>Anexos:</strong> Este e-mail inclui a Nota Fiscal e o Boleto para pagamento em anexo (quando disponíveis).
+        ${en
+          ? "📎 <strong>Attachments:</strong> This email includes the invoice and the payment slip as attachments (when available)."
+          : "📎 <strong>Anexos:</strong> Este e-mail inclui a Nota Fiscal e o Boleto para pagamento em anexo (quando disponíveis)."}
       </p>
     </div>
   `;
@@ -508,7 +560,7 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
       <!-- Content -->
       <div style="padding: 32px;">
         <p style="font-size: 16px; margin: 0 0 20px 0;">
-          Prezado(a) <strong>${cliente.cliente_nome}</strong>,
+          ${en ? "Dear" : "Prezado(a)"} <strong>${cliente.cliente_nome}</strong>,
         </p>
         
         <p style="font-size: 15px; margin: 0 0 24px 0; color: #4b5563;">
@@ -522,12 +574,12 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
           <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
             <thead>
               <tr style="background-color: #f9fafb;">
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Contrato</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Serviço</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">NF</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Vencimento</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Atraso</th>
-                <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Valor</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${en ? "Agreement" : "Contrato"}</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${en ? "Service" : "Serviço"}</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${en ? "Invoice" : "NF"}</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${en ? "Due Date" : "Vencimento"}</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${en ? "Days Overdue" : "Atraso"}</th>
+                <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${en ? "Amount" : "Valor"}</th>
               </tr>
             </thead>
             <tbody>
@@ -538,11 +590,11 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
         
         <!-- Total -->
         <div style="background: ${totalBoxGradient}; border-radius: 8px; padding: 20px; text-align: center; margin: 0 0 24px 0;">
-          <p style="margin: 0; font-size: 14px; color: ${totalTextColor}; font-weight: 500;">Total em Aberto</p>
-          <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: ${totalTextColor};">${formatCurrency(cliente.total_vencido)}</p>
+          <p style="margin: 0; font-size: 14px; color: ${totalTextColor}; font-weight: 500;">${en ? "Total Outstanding" : "Total em Aberto"}</p>
+          <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: ${totalTextColor};">${formatCurrency(cliente.total_vencido, en)}</p>
         </div>
 
-        ${buildAllDadosBancariosHtml(cliente.parcelas)}
+        ${buildAllDadosBancariosHtml(cliente.parcelas, en)}
 
         ${attachmentNotice}
 
@@ -556,7 +608,7 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
         
         <!-- Contact -->
         <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; text-align: center;">
-          <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Em caso de dúvidas, entre em contato:</p>
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">${en ? "If you have any questions, please contact us:" : "Em caso de dúvidas, entre em contato:"}</p>
           <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">financeiro@aeight.global</p>
         </div>
       </div>
@@ -564,10 +616,10 @@ function buildEmailHtml(cliente: ClienteCobranca, template: EmailTemplate): stri
       <!-- Footer -->
       <div style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
         <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-          Este é um e-mail automático. Por favor, não responda diretamente.
+          ${en ? "This is an automated message. Please do not reply directly." : "Este é um e-mail automático. Por favor, não responda diretamente."}
         </p>
         <p style="margin: 8px 0 0 0; font-size: 12px; color: #9ca3af;">
-          © ${new Date().getFullYear()} Aeight. Todos os direitos reservados.
+          © ${new Date().getFullYear()} Aeight. ${en ? "All rights reserved." : "Todos os direitos reservados."}
         </p>
       </div>
     </div>
@@ -643,7 +695,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { cliente_id, all, force, test_mode, test_email, check_quota } = await req.json();
+    const { cliente_id, all, force, test_mode, test_email, test_lang, check_quota } = await req.json();
     
     console.log("Starting collection email process:", { cliente_id, all, force, test_mode, test_email, check_quota });
 
@@ -683,7 +735,8 @@ serve(async (req: Request): Promise<Response> => {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        const template = getEmailTemplate(level.diasAtraso);
+        const testEn = test_lang === "en";
+        const template = getEmailTemplate(level.diasAtraso, testEn);
         const ccRecipients = getCcRecipients(level.diasAtraso);
         
         const mockCliente: ClienteCobranca = {
@@ -716,6 +769,7 @@ serve(async (req: Request): Promise<Response> => {
           ],
           total_vencido: 7500.00,
           max_dias_atraso: level.diasAtraso + 5,
+          internacional: testEn,
         };
 
         const htmlContent = buildEmailHtml(mockCliente, template);
@@ -811,6 +865,7 @@ serve(async (req: Request): Promise<Response> => {
             servicos,
             centro_custo,
             tipo_pagamento,
+            cliente_internacional,
             conta_bancaria_id,
             contas_bancarias(banco, agencia, conta, tipo_conta, descricao)
           )
@@ -865,6 +920,7 @@ serve(async (req: Request): Promise<Response> => {
       let centroCustoNome = "";
       let tipoPagamento: string | null = null;
       let dadosBancarios: DadosBancarios | null = null;
+      let contratoInternacional = false;
       
       // Try to get centro_custo from conta first, then from contract
       let centroCustoId = conta.centro_custo;
@@ -883,6 +939,9 @@ serve(async (req: Request): Promise<Response> => {
             centroCustoId = parcela.contratos.centro_custo;
           }
           tipoPagamento = parcela.contratos.tipo_pagamento || null;
+          if (parcela.contratos.cliente_internacional === true) {
+            contratoInternacional = true;
+          }
           const cb = parcela.contratos.contas_bancarias;
           if (cb) {
             dadosBancarios = {
@@ -925,6 +984,7 @@ serve(async (req: Request): Promise<Response> => {
           parcelas: [],
           total_vencido: 0,
           max_dias_atraso: 0,
+          internacional: false,
         });
       }
 
@@ -932,6 +992,7 @@ serve(async (req: Request): Promise<Response> => {
       clienteData.parcelas.push(parcela);
       clienteData.total_vencido += conta.valor;
       clienteData.max_dias_atraso = Math.max(clienteData.max_dias_atraso, diasAtraso);
+      if (contratoInternacional) clienteData.internacional = true;
     }
 
     // OTIMIZAÇÃO: Ordenar clientes por valor total vencido (maior primeiro)
@@ -1001,7 +1062,7 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       // Get email template based on days overdue
-      const template = getEmailTemplate(diasAtraso);
+      const template = getEmailTemplate(diasAtraso, clienteData.internacional === true);
       
       // Build email content with template
       const htmlContent = buildEmailHtml(clienteData, template);

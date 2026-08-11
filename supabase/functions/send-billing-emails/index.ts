@@ -40,6 +40,7 @@ interface ParcelaFaturamento {
   csll_percentual: number;
   tipo_pagamento: string | null;
   dados_bancarios: DadosBancarios | null;
+  internacional: boolean;
 }
 
 // Resolve titular PJ baseado no sufixo da descrição da conta bancária
@@ -62,39 +63,39 @@ function resolveTitularPJ(descricaoConta: string): { razao_social: string; cnpj:
   return null;
 }
 
-function tipoContaLabel(tipo: string | null): string {
-  if (tipo === "corrente") return "Conta Corrente";
-  if (tipo === "poupanca") return "Conta Poupança";
-  if (tipo === "investimento") return "Conta Investimento";
+function tipoContaLabel(tipo: string | null, en = false): string {
+  if (tipo === "corrente") return en ? "Checking Account" : "Conta Corrente";
+  if (tipo === "poupanca") return en ? "Savings Account" : "Conta Poupança";
+  if (tipo === "investimento") return en ? "Investment Account" : "Conta Investimento";
   return "";
 }
 
-function tipoPagamentoLabel(tipo: string | null): string {
+function tipoPagamentoLabel(tipo: string | null, en = false): string {
   if (!tipo) return "";
   const t = tipo.toLowerCase();
   if (t === "pix") return "PIX";
-  if (t === "transferencia" || t === "transferência") return "Transferência";
+  if (t === "transferencia" || t === "transferência") return en ? "Bank Transfer" : "Transferência";
   return tipo;
 }
 
-function buildDadosBancariosHtml(tipoPagamento: string | null, dados: DadosBancarios | null): string {
+function buildDadosBancariosHtml(tipoPagamento: string | null, dados: DadosBancarios | null, en = false): string {
   if (!tipoPagamento || !dados) return "";
   const t = tipoPagamento.toLowerCase();
   if (t !== "pix" && t !== "transferencia" && t !== "transferência") return "";
 
   const titular = resolveTitularPJ(dados.descricao);
-  const tipoContaTxt = tipoContaLabel(dados.tipo_conta);
+  const tipoContaTxt = tipoContaLabel(dados.tipo_conta, en);
   const contaCompleta = dados.conta
     ? `${dados.conta}${tipoContaTxt ? ` (${tipoContaTxt})` : ""}`
     : "-";
 
   const titularPJHtml = titular ? `
     <tr>
-      <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Razão Social:</td>
+      <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">${en ? "Legal Name" : "Razão Social"}:</td>
       <td style="padding: 6px 12px; font-size: 14px; color: #0f172a;">${titular.razao_social}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">CNPJ:</td>
+      <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">${en ? "Tax ID (CNPJ)" : "CNPJ"}:</td>
       <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${titular.cnpj}</td>
     </tr>
   ` : "";
@@ -102,71 +103,79 @@ function buildDadosBancariosHtml(tipoPagamento: string | null, dados: DadosBanca
   return `
     <div style="background-color: #ffffff; border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
       <p style="margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #1e40af;">
-        💳 Forma de Pagamento: ${tipoPagamentoLabel(tipoPagamento)}
+        💳 ${en ? "Payment Method" : "Forma de Pagamento"}: ${tipoPagamentoLabel(tipoPagamento, en)}
       </p>
       <p style="margin: 0 0 16px 0; font-size: 14px; color: #475569;">
-        Realize o pagamento na conta bancária abaixo:
+        ${en ? "Please make the payment to the bank account below:" : "Realize o pagamento na conta bancária abaixo:"}
       </p>
       <table style="width: 100%; border-collapse: collapse;">
         <tbody>
           <tr>
-            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top; width: 130px;">Titular:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top; width: 130px;">${en ? "Account Holder" : "Titular"}:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a;">${dados.descricao}</td>
           </tr>
           ${titularPJHtml}
           <tr><td colspan="2" style="padding: 4px 0;"></td></tr>
           <tr>
-            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Banco:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">${en ? "Bank" : "Banco"}:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a;">${dados.banco}</td>
           </tr>
           <tr>
-            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Agência:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">${en ? "Branch" : "Agência"}:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${dados.agencia || "-"}</td>
           </tr>
           <tr>
-            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Conta:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">${en ? "Account" : "Conta"}:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${contaCompleta}</td>
           </tr>
           ${dados.chave_pix ? `
           <tr>
-            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">Chave PIX:</td>
+            <td style="padding: 6px 12px; font-size: 14px; color: #475569; font-weight: 600; white-space: nowrap; vertical-align: top;">${en ? "PIX Key" : "Chave PIX"}:</td>
             <td style="padding: 6px 12px; font-size: 14px; color: #0f172a; font-family: 'Courier New', monospace;">${dados.chave_pix}</td>
           </tr>` : ""}
         </tbody>
       </table>
       <p style="margin: 16px 0 0 0; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-        Após o pagamento, envie o comprovante para <strong>financeiro@aeight.global</strong>.
+        ${en ? "After payment, please send the receipt to" : "Após o pagamento, envie o comprovante para"} <strong>financeiro@aeight.global</strong>.
       </p>
     </div>
   `;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
+function formatCurrency(value: number, en = false): string {
+  return new Intl.NumberFormat(en ? "en-US" : "pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(value);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, en = false): string {
   const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("pt-BR");
+  return en
+    ? date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
+    : date.toLocaleDateString("pt-BR");
 }
 
-function formatCompetencia(dateStr: string): string {
+function formatCompetencia(dateStr: string, en = false): string {
   const date = new Date(dateStr + "T00:00:00");
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  return `${meses[date.getMonth()]}/${date.getFullYear()}`;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December'];
+  const arr = en ? months : meses;
+  return `${arr[date.getMonth()]}/${date.getFullYear()}`;
 }
 
-function buildEmailSubject(clienteNome: string, numeroNf: string, centroCusto: string): string {
-  const ccPart = centroCusto ? ` | CC: ${centroCusto}` : "";
-  return `Faturamento Aeight | ${clienteNome} | NF ${numeroNf}${ccPart}`;
+function buildEmailSubject(clienteNome: string, numeroNf: string, centroCusto: string, en = false): string {
+  const ccPart = centroCusto ? ` | ${en ? "Cost Center" : "CC"}: ${centroCusto}` : "";
+  return en
+    ? `Aeight Invoice | ${clienteNome} | Invoice ${numeroNf}${ccPart}`
+    : `Faturamento Aeight | ${clienteNome} | NF ${numeroNf}${ccPart}`;
 }
 
 function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
   const primeiraParcelaCliente = parcelas[0];
+  const en = primeiraParcelaCliente.internacional === true;
   
   const parcelasRows = parcelas
     .map((p) => {
@@ -177,11 +186,11 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
       const totalRetencoes = irrfValor + pisValor + cofinsValor + csllValor;
 
       const nfHtml = p.link_nf && p.link_nf.trim() !== ''
-        ? `<a href="${p.link_nf}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">📄 Visualizar NF ${p.numero_nf}</a>`
-        : `<span style="display: inline-block; padding: 6px 12px; background-color: #9ca3af; color: #ffffff; border-radius: 4px; font-size: 12px; font-weight: 500;">NF ${p.numero_nf}</span>`;
+        ? `<a href="${p.link_nf}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #22c55e; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">${en ? `📄 View Invoice ${p.numero_nf}` : `📄 Visualizar NF ${p.numero_nf}`}</a>`
+        : `<span style="display: inline-block; padding: 6px 12px; background-color: #9ca3af; color: #ffffff; border-radius: 4px; font-size: 12px; font-weight: 500;">${en ? "Invoice" : "NF"} ${p.numero_nf}</span>`;
 
       const boletoHtml = p.link_boleto && p.link_boleto.trim() !== ''
-        ? `<a href="${p.link_boleto}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">🧾 Visualizar Boleto</a>`
+        ? `<a href="${p.link_boleto}" target="_blank" style="display: inline-block; padding: 6px 12px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">${en ? "🧾 View Payment Slip" : "🧾 Visualizar Boleto"}</a>`
         : '';
 
       const row = (label: string, value: string, extraStyle = '') => `
@@ -193,16 +202,16 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
       return `
       <div style="border: 1px solid #e5e7eb; border-radius: 8px; margin: 0 0 14px 0; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #f9fafb; padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">
-          <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600;">Contrato ${p.contrato_numero || "-"}</p>
+          <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600;">${en ? "Agreement" : "Contrato"} ${p.contrato_numero || "-"}</p>
           <p style="margin: 2px 0 0 0; font-size: 15px; color: #111827; font-weight: 700;">${p.servico_nome || "-"}</p>
         </div>
         <table style="width: 100%; border-collapse: collapse;">
           <tbody>
-            ${row('Competência', formatCompetencia(p.data_competencia))}
-            ${row('Vencimento', formatDate(p.data_vencimento))}
-            ${row('Valor Bruto', formatCurrency(p.valor_bruto))}
-            ${row('Retenções', totalRetencoes > 0 ? formatCurrency(totalRetencoes) : '-', 'color:#dc2626;')}
-            ${row('Valor Líquido', formatCurrency(p.valor), 'font-weight:700;color:#166534;')}
+            ${row(en ? 'Reference Period' : 'Competência', formatCompetencia(p.data_competencia, en))}
+            ${row(en ? 'Due Date' : 'Vencimento', formatDate(p.data_vencimento, en))}
+            ${row(en ? 'Gross Amount' : 'Valor Bruto', formatCurrency(p.valor_bruto, en))}
+            ${row(en ? 'Withholding Taxes' : 'Retenções', totalRetencoes > 0 ? formatCurrency(totalRetencoes, en) : '-', 'color:#dc2626;')}
+            ${row(en ? 'Net Amount' : 'Valor Líquido', formatCurrency(p.valor, en), 'font-weight:700;color:#166534;')}
           </tbody>
         </table>
         <div style="padding: 12px 14px; border-top: 1px solid #e5e7eb; text-align: center;">
@@ -237,18 +246,18 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
 
       <!-- Header -->
       <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 32px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Faturamento</h1>
-        <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px;">Financeiro Aeight</p>
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">${en ? "Invoice" : "Faturamento"}</h1>
+        <p style="color: #bfdbfe; margin: 8px 0 0 0; font-size: 14px;">${en ? "Aeight Finance Department" : "Financeiro Aeight"}</p>
       </div>
       
       <!-- Content -->
       <div style="padding: 32px;">
         <p style="font-size: 16px; margin: 0 0 20px 0;">
-          Prezado(a) <strong>${primeiraParcelaCliente.cliente_nome}</strong>,
+          ${en ? "Dear" : "Prezado(a)"} <strong>${primeiraParcelaCliente.cliente_nome}</strong>,
         </p>
         
         <p style="font-size: 15px; margin: 0 0 24px 0; color: #4b5563;">
-          Segue abaixo o detalhamento do faturamento referente aos serviços prestados:
+          ${en ? "Please find below the invoice details for the services provided:" : "Segue abaixo o detalhamento do faturamento referente aos serviços prestados:"}
         </p>
         
         <!-- Parcelas (cards) -->
@@ -258,32 +267,32 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
 
 
 
-        ${buildDadosBancariosHtml(primeiraParcelaCliente.tipo_pagamento, primeiraParcelaCliente.dados_bancarios)}
+        ${buildDadosBancariosHtml(primeiraParcelaCliente.tipo_pagamento, primeiraParcelaCliente.dados_bancarios, en)}
 
         <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
             <div style="text-align: center; flex: 1;">
-              <p style="margin: 0; font-size: 12px; color: #1e40af; font-weight: 500;">Valor Bruto</p>
-              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 600; color: #1e3a8a;">${formatCurrency(totalBruto)}</p>
+              <p style="margin: 0; font-size: 12px; color: #1e40af; font-weight: 500;">${en ? "Gross Amount" : "Valor Bruto"}</p>
+              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 600; color: #1e3a8a;">${formatCurrency(totalBruto, en)}</p>
             </div>
             <div style="text-align: center; flex: 1;">
-              <p style="margin: 0; font-size: 12px; color: #dc2626; font-weight: 500;">Retenções</p>
-              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 600; color: #b91c1c;">- ${formatCurrency(totalRetencoes)}</p>
+              <p style="margin: 0; font-size: 12px; color: #dc2626; font-weight: 500;">${en ? "Withholding Taxes" : "Retenções"}</p>
+              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 600; color: #b91c1c;">- ${formatCurrency(totalRetencoes, en)}</p>
             </div>
             <div style="text-align: center; flex: 1;">
-              <p style="margin: 0; font-size: 12px; color: #15803d; font-weight: 500;">Total a Pagar</p>
-              <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #166534;">${formatCurrency(totalLiquido)}</p>
+              <p style="margin: 0; font-size: 12px; color: #15803d; font-weight: 500;">${en ? "Total Due" : "Total a Pagar"}</p>
+              <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #166534;">${formatCurrency(totalLiquido, en)}</p>
             </div>
           </div>
         </div>
         
         <p style="font-size: 15px; margin: 0 0 24px 0; color: #4b5563;">
-          Em caso de dúvidas ou divergências, por favor entre em contato com nosso departamento financeiro.
+          ${en ? "If you have any questions or notice any discrepancies, please contact our finance department." : "Em caso de dúvidas ou divergências, por favor entre em contato com nosso departamento financeiro."}
         </p>
         
         <!-- Contact -->
         <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; text-align: center;">
-          <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Dúvidas? Entre em contato:</p>
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">${en ? "Questions? Contact us:" : "Dúvidas? Entre em contato:"}</p>
           <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">financeiro@aeight.global</p>
         </div>
       </div>
@@ -291,10 +300,10 @@ function buildEmailHtml(parcelas: ParcelaFaturamento[]): string {
       <!-- Footer -->
       <div style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
         <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-          Este é um e-mail automático do sistema de faturamento.
+          ${en ? "This is an automated message from our billing system." : "Este é um e-mail automático do sistema de faturamento."}
         </p>
         <p style="margin: 8px 0 0 0; font-size: 12px; color: #9ca3af;">
-          © ${new Date().getFullYear()} Aeight. Todos os direitos reservados.
+          © ${new Date().getFullYear()} Aeight. ${en ? "All rights reserved." : "Todos os direitos reservados."}
         </p>
       </div>
     </div>
@@ -338,7 +347,60 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { parcela_ids } = await req.json();
+    const body = await req.json();
+    const { test_mode, test_email, test_lang } = body;
+
+    // TEST MODE: send a sample billing email (pt or en) to a given address
+    if (test_mode && test_email) {
+      const en = test_lang === "en";
+      const mock: ParcelaFaturamento[] = [
+        {
+          id: "test-1",
+          numero_nf: "12345",
+          link_nf: "",
+          link_boleto: "",
+          data_competencia: new Date().toISOString().split("T")[0].slice(0, 8) + "01",
+          data_vencimento: new Date(Date.now() + 10 * 86400000).toISOString().split("T")[0],
+          valor: 9137.50,
+          valor_bruto: 10000,
+          cliente_id: "test",
+          cliente_nome: "Global Example Inc.",
+          cliente_emails: [test_email],
+          centro_custo: "CC001 - Operations",
+          contrato_numero: "CTR-2026-001",
+          servico_nome: "MKT001 - Digital Marketing",
+          observacoes_faturamento: null,
+          pis_percentual: 0.65,
+          cofins_percentual: 3,
+          irrf_percentual: 1.5,
+          csll_percentual: 1,
+          tipo_pagamento: "transferencia",
+          dados_bancarios: {
+            banco: "Itaú",
+            agencia: "0001",
+            conta: "12345-6",
+            tipo_conta: "corrente",
+            descricao: "Conta Matriz B8ONE",
+            chave_pix: "financeiro@aeight.global",
+          },
+          internacional: en,
+        },
+      ];
+      const subject = buildEmailSubject(mock[0].cliente_nome, mock[0].numero_nf, mock[0].centro_custo, en);
+      const r = await resend.emails.send({
+        from: "Financeiro Aeight <faturamento@financeiro.aeight.global>",
+        to: [test_email],
+        subject: `[TESTE] ${subject}`,
+        html: buildEmailHtml(mock),
+      });
+      return new Response(
+        JSON.stringify({ success: !r.error, test_mode: true, lang: en ? "en" : "pt", result: r }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+
+    const { parcela_ids } = body;
 
     if (!parcela_ids || !Array.isArray(parcela_ids) || parcela_ids.length === 0) {
       return new Response(
@@ -378,6 +440,7 @@ serve(async (req: Request): Promise<Response> => {
             irrf_percentual,
             csll_percentual,
             tipo_pagamento,
+            cliente_internacional,
             conta_bancaria_id,
             contas_bancarias(banco, agencia, conta, tipo_conta, descricao, chave_pix)
           )
@@ -480,6 +543,7 @@ serve(async (req: Request): Promise<Response> => {
         csll_percentual: contrato?.csll_percentual || 0,
         tipo_pagamento: contrato?.tipo_pagamento || null,
         dados_bancarios: dadosBancarios,
+        internacional: contrato?.cliente_internacional === true,
       };
 
 
@@ -528,14 +592,16 @@ serve(async (req: Request): Promise<Response> => {
         subject = buildEmailSubject(
           primeiraParcelaCliente.cliente_nome,
           primeiraParcelaCliente.numero_nf,
-          primeiraParcelaCliente.centro_custo
+          primeiraParcelaCliente.centro_custo,
+          primeiraParcelaCliente.internacional
         );
       } else {
         const nfs = parcelas.map(p => p.numero_nf).join(", ");
         subject = buildEmailSubject(
           primeiraParcelaCliente.cliente_nome,
           nfs,
-          primeiraParcelaCliente.centro_custo
+          primeiraParcelaCliente.centro_custo,
+          primeiraParcelaCliente.internacional
         );
       }
 
