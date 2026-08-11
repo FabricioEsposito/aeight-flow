@@ -122,6 +122,19 @@ export function RHDashboard() {
         }
       }
 
+      // Fetch fornecedor names
+      const fornecedorIds = Array.from(new Set(contratos.map(c => c.fornecedor_id).filter(Boolean))) as string[];
+      const fornecedorMap = new Map<string, string>();
+      if (fornecedorIds.length > 0) {
+        const { data: fornecedores } = await supabase
+          .from('fornecedores')
+          .select('id, nome_fantasia, razao_social')
+          .in('id', fornecedorIds);
+        for (const f of fornecedores || []) {
+          fornecedorMap.set(f.id, f.nome_fantasia || f.razao_social || 'Sem nome');
+        }
+      }
+
       const result: ParcelaRecord[] = (parcelas || []).map(p => {
         const contrato = contratoMap.get(p.contrato_id!);
         const isFolha = contrato?.is_folha_funcionario;
@@ -129,6 +142,7 @@ export function RHDashboard() {
           parcela_id: p.id,
           contrato_id: p.contrato_id!,
           fornecedor_id: contrato?.fornecedor_id || '',
+          fornecedor_nome: fornecedorMap.get(contrato?.fornecedor_id || '') || 'Sem nome',
           data_vencimento: p.data_vencimento,
           valor: p.valor,
           tipo: isFolha ? 'folha' : 'beneficio',
