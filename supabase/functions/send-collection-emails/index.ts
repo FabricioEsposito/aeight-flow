@@ -695,7 +695,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { cliente_id, all, force, test_mode, test_email, check_quota } = await req.json();
+    const { cliente_id, all, force, test_mode, test_email, test_lang, check_quota } = await req.json();
     
     console.log("Starting collection email process:", { cliente_id, all, force, test_mode, test_email, check_quota });
 
@@ -735,7 +735,8 @@ serve(async (req: Request): Promise<Response> => {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        const template = getEmailTemplate(level.diasAtraso);
+        const testEn = test_lang === "en";
+        const template = getEmailTemplate(level.diasAtraso, testEn);
         const ccRecipients = getCcRecipients(level.diasAtraso);
         
         const mockCliente: ClienteCobranca = {
@@ -768,6 +769,7 @@ serve(async (req: Request): Promise<Response> => {
           ],
           total_vencido: 7500.00,
           max_dias_atraso: level.diasAtraso + 5,
+          internacional: testEn,
         };
 
         const htmlContent = buildEmailHtml(mockCliente, template);
