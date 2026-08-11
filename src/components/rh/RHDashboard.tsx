@@ -340,8 +340,8 @@ export function RHDashboard() {
     const total = payload.reduce((s: number, p: any) => s + (p.value || 0), 0);
 
     return (
-      <div className="rounded-lg border bg-background p-3 shadow-md max-h-[320px] overflow-auto text-xs">
-        <p className="font-semibold text-sm mb-2">{label}</p>
+      <div className="rounded-lg border bg-background p-3 shadow-md max-h-[480px] overflow-y-auto text-xs" style={{ minWidth: 280, maxWidth: 360 }}>
+        <p className="font-semibold text-sm mb-2 sticky top-0 bg-background py-1">{label}</p>
         {payload
           .filter((p: any) => (p.value || 0) > 0)
           .map((p: any) => (
@@ -356,14 +356,14 @@ export function RHDashboard() {
               <div className="pl-3.5 mt-0.5 space-y-0.5 text-muted-foreground">
                 {(detalhes[p.dataKey] || []).map((d: any, i: number) => (
                   <div key={i} className="flex items-center justify-between gap-4">
-                    <span className="truncate max-w-[180px]">{d.nome}</span>
+                    <span className="truncate max-w-[220px]" title={d.nome}>{d.nome}</span>
                     <span>{formatCurrency(d.valor)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
-        <div className="flex items-center justify-between gap-4 border-t pt-1.5 mt-1 font-semibold">
+        <div className="flex items-center justify-between gap-4 border-t pt-1.5 mt-1 font-semibold sticky bottom-0 bg-background">
           <span>Total</span>
           <span>{formatCurrency(total)}</span>
         </div>
@@ -533,7 +533,7 @@ export function RHDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
                 <YAxis width={90} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-                <Tooltip content={<DiaVencimentoTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
+                <Tooltip content={<DiaVencimentoTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} wrapperStyle={{ pointerEvents: 'auto', zIndex: 100 }} />
                 <Legend />
                 {diaVencimentoData.ccCodes.map(code => (
                   <Bar
