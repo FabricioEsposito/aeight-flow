@@ -347,7 +347,56 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { parcela_ids } = await req.json();
+    const { parcela_ids, test_mode, test_email, test_lang } = await req.json();
+
+    // TEST MODE: send a sample billing email (pt or en) to a given address
+    if (test_mode && test_email) {
+      const en = test_lang === "en";
+      const mock: ParcelaFaturamento[] = [
+        {
+          id: "test-1",
+          numero_nf: "12345",
+          link_nf: "",
+          link_boleto: "",
+          data_competencia: new Date().toISOString().split("T")[0].slice(0, 8) + "01",
+          data_vencimento: new Date(Date.now() + 10 * 86400000).toISOString().split("T")[0],
+          valor: 9137.50,
+          valor_bruto: 10000,
+          cliente_id: "test",
+          cliente_nome: "Global Example Inc.",
+          cliente_emails: [test_email],
+          centro_custo: "CC001 - Operations",
+          contrato_numero: "CTR-2026-001",
+          servico_nome: "MKT001 - Digital Marketing",
+          observacoes_faturamento: null,
+          pis_percentual: 0.65,
+          cofins_percentual: 3,
+          irrf_percentual: 1.5,
+          csll_percentual: 1,
+          tipo_pagamento: "transferencia",
+          dados_bancarios: {
+            banco: "Itaú",
+            agencia: "0001",
+            conta: "12345-6",
+            tipo_conta: "corrente",
+            descricao: "Conta Matriz B8ONE",
+            chave_pix: "financeiro@aeight.global",
+          },
+          internacional: en,
+        },
+      ];
+      const subject = buildEmailSubject(mock[0].cliente_nome, mock[0].numero_nf, mock[0].centro_custo, en);
+      const r = await resend.emails.send({
+        from: "Financeiro Aeight <faturamento@financeiro.aeight.global>",
+        to: [test_email],
+        subject: `[TESTE] ${subject}`,
+        html: buildEmailHtml(mock),
+      });
+      return new Response(
+        JSON.stringify({ success: !r.error, test_mode: true, lang: en ? "en" : "pt", result: r }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     if (!parcela_ids || !Array.isArray(parcela_ids) || parcela_ids.length === 0) {
       return new Response(
