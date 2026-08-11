@@ -637,7 +637,6 @@ export default function EditarContratoCompleto() {
           aviso_previo_dias: avisoPrevioDias,
           renovacao_automatica: renovacaoAutomatica,
           ajuste_ipca: ajusteIpca,
-        cliente_internacional: clienteInternacional,
           cliente_internacional: clienteInternacional,
           is_beneficio_funcionario: tipoContrato === 'compra' ? isBeneficioFuncionario : false,
           link_planilha_rateio: tipoContrato === 'compra' && isBeneficioFuncionario ? (linkPlanilhaRateio || null) : null,
