@@ -872,6 +872,7 @@ serve(async (req: Request): Promise<Response> => {
         )
       `)
       .in("status", ["pendente", "vencido"])
+      .is("data_recebimento", null)
       .lt("data_vencimento", hoje);
 
     if (cliente_id) {
