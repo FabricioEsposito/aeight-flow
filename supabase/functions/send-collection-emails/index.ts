@@ -872,6 +872,7 @@ serve(async (req: Request): Promise<Response> => {
         )
       `)
       .in("status", ["pendente", "vencido"])
+      .is("data_recebimento", null)
       .lt("data_vencimento", hoje);
 
     if (cliente_id) {
@@ -1061,8 +1062,47 @@ serve(async (req: Request): Promise<Response> => {
         continue;
       }
 
+      // REVALIDAÇÃO EM TEMPO REAL: garante que nenhuma parcela foi baixada
+      // entre a consulta inicial e o momento do envio (evita cobrar item já pago)
+      const parcelaIds = clienteData.parcelas.map((p) => p.id);
+      const { data: parcelasAtuais, error: revalidError } = await supabase
+        .from("contas_receber")
+        .select("id, status, data_recebimento, valor")
+        .in("id", parcelaIds);
+
+      if (revalidError) {
+        console.error("Erro ao revalidar parcelas, pulando cliente por segurança:", revalidError);
+        totalSkipped++;
+        continue;
+      }
+
+      const aindaEmAberto = new Map(
+        (parcelasAtuais || [])
+          .filter((p: any) => ["pendente", "vencido"].includes(p.status) && !p.data_recebimento)
+          .map((p: any) => [p.id, p])
+      );
+
+      if (aindaEmAberto.size === 0) {
+        console.log(`Client ${clienteData.cliente_nome}: todas as parcelas foram baixadas, e-mail cancelado`);
+        totalSkipped++;
+        continue;
+      }
+
+      if (aindaEmAberto.size !== clienteData.parcelas.length) {
+        clienteData.parcelas = clienteData.parcelas.filter((p) => aindaEmAberto.has(p.id));
+      }
+
+      // Atualiza valores/totais com os dados mais recentes (baixas parciais)
+      clienteData.parcelas = clienteData.parcelas.map((p) => ({
+        ...p,
+        valor: Number((aindaEmAberto.get(p.id) as any).valor ?? p.valor),
+      }));
+      clienteData.total_vencido = clienteData.parcelas.reduce((s, p) => s + Number(p.valor), 0);
+      clienteData.max_dias_atraso = Math.max(...clienteData.parcelas.map((p) => p.dias_atraso));
+
       // Get email template based on days overdue
-      const template = getEmailTemplate(diasAtraso, clienteData.internacional === true);
+      const template = getEmailTemplate(clienteData.max_dias_atraso, clienteData.internacional === true);
+      
       
       // Build email content with template
       const htmlContent = buildEmailHtml(clienteData, template);
