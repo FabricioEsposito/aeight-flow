@@ -277,9 +277,20 @@ export default function Extrato() {
       return '-';
     }},
     { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
-    { header: 'Plano de Contas', accessor: (row: LancamentoExtrato) => {
+    { header: 'Plano de Contas - Grupo', accessor: (row: LancamentoExtrato) => {
       if (!row.plano_conta_id) return '-';
-      return planoContasHierarchyRef.current.get(row.plano_conta_id) || row.plano_conta_descricao || '-';
+      const hier = planoContasHierarchyRef.current.get(row.plano_conta_id);
+      return (hier && hier[0]) || '-';
+    }},
+    { header: 'Plano de Contas - Subgrupo', accessor: (row: LancamentoExtrato) => {
+      if (!row.plano_conta_id) return '-';
+      const hier = planoContasHierarchyRef.current.get(row.plano_conta_id);
+      return (hier && hier.length > 1 ? hier[hier.length - 2] : null) || '-';
+    }},
+    { header: 'Plano de Contas - Categoria', accessor: (row: LancamentoExtrato) => {
+      if (!row.plano_conta_id) return '-';
+      const hier = planoContasHierarchyRef.current.get(row.plano_conta_id);
+      return (hier && hier[hier.length - 1]) || row.plano_conta_descricao || '-';
     }},
     { header: 'Conta Bancária', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
     { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
