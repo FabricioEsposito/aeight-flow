@@ -293,7 +293,7 @@ export default function Extrato() {
       return (hier && hier[hier.length - 1]) || row.plano_conta_descricao || '-';
     }},
     { header: 'Conta Bancária', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
-    { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
+    { header: 'Valor', accessor: (row: LancamentoExtrato) => row.tipo === 'saida' ? -Math.abs(row.valor) : row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
       const status = getDisplayStatus(row);
       if (status === 'recebido') return 'Recebido';
