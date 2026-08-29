@@ -120,7 +120,7 @@ export default function Extrato() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [conciliarDialogOpen, setConciliarDialogOpen] = useState(false);
   const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string; nivel: number }>>([]);
-  const planoContasHierarchyRef = useRef<Map<string, string>>(new Map());
+  const planoContasHierarchyRef = useRef<Map<string, string[]>>(new Map());
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
@@ -575,8 +575,9 @@ export default function Extrato() {
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
 
-      // Montar hierarquia completa (Grupo > Subgrupo > Categoria) para exportação
-      const hierarchyMap = new Map<string, string>();
+      // Montar hierarquia por nível (Grupo, Subgrupo, Categoria) para exportação
+      // Índice 0 = nível mais alto (grupo), último = próprio item (categoria)
+      const hierarchyMap = new Map<string, string[]>();
       (planoContasData || []).forEach((p) => {
         const parts: string[] = [`${p.codigo} ${p.descricao}`];
         let current = p.parent_id ? planoContasMap.get(p.parent_id) : null;
@@ -586,7 +587,7 @@ export default function Extrato() {
           current = current.parent_id ? planoContasMap.get(current.parent_id) : null;
           guard++;
         }
-        hierarchyMap.set(p.id, parts.join(' > '));
+        hierarchyMap.set(p.id, parts);
       });
       planoContasHierarchyRef.current = hierarchyMap;
 
