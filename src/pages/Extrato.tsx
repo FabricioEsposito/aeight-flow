@@ -565,10 +565,25 @@ export default function Extrato() {
       // Buscar plano de contas para lookup
       const { data: planoContasData } = await supabase
         .from('plano_contas')
-        .select('id, codigo, descricao, nivel');
+        .select('id, codigo, descricao, nivel, parent_id');
       
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
+
+      // Montar hierarquia completa (Grupo > Subgrupo > Categoria) para exportação
+      const hierarchyMap = new Map<string, string>();
+      (planoContasData || []).forEach((p) => {
+        const parts: string[] = [`${p.codigo} ${p.descricao}`];
+        let current = p.parent_id ? planoContasMap.get(p.parent_id) : null;
+        let guard = 0;
+        while (current && guard < 5) {
+          parts.unshift(`${current.codigo} ${current.descricao}`);
+          current = current.parent_id ? planoContasMap.get(current.parent_id) : null;
+          guard++;
+        }
+        hierarchyMap.set(p.id, parts.join(' > '));
+      });
+      planoContasHierarchyRef.current = hierarchyMap;
 
       // Buscar centros de custo para lookup (necessário para mapear nome)
       const { data: centrosCustoData } = await supabase
