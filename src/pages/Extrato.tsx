@@ -277,6 +277,10 @@ export default function Extrato() {
       return '-';
     }},
     { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
+    { header: 'Plano de Contas', accessor: (row: LancamentoExtrato) => {
+      if (!row.plano_conta_id) return '-';
+      return planoContasHierarchyRef.current.get(row.plano_conta_id) || row.plano_conta_descricao || '-';
+    }},
     { header: 'Conta Bancária', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
     { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
