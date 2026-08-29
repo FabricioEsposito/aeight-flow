@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSessionState } from '@/hooks/useSessionState';
 import { Search, Filter, BarChart3, Download, TrendingUp, TrendingDown, Plus, Calendar, CheckCircle, Copy, FileDown, FileSpreadsheet, FileCheck, FileX, ExternalLink, Upload, Trash2, Landmark, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -120,6 +120,7 @@ export default function Extrato() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [conciliarDialogOpen, setConciliarDialogOpen] = useState(false);
   const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string; nivel: number }>>([]);
+  const planoContasHierarchyRef = useRef<Map<string, string>>(new Map());
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
@@ -276,6 +277,10 @@ export default function Extrato() {
       return '-';
     }},
     { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
+    { header: 'Plano de Contas', accessor: (row: LancamentoExtrato) => {
+      if (!row.plano_conta_id) return '-';
+      return planoContasHierarchyRef.current.get(row.plano_conta_id) || row.plano_conta_descricao || '-';
+    }},
     { header: 'Conta Bancária', accessor: (row: LancamentoExtrato) => row.conta_bancaria_nome || '-' },
     { header: 'Valor', accessor: (row: LancamentoExtrato) => row.valor, type: 'currency' as const },
     { header: 'Status', accessor: (row: LancamentoExtrato) => {
@@ -565,10 +570,25 @@ export default function Extrato() {
       // Buscar plano de contas para lookup
       const { data: planoContasData } = await supabase
         .from('plano_contas')
-        .select('id, codigo, descricao, nivel');
+        .select('id, codigo, descricao, nivel, parent_id');
       
       const planoContasMap = new Map((planoContasData || []).map(p => [p.id, p]));
       setPlanoContas(planoContasData || []);
+
+      // Montar hierarquia completa (Grupo > Subgrupo > Categoria) para exportação
+      const hierarchyMap = new Map<string, string>();
+      (planoContasData || []).forEach((p) => {
+        const parts: string[] = [`${p.codigo} ${p.descricao}`];
+        let current = p.parent_id ? planoContasMap.get(p.parent_id) : null;
+        let guard = 0;
+        while (current && guard < 5) {
+          parts.unshift(`${current.codigo} ${current.descricao}`);
+          current = current.parent_id ? planoContasMap.get(current.parent_id) : null;
+          guard++;
+        }
+        hierarchyMap.set(p.id, parts.join(' > '));
+      });
+      planoContasHierarchyRef.current = hierarchyMap;
 
       // Buscar centros de custo para lookup (necessário para mapear nome)
       const { data: centrosCustoData } = await supabase
