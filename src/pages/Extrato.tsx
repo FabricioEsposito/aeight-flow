@@ -120,6 +120,7 @@ export default function Extrato() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [conciliarDialogOpen, setConciliarDialogOpen] = useState(false);
   const [planoContas, setPlanoContas] = useState<Array<{ id: string; codigo: string; descricao: string; nivel: number }>>([]);
+  const planoContasHierarchyRef = useRef<Map<string, string>>(new Map());
   const { isAdmin, permissions, loading: roleLoading } = useUserRole();
   const { showPermissionDenied, setShowPermissionDenied, permissionDeniedMessage, checkPermission } = usePermissionCheck();
   const { toast } = useToast();
