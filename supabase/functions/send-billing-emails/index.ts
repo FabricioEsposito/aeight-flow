@@ -645,7 +645,19 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
+      // Guardar URLs originais e assinar os links exibidos no corpo do e-mail
+      const originalLinks = parcelas.map((p) => ({ nf: p.link_nf, boleto: p.link_boleto }));
+      for (const parcela of parcelas) {
+        if (parcela.link_nf && parcela.link_nf.trim() !== '') {
+          parcela.link_nf = (await signStorageUrl(supabase, parcela.link_nf, 'faturamento-docs')) || '';
+        }
+        if (parcela.link_boleto && parcela.link_boleto.trim() !== '') {
+          parcela.link_boleto = (await signStorageUrl(supabase, parcela.link_boleto, 'faturamento-docs')) || '';
+        }
+      }
+
       const htmlContent = buildEmailHtml(parcelas);
+
 
       // Build attachments from all parcelas (NF and Boleto) using signed URLs
       const attachments: Array<{ filename: string; path: string }> = [];
