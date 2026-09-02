@@ -4,6 +4,46 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Storage helpers: e-mails precisam de URLs assinadas (buckets são privados)
+const LINK_EXPIRY_SECONDS = 60 * 60 * 24 * 90; // 90 dias
+
+export function extractStoragePath(url: string, bucket: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    `/storage/v1/object/public/${bucket}/`,
+    `/storage/v1/object/sign/${bucket}/`,
+    `/storage/v1/object/${bucket}/`,
+  ];
+  for (const pattern of patterns) {
+    const idx = url.indexOf(pattern);
+    if (idx !== -1) {
+      let p = url.substring(idx + pattern.length);
+      const qIdx = p.indexOf('?');
+      if (qIdx !== -1) p = p.substring(0, qIdx);
+      return decodeURIComponent(p);
+    }
+  }
+  // Já pode ser um path puro
+  return url.includes('://') ? null : url;
+}
+
+async function signStorageUrl(
+  supabase: any,
+  url: string,
+  bucket: string,
+  expiresIn = LINK_EXPIRY_SECONDS,
+): Promise<string | null> {
+  const path = extractStoragePath(url, bucket);
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
+  if (error || !data?.signedUrl) {
+    console.error(`[BILLING-EMAIL] Erro ao assinar ${path}:`, error);
+    return null;
+  }
+  return data.signedUrl;
+}
+
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
