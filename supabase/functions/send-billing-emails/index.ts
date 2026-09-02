@@ -4,6 +4,46 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Storage helpers: e-mails precisam de URLs assinadas (buckets são privados)
+const LINK_EXPIRY_SECONDS = 60 * 60 * 24 * 90; // 90 dias
+
+export function extractStoragePath(url: string, bucket: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    `/storage/v1/object/public/${bucket}/`,
+    `/storage/v1/object/sign/${bucket}/`,
+    `/storage/v1/object/${bucket}/`,
+  ];
+  for (const pattern of patterns) {
+    const idx = url.indexOf(pattern);
+    if (idx !== -1) {
+      let p = url.substring(idx + pattern.length);
+      const qIdx = p.indexOf('?');
+      if (qIdx !== -1) p = p.substring(0, qIdx);
+      return decodeURIComponent(p);
+    }
+  }
+  // Já pode ser um path puro
+  return url.includes('://') ? null : url;
+}
+
+async function signStorageUrl(
+  supabase: any,
+  url: string,
+  bucket: string,
+  expiresIn = LINK_EXPIRY_SECONDS,
+): Promise<string | null> {
+  const path = extractStoragePath(url, bucket);
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
+  if (error || !data?.signedUrl) {
+    console.error(`[BILLING-EMAIL] Erro ao assinar ${path}:`, error);
+    return null;
+  }
+  return data.signedUrl;
+}
+
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -605,55 +645,28 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
+      // Guardar URLs originais e assinar os links exibidos no corpo do e-mail
+      const originalLinks = parcelas.map((p) => ({ nf: p.link_nf, boleto: p.link_boleto }));
+      for (const parcela of parcelas) {
+        if (parcela.link_nf && parcela.link_nf.trim() !== '') {
+          parcela.link_nf = (await signStorageUrl(supabase, parcela.link_nf, 'faturamento-docs')) || '';
+        }
+        if (parcela.link_boleto && parcela.link_boleto.trim() !== '') {
+          parcela.link_boleto = (await signStorageUrl(supabase, parcela.link_boleto, 'faturamento-docs')) || '';
+        }
+      }
+
       const htmlContent = buildEmailHtml(parcelas);
+
 
       // Build attachments from all parcelas (NF and Boleto) using signed URLs
       const attachments: Array<{ filename: string; path: string }> = [];
-      
-      // Helper to extract storage path from URL and generate a signed URL
-      const getSignedUrl = async (url: string, bucket: string): Promise<string | null> => {
-        try {
-          // Extract the path after /storage/v1/object/public/{bucket}/ or /storage/v1/object/{bucket}/
-          const patterns = [
-            `/storage/v1/object/public/${bucket}/`,
-            `/storage/v1/object/${bucket}/`,
-          ];
-          let storagePath = '';
-          for (const pattern of patterns) {
-            const idx = url.indexOf(pattern);
-            if (idx !== -1) {
-              storagePath = url.substring(idx + pattern.length);
-              // Remove query params
-              const qIdx = storagePath.indexOf('?');
-              if (qIdx !== -1) storagePath = storagePath.substring(0, qIdx);
-              break;
-            }
-          }
-          if (!storagePath) {
-            console.log(`[BILLING-EMAIL] Could not extract path from URL: ${url}`);
-            return url; // fallback to original URL
-          }
-          
-          const { data, error } = await supabase.storage
-            .from(bucket)
-            .createSignedUrl(storagePath, 3600); // 1 hour expiry
-          
-          if (error || !data?.signedUrl) {
-            console.error(`[BILLING-EMAIL] Error creating signed URL for ${storagePath}:`, error);
-            return null;
-          }
-          
-          console.log(`[BILLING-EMAIL] Signed URL created for ${storagePath}`);
-          return data.signedUrl;
-        } catch (e) {
-          console.error(`[BILLING-EMAIL] Exception creating signed URL:`, e);
-          return null;
-        }
-      };
 
-      for (const parcela of parcelas) {
-        if (parcela.link_nf && parcela.link_nf.trim() !== '') {
-          const signedUrl = await getSignedUrl(parcela.link_nf, 'faturamento-docs');
+      for (let i = 0; i < parcelas.length; i++) {
+        const parcela = parcelas[i];
+        const orig = originalLinks[i];
+        if (orig.nf && orig.nf.trim() !== '') {
+          const signedUrl = parcela.link_nf || await signStorageUrl(supabase, orig.nf, 'faturamento-docs', 3600);
           if (signedUrl) {
             attachments.push({
               filename: `NF_${parcela.numero_nf}.pdf`,
@@ -661,8 +674,8 @@ serve(async (req: Request): Promise<Response> => {
             });
           }
         }
-        if (parcela.link_boleto && parcela.link_boleto.trim() !== '') {
-          const signedUrl = await getSignedUrl(parcela.link_boleto, 'faturamento-docs');
+        if (orig.boleto && orig.boleto.trim() !== '') {
+          const signedUrl = parcela.link_boleto || await signStorageUrl(supabase, orig.boleto, 'faturamento-docs', 3600);
           if (signedUrl) {
             attachments.push({
               filename: `Boleto_${parcela.numero_nf}_${formatDate(parcela.data_vencimento).replace(/\//g, '-')}.pdf`,
@@ -671,6 +684,7 @@ serve(async (req: Request): Promise<Response> => {
           }
         }
       }
+
 
       try {
         const ccEmails = ["financeiro@aeight.global"];
