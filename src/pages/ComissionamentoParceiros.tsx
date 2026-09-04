@@ -55,10 +55,20 @@ interface ParcelaPaga {
   valor_comissao: number;
 }
 
+interface ComissaoExtraordinaria {
+  id: string;
+  vendedor_id: string;
+  descricao: string;
+  valor: number;
+  mes_referencia: number;
+  ano_referencia: number;
+}
+
 interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
 }
+
 
 const meses = [
   { value: 1, label: "Janeiro" }, { value: 2, label: "Fevereiro" }, { value: 3, label: "Março" },
