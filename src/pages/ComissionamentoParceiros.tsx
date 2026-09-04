@@ -355,9 +355,10 @@ export default function ComissionamentoParceiros() {
   const calculo = useMemo(() => {
     const parceiro = parceiros.find((p) => p.id === selectedParceiro);
     const total = parcelasPagas.reduce((acc, p) => acc + p.valor, 0);
-    const comissao = parcelasPagas.reduce((acc, p) => acc + p.valor_comissao, 0);
-    return { total, comissao, percentual: Number(parceiro?.percentual_comissao || 0) };
-  }, [parcelasPagas, selectedParceiro, parceiros]);
+    const totalExtraordinarias = extraordinarias.reduce((acc, e) => acc + Number(e.valor), 0);
+    const comissao = parcelasPagas.reduce((acc, p) => acc + p.valor_comissao, 0) + totalExtraordinarias;
+    return { total, comissao, totalExtraordinarias, percentual: Number(parceiro?.percentual_comissao || 0) };
+  }, [parcelasPagas, selectedParceiro, parceiros, extraordinarias]);
 
   const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
