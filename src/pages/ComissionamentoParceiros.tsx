@@ -87,6 +87,12 @@ export default function ComissionamentoParceiros() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
+  // Comissões extraordinárias
+  const [extraordinarias, setExtraordinarias] = useState<ComissaoExtraordinaria[]>([]);
+  const [novaExtraDesc, setNovaExtraDesc] = useState("");
+  const [novaExtraValor, setNovaExtraValor] = useState(0);
+
+
   const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("comissao-parceiros", "datePreset", "este-mes");
   const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("comissao-parceiros", "customDateRange", { from: undefined, to: undefined });
 
