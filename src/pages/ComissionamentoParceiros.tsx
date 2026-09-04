@@ -14,10 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Check, X, Send, Eye, RotateCcw, Pencil } from "lucide-react";
+import { Check, X, Send, Eye, RotateCcw, Pencil, Plus, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subDays, subMonths, lastDayOfMonth } from "date-fns";
 import { DateRangeFilter, DateRangePreset } from "@/components/financeiro/DateRangeFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { ContaBancariaSelect } from "@/components/financeiro/ContaBancariaSelect";
 
 interface Parceiro {
@@ -54,10 +55,20 @@ interface ParcelaPaga {
   valor_comissao: number;
 }
 
+interface ComissaoExtraordinaria {
+  id: string;
+  vendedor_id: string;
+  descricao: string;
+  valor: number;
+  mes_referencia: number;
+  ano_referencia: number;
+}
+
 interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
 }
+
 
 const meses = [
   { value: 1, label: "Janeiro" }, { value: 2, label: "Fevereiro" }, { value: 3, label: "Março" },
@@ -75,6 +86,12 @@ export default function ComissionamentoParceiros() {
   const [loadingParcelas, setLoadingParcelas] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // Comissões extraordinárias
+  const [extraordinarias, setExtraordinarias] = useState<ComissaoExtraordinaria[]>([]);
+  const [novaExtraDesc, setNovaExtraDesc] = useState("");
+  const [novaExtraValor, setNovaExtraValor] = useState(0);
+
 
   const [dateRangePreset, setDateRangePreset] = useSessionState<DateRangePreset>("comissao-parceiros", "datePreset", "este-mes");
   const [customDateRange, setCustomDateRange] = useSessionState<DateRange>("comissao-parceiros", "customDateRange", { from: undefined, to: undefined });
@@ -134,8 +151,73 @@ export default function ComissionamentoParceiros() {
   }, [dateRangePreset, customDateRange]);
 
   useEffect(() => {
-    if (selectedParceiro) fetchParcelasPagas();
+    if (selectedParceiro) {
+      fetchParcelasPagas();
+      fetchExtraordinarias();
+    } else {
+      setExtraordinarias([]);
+    }
   }, [selectedParceiro, dateRangePreset, customDateRange]);
+
+  const fetchExtraordinarias = async () => {
+    if (!selectedParceiro) return;
+    const { mes, ano } = getReferencePeriod();
+    try {
+      const { data, error } = await (supabase as any)
+        .from("comissao_extraordinaria")
+        .select("*")
+        .eq("vendedor_id", selectedParceiro)
+        .eq("mes_referencia", mes)
+        .eq("ano_referencia", ano);
+      if (error) throw error;
+      setExtraordinarias(data || []);
+    } catch (e) {
+      console.error("Erro ao carregar extraordinárias:", e);
+    }
+  };
+
+  const handleAddExtraordinaria = async () => {
+    if (!selectedParceiro || !novaExtraDesc.trim() || novaExtraValor <= 0) {
+      toast({
+        title: "Atenção",
+        description: "Preencha a descrição e o valor da comissão extraordinária.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const { mes, ano } = getReferencePeriod();
+    try {
+      const { error } = await (supabase as any).from("comissao_extraordinaria").insert({
+        vendedor_id: selectedParceiro,
+        descricao: novaExtraDesc.trim(),
+        valor: novaExtraValor,
+        mes_referencia: mes,
+        ano_referencia: ano,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+      setNovaExtraDesc("");
+      setNovaExtraValor(0);
+      fetchExtraordinarias();
+      toast({ title: "Sucesso", description: "Comissão extraordinária adicionada." });
+    } catch (e) {
+      console.error("Erro ao adicionar extraordinária:", e);
+      toast({ title: "Erro", description: "Não foi possível adicionar.", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveExtraordinaria = async (id: string) => {
+    try {
+      const { error } = await (supabase as any).from("comissao_extraordinaria").delete().eq("id", id);
+      if (error) throw error;
+      fetchExtraordinarias();
+      toast({ title: "Sucesso", description: "Comissão extraordinária removida." });
+    } catch (e) {
+      console.error("Erro ao remover extraordinária:", e);
+      toast({ title: "Erro", description: "Não foi possível remover.", variant: "destructive" });
+    }
+  };
+
 
   const fetchParceiros = async () => {
     try {
@@ -273,9 +355,10 @@ export default function ComissionamentoParceiros() {
   const calculo = useMemo(() => {
     const parceiro = parceiros.find((p) => p.id === selectedParceiro);
     const total = parcelasPagas.reduce((acc, p) => acc + p.valor, 0);
-    const comissao = parcelasPagas.reduce((acc, p) => acc + p.valor_comissao, 0);
-    return { total, comissao, percentual: Number(parceiro?.percentual_comissao || 0) };
-  }, [parcelasPagas, selectedParceiro, parceiros]);
+    const totalExtraordinarias = extraordinarias.reduce((acc, e) => acc + Number(e.valor), 0);
+    const comissao = parcelasPagas.reduce((acc, p) => acc + p.valor_comissao, 0) + totalExtraordinarias;
+    return { total, comissao, totalExtraordinarias, percentual: Number(parceiro?.percentual_comissao || 0) };
+  }, [parcelasPagas, selectedParceiro, parceiros, extraordinarias]);
 
   const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
@@ -542,7 +625,7 @@ export default function ComissionamentoParceiros() {
             <CardTitle>Calcular Comissão</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-sm text-muted-foreground">Total Recebido</div>
@@ -557,7 +640,13 @@ export default function ComissionamentoParceiros() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Valor da Comissão</div>
+                  <div className="text-sm text-muted-foreground">Extraordinárias</div>
+                  <div className="text-2xl font-bold text-amber-600">{formatCurrency(calculo.totalExtraordinarias)}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground">Valor da Comissão (Total)</div>
                   <div className="text-2xl font-bold text-green-600">{formatCurrency(calculo.comissao)}</div>
                 </CardContent>
               </Card>
@@ -635,7 +724,62 @@ export default function ComissionamentoParceiros() {
               </p>
             )}
 
-            {calculo.total > 0 && (
+            {/* Comissões Extraordinárias */}
+            <div className="space-y-3">
+              <h4 className="font-medium">Comissões Extraordinárias</h4>
+
+              {extraordinarias.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center w-[60px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {extraordinarias.map((e) => (
+                      <TableRow key={e.id} className="bg-amber-500/5">
+                        <TableCell>{e.descricao}</TableCell>
+                        <TableCell className="text-right font-medium text-amber-600">
+                          {formatCurrency(Number(e.valor))}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveExtraordinaria(e.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              <div className="flex items-end gap-3">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <Input
+                    value={novaExtraDesc}
+                    onChange={(e) => setNovaExtraDesc(e.target.value)}
+                    placeholder="Ex: Bônus por indicação especial"
+                  />
+                </div>
+                <div className="w-[180px] space-y-1">
+                  <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                  <CurrencyInput value={novaExtraValor} onChange={setNovaExtraValor} placeholder="0,00" />
+                </div>
+                <Button onClick={handleAddExtraordinaria} size="icon" className="shrink-0">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {(calculo.total > 0 || calculo.comissao > 0) && (
               <div className="flex justify-end">
                 <Button onClick={() => setSubmitDialogOpen(true)}>
                   <Send className="w-4 h-4 mr-2" />
