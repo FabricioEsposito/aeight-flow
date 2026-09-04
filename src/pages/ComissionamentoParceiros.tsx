@@ -151,8 +151,73 @@ export default function ComissionamentoParceiros() {
   }, [dateRangePreset, customDateRange]);
 
   useEffect(() => {
-    if (selectedParceiro) fetchParcelasPagas();
+    if (selectedParceiro) {
+      fetchParcelasPagas();
+      fetchExtraordinarias();
+    } else {
+      setExtraordinarias([]);
+    }
   }, [selectedParceiro, dateRangePreset, customDateRange]);
+
+  const fetchExtraordinarias = async () => {
+    if (!selectedParceiro) return;
+    const { mes, ano } = getReferencePeriod();
+    try {
+      const { data, error } = await (supabase as any)
+        .from("comissao_extraordinaria")
+        .select("*")
+        .eq("vendedor_id", selectedParceiro)
+        .eq("mes_referencia", mes)
+        .eq("ano_referencia", ano);
+      if (error) throw error;
+      setExtraordinarias(data || []);
+    } catch (e) {
+      console.error("Erro ao carregar extraordinárias:", e);
+    }
+  };
+
+  const handleAddExtraordinaria = async () => {
+    if (!selectedParceiro || !novaExtraDesc.trim() || novaExtraValor <= 0) {
+      toast({
+        title: "Atenção",
+        description: "Preencha a descrição e o valor da comissão extraordinária.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const { mes, ano } = getReferencePeriod();
+    try {
+      const { error } = await (supabase as any).from("comissao_extraordinaria").insert({
+        vendedor_id: selectedParceiro,
+        descricao: novaExtraDesc.trim(),
+        valor: novaExtraValor,
+        mes_referencia: mes,
+        ano_referencia: ano,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+      setNovaExtraDesc("");
+      setNovaExtraValor(0);
+      fetchExtraordinarias();
+      toast({ title: "Sucesso", description: "Comissão extraordinária adicionada." });
+    } catch (e) {
+      console.error("Erro ao adicionar extraordinária:", e);
+      toast({ title: "Erro", description: "Não foi possível adicionar.", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveExtraordinaria = async (id: string) => {
+    try {
+      const { error } = await (supabase as any).from("comissao_extraordinaria").delete().eq("id", id);
+      if (error) throw error;
+      fetchExtraordinarias();
+      toast({ title: "Sucesso", description: "Comissão extraordinária removida." });
+    } catch (e) {
+      console.error("Erro ao remover extraordinária:", e);
+      toast({ title: "Erro", description: "Não foi possível remover.", variant: "destructive" });
+    }
+  };
+
 
   const fetchParceiros = async () => {
     try {
