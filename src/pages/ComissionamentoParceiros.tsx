@@ -625,7 +625,7 @@ export default function ComissionamentoParceiros() {
             <CardTitle>Calcular Comissão</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-sm text-muted-foreground">Total Recebido</div>
@@ -640,7 +640,13 @@ export default function ComissionamentoParceiros() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Valor da Comissão</div>
+                  <div className="text-sm text-muted-foreground">Extraordinárias</div>
+                  <div className="text-2xl font-bold text-amber-600">{formatCurrency(calculo.totalExtraordinarias)}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground">Valor da Comissão (Total)</div>
                   <div className="text-2xl font-bold text-green-600">{formatCurrency(calculo.comissao)}</div>
                 </CardContent>
               </Card>
