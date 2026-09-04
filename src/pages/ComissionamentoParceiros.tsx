@@ -724,7 +724,62 @@ export default function ComissionamentoParceiros() {
               </p>
             )}
 
-            {calculo.total > 0 && (
+            {/* Comissões Extraordinárias */}
+            <div className="space-y-3">
+              <h4 className="font-medium">Comissões Extraordinárias</h4>
+
+              {extraordinarias.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center w-[60px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {extraordinarias.map((e) => (
+                      <TableRow key={e.id} className="bg-amber-500/5">
+                        <TableCell>{e.descricao}</TableCell>
+                        <TableCell className="text-right font-medium text-amber-600">
+                          {formatCurrency(Number(e.valor))}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveExtraordinaria(e.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              <div className="flex items-end gap-3">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <Input
+                    value={novaExtraDesc}
+                    onChange={(e) => setNovaExtraDesc(e.target.value)}
+                    placeholder="Ex: Bônus por indicação especial"
+                  />
+                </div>
+                <div className="w-[180px] space-y-1">
+                  <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                  <CurrencyInput value={novaExtraValor} onChange={setNovaExtraValor} placeholder="0,00" />
+                </div>
+                <Button onClick={handleAddExtraordinaria} size="icon" className="shrink-0">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {(calculo.total > 0 || calculo.comissao > 0) && (
               <div className="flex justify-end">
                 <Button onClick={() => setSubmitDialogOpen(true)}>
                   <Send className="w-4 h-4 mr-2" />
