@@ -377,12 +377,124 @@ export default function Extrato() {
 
   const handleExportExcel = () => {
     const dadosComSaldos = calcularDadosComSaldos();
-    exportToExcel({
-      title: 'Extrato e Conciliação',
-      filename: `extrato-${format(new Date(), 'yyyy-MM-dd')}`,
-      columns: exportColumnsExcel,
-      data: dadosComSaldos,
-      dateRange: getDateRangeLabel(),
+
+    const maxRateioItems = dadosComSaldos.reduce((max, row) => {
+      const rateio = (row as any).centros_custo_rateio as CentroCustoRateioItem[] | undefined;
+      return Math.max(max, rateio?.length || 0);
+    }, 0);
+
+    const rateioColumns = [];
+    for (let i = 1; i <= maxRateioItems; i++) {
+      rateioColumns.push(
+        { header: `Rateio ${i} - Centro de Custo`, accessor: (row: any) => {
+          const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
+          const item = rateio?.[i - 1];
+          return item ? `${item.codigo.split('_')[0]} - ${item.descricao}` : '-';
+        }},
+        { header: `Rateio ${i} - %`, accessor: (row: any) => {
+          const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
+          const item = rateio?.[i - 1];
+          return item ? item.percentual / 100 : '';
+        }, type: 'number' as const },
+        { header: `Rateio ${i} - Valor`, accessor: (row: any) => {
+          const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
+          const item = rateio?.[i - 1];
+          if (!item) return '';
+          const valorBase = row.tipo === 'saida' ? -Math.abs(row.valor) : row.valor;
+          return valorBase * item.percentual / 100;
+        }, type: 'currency' as const }
+      );
+    }
+
+    const centroCustoIndex = exportColumnsExcel.findIndex(c => c.header === 'Centro de Custo');
+    const baseColumns = [...exportColumnsExcel];
+    if (centroCustoIndex >= 0) {
+      baseColumns.splice(centroCustoIndex + 1, 0, ...rateioColumns);
+    } else {
+      baseColumns.push(...rateioColumns);
+    }
+
+    const parseNumericValue = (value: string | number): number => {
+      if (typeof value === 'number') return value;
+      if (!value) return 0;
+      const cleaned = String(value).replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.').trim();
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const parseDateValue = (value: string): Date | null => {
+      if (!value) return null;
+      const parts = value.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      }
+      const isoParts = value.split('T')[0].split('-');
+      if (isoParts.length === 3) {
+        const [year, month, day] = isoParts.map(Number);
+        return new Date(year, month - 1, day);
+      }
+      return null;
+    };
+
+    const formatValue = (row: any, column: any) => {
+      const rawValue = typeof column.accessor === 'function' ? column.accessor(row) : row[column.accessor] ?? '';
+      return rawValue;
+    };
+
+    const worksheetData = dadosComSaldos.map(row => {
+      const rowData: Record<string, any> = {};
+      baseColumns.forEach((col: any) => {
+        const rawValue = formatValue(row, col);
+        if (col.type === 'currency' || col.type === 'number') {
+          rowData[col.header] = parseNumericValue(rawValue);
+        } else if (col.type === 'date') {
+          const dateVal = parseDateValue(String(rawValue));
+          if (dateVal) {
+            const day = String(dateVal.getDate()).padStart(2, '0');
+            const month = String(dateVal.getMonth() + 1).padStart(2, '0');
+            const year = dateVal.getFullYear();
+            rowData[col.header] = `${day}/${month}/${year}`;
+          } else {
+            rowData[col.header] = rawValue || '';
+          }
+        } else {
+          rowData[col.header] = rawValue;
+        }
+      });
+      return rowData;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(worksheetData);
+    const colWidths = baseColumns.map((col: any) => ({
+      wch: Math.max(col.header.length + 2, 15)
+    }));
+    ws['!cols'] = colWidths;
+
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const colType = baseColumns[C]?.type;
+      for (let R = range.s.r + 1; R <= range.e.r; R++) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        const cell = ws[cellRef];
+        if (cell) {
+          if (colType === 'currency' || colType === 'number') {
+            cell.t = 'n';
+            cell.z = '#,##0.00';
+          } else if (colType === 'date') {
+            cell.t = 's';
+          }
+        }
+      }
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Extrato e Conciliação'.substring(0, 31));
+    XLSX.writeFile(wb, `extrato-${format(new Date(), 'yyyy-MM-dd')}.xls`);
+
+    toast({
+      title: 'Sucesso',
+      description: 'Relatório Excel exportado com sucesso!',
     });
   };
 
