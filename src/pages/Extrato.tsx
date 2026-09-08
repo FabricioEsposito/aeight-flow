@@ -378,33 +378,32 @@ export default function Extrato() {
   const handleExportExcel = () => {
     const dadosComSaldos = calcularDadosComSaldos();
 
-    const maxRateioItems = dadosComSaldos.reduce((max, row) => {
-      const rateio = (row as any).centros_custo_rateio as CentroCustoRateioItem[] | undefined;
-      return Math.max(max, rateio?.length || 0);
-    }, 0);
+    // Coletar todos os centros de custo únicos presentes nos rateios
+    const centroCustoUnicos = new Map<string, CentroCustoRateioItem>();
+    dadosComSaldos.forEach(row => {
+      const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
+      rateio?.forEach(item => {
+        const key = `${item.codigo}_${item.descricao}`;
+        if (!centroCustoUnicos.has(key)) {
+          centroCustoUnicos.set(key, item);
+        }
+      });
+    });
 
-    const rateioColumns = [];
-    for (let i = 1; i <= maxRateioItems; i++) {
-      rateioColumns.push(
-        { header: `Rateio ${i} - Centro de Custo`, accessor: (row: any) => {
+    // Ordenar por código do centro de custo
+    const rateioColumns = Array.from(centroCustoUnicos.values())
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      .map(item => ({
+        header: `${item.codigo}_${item.descricao}`,
+        accessor: (row: any) => {
           const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
-          const item = rateio?.[i - 1];
-          return item ? `${item.codigo.split('_')[0]} - ${item.descricao}` : '-';
-        }},
-        { header: `Rateio ${i} - %`, accessor: (row: any) => {
-          const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
-          const item = rateio?.[i - 1];
-          return item ? item.percentual / 100 : '';
-        }, type: 'number' as const },
-        { header: `Rateio ${i} - Valor`, accessor: (row: any) => {
-          const rateio = row.centros_custo_rateio as CentroCustoRateioItem[] | undefined;
-          const item = rateio?.[i - 1];
-          if (!item) return '';
+          const rateioItem = rateio?.find(r => r.centro_custo_id === item.centro_custo_id);
+          if (!rateioItem) return '';
           const valorBase = row.tipo === 'saida' ? -Math.abs(row.valor) : row.valor;
-          return valorBase * item.percentual / 100;
-        }, type: 'currency' as const }
-      );
-    }
+          return valorBase * rateioItem.percentual / 100;
+        },
+        type: 'currency' as const
+      }));
 
     const centroCustoIndex = exportColumnsExcel.findIndex(c => c.header === 'Centro de Custo');
     const baseColumns: any[] = [...exportColumnsExcel];
