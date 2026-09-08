@@ -407,7 +407,7 @@ export default function Extrato() {
     }
 
     const centroCustoIndex = exportColumnsExcel.findIndex(c => c.header === 'Centro de Custo');
-    const baseColumns = [...exportColumnsExcel];
+    const baseColumns: any[] = [...exportColumnsExcel];
     if (centroCustoIndex >= 0) {
       baseColumns.splice(centroCustoIndex + 1, 0, ...rateioColumns);
     } else {
