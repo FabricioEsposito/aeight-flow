@@ -475,15 +475,11 @@ export default function Extrato() {
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     for (let C = range.s.c; C <= range.e.c; C++) {
       const colType = baseColumns[C]?.type;
-      const header = baseColumns[C]?.header || '';
       for (let R = range.s.r + 1; R <= range.e.r; R++) {
         const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
         const cell = ws[cellRef];
         if (cell) {
-          if (header.endsWith(' - %')) {
-            cell.t = 'n';
-            cell.z = '0.0%';
-          } else if (colType === 'currency' || colType === 'number') {
+          if (colType === 'currency' || colType === 'number') {
             cell.t = 'n';
             cell.z = '#,##0.00';
           } else if (colType === 'date') {
