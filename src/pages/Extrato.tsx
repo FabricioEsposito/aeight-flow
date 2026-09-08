@@ -277,14 +277,6 @@ export default function Extrato() {
       return '-';
     }},
     { header: 'Centro de Custo', accessor: (row: LancamentoExtrato) => row.centro_custo_nome || '-' },
-    { header: 'Rateio Centros de Custo', accessor: (row: LancamentoExtrato) => {
-      const rateio = (row as any).centros_custo_rateio as CentroCustoRateioItem[] | undefined;
-      if (!rateio || rateio.length === 0) return '-';
-      const valorBase = row.tipo === 'saida' ? -Math.abs(row.valor) : row.valor;
-      return rateio
-        .map(r => `${r.codigo.split('_')[0]} - ${r.descricao} (${r.percentual}% = ${formatCurrencyExport(valorBase * r.percentual / 100)})`)
-        .join('; ');
-    }},
     { header: 'Plano de Contas - Grupo', accessor: (row: LancamentoExtrato) => {
       if (!row.plano_conta_id) return '-';
       const hier = planoContasHierarchyRef.current.get(row.plano_conta_id);
