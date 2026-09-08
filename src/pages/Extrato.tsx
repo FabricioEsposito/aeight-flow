@@ -414,9 +414,9 @@ export default function Extrato() {
       baseColumns.push(...rateioColumns);
     }
 
-    const parseNumericValue = (value: string | number): number => {
+    const parseNumericValue = (value: string | number | null | undefined): number | null => {
+      if (value === null || value === undefined || value === '') return null;
       if (typeof value === 'number') return value;
-      if (!value) return 0;
       const cleaned = String(value).replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.').trim();
       const num = parseFloat(cleaned);
       return isNaN(num) ? 0 : num;
