@@ -447,7 +447,8 @@ export default function Extrato() {
       baseColumns.forEach((col: any) => {
         const rawValue = formatValue(row, col);
         if (col.type === 'currency' || col.type === 'number') {
-          rowData[col.header] = parseNumericValue(rawValue);
+          const numValue = parseNumericValue(rawValue);
+          rowData[col.header] = numValue === null ? '' : numValue;
         } else if (col.type === 'date') {
           const dateVal = parseDateValue(String(rawValue));
           if (dateVal) {
