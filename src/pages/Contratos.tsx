@@ -90,7 +90,9 @@ export default function Contratos() {
           plano_contas:plano_contas_id (id, codigo, descricao),
           parcelas_contrato (
             id,
-            status
+            status,
+            contas_receber (data_competencia, data_vencimento, data_vencimento_original),
+            contas_pagar (data_competencia, data_vencimento, data_vencimento_original)
           ),
           contratos_centros_custo (
             percentual,
@@ -120,6 +122,24 @@ export default function Contratos() {
   }, []);
 
   // Mapear centro de custo para cada contrato
+  const calcularPrazoPagamento = (contrato: any): number | null => {
+    const parcelas = contrato.parcelas_contrato || [];
+    for (const parcela of parcelas) {
+      const contas = [...(parcela.contas_receber || []), ...(parcela.contas_pagar || [])];
+      for (const conta of contas) {
+        const competencia = conta.data_competencia;
+        const vencimento = conta.data_vencimento_original || conta.data_vencimento;
+        if (!competencia || !vencimento) continue;
+        const diff = Math.round(
+          (new Date(vencimento + 'T00:00:00').getTime() -
+            new Date(competencia + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (diff > 0) return diff;
+      }
+    }
+    return null;
+  };
+
   const contratosComCentroCusto = contratos.map(contrato => {
     const centroCustoInfo = centrosCusto.find(cc => cc.id === contrato.centro_custo);
     const temGoLive = (contrato as any).parcelas_contrato?.some(
@@ -136,7 +156,8 @@ export default function Contratos() {
       ...contrato,
       centro_custo_info: centroCustoInfo,
       centros_custo_multi: rateios.length > 1 ? rateios : undefined,
-      tem_go_live: temGoLive
+      tem_go_live: temGoLive,
+      prazo_pagamento: calcularPrazoPagamento(contrato),
     };
   });
 
