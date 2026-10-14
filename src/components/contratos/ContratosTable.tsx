@@ -190,7 +190,7 @@ export function ContratosTable({
         <TableBody>
           {contratos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={isSelectable ? 13 : 12} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={isSelectable ? 14 : 13} className="text-center text-muted-foreground py-8">
                 Nenhum contrato encontrado
               </TableCell>
             </TableRow>
