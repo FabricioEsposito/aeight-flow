@@ -256,6 +256,9 @@ export function ContratosTable({
                       {formatRecorrencia(contrato.recorrente, contrato.periodo_recorrencia)}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {contrato.prazo_pagamento != null ? `${contrato.prazo_pagamento}º dia após geração` : <span className="text-muted-foreground">-</span>}
+                  </TableCell>
                   <TableCell className="text-sm" title={contrato.centros_custo_multi ? contrato.centros_custo_multi.map(r => `${r.codigo} - ${r.descricao} (${r.percentual}%)`).join(' | ') : contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
                     {contrato.centros_custo_multi ? (
                       <div className="flex flex-col gap-0.5">
