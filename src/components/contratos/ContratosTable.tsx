@@ -34,6 +34,7 @@ interface Contrato {
   numero_contrato: string;
   tipo_contrato: 'venda' | 'compra';
   data_inicio: string;
+  prazo_pagamento?: number | null;
   valor_total: number;
   valor_bruto?: number;
   quantidade?: number;
@@ -177,6 +178,7 @@ export function ContratosTable({
             <TableHead className="min-w-[120px]">Contrato</TableHead>
             <TableHead className="min-w-[70px]">Tipo</TableHead>
             <TableHead className="min-w-[90px]">Recorrência</TableHead>
+            <TableHead className="min-w-[130px]">Prazo de Pagamento</TableHead>
             <TableHead className="min-w-[180px]">Centro Custos</TableHead>
             <TableHead className="min-w-[85px]">Import.</TableHead>
             <TableHead className="min-w-[110px]">Valor Bruto</TableHead>
@@ -188,7 +190,7 @@ export function ContratosTable({
         <TableBody>
           {contratos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={isSelectable ? 13 : 12} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={isSelectable ? 14 : 13} className="text-center text-muted-foreground py-8">
                 Nenhum contrato encontrado
               </TableCell>
             </TableRow>
@@ -253,6 +255,9 @@ export function ContratosTable({
                     <Badge variant={getRecorrenciaBadgeVariant(contrato.recorrente, contrato.periodo_recorrencia) as any} className="text-xs">
                       {formatRecorrencia(contrato.recorrente, contrato.periodo_recorrencia)}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {contrato.prazo_pagamento != null ? `${contrato.prazo_pagamento}º dia após geração` : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-sm" title={contrato.centros_custo_multi ? contrato.centros_custo_multi.map(r => `${r.codigo} - ${r.descricao} (${r.percentual}%)`).join(' | ') : contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
                     {contrato.centros_custo_multi ? (
