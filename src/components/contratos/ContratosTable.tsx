@@ -34,6 +34,7 @@ interface Contrato {
   numero_contrato: string;
   tipo_contrato: 'venda' | 'compra';
   data_inicio: string;
+  prazo_pagamento?: number | null;
   valor_total: number;
   valor_bruto?: number;
   quantidade?: number;
@@ -177,6 +178,7 @@ export function ContratosTable({
             <TableHead className="min-w-[120px]">Contrato</TableHead>
             <TableHead className="min-w-[70px]">Tipo</TableHead>
             <TableHead className="min-w-[90px]">Recorrência</TableHead>
+            <TableHead className="min-w-[130px]">Prazo de Pagamento</TableHead>
             <TableHead className="min-w-[180px]">Centro Custos</TableHead>
             <TableHead className="min-w-[85px]">Import.</TableHead>
             <TableHead className="min-w-[110px]">Valor Bruto</TableHead>
