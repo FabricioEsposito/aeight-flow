@@ -257,7 +257,7 @@ export function ContratosTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm whitespace-nowrap">
-                    {contrato.prazo_pagamento != null ? `${contrato.prazo_pagamento}º dia após geração` : <span className="text-muted-foreground">-</span>}
+                    {contrato.prazo_pagamento != null ? `${contrato.prazo_pagamento} dias` : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-sm" title={contrato.centros_custo_multi ? contrato.centros_custo_multi.map(r => `${r.codigo} - ${r.descricao} (${r.percentual}%)`).join(' | ') : contrato.centro_custo_info ? `${contrato.centro_custo_info.codigo} - ${contrato.centro_custo_info.descricao}` : contrato.centro_custo || '-'}>
                     {contrato.centros_custo_multi ? (
