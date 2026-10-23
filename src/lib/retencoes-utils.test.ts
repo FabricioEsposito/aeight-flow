@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, it as test } from 'node:test';
 import { deepStrictEqual, strictEqual } from 'node:assert';
 import { calcularRetencoes } from './retencoes-utils';
