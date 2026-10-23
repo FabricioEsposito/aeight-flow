@@ -20,6 +20,7 @@ import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { openStorageFile } from '@/lib/storage-utils';
 import DocumentosTab from '@/components/contador/DocumentosTab';
+import { calcularRetencoes } from '@/lib/retencoes-utils';
 
 // ==================== HELPERS ====================
 const PAGE_SIZE = 1000;
@@ -572,12 +573,13 @@ function RetencoesTab() {
       const data = await fetchAllPages((from, to) =>
         supabase.from('contas_receber')
           .select(`
-            id, valor, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo, conta_bancaria_id,
+            id, valor, valor_original, data_recebimento, numero_nf, link_nf, status, parcela_id, centro_custo, conta_bancaria_id,
             clientes:cliente_id(razao_social, cnpj_cpf),
             parcelas_contrato:parcela_id(
+              valor,
               contratos:contrato_id(
                 irrf_percentual, pis_percentual, cofins_percentual, csll_percentual,
-                servicos, valor_bruto
+                servicos
               )
             )
           `)
@@ -618,31 +620,15 @@ function RetencoesTab() {
         })
         .map((r: any) => {
           const contrato = r.parcelas_contrato?.contratos;
-          const valor = Number(r.valor);
-          const irrfPct = contrato?.irrf_percentual || 0;
-          const pisPct = contrato?.pis_percentual || 0;
-          const cofinsPct = contrato?.cofins_percentual || 0;
-          const csllPct = contrato?.csll_percentual || 0;
-          const totalPct = irrfPct + pisPct + cofinsPct + csllPct;
-
-          const contratoValorBruto = contrato?.valor_bruto ? Number(contrato.valor_bruto) : 0;
-          let valorBruto = valor;
-          
-          if (totalPct > 0 && totalPct < 100) {
-            const brutoEstimado = valor / (1 - totalPct / 100);
-            if (contratoValorBruto > 0 && Math.abs(contratoValorBruto - brutoEstimado) <= Math.max(0.5, brutoEstimado * 0.01)) {
-              valorBruto = contratoValorBruto;
-            } else {
-              valorBruto = valor;
-            }
-          }
-
-          const round2 = (v: number) => Math.round(v * 100) / 100;
-          const irrfValor = round2(valorBruto * irrfPct / 100);
-          const pisValor = round2(valorBruto * pisPct / 100);
-          const cofinsValor = round2(valorBruto * cofinsPct / 100);
-          const csllValor = round2(valorBruto * csllPct / 100);
-          const valorLiquido = round2(valorBruto - irrfValor - pisValor - cofinsValor - csllValor);
+          const valores = calcularRetencoes({
+            valor: Number(r.valor),
+            valorParcela: r.parcelas_contrato?.valor == null ? null : Number(r.parcelas_contrato.valor),
+            valorOriginal: r.valor_original == null ? null : Number(r.valor_original),
+            irrfPercentual: Number(contrato?.irrf_percentual || 0),
+            pisPercentual: Number(contrato?.pis_percentual || 0),
+            cofinsPercentual: Number(contrato?.cofins_percentual || 0),
+            csllPercentual: Number(contrato?.csll_percentual || 0),
+          });
 
           const servicosNomes = contrato?.servicos && Array.isArray(contrato.servicos)
             ? contrato.servicos.map((sid: string) => servicosMap.get(sid) || sid).join(', ')
@@ -658,12 +644,7 @@ function RetencoesTab() {
             servicos: servicosNomes,
             numero_nf: r.numero_nf,
             link_nf: r.link_nf,
-            valor_bruto: round2(valorBruto),
-            irrf_valor: irrfValor,
-            pis_valor: pisValor,
-            cofins_valor: cofinsValor,
-            csll_valor: csllValor,
-            valor_liquido: valorLiquido,
+            ...valores,
             mes: recDate.getMonth() + 1,
             ano: recDate.getFullYear(),
             centro_custo: r.centro_custo,
