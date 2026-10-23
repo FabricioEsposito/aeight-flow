@@ -21,6 +21,11 @@ import { PermissionDeniedDialog } from '@/components/PermissionDeniedDialog';
 import { openStorageFile } from '@/lib/storage-utils';
 import DocumentosTab from '@/components/contador/DocumentosTab';
 import { calcularRetencoes } from '@/lib/retencoes-utils';
+import { useConferenciaNF } from '@/hooks/useConferenciaNF';
+import { resultadoConferencia, conferenciaLabels } from '@/lib/conferencia-nf';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Progress } from '@/components/ui/progress';
+import { ScanSearch, Square, RotateCw } from 'lucide-react';
 
 // ==================== HELPERS ====================
 const PAGE_SIZE = 1000;
@@ -526,6 +531,11 @@ function RetencoesTab() {
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(defaultPeriod);
   const [retencoes, setRetencoes] = useState<RetencaoRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [auditFilter, setAuditFilter] = useState('todas');
+  const { conferencias, erros, progress, loadError, conferir, interromper } = useConferenciaNF(retencoes);
+  const auditResult = (row: RetencaoRow) => erros[row.id]
+    ? { status: 'erro', diferenca: null }
+    : resultadoConferencia(row.valor_bruto, row.link_nf, conferencias[row.id]);
   const [searchTerm, setSearchTerm] = useState('');
   const [centroCustoFilter, setCentroCustoFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -663,6 +673,7 @@ function RetencoesTab() {
 
   const filtered = useMemo(() => {
     return retencoes.filter(r => {
+      if (auditFilter !== 'todas' && auditResult(r).status !== auditFilter) return false;
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         if (!r.cliente_razao_social.toLowerCase().includes(term) &&
@@ -672,7 +683,7 @@ function RetencoesTab() {
       if (centroCustoFilter.length > 0 && (!r.centro_custo || !centroCustoFilter.includes(r.centro_custo))) return false;
       return true;
     });
-  }, [retencoes, searchTerm, centroCustoFilter]);
+  }, [retencoes, searchTerm, centroCustoFilter, auditFilter, conferencias, erros]);
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, RetencaoRow[]>();
@@ -709,6 +720,10 @@ function RetencoesTab() {
     { header: 'COFINS', accessor: (r: RetencaoRow) => r.cofins_valor, type: 'currency' as const },
     { header: 'CSLL', accessor: (r: RetencaoRow) => r.csll_valor, type: 'currency' as const },
     { header: 'Valor Líquido', accessor: (r: RetencaoRow) => r.valor_liquido, type: 'currency' as const },
+    { header: 'Bruto no PDF', accessor: (r: RetencaoRow) => conferencias[r.id]?.link_nf === r.link_nf ? conferencias[r.id]?.valor_bruto_pdf ?? '' : '', type: 'currency' as const },
+    { header: 'Diferença PDF − Relatório', accessor: (r: RetencaoRow) => auditResult(r).diferenca ?? '', type: 'currency' as const },
+    { header: 'Conferência Fiscal', accessor: (r: RetencaoRow) => conferenciaLabels[auditResult(r).status] },
+    { header: 'Revisão', accessor: (r: RetencaoRow) => erros[r.id] ?? conferencias[r.id]?.motivo ?? '' },
   ];
 
   const handleExportExcel = () => {
@@ -792,6 +807,20 @@ function RetencoesTab() {
         </DropdownMenu>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 border-y py-3">
+        <Button className="gap-2" disabled={loading || progress.running || filtered.length === 0} onClick={() => void conferir(filtered)}>
+          <ScanSearch className="h-4 w-4" />Conferir PDFs ({filtered.length})
+        </Button>
+        <SearchableSelect value={auditFilter} onValueChange={value => { setAuditFilter(value); setCurrentPage(1); }} className="w-52" options={[
+          { value: 'todas', label: 'Todas as conferências' },
+          ...Object.entries(conferenciaLabels).map(([value, label]) => ({ value, label })),
+        ]} />
+        {progress.running && <Button variant="outline" className="gap-2" onClick={interromper}><Square className="h-4 w-4" />Parar após esta nota</Button>}
+        {progress.total > 0 && <span className="text-sm text-muted-foreground">{progress.done} / {progress.total} processadas</span>}
+        {loadError && <span role="alert" className="text-sm text-destructive">{loadError}</span>}
+      </div>
+      {progress.running && <Progress value={progress.total ? progress.done / progress.total * 100 : 0} />}
+
       {/* Table */}
       <Card>
         <div className="overflow-x-auto">
@@ -810,13 +839,16 @@ function RetencoesTab() {
                 <TableHead className="text-right">COFINS</TableHead>
                 <TableHead className="text-right">CSLL</TableHead>
                 <TableHead className="text-right">Valor Líquido</TableHead>
+                <TableHead className="text-right">Bruto no PDF</TableHead>
+                <TableHead className="text-right">Diferença</TableHead>
+                <TableHead>Conferência Fiscal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-               <TableRow><TableCell colSpan={12} className="text-center py-8">Carregando...</TableCell></TableRow>
+               <TableRow><TableCell colSpan={15} className="text-center py-8">Carregando...</TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhuma retenção encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Nenhuma retenção encontrada</TableCell></TableRow>
               ) : (
                 <>
                   {groupedByMonth.map(([monthKey, rows]) => {
@@ -836,7 +868,7 @@ function RetencoesTab() {
                     return (
                       <React.Fragment key={monthKey}>
                         <TableRow className="bg-muted/50">
-                          <TableCell colSpan={12} className="font-semibold text-sm capitalize">
+                          <TableCell colSpan={15} className="font-semibold text-sm capitalize">
                             {getMonthLabel(mn, yr)}
                             <span className="ml-2 text-xs text-muted-foreground font-normal">
                               ({rows.length} {rows.length === 1 ? 'lançamento' : 'lançamentos'})
@@ -852,13 +884,13 @@ function RetencoesTab() {
                             <TableCell>
                               {row.numero_nf ? (
                                 row.link_nf ? (
-                                  <button
-                                    onClick={() => openStorageFile(row.link_nf!)}
-                                    className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                                  <Button variant="link" size="sm"
+                                    onClick={() => { if (row.link_nf) void openStorageFile(row.link_nf); }}
+                                    className="h-auto p-0 gap-1"
                                   >
                                     {row.numero_nf}
                                     <ExternalLink className="w-3 h-3" />
-                                  </button>
+                                  </Button>
                                 ) : (
                                   row.numero_nf
                                 )
@@ -871,6 +903,16 @@ function RetencoesTab() {
                             <TableCell className="text-right text-red-600">{formatCurrency(row.cofins_valor)}</TableCell>
                             <TableCell className="text-right text-red-600">{formatCurrency(row.csll_valor)}</TableCell>
                             <TableCell className="text-right font-medium text-green-600">{formatCurrency(row.valor_liquido)}</TableCell>
+                            <TableCell className="text-right whitespace-nowrap">{conferencias[row.id]?.link_nf === row.link_nf && conferencias[row.id]?.valor_bruto_pdf != null ? formatCurrency(Number(conferencias[row.id].valor_bruto_pdf)) : '—'}</TableCell>
+                            <TableCell className="text-right whitespace-nowrap">{auditResult(row).diferenca != null ? formatCurrency(Number(auditResult(row).diferenca)) : '—'}</TableCell>
+                            <TableCell className="min-w-[190px] max-w-[280px]">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={auditResult(row).status === 'divergente' || auditResult(row).status === 'erro' ? 'destructive' : auditResult(row).status === 'confere' ? 'default' : 'outline'}>{conferenciaLabels[auditResult(row).status]}</Badge>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Conferir novamente o PDF" aria-label={`Conferir PDF da NF ${row.numero_nf ?? ''}`} disabled={progress.running || !row.link_nf} onClick={() => void conferir([row], true)}><RotateCw className="h-3 w-3" /></Button>
+                              </div>
+                              {(erros[row.id] || conferencias[row.id]?.motivo) && <p className="mt-1 text-xs text-destructive break-words">{erros[row.id] || conferencias[row.id]?.motivo}</p>}
+                              {conferencias[row.id]?.evidencia && <details className="mt-1 text-xs text-muted-foreground"><summary className="cursor-pointer">Trecho do PDF</summary><p className="mt-1 whitespace-pre-wrap break-words">{conferencias[row.id].evidencia}</p></details>}
+                            </TableCell>
                           </TableRow>
                         ))}
                         <TableRow className="bg-muted/30 border-b-2">
@@ -880,7 +922,7 @@ function RetencoesTab() {
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.pis)}</TableCell>
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.cofins)}</TableCell>
                           <TableCell className="text-right font-semibold text-red-600">{formatCurrency(monthTotals.csll)}</TableCell>
-                          <TableCell className="text-right font-semibold text-green-600">{formatCurrency(monthTotals.liquido)}</TableCell>
+                          <TableCell className="text-right font-semibold text-green-600">{formatCurrency(monthTotals.liquido)}</TableCell><TableCell colSpan={3} />
                         </TableRow>
                       </React.Fragment>
                     );
@@ -893,7 +935,7 @@ function RetencoesTab() {
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.pis)}</TableCell>
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.cofins)}</TableCell>
                     <TableCell className="text-right text-red-600">{formatCurrency(totals.csll)}</TableCell>
-                    <TableCell className="text-right text-green-600">{formatCurrency(totals.liquido)}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatCurrency(totals.liquido)}</TableCell><TableCell colSpan={3} />
                   </TableRow>
                 </>
               )}
