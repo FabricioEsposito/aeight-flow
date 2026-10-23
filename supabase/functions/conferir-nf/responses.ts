@@ -1,5 +1,6 @@
 import { createOpenAI } from "npm:@ai-sdk/openai@3";
-import { streamText, type ModelMessage } from "npm:ai@6";
+import { streamText, Output, type ModelMessage } from "npm:ai@6";
+import { z } from "npm:zod@3";
 
 import {
   createLovableAiGatewayRunIdFetch,
@@ -26,6 +27,14 @@ export function createResponsesCall(
     // AI SDK 6 lacks `instructions`: rename this key to `system` there.
     ...(instructions ? { system: instructions } : {}),
     messages,
+    maxRetries: 0,
+    output: Output.object({ schema: z.object({
+      valor_bruto_pdf: z.number().nullable(),
+      numero_nf_pdf: z.string().nullable(),
+      cnpj_tomador_pdf: z.string().nullable(),
+      evidencia: z.string().nullable(),
+      confianca: z.enum(['alta', 'baixa']),
+    }) }),
     abortSignal: request.signal,
     providerOptions: {
       openai: {
