@@ -212,6 +212,62 @@ export type Database = {
           },
         ]
       }
+      conferencias_nf: {
+        Row: {
+          cnpj_tomador_pdf: string | null
+          conferido_por: string
+          conta_receber_id: string
+          created_at: string
+          documento_sha256: string
+          evidencia: string | null
+          id: string
+          link_nf: string
+          motivo: string | null
+          numero_nf_pdf: string | null
+          status: string
+          updated_at: string
+          valor_bruto_pdf: number | null
+        }
+        Insert: {
+          cnpj_tomador_pdf?: string | null
+          conferido_por: string
+          conta_receber_id: string
+          created_at?: string
+          documento_sha256: string
+          evidencia?: string | null
+          id?: string
+          link_nf: string
+          motivo?: string | null
+          numero_nf_pdf?: string | null
+          status: string
+          updated_at?: string
+          valor_bruto_pdf?: number | null
+        }
+        Update: {
+          cnpj_tomador_pdf?: string | null
+          conferido_por?: string
+          conta_receber_id?: string
+          created_at?: string
+          documento_sha256?: string
+          evidencia?: string | null
+          id?: string
+          link_nf?: string
+          motivo?: string | null
+          numero_nf_pdf?: string | null
+          status?: string
+          updated_at?: string
+          valor_bruto_pdf?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_nf_conta_receber_id_fkey"
+            columns: ["conta_receber_id"]
+            isOneToOne: true
+            referencedRelation: "contas_receber"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contador_documentos: {
         Row: {
           ano_referencia: number
