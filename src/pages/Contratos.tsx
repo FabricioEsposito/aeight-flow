@@ -400,6 +400,7 @@ export default function Contratos() {
             default: return 'Recorrente';
           }
         }},
+        { header: 'Prazo de Pagamento', accessor: (row: any) => row.prazo_pagamento != null ? `${row.prazo_pagamento} dias` : '-' },
         { header: 'Centro de Custo', accessor: (row: any) => row.centro_custo_info ? `${row.centro_custo_info.codigo} - ${row.centro_custo_info.descricao}` : '-' },
         { header: 'Importância', accessor: (row: any) => {
           switch (row.importancia_cliente_fornecedor) {
